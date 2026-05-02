@@ -100,11 +100,11 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float TOP_PANEL_TOTAL_WEIGHT = TOP_PANEL_ROWS * TOP_PANEL_ROW_WEIGHT;
     /** Top shortcut strip (row 1 profile + rows 2–3 fixed): label text (sp). */
     private static final float TOP_SHORTCUT_PANEL_TEXT_SP = 12f;
-    private static final float TOP_SHORTCUT_PANEL_ACTION_LABEL_SP = 13f;
+    private static final float TOP_SHORTCUT_PANEL_ACTION_LABEL_SP = 12f;
     private static final float TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP = 20f;
-    /** Fixed top rows only (page 0–2 strip): slightly larger than scroll row + bold; tuned to limit wrap. */
+    /** Fixed top rows only (page 0–2 strip): same size as Combo Text mode; bold preserved in Text mode to limit wrap. */
     private static final float TOP_FIXED_ROWS_TEXT_SP = 12f;
-    private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 13f;
+    private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 12f;
     private static final float TOP_FIXED_ROWS_CUSTOM_GLYPH_SP = 21f;
     /** Profile hub slots: autosize within [min,max] sp so two-line names fit above the bottom strip. */
     private static final int TOP_PROFILE_HUB_SLOT_TEXT_MIN_SP = 9;
@@ -2675,7 +2675,7 @@ public class CustomKeyboardView extends LinearLayout {
                 AlternateOption shown = model.slotOptions[slot];
                 cell.setText(shown != null ? shown.display : "");
                 cell.setTextSize(TypedValue.COMPLEX_UNIT_SP, optionTextSp);
-                cell.setTypeface(Typeface.MONOSPACE);
+                cell.setTypeface(Typeface.SANS_SERIF);
                 int ph = dpToPx(optionPadHorizontalDp);
                 int pv = dpToPx(optionPadVerticalDp);
                 cell.setPadding(ph, pv, ph, pv);
