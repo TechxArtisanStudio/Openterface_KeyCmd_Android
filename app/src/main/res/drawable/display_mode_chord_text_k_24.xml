@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+  <!-- Adapted from text_K.svg: frame + "K" glyph for chord / combo-key strip mode -->
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M2,20V8c0,-1.1 0.4,-2 1.2,-2.8C4,4.4 4.9,4 6,4h12c1.1,0 2,0.4 2.8,1.2S22,6.9 22,8v12H2ZM4,18h16V8c0,-0.6 -0.2,-1 -0.6,-1.4S18.6,6 18,6H6c-0.6,0 -1,0.2 -1.4,0.6S4,7.4 4,8v10ZM8.8,8.6h2.1v2.6l2.2,-2.6h2.8l-2.5,2.6 2.6,4.2h-2.6l-1.4,-2.8 -1.1,1.1v1.7h-2.1v-6.8Z"/>
+</vector>

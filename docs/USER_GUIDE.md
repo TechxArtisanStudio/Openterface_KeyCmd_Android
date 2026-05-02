@@ -101,21 +101,16 @@ The virtual keyboard provides a **full QWERTY layout** with these sections:
 
 In keyboard mode, the fixed shortcut strip uses two rows of keys beneath the swipeable favorites row.
 
-- **Target OS setting** (`Windows`, `Linux`, `macOS`) changes modifier **labels/icons** only:
-  - Row 2 Col 1 (`0xE0`): Ctrl / Control
-  - Row 2 Col 2 (`0xE2`): Alt / Option
-  - Row 2 Col 3 (`0xE3`): Win / Super / Command
-- The physical positions do not move across target OS values.
-- Row 2 already has dedicated **Tab** and **Enter** keys.
+- **Target OS setting** (`Windows`, `Linux`, `macOS`) changes modifier **labels/icons** on the main keyboard and on fixed strip **Page 1** row 2 (Ctrl / Alt / Win or Control / Option / Command).
 
 On **Page 0** of the fixed strip (F‑key / digit row):
 
-- **`Fn` latched / local Fn on:** row 2 is **F6–F12**, row 3 is **F1–F5**, **`=`**, **`Fn`**.
-- **`Fn` cleared / local Fn off:** row 2 is **`6`** **`7`** **`8`** **`9`** **`0`** **`+`** **`-`** (from F6–F12), row 3 is **`1`** **`2`** **`3`** **`4`** **`5`** **`=`** (sends equals); **`Fn`** still toggles latch.
+- **`Fn` cleared / local Fn off:** row 2 is **F7–F12** and **`=`** (sends equals); row 3 is **F1–F6** and **`Fn`**.
+- **`Fn` latched / local Fn on:** row 2 is **`7`** **`8`** **`9`** **`0`** **`+`** **`-`** **`*`**; row 3 is **`1`** **`2`** **`3`** **`4`** **`5`** **`6`**; **`Fn`** still toggles latch.
 
 **Shortcut strip display** (names vs icons vs combo text such as Alt+X) is controlled by the **DISPLAY** key on the **swipeable favorites row**: it appears on the **same page as “Create shortcut”**, immediately **after** that button. Each tap cycles through three modes: shortcut **name**, **icon** (when the shortcut has a drawable icon; otherwise combo text), and **chord** (combo text).
 
-On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row 3 col 7 on that page) is on:
+On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row 3 col 7) is on:
 
 - **Row 2** sends **Scroll Lock**, **PrtSc**, **Caps Lock**, **Pause/Break**, **Home**, **PgUp**; the IME toggle key is unchanged.
 - **Row 3** sends **Space**, **Bksp**, **Del**, **Insert**, **End**, **PgDn**.  

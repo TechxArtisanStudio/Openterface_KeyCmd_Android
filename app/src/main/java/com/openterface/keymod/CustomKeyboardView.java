@@ -89,9 +89,10 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX = 1;
     private static final int TOP_PANEL_PAGE_SIZE = TOP_PANEL_COLUMNS * TOP_PANEL_ROWS;
     private static final int TOP_ROW_PAGE_SIZE = TOP_PANEL_COLUMNS;
+    /** Landscape split top strip: left cols 1–3 (0-based [0,3)), right cols 4–7 ([3,7)). */
     private static final int TOP_PANEL_LEFT_START_COL = 0;
-    private static final int TOP_PANEL_LEFT_END_COL = 4;
-    private static final int TOP_PANEL_RIGHT_START_COL = 4;
+    private static final int TOP_PANEL_LEFT_END_COL = 3;
+    private static final int TOP_PANEL_RIGHT_START_COL = 3;
     private static final int TOP_PANEL_RIGHT_END_COL = TOP_PANEL_COLUMNS;
     private static final float TOP_PANEL_ROW_WEIGHT = 0.8f;
     private static final float TOP_PANEL_SCROLLABLE_ROW_WEIGHT = TOP_PANEL_ROW_WEIGHT;
@@ -880,8 +881,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Fixed shortcut page 1: long-press lock targets these HID usages. Page-1 placement can change,
-     * but lock behavior must continue to follow the underlying modifier key codes only.
+     * Top-strip modifier keys (Ctrl / Shift / Alt / Win): long-press toggles lock. They appear on
+     * the swipeable favorites row and on fixed strip page 1 (row 2); page 0 is F‑keys only.
      */
     private static boolean isTopModifierLockCandidate(Key key) {
         return key != null
@@ -977,7 +978,7 @@ public class CustomKeyboardView extends LinearLayout {
                 return R.drawable.icon_on_24;
             case DISPLAY_MODE_CHORD:
             default:
-                return R.drawable.chord_on_24;
+                return R.drawable.display_mode_chord_text_k_24;
         }
     }
 
@@ -3413,21 +3414,21 @@ public class CustomKeyboardView extends LinearLayout {
 
     private List<Key> buildFixedTopRowsPage0() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
-        // Row 2: F6..F12 (local Fn latch off → overlay 6 7 8 9 0 + -)
-        keys.add(markFixedRowKey(new Key("F6", "", 0x3F, "3F", 1f, 0, 0f, false, false, -1, true)));
+        // Row 2: F7–F12, = (local Fn off); Fn on → 7 8 9 0 + - *
         keys.add(markFixedRowKey(new Key("F7", "", 0x40, "40", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F8", "", 0x41, "41", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F9", "", 0x42, "42", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F10", "", 0x43, "43", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F11", "", 0x44, "44", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F12", "", 0x45, "45", 1f, 0, 0f, false, false, -1, true)));
-        // Row 3: F1..F5, =, local Fn (local Fn latch off → 1 2 3 4 5 =; Fn unchanged; DISPLAY mode is row-1)
+        keys.add(markFixedRowKey(new Key("=", "", 0x2E, "2E", 1f, 0, 0f, false, false, -1, true)));
+        // Row 3: F1–F6, local Fn (local Fn off); Fn on → 1 2 3 4 5 6
         keys.add(markFixedRowKey(new Key("F1", "", 0x3A, "3A", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F2", "", 0x3B, "3B", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F3", "", 0x3C, "3C", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F4", "", 0x3D, "3D", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("F5", "", 0x3E, "3E", 1f, 0, 0f, false, false, -1, true)));
-        keys.add(markFixedRowKey(new Key("=", "", 0x2E, "2E", 1f, 0, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key("F6", "", 0x3F, "3F", 1f, 0, 0f, false, false, -1, true)));
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
         return keys;
     }
@@ -5385,8 +5386,8 @@ public class CustomKeyboardView extends LinearLayout {
         return key != null && key.isTopPanelKey && !key.allowTopPanelPagingGesture;
     }
 
-    /** Page 0 F-strip and equals (distinct from modifier page or Shortcut Hub punctuation). */
-    private boolean isFixedTopRowsPage0StripKey(Key key) {
+    /** F1–F12 and equals on fixed strip page 0 (digit overlay when local Fn latch is off). */
+    private boolean isFixedTopRowsFnDigitStripKey(Key key) {
         if (key == null) {
             return false;
         }
@@ -5427,10 +5428,34 @@ public class CustomKeyboardView extends LinearLayout {
         }
     }
 
+    /** Keys on fixed strip page 1 that use {@link #resolveFixedTopOverlayMapping} when local Fn is on. */
+    private static boolean isFixedTopRowsPage1FnOverlayKey(Key key) {
+        if (key == null) {
+            return false;
+        }
+        switch (key.code) {
+            case 0xE0:
+            case 0xE2:
+            case 0xE3:
+            case 0x2B:
+            case 0x52:
+            case 0x28:
+            case 0x29:
+            case 0xE1:
+            case 0x4C:
+            case 0x50:
+            case 0x51:
+            case 0x4F:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /**
-     * Local Fn overlay mapping for fixed rows when the latch matches the current strip page
-     * (page 0: overlay when latch off; page 1–2: overlay when latch on). Keys with no overlay
-     * return null.
+     * Local Fn overlay mapping for fixed rows when the latch matches the current strip page.
+     * Page 0 (F7–F12 / F1–F6 / =): digit overlay when latch is off. Page 1 (ESC / nav): overlay when
+     * latch is on. Page 2 uses rebuilt rows instead. Keys with no overlay return null.
      */
     private FnMapping resolveFixedTopLocalFnMapping(Key key) {
         FnMapping overlay = resolveFixedTopOverlayMapping(key);
@@ -5441,9 +5466,16 @@ public class CustomKeyboardView extends LinearLayout {
         if (isFixedTopRowsPage2StripKey(key)) {
             return null;
         }
-        boolean page0 = isFixedTopRowsPage0StripKey(key);
-        boolean applyMapping = page0 ? !fixedTopLocalFnLocked : fixedTopLocalFnLocked;
-        return applyMapping ? overlay : null;
+        if (isFixedTopRowsFnDigitStripKey(key)) {
+            if (fixedTopRowsPageIndex == 0) {
+                return !fixedTopLocalFnLocked ? overlay : null;
+            }
+            return null;
+        }
+        if (fixedTopRowsPageIndex == 1 && isFixedTopRowsPage1FnOverlayKey(key)) {
+            return fixedTopLocalFnLocked ? overlay : null;
+        }
+        return null;
     }
 
     /** Overlay target for fixed-row keys (independent of latch); null if key has no Fn-layer pair. */
@@ -5455,7 +5487,7 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         switch (key.code) {
-            // Fixed-top page 0: digit/symbol overlay when local Fn latch is off; F legends when latch is on.
+            // Page 0: F1–F12 digit/symbol overlay (latch gating in {@link #resolveFixedTopLocalFnMapping}).
             case 0x41: return new FnMapping("8", 0x25, 0);
             case 0x42: return new FnMapping("9", 0x26, 0);
             case 0x43: return new FnMapping("0", 0x27, 0);
@@ -5468,8 +5500,9 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x3E: return new FnMapping("5", 0x22, 0);
             case 0x3F: return new FnMapping("6", 0x23, 0);
             case 0x40: return new FnMapping("7", 0x24, 0);
+            case 0x2E: return new FnMapping("*", 0x25, MOD_SHIFT);
             case KEY_IME_TOGGLE: return null;
-            // Fixed-top page 1: local Fn overlay matches page-1 row/column arrangement.
+            // Page 1: local Fn overlay when latch on (ESC / navigation row).
             case 0xE0: return new FnMapping("SCR LK", 0x47, 0);
             case 0xE2: return new FnMapping("PRT SC", 0x46, 0);
             case 0xE3: return new FnMapping("CAPS", 0x39, 0);
@@ -5552,6 +5585,10 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         if (activeOverlay != null && suppressFixedTopFnBaseCornerHintWhenLocalFnOn(k.code)) {
+            return null;
+        }
+        // Page 0 "=": overlay shows "*" for Fn-on only; do not show that hint when latch is off.
+        if (activeOverlay == null && fixedTopRowsPageIndex == 0 && k.code == 0x2E) {
             return null;
         }
         String raw = activeOverlay != null
