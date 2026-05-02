@@ -3611,11 +3611,21 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private String compactShortcutSymbol(ShortcutProfileManager.Shortcut shortcut) {
+        if (shortcut == null) {
+            return "";
+        }
+        if (shortcut.keyCode >= 0) {
+            int mods = normalizeShortcutModifiersForTargetOs(shortcut.modifiers);
+            String chord = KeyParser.toLabelForTargetOs(shortcut.keyCode, mods, getTargetOs());
+            if (!chord.isEmpty()) {
+                return chord.length() > 10 ? chord.substring(0, 10) : chord;
+            }
+        }
         String symbol = shortcut.label != null ? shortcut.label.trim() : "";
         if (symbol.isEmpty()) {
             return "";
         }
-        symbol = com.openterface.keymod.util.KeyParser.displayLabel(symbol, getTargetOs());
+        symbol = KeyParser.displayLabel(symbol, getTargetOs());
         return symbol.length() > 10 ? symbol.substring(0, 10) : symbol;
     }
 
