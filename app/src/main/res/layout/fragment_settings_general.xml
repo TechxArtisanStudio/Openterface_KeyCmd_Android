@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Connection"
+            android:text="@string/connection"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -38,7 +38,7 @@
                     android:id="@+id/auto_connect_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Auto-connect on startup"
+                    android:text="@string/auto_connect_on_startup"
                     android:textSize="14sp"
                     android:textColor="@color/text_primary"
                     android:buttonTint="?attr/colorPrimary" />
@@ -51,7 +51,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Display"
+            android:text="@string/settings_general_section_display"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -74,7 +74,7 @@
                     android:id="@+id/keep_screen_on_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Keep screen on"
+                    android:text="@string/settings_keep_screen_on"
                     android:textSize="14sp"
                     android:textColor="@color/text_primary" />
 
@@ -82,7 +82,7 @@
                     android:id="@+id/orientation_lock_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Lock orientation (landscape)"
+                    android:text="@string/settings_lock_orientation_landscape"
                     android:textSize="14sp"
                     android:textColor="@color/text_primary"
                     android:layout_marginTop="8dp" />
@@ -90,7 +90,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Touchpad Scroll Sensitivity"
+                    android:text="@string/settings_touchpad_scroll_sensitivity"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginTop="12dp"
@@ -105,7 +105,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Slow"
+                        android:text="@string/settings_speed_slow"
                         android:textSize="12sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginEnd="8dp" />
@@ -121,7 +121,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Fast"
+                        android:text="@string/settings_speed_fast"
                         android:textSize="12sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginStart="8dp" />
@@ -145,7 +145,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Theme"
+            android:text="@string/settings_general_section_theme"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -167,7 +167,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Color family"
+                    android:text="@string/settings_theme_color_family"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
@@ -182,7 +182,7 @@
                     android:id="@+id/theme_follow_system_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Follow system dark/light mode"
+                    android:text="@string/settings_theme_follow_system"
                     android:textSize="14sp"
                     android:textColor="@color/text_primary"
                     android:layout_marginTop="12dp" />
@@ -199,7 +199,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Light"
+                        android:text="@string/settings_theme_mode_light"
                         android:textColor="@color/text_primary" />
 
                     <RadioButton
@@ -207,7 +207,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Dark"
+                        android:text="@string/settings_theme_mode_dark"
                         android:textColor="@color/text_primary" />
                 </RadioGroup>
 
@@ -219,7 +219,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Feedback"
+            android:text="@string/settings_general_section_feedback"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -242,7 +242,7 @@
                     android:id="@+id/haptic_feedback_checkbox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Haptic feedback"
+                    android:text="@string/settings_haptic_feedback"
                     android:textSize="14sp"
                     android:textColor="@color/text_primary" />
 

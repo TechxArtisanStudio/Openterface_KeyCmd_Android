@@ -131,7 +131,7 @@
                         android:src="@drawable/signal_cellular_alt_off_24px"
                         android:tint="?attr/colorPrimary"
                         android:visibility="gone"
-                        android:contentDescription="Signal strength" />
+                        android:contentDescription="@string/connection_signal_strength_cd" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -197,7 +197,7 @@
                         android:src="@drawable/ic_signal_bars"
                         android:tint="?attr/colorPrimary"
                         android:visibility="gone"
-                        android:contentDescription="Signal strength" />
+                        android:contentDescription="@string/connection_signal_strength_cd" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

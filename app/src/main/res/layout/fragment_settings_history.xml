@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="AI Request History"
+        android:text="@string/settings_history_title"
         android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="@color/text_primary"
@@ -28,7 +28,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Retry"
+            android:text="@string/settings_history_retry"
             android:layout_marginEnd="8dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
@@ -37,7 +37,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Clear All"
+            android:text="@string/settings_history_clear_all"
             android:textColor="@color/holo_red_light"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
@@ -58,7 +58,7 @@
         android:id="@+id/empty_textview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="No history yet"
+        android:text="@string/settings_history_empty"
         android:textSize="16sp"
         android:textColor="@color/text_secondary"
         android:gravity="center"

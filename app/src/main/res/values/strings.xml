@@ -10,9 +10,114 @@
     <string name="settings_app_language_label">App language</string>
     <string name="app_language_follow_system">Follow system language</string>
 
+    <!-- Settings: General (fragment_settings_general + GeneralSettingsFragment) -->
+    <string name="settings_general_section_display">Display</string>
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_lock_orientation_landscape">Lock orientation (landscape)</string>
+    <string name="settings_touchpad_scroll_sensitivity">Touchpad scroll sensitivity</string>
+    <string name="settings_speed_slow">Slow</string>
+    <string name="settings_speed_fast">Fast</string>
+    <string name="settings_general_section_theme">Theme</string>
+    <string name="settings_theme_color_family">Color family</string>
+    <string name="settings_theme_follow_system">Follow system dark/light mode</string>
+    <string name="settings_theme_mode_light">Light</string>
+    <string name="settings_theme_mode_dark">Dark</string>
+    <string name="settings_general_section_feedback">Feedback</string>
+    <string name="settings_haptic_feedback">Haptic feedback</string>
+    <string-array name="theme_color_family_names">
+        <item>Orange</item>
+        <item>Blue</item>
+        <item>Green</item>
+        <item>Pink</item>
+        <item>Purple</item>
+        <item>Red</item>
+        <item>Teal</item>
+        <item>Indigo</item>
+    </string-array>
+
+    <!-- Settings: Voice (fragment_settings_voice + VoiceSettingsFragment) -->
+    <string name="settings_voice_whisper_section">Whisper API configuration</string>
+    <string name="settings_voice_api_key_label">API key</string>
+    <string name="settings_voice_api_key_hint">Enter Whisper API key</string>
+    <string name="settings_voice_test_connection">Test connection</string>
+    <string name="settings_voice_input_section">Voice input settings</string>
+    <string name="settings_voice_speech_engine">Speech engine</string>
+    <string name="settings_voice_engine_system">System voice input</string>
+    <string name="settings_voice_engine_whisper">Whisper API</string>
+    <string name="settings_voice_language">Language</string>
+    <string name="settings_voice_language_english">English</string>
+    <string name="settings_voice_language_chinese">Chinese</string>
+    <string name="settings_voice_language_spanish">Spanish</string>
+    <string name="settings_voice_language_french">French</string>
+    <string name="settings_voice_language_german">German</string>
+    <string name="settings_voice_language_japanese">Japanese</string>
+    <string name="settings_voice_sensitivity">Sensitivity</string>
+    <string name="settings_voice_toast_enter_api_key">Please enter API key</string>
+    <string name="settings_voice_toast_testing">Testing connection…</string>
+    <string name="settings_voice_toast_success">Connection successful!</string>
+
+    <!-- Settings: History (fragment_settings_history + HistoryFragment) -->
+    <string name="settings_history_title">AI request history</string>
+    <string name="settings_history_retry">Retry</string>
+    <string name="settings_history_clear_all">Clear all</string>
+    <string name="settings_history_empty">No history yet</string>
+    <string name="settings_history_clear_title">Clear history</string>
+    <string name="settings_history_clear_message">Are you sure you want to clear all history?</string>
+    <string name="settings_history_clear_confirm">Clear</string>
+    <string name="settings_history_cancel">Cancel</string>
+    <string name="settings_history_cleared_toast">History cleared</string>
+    <string name="settings_history_no_retry_toast">No history to retry</string>
+    <string name="settings_history_retry_soon_toast">Retry is not available yet</string>
+    <string name="settings_history_selected_toast">Selected: %1$s</string>
+
+    <!-- Settings: AI (fragment_settings_ai + AISettingsFragment) -->
+    <string name="settings_ai_section_features">AI features</string>
+    <string name="settings_ai_enable_title">Enable AI features</string>
+    <string name="settings_ai_enable_summary">AI checks intent and processes voice input</string>
+    <string name="settings_ai_section_mode">AI mode</string>
+    <string name="settings_ai_role_label">Role</string>
+    <string name="settings_ai_command_target_os">Target OS</string>
+    <string name="settings_ai_system_prompt">System prompt</string>
+    <string name="settings_ai_prompt_read_only">read-only</string>
+    <string name="settings_ai_prompt_editable">editable</string>
+    <string name="settings_ai_system_prompt_hint">System prompt will appear here…</string>
+    <string name="settings_ai_section_api">AI API configuration</string>
+    <string name="settings_ai_provider">Provider</string>
+    <string name="settings_ai_endpoint_url">Endpoint URL</string>
+    <string name="settings_ai_endpoint_hint">https://api.openai.com/v1</string>
+    <string name="settings_ai_api_key">API key</string>
+    <string name="settings_ai_api_key_hint">Enter API key</string>
+    <string name="settings_ai_api_key_hint_for_provider">Enter API key for %1$s</string>
+    <string name="settings_ai_model">Model</string>
+    <string name="settings_ai_test_connection">Test connection</string>
+    <string name="settings_ai_supported_providers_title">ℹ️ Supported providers</string>
+    <string name="settings_ai_supported_providers_body">• OpenAI (GPT-4o, GPT-4, GPT-3.5)\n• Anthropic (Claude 3.5, Claude 3)\n• Google Gemini (2.0, 1.5)\n• Mistral AI\n• Groq (Llama 3, Mixtral)\n• Alibaba Qwen\n• DeepSeek\n• Custom (any OpenAI-compatible API)</string>
+    <string name="settings_ai_toast_enter_endpoint">Please enter endpoint URL</string>
+    <string name="settings_ai_toast_enter_api_key">Please enter API key</string>
+    <string name="settings_ai_toast_testing">Testing AI connection…</string>
+    <string name="settings_ai_toast_success">AI connection successful!</string>
+    <string-array name="settings_ai_role_names">
+        <item>Text refinement</item>
+        <item>Command assistant</item>
+        <item>Custom</item>
+    </string-array>
+    <string-array name="settings_ai_provider_names">
+        <item>OpenAI</item>
+        <item>Anthropic</item>
+        <item>Google Gemini</item>
+        <item>Mistral AI</item>
+        <item>Groq</item>
+        <item>Alibaba (Qwen)</item>
+        <item>DeepSeek</item>
+        <item>Custom</item>
+    </string-array>
+
     <!-- Welcome & Guide (mode picker + tutorial); opened from launcher or side menu -->
     <string name="nav_welcome_guide">Welcome &amp; Guide</string>
     <string name="nav_welcome_guide_content_description">Welcome screen, mode picker, and tutorial</string>
+    <string name="nav_menu_close_cd">Close menu</string>
+    <string name="profile_builtin_default_name">Default</string>
+    <string name="profile_builtin_default_description">Common shortcuts for any app</string>
     <string name="launch_panel_welcome_prefix">Welcome to</string>
     <string name="launch_panel_subtitle">Turn Your Phone into a Smart Keyboard</string>
     <string name="launch_panel_land_subtitle">Turn Your Phone into a Smart Keyboard</string>
@@ -251,6 +356,57 @@ by TechxArtisan</string>
     <string name="bt_disconnect_confirm">Disconnect</string>
     <string name="bt_device_forgotten_toast">Device forgotten: %1$s</string>
     <string name="bt_disconnected_toast">Disconnected: %1$s</string>
+
+    <string name="connection_signal_strength_cd">Signal strength</string>
+    <string name="connection_medium_usb">USB</string>
+    <string name="connection_medium_bluetooth">Bluetooth</string>
+    <string name="connection_status_connected_line">%1$s — %2$s</string>
+    <string name="connection_toast_usb_disconnected">USB disconnected</string>
+    <string name="connection_toast_usb_connected">USB connected</string>
+    <string name="connection_toast_bt_dialog_error">Could not open Bluetooth: %1$s</string>
+    <string name="connection_toast_requesting_bt_permissions">Requesting Bluetooth permissions…</string>
+    <string name="connection_toast_bt_permission_granted">Bluetooth permission granted</string>
+    <string name="connection_toast_bt_permission_denied">Bluetooth permission is required to scan and connect. You can grant it in system Settings.</string>
+
+    <string name="bt_header_paired_devices">Paired devices</string>
+    <string name="bt_header_new_devices_scan">New devices (scan)</string>
+    <string name="bt_signal_excellent">Excellent</string>
+    <string name="bt_signal_good">Good</string>
+    <string name="bt_signal_weak">Weak</string>
+    <string name="bt_scanned_device_detail">%1$s · %2$d dBm · ~%3$s</string>
+    <string name="bt_paired_connected_rssi">Connected · %1$d dBm</string>
+    <string name="bt_paired_in_range_rssi">In range · %1$d dBm</string>
+    <string name="bt_paired_last_and_rssi">%1$s · %2$d dBm</string>
+    <string name="bt_paired_saved_not_in_range">Saved (not in range)</string>
+    <string name="bt_last_used_just_now">Last used: just now</string>
+    <string name="bt_last_used_minutes_ago">Last used: %1$d min ago</string>
+    <string name="bt_last_used_hours_ago">Last used: %1$d hr ago</string>
+    <string name="bt_last_used_days_ago">Last used: %1$d days ago</string>
+    <string name="bt_last_used_date">Last used: %1$s</string>
+    <string name="bt_device_name_unknown">Unknown</string>
+    <string name="bt_toast_select_supported_device">Please select an Openterface or KeyMod device</string>
+    <string name="bt_toast_only_saved_can_forget">Only saved devices can be forgotten</string>
+    <string name="bt_toast_scan_already_in_progress">Scan already in progress</string>
+    <string name="bt_toast_enable_bluetooth_first">Please enable Bluetooth first</string>
+    <string name="bt_toast_service_unavailable">Bluetooth service not available</string>
+    <string name="bt_toast_device_already_connected">Device is already connected</string>
+    <string name="bt_toast_connecting_to">Connecting to %1$s…</string>
+    <string name="bt_toast_bt_not_supported">Bluetooth not supported on this device</string>
+    <string name="bt_toast_already_connected_one_device">Already connected to a device</string>
+    <string name="bt_toast_bt_permissions_required">Bluetooth permissions required</string>
+    <string name="bt_toast_bt_disabled">Bluetooth disabled</string>
+    <string name="bt_toast_scanning_unavailable">Bluetooth scanning not available</string>
+    <string name="bt_toast_scanning_started">Scanning for Bluetooth devices…</string>
+    <string name="bt_toast_scan_finished">Scan finished</string>
+    <string name="bt_toast_permissions_denied">Bluetooth permissions denied</string>
+    <string name="bt_permission_dialog_title">Permissions required</string>
+    <string name="bt_permission_dialog_message">Bluetooth permissions are needed to scan and connect to devices. Please grant them in Settings.</string>
+    <string name="bt_open_system_settings">Open settings</string>
+    <string name="bt_toast_bt_enabled">Bluetooth enabled</string>
+    <string name="bt_toast_bt_not_enabled">Bluetooth not enabled</string>
+    <string name="bt_distance_cm">%1$d cm</string>
+    <string name="bt_distance_m_one">%1$.1f m</string>
+    <string name="bt_distance_m_many">%1$.0f m</string>
     
     <!-- Mode Selection Strings -->
     <string name="mode_keyboard">Keyboard Mode</string>

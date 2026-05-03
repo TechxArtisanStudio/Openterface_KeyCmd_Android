@@ -176,12 +176,12 @@ public class BluetoothDialogFragment extends DialogFragment {
         final RxBleDevice scannedDevice;
         final int rssi;
 
-        static ListRow headerPaired() {
-            return new ListRow(TYPE_HEADER_PAIRED, "Paired devices", null, null, 0);
+        static ListRow headerPaired(@NonNull Context ctx) {
+            return new ListRow(TYPE_HEADER_PAIRED, ctx.getString(R.string.bt_header_paired_devices), null, null, 0);
         }
 
-        static ListRow headerScanned() {
-            return new ListRow(TYPE_HEADER_SCANNED, "New devices (scan)", null, null, 0);
+        static ListRow headerScanned(@NonNull Context ctx) {
+            return new ListRow(TYPE_HEADER_SCANNED, ctx.getString(R.string.bt_header_new_devices_scan), null, null, 0);
         }
 
         static ListRow paired(PairedBleDevice p, int rssi) {
@@ -261,11 +261,22 @@ public class BluetoothDialogFragment extends DialogFragment {
                     nameView.setText(deviceName);
                     addressView.setText(row.scannedDevice.getMacAddress());
                     if (row.rssi != 0) {
-                        String distance = rssiToEstimatedDistance(row.rssi);
-                        String signalStrength =
-                                row.rssi >= -50 ? "Excellent" : row.rssi >= -70 ? "Good" : "Weak";
-                        detailView.setText(
-                                signalStrength + " · " + row.rssi + " dBm · ~" + distance);
+                        Context ctx = getContext();
+                        if (ctx != null) {
+                            String distance = BluetoothDialogFragment.this.rssiToEstimatedDistance(row.rssi);
+                            String signalStrength =
+                                    row.rssi >= -50
+                                            ? ctx.getString(R.string.bt_signal_excellent)
+                                            : row.rssi >= -70
+                                                    ? ctx.getString(R.string.bt_signal_good)
+                                                    : ctx.getString(R.string.bt_signal_weak);
+                            detailView.setText(
+                                    ctx.getString(
+                                            R.string.bt_scanned_device_detail,
+                                            signalStrength,
+                                            row.rssi,
+                                            distance));
+                        }
                         detailView.setVisibility(View.VISIBLE);
                     } else {
                         detailView.setVisibility(View.GONE);
@@ -299,15 +310,18 @@ public class BluetoothDialogFragment extends DialogFragment {
                 && bluetoothService.getConnectedDevice() != null
                 && bluetoothService.getConnectedDevice().getMacAddress().equalsIgnoreCase(macUpper)) {
             if (scanRssi != 0) {
-                return "Connected · " + scanRssi + " dBm";
+                return getString(R.string.bt_paired_connected_rssi, scanRssi);
             }
-            return "Connected";
+            return getString(R.string.connected);
         }
         String last = formatRelativeTime(getCm().getPairedDevicesByRecency(), macUpper);
         if (scanRssi != 0) {
-            return (last != null ? last + " · " : "In range · ") + scanRssi + " dBm";
+            if (last != null) {
+                return getString(R.string.bt_paired_last_and_rssi, last, scanRssi);
+            }
+            return getString(R.string.bt_paired_in_range_rssi, scanRssi);
         }
-        return last != null ? last : "Saved (not in range)";
+        return last != null ? last : getString(R.string.bt_paired_saved_not_in_range);
     }
 
     private String formatRelativeTime(List<PairedBleDevice> pairedList, String macUpper) {
@@ -321,28 +335,30 @@ public class BluetoothDialogFragment extends DialogFragment {
 
     private String formatAge(long lastMs) {
         long diff = System.currentTimeMillis() - lastMs;
-        long minutes = diff / 60000;
-        long hours = diff / 3600000;
-        long days = diff / 86400000;
+        int minutes = (int) (diff / 60000);
+        int hours = (int) (diff / 3600000);
+        int days = (int) (diff / 86400000);
         if (minutes < 1) {
-            return "Last used: just now";
+            return getString(R.string.bt_last_used_just_now);
         }
         if (minutes < 60) {
-            return "Last used: " + minutes + " min ago";
+            return getString(R.string.bt_last_used_minutes_ago, minutes);
         }
         if (hours < 24) {
-            return "Last used: " + hours + " hour" + (hours > 1 ? "s" : "") + " ago";
+            return getString(R.string.bt_last_used_hours_ago, hours);
         }
         if (days < 7) {
-            return "Last used: " + days + " day" + (days > 1 ? "s" : "") + " ago";
+            return getString(R.string.bt_last_used_days_ago, days);
         }
-        return "Last used: " + new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                .format(new java.util.Date(lastMs));
+        String dateStr =
+                new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        .format(new java.util.Date(lastMs));
+        return getString(R.string.bt_last_used_date, dateStr);
     }
 
     private String sanitizeDeviceName(String name) {
         if (name == null) {
-            return "Unknown";
+            return getString(R.string.bt_device_name_unknown);
         }
         return name.replaceAll("[^\\p{Print}]", "").trim();
     }
@@ -446,7 +462,7 @@ public class BluetoothDialogFragment extends DialogFragment {
                         if (OpenterfaceBleDeviceNames.matchesAdvertisedName(n)) {
                             connectToMac(row.scannedDevice.getMacAddress(), n);
                         } else {
-                            showToast("Please select an Openterface or KeyMod device");
+                            showToast(getString(R.string.bt_toast_select_supported_device));
                         }
                     }
                 });
@@ -455,7 +471,7 @@ public class BluetoothDialogFragment extends DialogFragment {
                 (parent, v, position, id) -> {
                     ListRow row = rows.get(position);
                     if (row.type != TYPE_ROW_PAIRED || row.paired == null) {
-                        showToast("Only saved devices can be forgotten");
+                        showToast(getString(R.string.bt_toast_only_saved_can_forget));
                         return false;
                     }
                     String mac = row.paired.mac;
@@ -490,10 +506,10 @@ public class BluetoothDialogFragment extends DialogFragment {
                         if (!isScanning) {
                             startBleScan();
                         } else {
-                            showToast("Scan already in progress");
+                            showToast(getString(R.string.bt_toast_scan_already_in_progress));
                         }
                     } else {
-                        showToast("Please enable Bluetooth first");
+                        showToast(getString(R.string.bt_toast_enable_bluetooth_first));
                     }
                 });
     }
@@ -524,7 +540,7 @@ public class BluetoothDialogFragment extends DialogFragment {
 
     private void connectToMac(String mac, String displayNameForToast) {
         if (!isServiceBound || bluetoothService == null) {
-            showToast("Bluetooth service not available");
+            showToast(getString(R.string.bt_toast_service_unavailable));
             return;
         }
         if (rxBleClient == null) {
@@ -534,10 +550,10 @@ public class BluetoothDialogFragment extends DialogFragment {
         if (bluetoothService.isConnected()
                 && bluetoothService.getConnectedDevice() != null
                 && bluetoothService.getConnectedDevice().getMacAddress().equalsIgnoreCase(mac)) {
-            showToast("Device is already connected");
+            showToast(getString(R.string.bt_toast_device_already_connected));
             return;
         }
-        showToast("Connecting to " + displayNameForToast + "...");
+        showToast(getString(R.string.bt_toast_connecting_to, displayNameForToast));
         bluetoothService.connectToDevice(device);
     }
 
@@ -560,7 +576,7 @@ public class BluetoothDialogFragment extends DialogFragment {
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
             Log.d(TAG, LOG_PREFIX + "Bluetooth not supported on this device");
-            showToast("Bluetooth not supported on this device");
+            showToast(getString(R.string.bt_toast_bt_not_supported));
             bluetoothSwitch.setEnabled(false);
             return;
         }
@@ -639,7 +655,7 @@ public class BluetoothDialogFragment extends DialogFragment {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH);
         } else if (isServiceBound && bluetoothService.isConnected()) {
-            showToast("Already connected to a device");
+            showToast(getString(R.string.bt_toast_already_connected_one_device));
             rebuildDeviceList();
         } else if (!isScanning && isServiceBound) {
             connectMostRecentPairedIfIdle();
@@ -657,14 +673,14 @@ public class BluetoothDialogFragment extends DialogFragment {
         }
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
                 != PackageManager.PERMISSION_GRANTED) {
-            showToast("Bluetooth permissions required");
+            showToast(getString(R.string.bt_toast_bt_permissions_required));
             return;
         }
         if (bluetoothAdapter.isEnabled()) {
             bluetoothAdapter.disable();
             stopScan();
             rebuildDeviceList();
-            showToast("Bluetooth disabled");
+            showToast(getString(R.string.bt_toast_bt_disabled));
             if (connectionListener != null) {
                 connectionListener.onBluetoothConnectionChanged(false);
             }
@@ -674,7 +690,7 @@ public class BluetoothDialogFragment extends DialogFragment {
     private void startBleScan() {
         if (rxBleClient == null) {
             Log.e(TAG, LOG_PREFIX + "RxBleClient is not initialized");
-            showToast("Bluetooth scanning not available");
+            showToast(getString(R.string.bt_toast_scanning_unavailable));
             return;
         }
 
@@ -705,7 +721,7 @@ public class BluetoothDialogFragment extends DialogFragment {
         }
 
         Log.d(TAG, LOG_PREFIX + "Starting BLE scan for Openterface / KeyMod devices...");
-        showToast("Scanning for Bluetooth devices...");
+        showToast(getString(R.string.bt_toast_scanning_started));
 
         rssiByMac.clear();
         scannedDevices.clear();
@@ -759,7 +775,7 @@ public class BluetoothDialogFragment extends DialogFragment {
                                     },
                                     throwable -> {
                                         Log.e(TAG, LOG_PREFIX + "Scan error: " + throwable.getMessage(), throwable);
-                                        showToast("Scan finished");
+                                        showToast(getString(R.string.bt_toast_scan_finished));
                                         synchronized (scanLock) {
                                             isScanning = false;
                                             mainHandler.post(() -> scanButton.setEnabled(true));
@@ -800,13 +816,13 @@ public class BluetoothDialogFragment extends DialogFragment {
 
     private void rebuildDeviceList() {
         rows.clear();
-        rows.add(ListRow.headerPaired());
+        rows.add(ListRow.headerPaired(requireContext()));
         List<PairedBleDevice> paired = getCm().getPairedDevicesByRecency();
         for (PairedBleDevice p : paired) {
             int rssi = rssiByMac.getOrDefault(p.mac.toUpperCase(Locale.US), 0);
             rows.add(ListRow.paired(p, rssi));
         }
-        rows.add(ListRow.headerScanned());
+        rows.add(ListRow.headerScanned(requireContext()));
         for (RxBleDevice d : scannedDevices) {
             int rssi = rssiByMac.getOrDefault(d.getMacAddress().toUpperCase(Locale.US), 0);
             rows.add(ListRow.scanned(d, rssi));
@@ -824,11 +840,11 @@ public class BluetoothDialogFragment extends DialogFragment {
         double n = 2.0;
         double distance = Math.pow(10.0, (txPower - rssi) / (10.0 * n));
         if (distance < 1.0) {
-            return (int) (distance * 100) + " cm";
+            return getString(R.string.bt_distance_cm, (int) (distance * 100));
         } else if (distance < 10.0) {
-            return String.format(Locale.getDefault(), "%.1f m", distance);
+            return getString(R.string.bt_distance_m_one, distance);
         } else {
-            return String.format(Locale.getDefault(), "%.0f m", distance);
+            return getString(R.string.bt_distance_m_many, distance);
         }
     }
 
@@ -855,7 +871,7 @@ public class BluetoothDialogFragment extends DialogFragment {
             if (allGranted && isServiceBound) {
                 connectMostRecentPairedIfIdle();
             } else {
-                showToast("Bluetooth permissions denied");
+                showToast(getString(R.string.bt_toast_permissions_denied));
                 bluetoothSwitch.setEnabled(false);
             }
         }
@@ -863,17 +879,16 @@ public class BluetoothDialogFragment extends DialogFragment {
 
     private void showPermissionSettingsDialog() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Permissions Required")
-                .setMessage(
-                        "Bluetooth permissions are required to scan and connect to devices. Please grant them in the settings.")
+                .setTitle(R.string.bt_permission_dialog_title)
+                .setMessage(R.string.bt_permission_dialog_message)
                 .setPositiveButton(
-                        "Go to Settings",
+                        R.string.bt_open_system_settings,
                         (dialog, which) -> {
                             Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                             intent.setData(android.net.Uri.parse("package:" + requireContext().getPackageName()));
                             startActivity(intent);
                         })
-                .setNegativeButton("Cancel", (dialog, which) -> dismiss())
+                .setNegativeButton(R.string.settings_history_cancel, (dialog, which) -> dismiss())
                 .setCancelable(false)
                 .show();
     }
@@ -883,13 +898,13 @@ public class BluetoothDialogFragment extends DialogFragment {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
             if (resultCode == requireActivity().RESULT_OK) {
-                showToast("Bluetooth enabled");
+                showToast(getString(R.string.bt_toast_bt_enabled));
                 if (isServiceBound) {
                     connectMostRecentPairedIfIdle();
                 }
             } else {
                 bluetoothSwitch.setChecked(false);
-                showToast("Bluetooth not enabled");
+                showToast(getString(R.string.bt_toast_bt_not_enabled));
             }
         }
     }

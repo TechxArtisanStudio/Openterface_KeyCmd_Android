@@ -34,9 +34,6 @@ public class GeneralSettingsFragment extends Fragment {
     private static final String PREF_HAPTIC_FEEDBACK = "haptic_feedback";
     private static final String PREF_ORIENTATION_LOCK = "orientation_lock";
     private static final String PREF_TOUCHPAD_SCROLL_SENSITIVITY = "touchpad_scroll_sensitivity";
-    private static final String[] THEME_FAMILY_LABELS = {
-            "Orange", "Blue", "Green", "Pink", "Purple", "Red", "Teal", "Indigo"
-    };
     private static final String[] THEME_FAMILY_VALUES = {
             ThemeManager.FAMILY_ORANGE,
             ThemeManager.FAMILY_BLUE,
@@ -106,8 +103,9 @@ public class GeneralSettingsFragment extends Fragment {
         langAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         languageSpinner.setAdapter(langAdapter);
 
+        String[] themeFamilyLabels = getResources().getStringArray(R.array.theme_color_family_names);
         ArrayAdapter<String> themeAdapter = new ArrayAdapter<>(requireContext(),
-                R.layout.item_theme_family_spinner, THEME_FAMILY_LABELS);
+                R.layout.item_theme_family_spinner, themeFamilyLabels);
         themeAdapter.setDropDownViewResource(R.layout.item_theme_family_spinner_dropdown);
         themeFamilySpinner.setAdapter(themeAdapter);
     }

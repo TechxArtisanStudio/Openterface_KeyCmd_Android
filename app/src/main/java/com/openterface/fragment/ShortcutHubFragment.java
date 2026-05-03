@@ -33,6 +33,7 @@ import com.openterface.keymod.CreateShortcutBottomSheet;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.ProfileUiStrings;
 import com.openterface.keymod.MyShortcutsReorderAdapter;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutSectionPickAdapter;
@@ -323,8 +324,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         currentTab = TAB_MY;  // Default to My Shortcuts
         currentCategoryId = null;
 
-        detailProfileName.setText(profile.name);
-        detailProfileDescription.setText(profile.description);
+        detailProfileName.setText(ProfileUiStrings.displayName(requireContext(), profile));
+        detailProfileDescription.setText(ProfileUiStrings.displayDescription(requireContext(), profile));
 
         // Load persisted My Shortcuts for this profile
         myShortcutsList = profileManager.getMyShortcuts(profile.id);
@@ -853,7 +854,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
 
         new AlertDialog.Builder(requireContext())
-            .setTitle(profile.name)
+            .setTitle(ProfileUiStrings.displayName(requireContext(), profile))
             .setItems(options, (dialog, which) -> {
                 switch (which) {
                     case 0: // View Shortcuts
@@ -928,13 +929,13 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private void viewShortcuts(ShortcutProfile profile) {
         StringBuilder sb = new StringBuilder();
-        sb.append(profile.name).append("\n\n");
+        sb.append(ProfileUiStrings.displayName(requireContext(), profile)).append("\n\n");
         for (ShortcutProfileManager.Shortcut shortcut : profile.shortcuts) {
             sb.append(shortcut.name).append(": ").append(shortcut.label).append("\n");
         }
         
         new AlertDialog.Builder(requireContext())
-            .setTitle(profile.name)
+            .setTitle(ProfileUiStrings.displayName(requireContext(), profile))
             .setMessage(sb.toString())
             .setPositiveButton("OK", null)
             .show();
@@ -1100,7 +1101,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private void updateActiveProfileDisplay() {
         if (activeProfile != null) {
-            activeProfileText.setText(getString(R.string.shortcut_hub_active_profile, activeProfile.name));
+            activeProfileText.setText(getString(R.string.shortcut_hub_active_profile,
+                    ProfileUiStrings.displayName(requireContext(), activeProfile)));
         } else {
             activeProfileText.setText("");
         }
@@ -1161,8 +1163,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         @Override
         public void onBindViewHolder(@NonNull VH holder, int position) {
             ShortcutProfile profile = profilesList.get(position);
-            holder.name.setText(profile.name);
-            holder.desc.setText(profile.description != null ? profile.description : "");
+            holder.name.setText(ProfileUiStrings.displayName(holder.itemView.getContext(), profile));
+            holder.desc.setText(ProfileUiStrings.displayDescription(holder.itemView.getContext(), profile));
             boolean isActive = profile.id != null && profile.id.equals(activeProfileId);
             holder.activeIndicator.setVisibility(isActive ? View.VISIBLE : View.GONE);
             holder.activeBadge.setVisibility(isActive ? View.VISIBLE : View.GONE);

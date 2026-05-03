@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI Features"
+            android:text="@string/settings_ai_section_features"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -49,14 +49,14 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Enable AI Features"
+                            android:text="@string/settings_ai_enable_title"
                             android:textSize="15sp"
                             android:textColor="@color/text_primary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="AI checks intention and processes voice input"
+                            android:text="@string/settings_ai_enable_summary"
                             android:textSize="12sp"
                             android:textColor="@color/text_secondary"
                             android:layout_marginTop="2dp" />
@@ -87,7 +87,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI Mode"
+                android:text="@string/settings_ai_section_mode"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -109,7 +109,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Role"
+                        android:text="@string/settings_ai_role_label"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginBottom="8dp" />
@@ -132,7 +132,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Target OS"
+                            android:text="@string/settings_ai_command_target_os"
                             android:textSize="14sp"
                             android:textColor="@color/text_secondary"
                             android:layout_marginBottom="8dp" />
@@ -158,7 +158,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="System Prompt"
+                            android:text="@string/settings_ai_system_prompt"
                             android:textSize="14sp"
                             android:textColor="@color/text_secondary" />
 
@@ -166,7 +166,7 @@
                             android:id="@+id/system_prompt_mode_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="read-only"
+                            android:text="@string/settings_ai_prompt_read_only"
                             android:textSize="11sp"
                             android:textColor="@color/text_secondary" />
 
@@ -186,7 +186,7 @@
                         android:fontFamily="monospace"
                         android:textColor="@color/text_primary"
                         android:background="@android:color/transparent"
-                        android:hint="System prompt will appear here..." />
+                        android:hint="@string/settings_ai_system_prompt_hint" />
 
                 </LinearLayout>
 
@@ -196,7 +196,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI API Configuration"
+                android:text="@string/settings_ai_section_api"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -218,7 +218,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Provider"
+                        android:text="@string/settings_ai_provider"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginBottom="8dp" />
@@ -233,7 +233,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Endpoint URL"
+                        android:text="@string/settings_ai_endpoint_url"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginBottom="8dp" />
@@ -242,14 +242,14 @@
                         android:id="@+id/ai_endpoint_edittext"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="https://api.openai.com/v1"
+                        android:hint="@string/settings_ai_endpoint_hint"
                         android:inputType="textUri"
                         android:maxLines="1" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="API Key"
+                        android:text="@string/settings_ai_api_key"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginTop="16dp"
@@ -259,14 +259,14 @@
                         android:id="@+id/ai_api_key_edittext"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Enter API key"
+                        android:hint="@string/settings_ai_api_key_hint"
                         android:inputType="textPassword"
                         android:maxLines="1" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Model"
+                        android:text="@string/settings_ai_model"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginTop="16dp"
@@ -282,7 +282,7 @@
                         android:id="@+id/ai_test_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Test Connection"
+                        android:text="@string/settings_ai_test_connection"
                         android:layout_marginTop="16dp"
                         style="@style/Widget.MaterialComponents.Button" />
 
@@ -306,7 +306,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="ℹ️ Supported Providers"
+                        android:text="@string/settings_ai_supported_providers_title"
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
@@ -315,7 +315,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="• OpenAI (GPT-4o, GPT-4, GPT-3.5)\n• Anthropic (Claude 3.5, Claude 3)\n• Google Gemini (2.0, 1.5)\n• Mistral AI\n• Groq (Llama 3, Mixtral)\n• Alibaba Qwen\n• DeepSeek\n• Custom (any OpenAI-compatible API)"
+                        android:text="@string/settings_ai_supported_providers_body"
                         android:textSize="12sp"
                         android:textColor="@color/text_secondary"
                         android:lineSpacingExtra="4dp" />

@@ -177,14 +177,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/keyboard_mouse"
-                        android:contentDescription="@string/app_name"
+                        android:contentDescription="@string/top_mode_label_keyboard_mouse"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Keyboard &#38; Mouse"
+                        android:text="@string/top_mode_label_keyboard_mouse"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"
@@ -225,14 +225,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/ic_presentation"
-                        android:contentDescription="Presentation"
+                        android:contentDescription="@string/presentation_mode"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Presentation"
+                        android:text="@string/presentation_mode"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"
@@ -273,14 +273,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/gamepad"
-                        android:contentDescription="Gamepad"
+                        android:contentDescription="@string/top_mode_label_gamepad"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Gamepad"
+                        android:text="@string/top_mode_label_gamepad"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"
@@ -321,14 +321,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/three_dots"
-                        android:contentDescription="@string/shortcut_hub_title"
+                        android:contentDescription="@string/top_mode_label_shortcuts"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="@string/shortcut_hub_title"
+                        android:text="@string/top_mode_label_shortcuts"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"
@@ -369,14 +369,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/macros"
-                        android:contentDescription="Macros"
+                        android:contentDescription="@string/top_mode_label_macros"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Macros"
+                        android:text="@string/top_mode_label_macros"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"
@@ -417,14 +417,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/voice"
-                        android:contentDescription="Voice Input"
+                        android:contentDescription="@string/voice_hub_title"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Voice Input"
+                        android:text="@string/voice_hub_title"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"

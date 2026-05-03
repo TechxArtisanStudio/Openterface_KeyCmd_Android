@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Whisper API Configuration"
+            android:text="@string/settings_voice_whisper_section"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -37,7 +37,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="API Key"
+                    android:text="@string/settings_voice_api_key_label"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
@@ -46,7 +46,7 @@
                     android:id="@+id/api_key_edittext"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Enter Whisper API key"
+                    android:hint="@string/settings_voice_api_key_hint"
                     android:inputType="textPassword"
                     android:maxLines="1" />
 
@@ -54,7 +54,7 @@
                     android:id="@+id/test_connection_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Test Connection"
+                    android:text="@string/settings_voice_test_connection"
                     android:layout_marginTop="12dp"
                     style="@style/Widget.MaterialComponents.Button" />
 
@@ -66,7 +66,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Voice Input Settings"
+            android:text="@string/settings_voice_input_section"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -88,7 +88,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Speech Engine"
+                    android:text="@string/settings_voice_speech_engine"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
@@ -102,7 +102,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Language"
+                    android:text="@string/settings_voice_language"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginTop="16dp"
@@ -117,7 +117,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sensitivity"
+                    android:text="@string/settings_voice_sensitivity"
                     android:textSize="14sp"
                     android:textColor="@color/text_secondary"
                     android:layout_marginTop="16dp"

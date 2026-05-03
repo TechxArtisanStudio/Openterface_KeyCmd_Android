@@ -66,14 +66,24 @@ public class VoiceSettingsFragment extends Fragment {
         sensitivityValueText = view.findViewById(R.id.sensitivity_value_text);
         testConnectionButton = view.findViewById(R.id.test_connection_button);
 
-        String[] engines = {"System Voice Input", "Whisper API"};
+        String[] engines = {
+                getString(R.string.settings_voice_engine_system),
+                getString(R.string.settings_voice_engine_whisper)
+        };
         ArrayAdapter<String> engineAdapter = new ArrayAdapter<>(requireContext(),
             android.R.layout.simple_spinner_item, engines);
         engineAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         sttEngineSpinner.setAdapter(engineAdapter);
         
-        // Setup language spinner
-        String[] languages = {"English", "中文", "Español", "Français", "Deutsch", "日本語"};
+        // Setup language spinner (order must match persisted index)
+        String[] languages = {
+                getString(R.string.settings_voice_language_english),
+                getString(R.string.settings_voice_language_chinese),
+                getString(R.string.settings_voice_language_spanish),
+                getString(R.string.settings_voice_language_french),
+                getString(R.string.settings_voice_language_german),
+                getString(R.string.settings_voice_language_japanese)
+        };
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, languages);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -147,15 +157,15 @@ public class VoiceSettingsFragment extends Fragment {
         testConnectionButton.setOnClickListener(v -> {
             String apiKey = apiKeyEditText.getText().toString().trim();
             if (TextUtils.isEmpty(apiKey)) {
-                Toast.makeText(getContext(), "Please enter API key", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.settings_voice_toast_enter_api_key, Toast.LENGTH_SHORT).show();
                 return;
             }
             
             // TODO: Implement actual API test
-            Toast.makeText(getContext(), "Testing connection...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.settings_voice_toast_testing, Toast.LENGTH_SHORT).show();
             // Simulate test
             testConnectionButton.postDelayed(() -> {
-                Toast.makeText(getContext(), "Connection successful!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.settings_voice_toast_success, Toast.LENGTH_SHORT).show();
             }, 1500);
         });
     }

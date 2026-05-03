@@ -88,33 +88,33 @@ public class HistoryFragment extends Fragment {
     private void setupListeners() {
         clearHistoryButton.setOnClickListener(v -> {
             new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Clear History")
-                .setMessage("Are you sure you want to clear all history?")
-                .setPositiveButton("Clear", (dialog, which) -> {
+                .setTitle(R.string.settings_history_clear_title)
+                .setMessage(R.string.settings_history_clear_message)
+                .setPositiveButton(R.string.settings_history_clear_confirm, (dialog, which) -> {
                     historyItems.clear();
                     adapter.notifyDataSetChanged();
                     historyListView.setVisibility(View.GONE);
                     emptyTextView.setVisibility(View.VISIBLE);
                     prefs.edit().remove(PREF_HISTORY_DATA).apply();
-                    Toast.makeText(getContext(), "History cleared", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.settings_history_cleared_toast, Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.settings_history_cancel, null)
                 .show();
         });
 
         retryButton.setOnClickListener(v -> {
             if (historyItems.isEmpty()) {
-                Toast.makeText(getContext(), "No history to retry", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.settings_history_no_retry_toast, Toast.LENGTH_SHORT).show();
                 return;
             }
             // TODO: Implement retry functionality
-            Toast.makeText(getContext(), "Retry functionality coming soon", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.settings_history_retry_soon_toast, Toast.LENGTH_SHORT).show();
         });
 
         historyListView.setOnItemClickListener((parent, view, position, id) -> {
             // Show details or retry option
             String item = historyItems.get(position);
-            Toast.makeText(getContext(), "Selected: " + item, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.settings_history_selected_toast, item), Toast.LENGTH_SHORT).show();
         });
     }
 

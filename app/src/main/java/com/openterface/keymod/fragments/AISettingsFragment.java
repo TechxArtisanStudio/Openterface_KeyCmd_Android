@@ -50,11 +50,6 @@ public class AISettingsFragment extends Fragment {
     private static final String ROLE_COMMAND_ASSIST   = "command_assistant";
     private static final String ROLE_CUSTOM           = "custom";
 
-    private static final String[] ROLE_NAMES = {
-            "Text Refinement",
-            "Command Assistant",
-            "Custom"
-    };
     private static final String[] ROLE_IDS = {
             ROLE_TEXT_REFINEMENT,
             ROLE_COMMAND_ASSIST,
@@ -235,10 +230,6 @@ public class AISettingsFragment extends Fragment {
             "| permanent delete        | `<SHIFT><DELETE></SHIFT>`           |";
 
     // ── Provider catalogue ────────────────────────────────────────────────
-    private static final String[] PROVIDER_NAMES = {
-            "OpenAI", "Anthropic", "Google Gemini", "Mistral AI",
-            "Groq", "Alibaba (Qwen)", "DeepSeek", "Custom"
-    };
     private static final String[] PROVIDER_ENDPOINTS = {
             "https://api.openai.com/v1",
             "https://api.anthropic.com/v1",
@@ -262,7 +253,7 @@ public class AISettingsFragment extends Fragment {
             {"deepseek-chat", "deepseek-reasoner"},
             {"custom-model"}
     };
-    private static final int PROVIDER_CUSTOM_INDEX = PROVIDER_NAMES.length - 1;
+    private static final int PROVIDER_CUSTOM_INDEX = PROVIDER_ENDPOINTS.length - 1;
 
     // ── Views ─────────────────────────────────────────────────────────────
     private SwitchCompat aiEnabledSwitch;
@@ -316,23 +307,37 @@ public class AISettingsFragment extends Fragment {
         testConnectionButton  = view.findViewById(R.id.ai_test_button);
 
         // Role spinner
+        String[] roleNames = getResources().getStringArray(R.array.settings_ai_role_names);
         ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, ROLE_NAMES);
+                android.R.layout.simple_spinner_item, roleNames);
         roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         roleSpinner.setAdapter(roleAdapter);
 
         // Command OS spinner
-        String[] osNames = {"macOS", "Windows", "Linux"};
+        String[] osNames = {
+                getString(R.string.target_os_macos),
+                getString(R.string.target_os_windows),
+                getString(R.string.target_os_linux)
+        };
         ArrayAdapter<String> osAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, osNames);
         osAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         commandOsSpinner.setAdapter(osAdapter);
 
         // Provider spinner
+        String[] providerNames = getResources().getStringArray(R.array.settings_ai_provider_names);
         ArrayAdapter<String> providerAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, PROVIDER_NAMES);
+                android.R.layout.simple_spinner_item, providerNames);
         providerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         providerSpinner.setAdapter(providerAdapter);
+    }
+
+    private String providerDisplayName(int providerIndex) {
+        String[] names = getResources().getStringArray(R.array.settings_ai_provider_names);
+        if (providerIndex < 0 || providerIndex >= names.length) {
+            return "";
+        }
+        return names[providerIndex];
     }
 
     // ── Load settings ─────────────────────────────────────────────────────
@@ -374,7 +379,8 @@ public class AISettingsFragment extends Fragment {
         // API key — per-provider only, no cross-provider fallback
         String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIndex, "");
         apiKeyEditText.setText(apiKey);
-        apiKeyEditText.setHint("Enter API key for " + PROVIDER_NAMES[providerIndex]);
+        apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
+                providerDisplayName(providerIndex)));
 
         // Model — migrate from old Integer storage
         String savedModel;
@@ -437,7 +443,9 @@ public class AISettingsFragment extends Fragment {
         commandOsSection.setVisibility(isCommandAssist ? View.VISIBLE : View.GONE);
         systemPromptEditText.setEnabled(isCustom);
         systemPromptEditText.setAlpha(isCustom ? 1.0f : 0.65f);
-        systemPromptModeLabel.setText(isCustom ? "editable" : "read-only");
+        systemPromptModeLabel.setText(isCustom
+                ? getString(R.string.settings_ai_prompt_editable)
+                : getString(R.string.settings_ai_prompt_read_only));
     }
 
     // ── Provider helpers ──────────────────────────────────────────────────
@@ -544,6 +552,8 @@ public class AISettingsFragment extends Fragment {
                 // Load the saved API key for this specific provider
                 isLoadingSettings = true;
                 apiKeyEditText.setText(prefs.getString(PREF_AI_API_KEY + "_" + pos, ""));
+                apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
+                        providerDisplayName(pos)));
                 isLoadingSettings = false;
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
@@ -593,16 +603,16 @@ public class AISettingsFragment extends Fragment {
             String endpoint = endpointEditText.getText().toString().trim();
             String apiKey   = apiKeyEditText.getText().toString().trim();
             if (TextUtils.isEmpty(endpoint)) {
-                Toast.makeText(getContext(), "Please enter endpoint URL", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.settings_ai_toast_enter_endpoint, Toast.LENGTH_SHORT).show();
                 return;
             }
             if (TextUtils.isEmpty(apiKey)) {
-                Toast.makeText(getContext(), "Please enter API key", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.settings_ai_toast_enter_api_key, Toast.LENGTH_SHORT).show();
                 return;
             }
-            Toast.makeText(getContext(), "Testing AI connection…", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.settings_ai_toast_testing, Toast.LENGTH_SHORT).show();
             testConnectionButton.postDelayed(() ->
-                    Toast.makeText(getContext(), "AI connection successful!", Toast.LENGTH_SHORT).show(),
+                    Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show(),
                     1500);
         });
     }
