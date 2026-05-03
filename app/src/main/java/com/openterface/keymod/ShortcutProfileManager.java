@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.openterface.keymod.preset.KeyboardStripPresetConstants;
 import com.openterface.keymod.util.KeyParser;
 
 import java.lang.reflect.Type;
@@ -69,7 +70,8 @@ public class ShortcutProfileManager {
     private ProfileChangeListener listener;
 
     public ShortcutProfileManager(Context context) {
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        Context app = context.getApplicationContext();
+        prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         gson = new Gson();
         profiles = loadProfiles();
         activeProfileId = prefs.getString(KEY_ACTIVE_PROFILE, "default");
@@ -89,6 +91,7 @@ public class ShortcutProfileManager {
             saveProfiles();
         }
         migrateDefaultFavoritesAddV2();
+        ensureKeyboardStripLayoutProfile();
     }
 
     /**
@@ -954,6 +957,79 @@ public class ShortcutProfileManager {
     }
 
     /**
+     * Profiles shown in Shortcut Hub and profile-slot pickers (excludes reserved strip layout profile).
+     */
+    public List<ShortcutProfile> getProfilesForUiPicking() {
+        List<ShortcutProfile> out = new ArrayList<>();
+        for (ShortcutProfile p : profiles) {
+            if (p != null && !KeyboardStripPresetConstants.STRIP_PROFILE_ID.equals(p.id)) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Creates the reserved {@link KeyboardStripPresetConstants#STRIP_PROFILE_ID} profile if missing.
+     */
+    public void ensureKeyboardStripLayoutProfile() {
+        if (getProfileById(KeyboardStripPresetConstants.STRIP_PROFILE_ID) != null) {
+            return;
+        }
+        ShortcutProfile p = new ShortcutProfile();
+        p.id = KeyboardStripPresetConstants.STRIP_PROFILE_ID;
+        p.name = "Keyboard strip";
+        p.description = "Rows 2–3 fixed strip (shared across app profiles)";
+        p.icon = "ic_default";
+        p.createdAt = System.currentTimeMillis();
+        p.shortcuts = new ArrayList<>();
+        p.categories = new ArrayList<>();
+        p.categories.add(new ShortcutCategory("general", "General"));
+        profiles.add(p);
+        saveProfiles();
+        Log.d(TAG, "Seeded reserved keyboard strip profile");
+    }
+
+    /** Merge or append shortcut definitions into the strip profile General category (portable preset import). */
+    public void upsertShortcutsInStripProfileGeneral(List<Shortcut> definitions) {
+        if (definitions == null || definitions.isEmpty()) {
+            return;
+        }
+        ensureKeyboardStripLayoutProfile();
+        ShortcutProfile strip = getProfileById(KeyboardStripPresetConstants.STRIP_PROFILE_ID);
+        if (strip == null) {
+            return;
+        }
+        ShortcutCategory gen = findOrCreateGeneralCategory(strip);
+        for (Shortcut incoming : definitions) {
+            if (incoming == null || incoming.id == null) {
+                continue;
+            }
+            boolean replaced = false;
+            for (int i = 0; i < gen.shortcuts.size(); i++) {
+                Shortcut existing = gen.shortcuts.get(i);
+                if (existing != null && incoming.id.equals(existing.id)) {
+                    gen.shortcuts.set(i, incoming);
+                    replaced = true;
+                    break;
+                }
+            }
+            if (!replaced) {
+                gen.shortcuts.add(incoming);
+            }
+        }
+        saveProfiles();
+        if (listener != null) {
+            listener.onProfileUpdated(strip);
+        }
+    }
+
+    /** Strip-order sort used by preset import for row 1 My Shortcuts. */
+    public void sortShortcutsListForStripPublic(List<Shortcut> sorted) {
+        sortShortcutsListForStrip(sorted);
+    }
+
+    /**
      * Get profile by ID
      */
     public ShortcutProfile getProfileById(String id) {
@@ -991,6 +1067,10 @@ public class ShortcutProfileManager {
      * Set active profile
      */
     public void setActiveProfile(String profileId) {
+        if (KeyboardStripPresetConstants.STRIP_PROFILE_ID.equals(profileId)) {
+            Log.w(TAG, "Cannot set active profile to reserved strip profile");
+            return;
+        }
         if (getProfileById(profileId) != null) {
             activeProfileId = profileId;
             prefs.edit().putString(KEY_ACTIVE_PROFILE, profileId).apply();
@@ -1050,6 +1130,10 @@ public class ShortcutProfileManager {
         // Don't allow deleting default profile
         if ("default".equals(profileId)) {
             Log.w(TAG, "Cannot delete default profile");
+            return;
+        }
+        if (KeyboardStripPresetConstants.STRIP_PROFILE_ID.equals(profileId)) {
+            Log.w(TAG, "Cannot delete reserved keyboard strip profile");
             return;
         }
         

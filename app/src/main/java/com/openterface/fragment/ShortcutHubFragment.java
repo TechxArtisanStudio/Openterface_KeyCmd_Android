@@ -1,8 +1,10 @@
 package com.openterface.fragment;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -22,6 +24,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.FileProvider;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -30,9 +33,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.preset.KeyboardStripPreset;
+import com.openterface.keymod.preset.KeyboardStripPresetManager;
 import com.openterface.keymod.ProfileUiStrings;
 import com.openterface.keymod.MyShortcutsReorderAdapter;
 import com.openterface.keymod.R;
@@ -42,6 +48,8 @@ import com.openterface.keymod.ShortcutProfileManager.ShortcutProfile;
 import com.openterface.keymod.ShortcutProfileManager.ProfileChangeListener;
 import com.openterface.keymod.util.KeyParser;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -54,6 +62,8 @@ import java.util.List;
 public class ShortcutHubFragment extends Fragment implements ProfileChangeListener {
 
     private static final String TAG = "ShortcutHubFragment";
+    private static final int REQ_IMPORT_PROFILE_FILE = 200;
+    private static final int REQ_IMPORT_STRIP_FILE = 201;
 
     private ShortcutProfileManager profileManager;
     private Vibrator vibrator;
@@ -67,6 +77,13 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private Button createProfileButton;
     private Button importButton;
     private Button exportButton;
+    private Button importStripPresetButton;
+    private Button exportStripPresetButton;
+    private TabLayout hubMainTabs;
+    private View hubTabContentProfiles;
+    private View hubTabContentStrip;
+    /** Avoid reacting when {@link #showProfileList()} resets the main hub tab. */
+    private boolean suppressMainHubTabSelection;
 
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
@@ -95,6 +112,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private List<ShortcutProfileManager.Shortcut> myShortcutsList = new ArrayList<>();
     private ShortcutProfile activeProfile;
     private ShortcutProfile selectedProfile;  // profile whose shortcuts are shown
+
+    /** Used after storage permission grant to reopen the correct file picker. */
+    private int pendingImportFileRequestCode = REQ_IMPORT_PROFILE_FILE;
 
     @Nullable
     @Override
@@ -155,6 +175,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         createProfileButton = view.findViewById(R.id.create_profile_button);
         importButton = view.findViewById(R.id.import_button);
         exportButton = view.findViewById(R.id.export_button);
+        importStripPresetButton = view.findViewById(R.id.import_strip_preset_button);
+        exportStripPresetButton = view.findViewById(R.id.export_strip_preset_button);
+        hubMainTabs = view.findViewById(R.id.hub_main_tabs);
+        hubTabContentProfiles = view.findViewById(R.id.hub_tab_content_profiles);
+        hubTabContentStrip = view.findViewById(R.id.hub_tab_content_strip);
 
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
@@ -241,7 +266,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private void loadProfiles() {
         profilesList.clear();
-        profilesList.addAll(profileManager.getAllProfiles());
+        profilesList.addAll(profileManager.getProfilesForUiPicking());
         
         activeProfile = profileManager.getActiveProfile();
         profilesRecyclerAdapter.setActiveProfileId(activeProfile != null ? activeProfile.id : null);
@@ -277,6 +302,30 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 Toast.makeText(getContext(), R.string.shortcut_hub_toast_no_active_profile, Toast.LENGTH_SHORT).show();
             }
         });
+
+        importStripPresetButton.setOnClickListener(v -> showStripImportDialog());
+        exportStripPresetButton.setOnClickListener(v -> showStripExportFormatDialog());
+
+        if (hubMainTabs != null) {
+            hubMainTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+                @Override
+                public void onTabSelected(TabLayout.Tab tab) {
+                    if (suppressMainHubTabSelection) {
+                        return;
+                    }
+                    applyMainHubTabVisibility(tab.getPosition());
+                }
+
+                @Override
+                public void onTabUnselected(TabLayout.Tab tab) {
+                }
+
+                @Override
+                public void onTabReselected(TabLayout.Tab tab) {
+                }
+            });
+            applyMainHubTabVisibility(hubMainTabs.getSelectedTabPosition());
+        }
 
         // Back button - return to profile list
         backButton.setOnClickListener(v -> showProfileList());
@@ -343,6 +392,28 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         selectedProfile = null;
         panelShortcutsDetail.setVisibility(View.GONE);
         panelProfilesList.setVisibility(View.VISIBLE);
+        if (hubMainTabs != null) {
+            suppressMainHubTabSelection = true;
+            TabLayout.Tab first = hubMainTabs.getTabAt(0);
+            if (first != null) {
+                first.select();
+            }
+            applyMainHubTabVisibility(0);
+            suppressMainHubTabSelection = false;
+        }
+    }
+
+    private void applyMainHubTabVisibility(int position) {
+        if (hubTabContentProfiles == null || hubTabContentStrip == null) {
+            return;
+        }
+        if (position == 1) {
+            hubTabContentProfiles.setVisibility(View.GONE);
+            hubTabContentStrip.setVisibility(View.VISIBLE);
+        } else {
+            hubTabContentProfiles.setVisibility(View.VISIBLE);
+            hubTabContentStrip.setVisibility(View.GONE);
+        }
     }
 
     private void rebuildCategoryTabs(ShortcutProfileManager.ShortcutProfile profile) {
@@ -953,6 +1024,46 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         exportProfileToFile(profile);
     }
 
+    private void shareProfileJson(ShortcutProfile profile) {
+        if (profile == null || profile.id == null) {
+            return;
+        }
+        String json = profileManager.exportProfile(profile.id);
+        if (json == null) {
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            String safeName = profile.name != null
+                    ? profile.name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase()
+                    : "profile";
+            File shareDir = new File(requireContext().getCacheDir(), "share");
+            if (!shareDir.isDirectory() && !shareDir.mkdirs()) {
+                Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String filename = "keymod_profile_" + safeName + "_" + System.currentTimeMillis() + ".json";
+            File outFile = new File(shareDir, filename);
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
+                fos.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getPackageName() + ".fileprovider", outFile);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setClipData(ClipData.newUri(requireContext().getContentResolver(),
+                    getString(R.string.app_name), uri));
+            startActivity(Intent.createChooser(intent, getString(R.string.shortcut_hub_share_profile_chooser)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Share profile failed: " + e.getMessage());
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void exportProfileToFile(ShortcutProfile profile) {
         String json = profileManager.exportProfile(profile.id);
         if (json == null) {
@@ -991,7 +1102,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         
         // Option 2: Browse files
         builder.setNegativeButton("📁 Browse Files", (dialog, which) -> {
-            openFilePicker();
+            openFilePicker(REQ_IMPORT_PROFILE_FILE);
         });
         
         builder.setNeutralButton("Cancel", null);
@@ -1019,7 +1130,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             .show();
     }
 
-    private void openFilePicker() {
+    private void openFilePicker(int requestCode) {
+        pendingImportFileRequestCode = requestCode;
         // Request storage permission first
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), 
                 android.Manifest.permission.READ_EXTERNAL_STORAGE) 
@@ -1030,15 +1142,20 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/json");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, 200);
+            startActivityForResult(intent, requestCode);
         }
     }
 
     private void importProfileFromJson(String json) {
+        if (KeyboardStripPreset.looksLikeStripPresetJson(json)) {
+            importStripPresetFromJson(json);
+            return;
+        }
         ShortcutProfileManager.ShortcutProfile profile = profileManager.importProfile(json);
         if (profile != null) {
             loadProfiles();
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_imported_profile, profile.name), Toast.LENGTH_SHORT).show();
+            notifyKeyboardStripRefresh();
         } else {
             Toast.makeText(getContext(), R.string.shortcut_hub_toast_import_invalid_json, Toast.LENGTH_SHORT).show();
         }
@@ -1050,7 +1167,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                openFilePicker();
+                openFilePicker(pendingImportFileRequestCode);
             } else {
                 Toast.makeText(getContext(), R.string.shortcut_hub_toast_permission_denied, Toast.LENGTH_SHORT).show();
             }
@@ -1060,15 +1177,21 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 200 && resultCode == android.app.Activity.RESULT_OK && data != null) {
-            android.net.Uri uri = data.getData();
-            if (uri != null) {
-                importProfileFromUri(uri);
-            }
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) {
+            return;
+        }
+        android.net.Uri uri = data.getData();
+        if (uri == null) {
+            return;
+        }
+        if (requestCode == REQ_IMPORT_PROFILE_FILE) {
+            importJsonFromUri(uri, false);
+        } else if (requestCode == REQ_IMPORT_STRIP_FILE) {
+            importJsonFromUri(uri, true);
         }
     }
 
-    private void importProfileFromUri(android.net.Uri uri) {
+    private void importJsonFromUri(android.net.Uri uri, boolean stripOnly) {
         try {
             java.io.InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
             if (inputStream != null) {
@@ -1077,12 +1200,103 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 String json = scanner.hasNext() ? scanner.next() : "";
                 scanner.close();
                 inputStream.close();
-                
-                importProfileFromJson(json);
+                if (stripOnly || KeyboardStripPreset.looksLikeStripPresetJson(json)) {
+                    importStripPresetFromJson(json);
+                } else {
+                    importProfileFromJson(json);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Import from URI failed: " + e.getMessage());
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_import_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void importProfileFromUri(android.net.Uri uri) {
+        importJsonFromUri(uri, false);
+    }
+
+    private void notifyKeyboardStripRefresh() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshOpenKeyboardShortcutStripFromPrefs();
+        }
+    }
+
+    private void showStripExportFormatDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_strip_export_choose_title)
+                .setMessage(R.string.shortcut_hub_strip_export_format_help)
+                .setItems(new CharSequence[]{
+                        getString(R.string.shortcut_hub_strip_export_portable),
+                        getString(R.string.shortcut_hub_strip_export_thin)
+                }, (dialog, which) -> exportStripPresetToFile(which == 0))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void exportStripPresetToFile(boolean portable) {
+        KeyboardStripPresetManager mgr = new KeyboardStripPresetManager(requireContext(), profileManager);
+        String json = mgr.exportPreset(portable);
+        if (json == null) {
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            String suffix = portable ? "portable" : "thin";
+            String filename = "keymod_strip_preset_" + suffix + "_" + System.currentTimeMillis() + ".json";
+            java.io.File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOWNLOADS);
+            java.io.File outputFile = new java.io.File(downloadsDir, filename);
+            java.io.FileWriter writer = new java.io.FileWriter(outputFile);
+            writer.write(json);
+            writer.close();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_saved_to_path, outputFile.getAbsolutePath()), Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Strip export failed: " + e.getMessage());
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showStripImportDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_import_strip_preset)
+                .setMessage("Select import method:")
+                .setPositiveButton("📋 Paste JSON", (dialog, which) -> showPasteStripJsonDialog())
+                .setNegativeButton("📁 Browse Files", (dialog, which) -> openFilePicker(REQ_IMPORT_STRIP_FILE))
+                .setNeutralButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showPasteStripJsonDialog() {
+        EditText input = new EditText(getContext());
+        input.setHint("Paste strip preset JSON");
+        input.setMinLines(5);
+        input.setGravity(android.view.Gravity.TOP);
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_import_strip_preset)
+                .setView(input)
+                .setPositiveButton(R.string.shortcut_hub_import, (dialog, which) -> {
+                    String json = input.getText().toString().trim();
+                    if (!json.isEmpty()) {
+                        importStripPresetFromJson(json);
+                    } else {
+                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_paste_json_required, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void importStripPresetFromJson(String json) {
+        KeyboardStripPresetManager mgr = new KeyboardStripPresetManager(requireContext(), profileManager);
+        String err = mgr.importPreset(json);
+        if (err == null) {
+            loadProfiles();
+            Toast.makeText(getContext(), R.string.shortcut_hub_strip_import_ok, Toast.LENGTH_SHORT).show();
+            notifyKeyboardStripRefresh();
+        } else {
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_strip_import_failed, err), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1170,6 +1384,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             holder.activeBadge.setVisibility(isActive ? View.VISIBLE : View.GONE);
             holder.count.setText(getString(R.string.shortcut_hub_profile_shortcut_count, profile.getShortcutCount()));
 
+            holder.profileShareButton.setOnClickListener(v -> shareProfileJson(profile));
+
             holder.itemView.setOnClickListener(v -> showShortcutsDetail(profile));
             holder.itemView.setOnLongClickListener(v -> {
                 showProfileOptionsDialog(profile);
@@ -1188,6 +1404,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             final TextView desc;
             final TextView activeBadge;
             final TextView count;
+            final MaterialButton profileShareButton;
 
             VH(@NonNull View itemView) {
                 super(itemView);
@@ -1196,6 +1413,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 desc = itemView.findViewById(R.id.profile_description);
                 activeBadge = itemView.findViewById(R.id.profile_active_badge);
                 count = itemView.findViewById(R.id.profile_count);
+                profileShareButton = itemView.findViewById(R.id.profile_share_button);
             }
         }
     }

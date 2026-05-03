@@ -67,6 +67,7 @@ import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.target.CH9329MSKBMap;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -212,6 +213,8 @@ public class CustomKeyboardView extends LinearLayout {
     private boolean isFnLocked = false;
     private boolean extraNumpadFnLocked = false;
     private boolean fixedTopLocalFnLocked = false;
+    /** Prevents duplicate strip edition dialogs when split keyboard has two Fn keys. */
+    private boolean stripLayoutEditionDialogShowing = false;
     /** Extra numpad NumLock visual state: false = State A(default text), true = State B(theme accent). */
     private boolean extraNumpadNumStateB = false;
     private GridLayout extraNumpadGrid;
@@ -303,6 +306,8 @@ public class CustomKeyboardView extends LinearLayout {
     private Runnable repeatRunnable;
     private boolean isRepeating = false;
     private static final int ALT_LONG_PRESS_TIMEOUT_MS = ViewConfiguration.getLongPressTimeout();
+    /** Long-press local Fn (fixed strip row 3 col 7) to open strip layout edition entry (not per-cell). */
+    private static final int STRIP_EDIT_VIA_FN_MS = 900;
     private static final long MODIFIER_RAPID_TAP_WINDOW_MS = 3000L;
     private static final long MODIFIER_LOCK_HINT_COOLDOWN_MS = 10_000L;
     private static final int MODIFIER_RAPID_TAP_HINT_THRESHOLD = 2;
@@ -798,6 +803,25 @@ public class CustomKeyboardView extends LinearLayout {
         shortcutProfileManager.reloadProfilesFromPreferences();
     }
 
+    /**
+     * Reload profiles, strip display mode, and rebuild fixed + scrolling strip after Shortcut Hub
+     * imports a profile or strip preset JSON.
+     */
+    public void refreshAfterShortcutHubPrefsChange() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        reloadShortcutProfileManagerFromPrefs();
+        loadTopShortcutDisplayModeFromPrefs(ctx);
+        refreshProfileSlotStrip();
+        if (splitPartner != null) {
+            splitPartner.reloadShortcutProfileManagerFromPrefs();
+            splitPartner.loadTopShortcutDisplayModeFromPrefs(splitPartner.getContext());
+            splitPartner.refreshProfileSlotStrip();
+        }
+    }
+
     /** Rebuild fixed strip + scrolling row 1 after profile-slot prefs or active profile change. */
     private void refreshProfileSlotStrip() {
         rebuildFixedTopRowsPanels();
@@ -1155,7 +1179,7 @@ public class CustomKeyboardView extends LinearLayout {
             splitPartner.reloadShortcutProfileManagerFromPrefs();
         }
         java.util.List<ShortcutProfileManager.ShortcutProfile> profiles =
-                shortcutProfileManager.getAllProfiles();
+                shortcutProfileManager.getProfilesForUiPicking();
         if (profiles.isEmpty()) {
             return;
         }
@@ -1185,6 +1209,50 @@ public class CustomKeyboardView extends LinearLayout {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * Long-press entry for editing rows 2–3 strip layout (import/export and slot overrides in Shortcut Hub).
+     */
+    private void showStripLayoutEditionEntry() {
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        if (act == null) {
+            return;
+        }
+        if (stripLayoutEditionDialogShowing) {
+            return;
+        }
+        stripLayoutEditionDialogShowing = true;
+        if (splitPartner != null) {
+            splitPartner.stripLayoutEditionDialogShowing = true;
+        }
+        Context ctx = getContext();
+        if (ctx == null) {
+            stripLayoutEditionDialogShowing = false;
+            if (splitPartner != null) {
+                splitPartner.stripLayoutEditionDialogShowing = false;
+            }
+            return;
+        }
+        int overrideCount = new StripSlotMapStore(ctx).getAll().size();
+        AlertDialog dialog = new AlertDialog.Builder(act)
+                .setTitle(R.string.strip_edition_dialog_title)
+                .setMessage(ctx.getString(R.string.strip_edition_dialog_message, overrideCount))
+                .setPositiveButton(R.string.strip_edition_open_shortcut_hub, (d, which) -> {
+                    if (act instanceof MainActivity) {
+                        ((MainActivity) act).switchToLaunchMode(LaunchPanelActivity.MODE_SHORTCUTS);
+                    }
+                    d.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, (d, which) -> d.dismiss())
+                .create();
+        dialog.setOnDismissListener(di -> {
+            stripLayoutEditionDialogShowing = false;
+            if (splitPartner != null) {
+                splitPartner.stripLayoutEditionDialogShowing = false;
+            }
+        });
+        dialog.show();
     }
 
     private void showTopStripFavoriteReorderSheet(int scrollToStripIndex) {
@@ -4351,10 +4419,12 @@ public class CustomKeyboardView extends LinearLayout {
         final boolean[] longPressConsumed = new boolean[1];
         final Runnable[] pendingModifierLongPress = new Runnable[1];
         final Runnable[] pendingProfileSlotLongPress = new Runnable[1];
+        final Runnable[] pendingFnStripEditLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
         final boolean canSwipePanel = !isTopModifierLockCandidate(key);
         final int profileSlotIndex = key != null ? topProfileSlotIndexFromKeyCode(key.code) : 0;
+        final boolean isLocalFnStripKey = isFixedTopLocalFnKey(key);
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
@@ -4366,6 +4436,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (pendingProfileSlotLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                         pendingProfileSlotLongPress[0] = null;
+                    }
+                    if (pendingFnStripEditLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
+                        pendingFnStripEditLongPress[0] = null;
                     }
                     longPressConsumed[0] = false;
                     startX[0] = event.getRawX();
@@ -4388,6 +4462,14 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingProfileSlotLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingProfileSlotLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
+                    } else if (isLocalFnStripKey) {
+                        pendingFnStripEditLongPress[0] = () -> {
+                            longPressConsumed[0] = true;
+                            performKeyHapticFeedback(v);
+                            showStripLayoutEditionEntry();
+                            pendingFnStripEditLongPress[0] = null;
+                        };
+                        longPressHandler.postDelayed(pendingFnStripEditLongPress[0], STRIP_EDIT_VIA_FN_MS);
                     }
                     if (key != null) {
                         v.setPressed(true);
@@ -4409,6 +4491,10 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                             pendingProfileSlotLongPress[0] = null;
                         }
+                        if (pendingFnStripEditLongPress[0] != null) {
+                            longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
+                            pendingFnStripEditLongPress[0] = null;
+                        }
                     }
                     if (isDragging[0] && hasAnyFixedRowsPagerMode()) {
                         updateFixedTopRowsDrag(applyFixedTopRowsEdgeResistance(dx));
@@ -4426,6 +4512,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (pendingProfileSlotLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                         pendingProfileSlotLongPress[0] = null;
+                    }
+                    if (pendingFnStripEditLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
+                        pendingFnStripEditLongPress[0] = null;
                     }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
