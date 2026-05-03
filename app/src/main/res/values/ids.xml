@@ -5,4 +5,5 @@
     <!-- Pending alternates popup runnable for attachKeyListeners (separate from cell Key). -->
     <item name="tag_custom_keyboard_pending_alternates" type="id"/>
     <item name="tag_ime_text_forwarder" type="id"/>
+    <item name="tag_shortcut_hub_row_flash_animator" type="id"/>
 </resources>

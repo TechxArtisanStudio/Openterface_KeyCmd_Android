@@ -1,5 +1,8 @@
 package com.openterface.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.Context;
@@ -11,10 +14,13 @@ import android.os.Vibrator;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -26,6 +32,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.ColorUtils;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -34,6 +41,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
@@ -96,6 +104,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private RecyclerView myShortcutsRecyclerView;
     private MyShortcutsReorderAdapter myShortcutsReorderAdapter;
     private ItemTouchHelper myShortcutsReorderTouchHelper;
+    private ItemTouchHelper browseCategoryReorderTouchHelper;
     private TextView emptyMyShortcuts;
 
     private static final String TAB_MY = "my";
@@ -200,8 +209,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         browsePickAdapter = new ShortcutSectionPickAdapter(requireContext(), getTargetOs(), new ArrayList<>());
         browsePickAdapter.setRowInteraction(new ShortcutSectionPickAdapter.RowInteraction() {
             @Override
-            public void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut) {
-                openEditShortcutFromBrowse(shortcut);
+            public void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent) {
+                pulseShortcutRowFeedback(rowContent);
+                executeShortcut(shortcut);
             }
 
             @Override
@@ -209,6 +219,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 showShortcutActionsMenu(shortcut);
             }
         });
+        browsePickAdapter.setOnEditShortcutClickListener(this::openEditShortcutFromBrowse);
         browsePickAdapter.setFavoriteMembershipChecker(shortcut -> {
             if (shortcut == null || shortcut.id == null) {
                 return false;
@@ -493,6 +504,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Priority 1: Show category shortcuts (not when Favorites tab is active)
         if (currentCategoryId != null && hasCategories && !TAB_MY.equals(currentTab)) {
             detachMyShortcutsReorderTouchHelper();
+            detachBrowseCategoryReorderTouchHelper();
             myShortcutsRecyclerView.setVisibility(View.GONE);
             for (ShortcutProfileManager.ShortcutCategory cat : selectedProfile.categories) {
                 if (cat.id.equals(currentCategoryId)) {
@@ -505,10 +517,55 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             sortShortcutsForDisplay(toShow);
             browsePickAdapter.setItems(toShow);
             browsePickAdapter.notifyDataSetChanged();
+
+            ItemTouchHelper.Callback categoryCallback = new ItemTouchHelper.SimpleCallback(
+                    ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                @Override
+                public boolean onMove(@NonNull RecyclerView recyclerView,
+                        @NonNull RecyclerView.ViewHolder viewHolder,
+                        @NonNull RecyclerView.ViewHolder target) {
+                    ShortcutSectionPickAdapter adapter = (ShortcutSectionPickAdapter) recyclerView.getAdapter();
+                    if (adapter == null || selectedProfile == null || currentCategoryId == null) {
+                        return false;
+                    }
+                    int from = viewHolder.getBindingAdapterPosition();
+                    int to = target.getBindingAdapterPosition();
+                    if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
+                        return false;
+                    }
+                    adapter.moveItem(from, to);
+                    profileManager.reorderCategoryShortcuts(
+                            selectedProfile.id,
+                            currentCategoryId,
+                            new ArrayList<>(adapter.getItems()),
+                            false);
+                    ShortcutProfile refreshed = profileManager.getProfileById(selectedProfile.id);
+                    if (refreshed != null) {
+                        selectedProfile = refreshed;
+                    }
+                    if (vibrator != null && vibrator.hasVibrator()) {
+                        vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+                    }
+                    return true;
+                }
+
+                @Override
+                public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                }
+
+                @Override
+                public boolean isLongPressDragEnabled() {
+                    return false;
+                }
+            };
+            browseCategoryReorderTouchHelper = new ItemTouchHelper(categoryCallback);
+            browseCategoryReorderTouchHelper.attachToRecyclerView(browseShortcutsRecyclerView);
+            browsePickAdapter.setDragHelper(browseCategoryReorderTouchHelper);
             return;
         }
         // Priority 2: Show My Shortcuts favorites (drag-reorder list; top strip uses same order)
         if (TAB_MY.equals(currentTab)) {
+            detachBrowseCategoryReorderTouchHelper();
             sortShortcutsForDisplay(myShortcutsList);
             toShow = myShortcutsList;
             if (toShow.isEmpty()) {
@@ -526,6 +583,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
         // Priority 3: Show all flat shortcuts (for profiles without categories)
         detachMyShortcutsReorderTouchHelper();
+        detachBrowseCategoryReorderTouchHelper();
         myShortcutsRecyclerView.setVisibility(View.GONE);
         if (!hasCategories) {
             toShow = selectedProfile.shortcuts != null ? selectedProfile.shortcuts : new ArrayList<>();
@@ -545,6 +603,71 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
     }
 
+    private void detachBrowseCategoryReorderTouchHelper() {
+        if (browseCategoryReorderTouchHelper != null) {
+            browseCategoryReorderTouchHelper.attachToRecyclerView(null);
+            browseCategoryReorderTouchHelper = null;
+        }
+        if (browsePickAdapter != null) {
+            browsePickAdapter.setDragHelper(null);
+        }
+    }
+
+    private void pulseShortcutRowFeedback(@NonNull View rowContent) {
+        rowContent.animate().cancel();
+        Object prevAnim = rowContent.getTag(R.id.tag_shortcut_hub_row_flash_animator);
+        if (prevAnim instanceof ValueAnimator) {
+            ((ValueAnimator) prevAnim).cancel();
+        }
+
+        rowContent.setScaleX(1f);
+        rowContent.setScaleY(1f);
+        rowContent.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(50)
+                .withEndAction(() -> rowContent.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(120)
+                        .start());
+
+        int primary = MaterialColors.getColor(
+                rowContent,
+                com.google.android.material.R.attr.colorPrimary,
+                0xFFFF9800);
+        int transparent = ColorUtils.setAlphaComponent(primary, 0);
+        int peak = ColorUtils.setAlphaComponent(primary, 96);
+
+        Drawable previousForeground = rowContent.getForeground();
+        GradientDrawable highlight = new GradientDrawable();
+        highlight.setShape(GradientDrawable.RECTANGLE);
+        float cornerPx = 8f * rowContent.getResources().getDisplayMetrics().density;
+        highlight.setCornerRadius(cornerPx);
+        highlight.setColor(transparent);
+        rowContent.setForeground(highlight);
+
+        ValueAnimator flash = ValueAnimator.ofArgb(transparent, peak, transparent);
+        flash.setDuration(220);
+        flash.setInterpolator(new DecelerateInterpolator());
+        flash.addUpdateListener(a -> highlight.setColor((Integer) a.getAnimatedValue()));
+        flash.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, null);
+                rowContent.setForeground(previousForeground);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, null);
+                rowContent.setForeground(previousForeground);
+            }
+        });
+        rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, flash);
+        flash.start();
+    }
+
     private void bindMyShortcutsReorderRecycler() {
         if (selectedProfile == null || myShortcutsRecyclerView == null) {
             return;
@@ -560,8 +683,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsRecyclerView.setAdapter(myShortcutsReorderAdapter);
             myShortcutsReorderAdapter.setRowInteraction(new MyShortcutsReorderAdapter.RowInteraction() {
                 @Override
-                public void onRowClick(ShortcutProfileManager.Shortcut shortcut) {
-                    openEditShortcutFromBrowse(shortcut);
+                public void onRowClick(ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent) {
+                    pulseShortcutRowFeedback(rowContent);
+                    executeShortcut(shortcut);
                 }
 
                 @Override
@@ -573,6 +697,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsReorderAdapter.replaceItems(ordered);
         }
 
+        myShortcutsReorderAdapter.setOnEditShortcutClickListener(this::openEditShortcutFromBrowse);
         myShortcutsReorderAdapter.setRemoveFavoriteClickListener((shortcut, position) -> {
             if (shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
                 return;

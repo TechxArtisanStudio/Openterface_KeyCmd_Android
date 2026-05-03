@@ -1558,6 +1558,39 @@ public class ShortcutProfileManager {
         reorderMyShortcuts(profileId, ordered, true);
     }
 
+    /**
+     * Persists shortcuts for a named category in display order (e.g. after drag-reorder in Shortcut Hub).
+     *
+     * @param notifyListener when false, skips {@link ProfileChangeListener#onProfileUpdated} (per-row drag).
+     */
+    public void reorderCategoryShortcuts(String profileId, String categoryId, List<Shortcut> ordered,
+            boolean notifyListener) {
+        if (profileId == null || categoryId == null || ordered == null) {
+            return;
+        }
+        ShortcutProfile p = getProfileById(profileId);
+        if (p == null || p.categories == null) {
+            return;
+        }
+        for (ShortcutCategory cat : p.categories) {
+            if (cat != null && categoryId.equals(cat.id)) {
+                cat.shortcuts = new ArrayList<>(ordered);
+                renumberDisplayOrder(cat.shortcuts);
+                String json = gson.toJson(profiles);
+                prefs.edit().putString(KEY_PROFILES, json).apply();
+                Log.d(TAG, "Saved category order for " + profileId + " / " + categoryId);
+                if (notifyListener && listener != null) {
+                    listener.onProfileUpdated(p);
+                }
+                return;
+            }
+        }
+    }
+
+    public void reorderCategoryShortcuts(String profileId, String categoryId, List<Shortcut> ordered) {
+        reorderCategoryShortcuts(profileId, categoryId, ordered, true);
+    }
+
     public List<Shortcut> getOrderedShortcutsForTopStrip(String profileId) {
         ShortcutProfile profile = getProfileById(profileId);
         if (profile == null) {

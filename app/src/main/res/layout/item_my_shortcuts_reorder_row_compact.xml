@@ -29,6 +29,20 @@
         android:layout_weight="1" />
 
     <ImageView
+        android:id="@+id/reorder_edit_shortcut"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/shortcut_hub_cd_edit_shortcut"
+        android:focusable="true"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/edit_24"
+        android:tint="@color/text_secondary"
+        android:visibility="gone" />
+
+    <ImageView
         android:id="@+id/reorder_remove_favorite"
         android:layout_width="48dp"
         android:layout_height="48dp"
