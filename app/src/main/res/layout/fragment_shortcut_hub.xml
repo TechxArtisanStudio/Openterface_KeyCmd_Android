@@ -101,17 +101,8 @@
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="8dp"
                             android:layout_weight="1"
                             android:text="@string/shortcut_hub_import" />
-
-                        <Button
-                            android:id="@+id/export_button"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/shortcut_hub_export" />
                     </LinearLayout>
                 </LinearLayout>
 

@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,7 +34,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
@@ -76,7 +76,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private TextView activeProfileText;
     private Button createProfileButton;
     private Button importButton;
-    private Button exportButton;
     private Button importStripPresetButton;
     private Button exportStripPresetButton;
     private TabLayout hubMainTabs;
@@ -174,7 +173,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         activeProfileText = view.findViewById(R.id.active_profile_text);
         createProfileButton = view.findViewById(R.id.create_profile_button);
         importButton = view.findViewById(R.id.import_button);
-        exportButton = view.findViewById(R.id.export_button);
         importStripPresetButton = view.findViewById(R.id.import_strip_preset_button);
         exportStripPresetButton = view.findViewById(R.id.export_strip_preset_button);
         hubMainTabs = view.findViewById(R.id.hub_main_tabs);
@@ -292,15 +290,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Import button
         importButton.setOnClickListener(v -> {
             showImportDialog();
-        });
-
-        // Export button
-        exportButton.setOnClickListener(v -> {
-            if (activeProfile != null) {
-                exportProfileToFile(activeProfile);
-            } else {
-                Toast.makeText(getContext(), R.string.shortcut_hub_toast_no_active_profile, Toast.LENGTH_SHORT).show();
-            }
         });
 
         importStripPresetButton.setOnClickListener(v -> showStripImportDialog());
@@ -1404,7 +1393,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             final TextView desc;
             final TextView activeBadge;
             final TextView count;
-            final MaterialButton profileShareButton;
+            final ImageView profileShareButton;
 
             VH(@NonNull View itemView) {
                 super(itemView);
