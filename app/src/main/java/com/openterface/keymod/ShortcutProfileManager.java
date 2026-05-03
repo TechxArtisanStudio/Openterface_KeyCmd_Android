@@ -31,6 +31,10 @@ public class ShortcutProfileManager {
     private static final String MY_SHORTCUTS_KEY_PREFIX = "MyShortcuts_";
     /** One-time: move Default flat shortcuts into a category; seed empty My Shortcuts lists. */
     private static final String KEY_MIGRATION_MY_STRIP_V1 = "migration_my_strip_favorites_v1";
+    /** One-time: append common shortcuts (New/Open/Print/Close/Replace) to Default's General category. */
+    private static final String KEY_MIGRATION_DEFAULT_GENERAL_V2 = "migration_default_general_v2";
+    /** One-time: append the same 5 IDs to existing users' Default Favorites list. */
+    private static final String KEY_MIGRATION_DEFAULT_FAVORITES_V2 = "migration_default_favorites_v2";
 
     // ─── HID Keyboard Usage IDs (USB HID Specification) ───────────────────────
     private static final int KEY_A=4,KEY_B=5,KEY_C=6,KEY_D=7,KEY_E=8,KEY_F=9;
@@ -81,6 +85,10 @@ public class ShortcutProfileManager {
             saveProfiles();
         }
         seedEmptyMyShortcutsIfNeeded();
+        if (migrateDefaultGeneralAddV2()) {
+            saveProfiles();
+        }
+        migrateDefaultFavoritesAddV2();
     }
 
     /**
@@ -134,6 +142,11 @@ public class ShortcutProfileManager {
         p.shortcuts.add(new Shortcut("default_undo",       "Undo",       "Ctrl+Z", MOD_CTRL, KEY_Z, "undo_24", 6));
         p.shortcuts.add(new Shortcut("default_redo",       "Redo",       "Ctrl+Y", MOD_CTRL, KEY_Y, "redo_24", 8));
         p.shortcuts.add(new Shortcut("default_find",       "Find",       "Ctrl+F", MOD_CTRL, KEY_F, "search_24", 7));
+        p.shortcuts.add(new Shortcut("default_new",        "New",        "Ctrl+N", MOD_CTRL, KEY_N, "add_24", 9));
+        p.shortcuts.add(new Shortcut("default_open",       "Open",       "Ctrl+O", MOD_CTRL, KEY_O, "folder_open_24", 10));
+        p.shortcuts.add(new Shortcut("default_print",      "Print",      "Ctrl+P", MOD_CTRL, KEY_P, "print_24", 11));
+        p.shortcuts.add(new Shortcut("default_close",      "Close",      "Ctrl+W", MOD_CTRL, KEY_W, "close_24", 12));
+        p.shortcuts.add(new Shortcut("default_replace",    "Replace",    "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24", 13));
         return p;
     }
 
@@ -168,6 +181,11 @@ public class ShortcutProfileManager {
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_undo", "Undo", "Ctrl+Z", MOD_CTRL, KEY_Z, "undo_24", 6);
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_redo", "Redo", "Ctrl+Y", MOD_CTRL, KEY_Y, "redo_24", 8);
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_find", "Find", "Ctrl+F", MOD_CTRL, KEY_F, "search_24", 7);
+        changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_new", "New", "Ctrl+N", MOD_CTRL, KEY_N, "add_24", 9);
+        changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_open", "Open", "Ctrl+O", MOD_CTRL, KEY_O, "folder_open_24", 10);
+        changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_print", "Print", "Ctrl+P", MOD_CTRL, KEY_P, "print_24", 11);
+        changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_close", "Close", "Ctrl+W", MOD_CTRL, KEY_W, "close_24", 12);
+        changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_replace", "Replace", "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24", 13);
 
         if (source.size() != ordered.size()) {
             changed = true;
@@ -222,6 +240,108 @@ public class ShortcutProfileManager {
             }
         }
         prefs.edit().putBoolean(KEY_MIGRATION_MY_STRIP_V1, true).apply();
+    }
+
+    /**
+     * v2: Adds the 5 universally common shortcuts (New/Open/Print/Close/Replace) to the Default
+     * profile's General category for users whose profile was migrated to categories before these
+     * IDs existed. Idempotent: skipped after first successful run, and individual entries are only
+     * appended when no shortcut with the same (modifiers, keyCode) signature exists.
+     *
+     * @return true if the in-memory profile was modified and the caller should persist.
+     */
+    private boolean migrateDefaultGeneralAddV2() {
+        if (prefs.getBoolean(KEY_MIGRATION_DEFAULT_GENERAL_V2, false)) {
+            return false;
+        }
+        ShortcutProfile def = getProfileById("default");
+        if (def == null) {
+            prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_GENERAL_V2, true).apply();
+            return false;
+        }
+        ShortcutCategory general = findOrCreateGeneralCategory(def);
+        Map<String, Shortcut> bySig = new HashMap<>();
+        for (Shortcut s : def.getAllShortcutsFlat()) {
+            if (s != null) {
+                bySig.put(signature(s.modifiers, s.keyCode), s);
+            }
+        }
+        boolean changed = false;
+        int order = nextDisplayOrderAcrossProfile(def);
+        Object[][] additions = new Object[][]{
+                {"default_new",     "New",     "Ctrl+N", MOD_CTRL, KEY_N, "add_24"},
+                {"default_open",    "Open",    "Ctrl+O", MOD_CTRL, KEY_O, "folder_open_24"},
+                {"default_print",   "Print",   "Ctrl+P", MOD_CTRL, KEY_P, "print_24"},
+                {"default_close",   "Close",   "Ctrl+W", MOD_CTRL, KEY_W, "close_24"},
+                {"default_replace", "Replace", "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24"},
+        };
+        for (Object[] row : additions) {
+            int mods = (int) row[3];
+            int kc = (int) row[4];
+            if (bySig.containsKey(signature(mods, kc))) {
+                continue;
+            }
+            Shortcut s = new Shortcut(
+                    (String) row[0], (String) row[1], (String) row[2],
+                    mods, kc, (String) row[5], order++);
+            general.shortcuts.add(s);
+            bySig.put(signature(mods, kc), s);
+            changed = true;
+        }
+        prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_GENERAL_V2, true).apply();
+        return changed;
+    }
+
+    /**
+     * v2: Appends the 5 new Default shortcuts to the user's existing Favorites list (after
+     * {@link #migrateDefaultGeneralAddV2()} ensures they exist in General). Skips IDs already
+     * present so reorders/removals from the user are preserved. Runs once per device.
+     */
+    private void migrateDefaultFavoritesAddV2() {
+        if (prefs.getBoolean(KEY_MIGRATION_DEFAULT_FAVORITES_V2, false)) {
+            return;
+        }
+        ShortcutProfile def = getProfileById("default");
+        if (def == null) {
+            prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_FAVORITES_V2, true).apply();
+            return;
+        }
+        Map<String, Shortcut> byId = new HashMap<>();
+        for (Shortcut s : def.getAllShortcutsFlat()) {
+            if (s != null && s.id != null) {
+                byId.put(s.id, s);
+            }
+        }
+        List<Shortcut> my = new ArrayList<>(getMyShortcuts("default"));
+        java.util.Set<String> existingIds = new java.util.HashSet<>();
+        for (Shortcut s : my) {
+            if (s != null && s.id != null) {
+                existingIds.add(s.id);
+            }
+        }
+        String[] newIds = {
+                "default_new", "default_open", "default_print", "default_close", "default_replace"
+        };
+        boolean changed = false;
+        for (String id : newIds) {
+            if (existingIds.contains(id)) {
+                continue;
+            }
+            Shortcut src = byId.get(id);
+            if (src == null) {
+                continue;
+            }
+            Shortcut copy = cloneShortcut(src);
+            if (copy != null) {
+                my.add(copy);
+                changed = true;
+            }
+        }
+        if (changed) {
+            renumberDisplayOrder(my);
+            updateMyShortcuts("default", my);
+        }
+        prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_FAVORITES_V2, true).apply();
     }
 
     private void renumberDisplayOrder(List<Shortcut> list) {
@@ -303,7 +423,8 @@ public class ShortcutProfileManager {
             case "default":
                 return new String[]{
                         "default_select_all", "default_copy", "default_cut", "default_paste",
-                        "default_save", "default_undo", "default_find", "default_redo"
+                        "default_save", "default_undo", "default_find", "default_redo",
+                        "default_new", "default_open", "default_print", "default_close", "default_replace"
                 };
             case "blender":
                 return new String[]{"b-t-1", "b-t-2", "b-t-3", "b-s-1", "b-v-1", "b-mo-1", "b-to-1"};
