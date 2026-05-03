@@ -226,7 +226,7 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Shortcuts Card -->
+        <!-- Shortcut Hub card -->
         <androidx.cardview.widget.CardView
             android:id="@+id/shortcuts_card"
             android:layout_width="0dp"
@@ -257,13 +257,13 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:src="@drawable/three_dots"
-                    android:contentDescription="Shortcuts"
+                    android:contentDescription="@string/shortcut_hub_title"
                     android:tint="@color/card_icon_tint" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Shortcuts"
+                    android:text="@string/shortcut_hub_title"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"

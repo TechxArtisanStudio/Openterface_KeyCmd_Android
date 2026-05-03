@@ -321,14 +321,14 @@
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/three_dots"
-                        android:contentDescription="Shortcuts"
+                        android:contentDescription="@string/shortcut_hub_title"
                         android:tint="@color/card_icon_tint" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Shortcuts"
+                        android:text="@string/shortcut_hub_title"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="@color/card_text_color"

@@ -177,7 +177,7 @@
             android:id="@+id/nav_text_shortcuts"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Shortcuts"
+            android:text="@string/shortcut_hub_title"
             android:textSize="16sp"
             android:textColor="@color/text_primary"
             android:layout_marginStart="12dp" />

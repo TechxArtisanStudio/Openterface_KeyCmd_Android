@@ -28,7 +28,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
-import com.google.android.material.color.MaterialColors;
+import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.MyShortcutsReorderAdapter;
@@ -71,17 +71,20 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private Button addShortcutButton;
     private TextView detailProfileName;
     private TextView detailProfileDescription;
-    private Button tabMy;
-    private LinearLayout tabsContainer;
+    private TabLayout hubDetailTabs;
     private RecyclerView browseShortcutsRecyclerView;
     private RecyclerView myShortcutsRecyclerView;
     private MyShortcutsReorderAdapter myShortcutsReorderAdapter;
     private ItemTouchHelper myShortcutsReorderTouchHelper;
     private TextView emptyMyShortcuts;
 
-    private static final String TAB_MY  = "my";
+    private static final String TAB_MY = "my";
+    /** Browsing a named category (not Favorites). */
+    private static final String TAB_BROWSE = "browse";
     private String currentTab = TAB_MY;  // Default to favorites
     private String currentCategoryId = null;  // Current category when in All tab
+
+    private boolean suppressHubTabSelection;
 
     private ProfilesRecyclerAdapter profilesRecyclerAdapter;
     private ShortcutSectionPickAdapter browsePickAdapter;
@@ -156,8 +159,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         addShortcutButton = view.findViewById(R.id.add_shortcut_button);
         detailProfileName = view.findViewById(R.id.detail_profile_name);
         detailProfileDescription = view.findViewById(R.id.detail_profile_description);
-        tabMy = view.findViewById(R.id.tab_my);
-        tabsContainer = view.findViewById(R.id.tabs_container);
+        hubDetailTabs = view.findViewById(R.id.hub_detail_tabs);
         browseShortcutsRecyclerView = view.findViewById(R.id.browse_shortcuts_recycler);
         myShortcutsRecyclerView = view.findViewById(R.id.my_shortcuts_recycler);
         emptyMyShortcuts = view.findViewById(R.id.empty_my_shortcuts);
@@ -283,9 +285,35 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             }
         });
 
-        // Tab: ⭐ My
-        tabMy.setOnClickListener(v -> switchTab(TAB_MY, null));
+        hubDetailTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                if (suppressHubTabSelection) {
+                    return;
+                }
+                int pos = tab.getPosition();
+                if (pos == 0) {
+                    currentTab = TAB_MY;
+                    currentCategoryId = null;
+                    refreshShortcutsGrid();
+                } else if (selectedProfile != null && selectedProfile.categories != null) {
+                    int idx = pos - 1;
+                    if (idx >= 0 && idx < selectedProfile.categories.size()) {
+                        currentTab = TAB_BROWSE;
+                        currentCategoryId = selectedProfile.categories.get(idx).id;
+                        refreshShortcutsGrid();
+                    }
+                }
+            }
 
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+            }
+        });
     }
 
     private void showShortcutsDetail(ShortcutProfile profile) {
@@ -301,7 +329,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         // Build dynamic category tabs
         rebuildCategoryTabs(profile);
-        updateTabUI();
+        syncHubDetailTabsSelection();
         refreshShortcutsGrid();
 
         panelProfilesList.setVisibility(View.GONE);
@@ -314,78 +342,58 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         panelProfilesList.setVisibility(View.VISIBLE);
     }
 
-    private void switchTab(String tab, String categoryId) {
-        currentTab = tab;
-        currentCategoryId = categoryId;
-        updateTabUI();
-        refreshShortcutsGrid();
-    }
-
-    private void switchToCategory(String categoryId) {
-        currentCategoryId = categoryId;
-        updateTabUI();
-        refreshShortcutsGrid();
-    }
-
-    private void updateTabUI() {
-        int primaryColor = MaterialColors.getColor(requireContext(),
-                com.google.android.material.R.attr.colorPrimary, 0xFFF57C00);
-        int onPrimaryColor = MaterialColors.getColor(requireContext(),
-                com.google.android.material.R.attr.colorOnPrimary, 0xFFFFFFFF);
-        int secondaryColor = requireContext().getColor(R.color.text_secondary);
-
-        // Update My Shortcuts tab
-        boolean mySelected = TAB_MY.equals(currentTab);
-        if (mySelected) {
-            tabMy.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
-            tabMy.setTextColor(onPrimaryColor);
-        } else {
-            tabMy.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT));
-            tabMy.setTextColor(secondaryColor);
+    private void rebuildCategoryTabs(ShortcutProfileManager.ShortcutProfile profile) {
+        if (hubDetailTabs == null) {
+            return;
         }
+        hubDetailTabs.removeAllTabs();
+        hubDetailTabs.addTab(hubDetailTabs.newTab().setText(R.string.my_shortcuts_tab_favorites), false);
+        if (profile.categories != null && !profile.categories.isEmpty()) {
+            for (ShortcutProfileManager.ShortcutCategory cat : profile.categories) {
+                hubDetailTabs.addTab(hubDetailTabs.newTab().setText(cat.name), false);
+            }
+        }
+        syncHubDetailTabsSelection();
+    }
 
-        // Update category tabs (all children in tabsContainer)
-        for (int i = 0; i < tabsContainer.getChildCount(); i++) {
-            View child = tabsContainer.getChildAt(i);
-            if (child instanceof Button) {
-                Button btn = (Button) child;
-                String catId = (String) btn.getTag();
-                boolean selected = catId != null && catId.equals(currentCategoryId);
-                if (selected) {
-                    btn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
-                    btn.setTextColor(onPrimaryColor);
-                } else {
-                    btn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT));
-                    btn.setTextColor(secondaryColor);
+    /**
+     * Keeps {@link TabLayout} selection aligned with {@link #currentTab} / {@link #currentCategoryId}.
+     */
+    private void syncHubDetailTabsSelection() {
+        if (hubDetailTabs == null) {
+            return;
+        }
+        int count = hubDetailTabs.getTabCount();
+        if (count == 0) {
+            return;
+        }
+        int target = 0;
+        if (TAB_MY.equals(currentTab)) {
+            target = 0;
+        } else if (TAB_BROWSE.equals(currentTab)
+                && currentCategoryId != null
+                && selectedProfile != null
+                && selectedProfile.categories != null) {
+            for (int i = 0; i < selectedProfile.categories.size(); i++) {
+                if (currentCategoryId.equals(selectedProfile.categories.get(i).id)) {
+                    target = i + 1;
+                    break;
                 }
             }
         }
-    }
-
-    private void rebuildCategoryTabs(ShortcutProfileManager.ShortcutProfile profile) {
-        // Clear all existing category tabs
-        tabsContainer.removeAllViews();
-
-        // Add buttons for each category
-        if (profile.categories != null && !profile.categories.isEmpty()) {
-            for (ShortcutProfileManager.ShortcutCategory cat : profile.categories) {
-                Button btn = new Button(requireContext());
-                btn.setText(cat.name);
-                btn.setTag(cat.id);  // Store category ID in tag
-                btn.setTextSize(12);
-                btn.setAllCaps(false);
-                btn.setMinWidth(0);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        dpToPx(36)
-                );
-                lp.setMarginEnd(dpToPx(8));
-                btn.setLayoutParams(lp);
-                btn.setPadding(dpToPx(16), 0, dpToPx(16), 0);
-                btn.setOnClickListener(v -> switchToCategory(cat.id));
-                tabsContainer.addView(btn);
-            }
+        if (target < 0 || target >= count) {
+            target = 0;
         }
+        if (hubDetailTabs.getSelectedTabPosition() == target) {
+            return;
+        }
+        TabLayout.Tab tab = hubDetailTabs.getTabAt(target);
+        if (tab == null) {
+            return;
+        }
+        suppressHubTabSelection = true;
+        tab.select();
+        suppressHubTabSelection = false;
     }
 
     private int dpToPx(int dp) {
@@ -399,8 +407,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         List<ShortcutProfileManager.Shortcut> toShow = new ArrayList<>();
 
-        // Priority 1: Show category shortcuts if a category is selected
-        if (currentCategoryId != null && hasCategories) {
+        // Priority 1: Show category shortcuts (not when Favorites tab is active)
+        if (currentCategoryId != null && hasCategories && !TAB_MY.equals(currentTab)) {
             detachMyShortcutsReorderTouchHelper();
             myShortcutsRecyclerView.setVisibility(View.GONE);
             for (ShortcutProfileManager.ShortcutCategory cat : selectedProfile.categories) {
@@ -770,12 +778,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 break;
             }
         }
-        if (selectedProfile.categories != null && !selectedProfile.categories.isEmpty()
-                && currentCategoryId == null && TAB_MY.equals(currentTab)) {
-            currentCategoryId = selectedProfile.categories.get(0).id;
-        }
         rebuildCategoryTabs(selectedProfile);
-        updateTabUI();
+        syncHubDetailTabsSelection();
         refreshShortcutsGrid();
     }
 
@@ -983,11 +987,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     if (selectedProfile.categories != null && !selectedProfile.categories.isEmpty()) {
                         String lastCatId = selectedProfile.categories.get(
                                 selectedProfile.categories.size() - 1).id;
-                        currentTab = null;
+                        currentTab = TAB_BROWSE;
                         currentCategoryId = lastCatId;
                         rebuildCategoryTabs(selectedProfile);
                     }
-                    updateTabUI();
+                    syncHubDetailTabsSelection();
                     refreshShortcutsGrid();
 
                     Toast.makeText(getContext(), "Added shortcut: " + name, Toast.LENGTH_SHORT).show();
@@ -1027,7 +1031,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
         
         new AlertDialog.Builder(requireContext())
-            .setTitle("Shortcuts")
+            .setTitle(profile.name)
             .setMessage(sb.toString())
             .setPositiveButton("OK", null)
             .show();

@@ -349,7 +349,7 @@ by TechxArtisan</string>
     <string name="my_shortcuts_sheet_empty_my_hint">Use the tabs above to browse shortcuts, tap the bookmark icon to add to Favorites, then return here to drag and reorder.</string>
     <string name="top_mode_label_keyboard_mouse">Keyboard &amp; Mouse</string>
     <string name="top_mode_label_gamepad">Gamepad</string>
-    <string name="top_mode_label_shortcuts">Shortcuts</string>
+    <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
     <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>
     <string name="top_shortcut_display_mode_cd_icon">Shortcut strip: showing icons. Tap to switch to combo text.</string>

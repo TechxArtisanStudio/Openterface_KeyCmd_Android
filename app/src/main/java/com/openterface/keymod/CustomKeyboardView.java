@@ -3355,7 +3355,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private Key buildTopStripCreateShortcutKey() {
-        Key key = new Key("", "", KEY_TOP_STRIP_CREATE_SHORTCUT, "", 1f, R.drawable.add_24, 0f, false, false, -1, true);
+        Key key = new Key("", "", KEY_TOP_STRIP_CREATE_SHORTCUT, "", 1f,
+                R.drawable.ic_top_strip_create_shortcut_24, 0f, false, false, -1, true);
         key.topStripFavoriteSlotIndex = -1;
         return key;
     }
