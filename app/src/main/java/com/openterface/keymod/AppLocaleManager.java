@@ -46,7 +46,7 @@ public final class AppLocaleManager {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         migrateFromLanguageIndexIfNeeded(prefs);
         migrateBareZhTagToZhCnIfNeeded(prefs);
-        migrateZhTwToZhHkIfNeeded(prefs);
+        migrateTraditionalLocaleTagsIfNeeded(prefs);
         return prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
     }
 
@@ -54,7 +54,7 @@ public final class AppLocaleManager {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
         migrateFromLanguageIndexIfNeeded(prefs);
         migrateBareZhTagToZhCnIfNeeded(prefs);
-        migrateZhTwToZhHkIfNeeded(prefs);
+        migrateTraditionalLocaleTagsIfNeeded(prefs);
         String tag = prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
         applyLocaleTag(tag);
     }
@@ -71,14 +71,14 @@ public final class AppLocaleManager {
     }
 
     /**
-     * Traditional Chinese UI moved from Taiwan ({@code zh-TW}) to Hong Kong ({@code zh-HK}) so
-     * resources resolve from {@code values-zh-rHK}.
+     * Maps legacy regional Traditional tags to {@code zh-Hant} so UI strings resolve from
+     * {@code values-b+zh+Hant} (covers Follow system for {@code zh-TW}, {@code zh-HK}, {@code zh-MO}, etc.).
      */
-    private static void migrateZhTwToZhHkIfNeeded(SharedPreferences prefs) {
-        if (!"zh-TW".equals(prefs.getString(PREF_APP_LOCALE, ""))) {
-            return;
+    private static void migrateTraditionalLocaleTagsIfNeeded(SharedPreferences prefs) {
+        String cur = prefs.getString(PREF_APP_LOCALE, "");
+        if ("zh-TW".equals(cur) || "zh-HK".equals(cur)) {
+            prefs.edit().putString(PREF_APP_LOCALE, "zh-Hant").apply();
         }
-        prefs.edit().putString(PREF_APP_LOCALE, "zh-HK").apply();
     }
 
     public static void applyLocaleTag(String tag) {
