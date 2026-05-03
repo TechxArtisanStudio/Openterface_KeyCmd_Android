@@ -29,6 +29,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
@@ -81,39 +82,40 @@ public class PresentationFragment extends Fragment {
 
     // Presentation tools and their key mappings
     enum PresentationTool {
-        KEYNOTE("Keynote",
+        KEYNOTE(R.string.presentation_tool_keynote,
                 0x04 | 0x08, KEY_P,    // Opt+Cmd+P
                 KEY_ESCAPE,
-                "⌥⌘P / ESC"),
-        POWERPOINT("PowerPoint",
+                R.string.presentation_shortcut_keynote),
+        POWERPOINT(R.string.presentation_tool_powerpoint,
                 0x02 | 0x08, KEY_RETURN, // Cmd+Shift+Enter (macOS)
                 KEY_ESCAPE,
-                "⇧⌘↵ / ESC"),
-        GOOGLE_SLIDES("Google Slides",
+                R.string.presentation_shortcut_powerpoint),
+        GOOGLE_SLIDES(R.string.presentation_tool_google_slides,
                 0x08, KEY_RETURN,        // Cmd+Enter
                 KEY_ESCAPE,
-                "⌘↵ / ESC"),
-        WORD("Word",
+                R.string.presentation_shortcut_google_slides),
+        WORD(R.string.presentation_tool_word,
                 0, 0,                    // No play key
                 KEY_ESCAPE,
-                "F5 / ESC"),
-        ADOBE_READER("Adobe Reader",
+                R.string.presentation_shortcut_word),
+        ADOBE_READER(R.string.presentation_tool_adobe_reader,
                 0x08, KEY_L,             // Cmd+L (toggle fullscreen)
                 KEY_ESCAPE,
-                "⌘L / ESC");
+                R.string.presentation_shortcut_adobe_reader);
 
-        final String name;
+        @StringRes final int nameRes;
         final int playModifier;
         final int playKey;
         final int stopKey;
-        final String shortcutHint;
+        @StringRes final int shortcutHintRes;
 
-        PresentationTool(String name, int playModifier, int playKey, int stopKey, String shortcutHint) {
-            this.name = name;
+        PresentationTool(@StringRes int nameRes, int playModifier, int playKey, int stopKey,
+                         @StringRes int shortcutHintRes) {
+            this.nameRes = nameRes;
             this.playModifier = playModifier;
             this.playKey = playKey;
             this.stopKey = stopKey;
-            this.shortcutHint = shortcutHint;
+            this.shortcutHintRes = shortcutHintRes;
         }
     }
 
@@ -606,7 +608,7 @@ public class PresentationFragment extends Fragment {
                             if (c != null && c.isConnected()) c.sendKeyRelease();
                         }, 100);
                     }
-                    Log.d(TAG, "Play: " + currentTool.name + " keys sent");
+                    Log.d(TAG, "Play: " + currentTool.name() + " keys sent");
                 } else {
                     cm.sendKeyEvent(0, currentTool.stopKey);
                     timerHandler.postDelayed(() -> {
@@ -651,7 +653,7 @@ public class PresentationFragment extends Fragment {
 
     private void updateToolHint() {
         if (hintPlay != null) {
-            hintPlay.setText(currentTool.shortcutHint);
+            hintPlay.setText(getString(currentTool.shortcutHintRes));
         }
     }
 
@@ -742,7 +744,7 @@ public class PresentationFragment extends Fragment {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             PresentationTool tool = tools[position % tools.length];
             TextView tv = (TextView) holder.itemView;
-            tv.setText(tool.name);
+            tv.setText(getString(tool.nameRes));
             boolean selected = (tool == currentTool);
             tv.setTextSize(selected ? 20 : 16);
             tv.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
@@ -826,7 +828,6 @@ public class PresentationFragment extends Fragment {
         int currentMinutes = timerDuration / 60;
         editText.setText(String.valueOf(currentMinutes));
         editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        editText.setHint("Minutes");
 
         View.OnClickListener applyPresetMinutes = v -> {
             int minutes = 0;
@@ -856,9 +857,9 @@ public class PresentationFragment extends Fragment {
                 ? R.id.radio_countdown : R.id.radio_countup);
 
         new AlertDialog.Builder(requireContext())
-                .setTitle("Timer Settings")
+                .setTitle(R.string.presentation_timer_settings_title)
                 .setView(dialogView)
-                .setPositiveButton("OK", (dialog, which) -> {
+                .setPositiveButton(R.string.pace_ok, (dialog, which) -> {
                     String input = editText.getText().toString().trim();
                     if (!input.isEmpty()) {
                         int newMinutes = Integer.parseInt(input);
@@ -884,7 +885,7 @@ public class PresentationFragment extends Fragment {
                         }
                     }
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
@@ -977,7 +978,8 @@ public class PresentationFragment extends Fragment {
         } else {
             modeText = getString(R.string.elapsed);
         }
-        timerStatusText.setText(modeText + " of " + formatTime(timerDuration));
+        timerStatusText.setText(getString(
+                R.string.presentation_timer_status_format, modeText, formatTime(timerDuration)));
     }
 
     private String formatTime(int seconds) {

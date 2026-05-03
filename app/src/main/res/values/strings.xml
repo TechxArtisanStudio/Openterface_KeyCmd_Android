@@ -729,6 +729,24 @@ by TechxArtisan</string>
     <string name="timer_mode_countdown">Countdown</string>
     <string name="timer_mode_countup">Count Up</string>
     <string name="timer_settings_gesture_hint">Tip: Double-tap the timer card to reset time.</string>
+    <string name="presentation_timer_settings_title">Timer settings</string>
+    <string name="presentation_timer_status_format">%1$s of %2$s</string>
+    <string name="presentation_timer_sample_time" translatable="false">25:00</string>
+    <string name="presentation_hint_previous">← Left arrow / Home\nFirst slide</string>
+    <string name="presentation_hint_next">→ Right arrow / End\nLast slide</string>
+    <string name="presentation_hint_black_screen">B</string>
+    <string name="presentation_hint_laser">⌘Tab (tap / cycle / double-tap)</string>
+    <string name="presentation_hint_pointer">Mouse move / click / right-click</string>
+    <string name="presentation_tool_keynote">Keynote</string>
+    <string name="presentation_tool_powerpoint">PowerPoint</string>
+    <string name="presentation_tool_google_slides">Google Slides</string>
+    <string name="presentation_tool_word">Word</string>
+    <string name="presentation_tool_adobe_reader">Adobe Reader</string>
+    <string name="presentation_shortcut_keynote">⌥⌘P / ESC</string>
+    <string name="presentation_shortcut_powerpoint">⇧⌘↵ / ESC</string>
+    <string name="presentation_shortcut_google_slides">⌘↵ / ESC</string>
+    <string name="presentation_shortcut_word">F5 / ESC</string>
+    <string name="presentation_shortcut_adobe_reader">⌘L / ESC</string>
 
     <string name="target_os_picker_title">Target OS</string>
     <string name="target_os_header_cd">Target operating system</string>
