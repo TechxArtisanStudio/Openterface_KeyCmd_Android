@@ -16,8 +16,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Shortcut Profile Manager - Manages app-specific shortcut profiles
@@ -36,6 +38,11 @@ public class ShortcutProfileManager {
     private static final String KEY_MIGRATION_DEFAULT_GENERAL_V2 = "migration_default_general_v2";
     /** One-time: append the same 5 IDs to existing users' Default Favorites list. */
     private static final String KEY_MIGRATION_DEFAULT_FAVORITES_V2 = "migration_default_favorites_v2";
+    /**
+     * One-time: ensure Default General contains canonical {@code default_*} rows by id even when
+     * an older migration skipped them due to signature-only collision detection.
+     */
+    private static final String KEY_MIGRATION_DEFAULT_GENERAL_BY_ID_V1 = "migration_default_general_by_id_v1";
 
     // ─── HID Keyboard Usage IDs (USB HID Specification) ───────────────────────
     private static final int KEY_A=4,KEY_B=5,KEY_C=6,KEY_D=7,KEY_E=8,KEY_F=9;
@@ -91,6 +98,12 @@ public class ShortcutProfileManager {
             saveProfiles();
         }
         migrateDefaultFavoritesAddV2();
+        if (reconcileAllProfilesFlatIntoCategories()) {
+            saveProfiles();
+        }
+        if (migrateDefaultGeneralEnsureCanonicalIdsV1()) {
+            saveProfiles();
+        }
         ensureKeyboardStripLayoutProfile();
     }
 
@@ -345,6 +358,132 @@ public class ShortcutProfileManager {
             updateMyShortcuts("default", my);
         }
         prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_FAVORITES_V2, true).apply();
+    }
+
+    /** Canonical Default General rows (id, name, label, modifiers, keyCode, icon, displayOrder). */
+    private static final Object[][] DEFAULT_GENERAL_CANONICAL_ROWS = new Object[][]{
+            {"default_select_all", "Select All", "Ctrl+A", MOD_CTRL, KEY_A, "select_all_24", 1},
+            {"default_copy", "Copy", "Ctrl+C", MOD_CTRL, KEY_C, "content_copy_24", 2},
+            {"default_cut", "Cut", "Ctrl+X", MOD_CTRL, KEY_X, "content_cut_24", 3},
+            {"default_paste", "Paste", "Ctrl+V", MOD_CTRL, KEY_V, "content_paste_24", 4},
+            {"default_save", "Save", "Ctrl+S", MOD_CTRL, KEY_S, "save_24", 5},
+            {"default_undo", "Undo", "Ctrl+Z", MOD_CTRL, KEY_Z, "undo_24", 6},
+            {"default_find", "Find", "Ctrl+F", MOD_CTRL, KEY_F, "search_24", 7},
+            {"default_redo", "Redo", "Ctrl+Y", MOD_CTRL, KEY_Y, "redo_24", 8},
+            {"default_new", "New", "Ctrl+N", MOD_CTRL, KEY_N, "add_24", 9},
+            {"default_open", "Open", "Ctrl+O", MOD_CTRL, KEY_O, "folder_open_24", 10},
+            {"default_print", "Print", "Ctrl+P", MOD_CTRL, KEY_P, "print_24", 11},
+            {"default_close", "Close", "Ctrl+W", MOD_CTRL, KEY_W, "close_24", 12},
+            {"default_replace", "Replace", "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24", 13},
+    };
+
+    /**
+     * Moves any shortcuts still on {@link ShortcutProfile#shortcuts} into the General category when
+     * the profile already uses categories, then clears the flat list. Hub category tabs only read
+     * category lists, so this keeps favorites and General in sync.
+     */
+    private boolean reconcileFlatShortcutsIntoCategories(ShortcutProfile profile) {
+        if (profile == null) {
+            return false;
+        }
+        if (profile.categories == null || profile.categories.isEmpty()) {
+            return false;
+        }
+        if (profile.shortcuts == null || profile.shortcuts.isEmpty()) {
+            return false;
+        }
+        Set<String> inCategories = new HashSet<>();
+        for (ShortcutCategory cat : profile.categories) {
+            if (cat == null || cat.shortcuts == null) {
+                continue;
+            }
+            for (Shortcut s : cat.shortcuts) {
+                if (s != null && s.id != null && !s.id.isEmpty()) {
+                    inCategories.add(s.id);
+                }
+            }
+        }
+        ShortcutCategory general = findOrCreateGeneralCategory(profile);
+        if (general.shortcuts == null) {
+            general.shortcuts = new ArrayList<>();
+        }
+        for (Shortcut s : new ArrayList<>(profile.shortcuts)) {
+            if (s == null) {
+                continue;
+            }
+            if (s.id != null && !s.id.isEmpty() && inCategories.contains(s.id)) {
+                continue;
+            }
+            general.shortcuts.add(cloneShortcut(s));
+            if (s.id != null && !s.id.isEmpty()) {
+                inCategories.add(s.id);
+            }
+        }
+        profile.shortcuts.clear();
+        return true;
+    }
+
+    private boolean reconcileAllProfilesFlatIntoCategories() {
+        boolean any = false;
+        for (ShortcutProfile p : profiles) {
+            if (p == null) {
+                continue;
+            }
+            if (reconcileFlatShortcutsIntoCategories(p)) {
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    /**
+     * Ensures each canonical {@code default_*} id exists in Default's General category, removing
+     * same-chord placeholders that blocked {@link #migrateDefaultGeneralAddV2()}.
+     */
+    private boolean migrateDefaultGeneralEnsureCanonicalIdsV1() {
+        if (prefs.getBoolean(KEY_MIGRATION_DEFAULT_GENERAL_BY_ID_V1, false)) {
+            return false;
+        }
+        ShortcutProfile def = getProfileById("default");
+        if (def == null) {
+            prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_GENERAL_BY_ID_V1, true).apply();
+            return false;
+        }
+        ShortcutCategory general = findOrCreateGeneralCategory(def);
+        if (general.shortcuts == null) {
+            general.shortcuts = new ArrayList<>();
+        }
+        Set<String> allIds = new HashSet<>();
+        for (Shortcut s : def.getAllShortcutsFlat()) {
+            if (s != null && s.id != null && !s.id.isEmpty()) {
+                allIds.add(s.id);
+            }
+        }
+        boolean changed = false;
+        for (Object[] row : DEFAULT_GENERAL_CANONICAL_ROWS) {
+            String id = (String) row[0];
+            if (allIds.contains(id)) {
+                continue;
+            }
+            int mods = (Integer) row[3];
+            int kc = (Integer) row[4];
+            String sig = signature(mods, kc);
+            general.shortcuts.removeIf(s -> s != null
+                    && signature(s.modifiers, s.keyCode).equals(sig)
+                    && (s.id == null || !s.id.equals(id)));
+            String name = (String) row[1];
+            String label = (String) row[2];
+            String icon = (String) row[5];
+            int order = ((Number) row[6]).intValue();
+            general.shortcuts.add(new Shortcut(id, name, label, mods, kc, icon, order));
+            allIds.add(id);
+            changed = true;
+        }
+        prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_GENERAL_BY_ID_V1, true).apply();
+        if (changed) {
+            renumberDisplayOrder(general.shortcuts);
+        }
+        return changed;
     }
 
     private void renumberDisplayOrder(List<Shortcut> list) {
@@ -1235,6 +1374,56 @@ public class ShortcutProfileManager {
         if (json == null) return new ArrayList<>();
         Type type = new TypeToken<List<Shortcut>>(){}.getType();
         return gson.fromJson(json, type);
+    }
+
+    /**
+     * Drops duplicate favorite ids (keeps first), removes entries whose id is not present in the
+     * profile's flat shortcut list, and strips null/empty ids. Persists when anything changes.
+     */
+    public void sanitizeMyShortcutsForProfile(String profileId) {
+        if (profileId == null) {
+            return;
+        }
+        ShortcutProfile p = getProfileById(profileId);
+        if (p == null) {
+            return;
+        }
+        Set<String> validIds = new HashSet<>();
+        for (Shortcut s : p.getAllShortcutsFlat()) {
+            if (s != null && s.id != null && !s.id.isEmpty()) {
+                validIds.add(s.id);
+            }
+        }
+        List<Shortcut> my = getMyShortcuts(profileId);
+        if (my == null || my.isEmpty()) {
+            return;
+        }
+        List<Shortcut> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        boolean changed = false;
+        for (Shortcut s : my) {
+            if (s == null || s.id == null || s.id.isEmpty()) {
+                changed = true;
+                continue;
+            }
+            if (!validIds.contains(s.id)) {
+                changed = true;
+                continue;
+            }
+            if (seen.contains(s.id)) {
+                changed = true;
+                continue;
+            }
+            seen.add(s.id);
+            out.add(s);
+        }
+        if (my.size() != out.size()) {
+            changed = true;
+        }
+        if (changed) {
+            renumberDisplayOrder(out);
+            updateMyShortcuts(profileId, out);
+        }
     }
 
     /**

@@ -253,13 +253,23 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void onBrowsePickRemoveFromFavorites(@NonNull ShortcutProfileManager.Shortcut shortcut) {
-        if (selectedProfile == null) {
+        removeShortcutFromMyShortcuts(shortcut);
+    }
+
+    private void removeShortcutFromMyShortcuts(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
             return;
         }
-        myShortcutsList.removeIf(s -> s.id != null && s.id.equals(shortcut.id));
+        boolean removed = myShortcutsList.removeIf(s -> s.id != null && s.id.equals(shortcut.id));
+        if (!removed) {
+            return;
+        }
         profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
         Toast.makeText(requireContext(), R.string.my_shortcuts_removed_from_my, Toast.LENGTH_SHORT).show();
-        browsePickAdapter.notifyDataSetChanged();
+        if (browsePickAdapter != null) {
+            browsePickAdapter.notifyDataSetChanged();
+        }
+        refreshShortcutsGrid();
     }
 
     private void loadProfiles() {
@@ -365,7 +375,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         detailProfileName.setText(ProfileUiStrings.displayName(requireContext(), profile));
         detailProfileDescription.setText(ProfileUiStrings.displayDescription(requireContext(), profile));
 
-        // Load persisted My Shortcuts for this profile
+        // Load persisted My Shortcuts for this profile (sanitize dedupes / drops orphans)
+        profileManager.sanitizeMyShortcutsForProfile(profile.id);
         myShortcutsList = profileManager.getMyShortcuts(profile.id);
 
         // Build dynamic category tabs
@@ -466,6 +477,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private void refreshShortcutsGrid() {
         if (selectedProfile == null) return;
 
+        myShortcutsList.clear();
+        myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
+
         boolean hasCategories = selectedProfile.categories != null && !selectedProfile.categories.isEmpty();
 
         List<ShortcutProfileManager.Shortcut> toShow = new ArrayList<>();
@@ -489,8 +503,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
         // Priority 2: Show My Shortcuts favorites (drag-reorder list; top strip uses same order)
         if (TAB_MY.equals(currentTab)) {
-            myShortcutsList.clear();
-            myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
             sortShortcutsForDisplay(myShortcutsList);
             toShow = myShortcutsList;
             if (toShow.isEmpty()) {
@@ -555,6 +567,13 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsReorderAdapter.replaceItems(ordered);
         }
 
+        myShortcutsReorderAdapter.setRemoveFavoriteClickListener((shortcut, position) -> {
+            if (shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
+                return;
+            }
+            removeShortcutFromMyShortcuts(shortcut);
+        });
+
         detachMyShortcutsReorderTouchHelper();
 
         ItemTouchHelper.Callback callback = new ItemTouchHelper.SimpleCallback(
@@ -613,9 +632,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void addToMyFavorites(ShortcutProfileManager.Shortcut shortcut) {
-        if (selectedProfile == null) return;
+        if (selectedProfile == null || shortcut == null || shortcut.id == null) {
+            return;
+        }
         for (ShortcutProfileManager.Shortcut s : myShortcutsList) {
-            if (s.id.equals(shortcut.id)) {
+            if (s != null && s.id != null && s.id.equals(shortcut.id)) {
                 new AlertDialog.Builder(requireContext())
                         .setTitle(R.string.shortcut_hub_already_in_favorites_title)
                         .setMessage("'" + shortcut.name + "' is already in Favorites.")
@@ -628,8 +649,12 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .setTitle(R.string.shortcut_hub_add_to_favorites_title)
                 .setMessage("Add '" + shortcut.name + "' (" + shortcut.label + ") to Favorites?")
                 .setPositiveButton("Add", (d, w) -> {
-                    myShortcutsList.add(shortcut);
-                    profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
+                    if (!profileManager.appendCloneIfAbsent(myShortcutsList, shortcut)) {
+                        Toast.makeText(requireContext(), R.string.my_shortcuts_already_in_my, Toast.LENGTH_SHORT).show();
+                        refreshShortcutsGrid();
+                        return;
+                    }
+                    profileManager.updateMyShortcuts(selectedProfile.id, new ArrayList<>(myShortcutsList));
                     if (vibrator != null && vibrator.hasVibrator()) {
                         vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
                     }
@@ -646,11 +671,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         new AlertDialog.Builder(requireContext())
                 .setTitle("Remove Favorite")
                 .setMessage(getString(R.string.shortcut_hub_remove_from_favorites_message, shortcut.name))
-                .setPositiveButton("Remove", (d, w) -> {
-                    myShortcutsList.removeIf(s -> s.id.equals(shortcut.id));
-                    profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
-                    refreshShortcutsGrid();
-                })
+                .setPositiveButton("Remove", (d, w) -> removeShortcutFromMyShortcuts(shortcut))
                 .setNegativeButton("Cancel", null)
                 .show();
     }

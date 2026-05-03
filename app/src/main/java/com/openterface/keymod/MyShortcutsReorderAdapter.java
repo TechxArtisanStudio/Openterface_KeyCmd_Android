@@ -130,7 +130,7 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     static final class VH extends RecyclerView.ViewHolder {
         final ImageView dragHandle;
         final View content;
-        final View removeFavorite;
+        final ImageView removeFavorite;
 
         VH(@NonNull View itemView) {
             super(itemView);
