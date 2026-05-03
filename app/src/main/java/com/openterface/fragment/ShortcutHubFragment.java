@@ -87,6 +87,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
     private Button backButton;
+    private Button resetDefaultProfileButton;
     private Button addShortcutButton;
     private TextView detailProfileName;
     private TextView detailProfileDescription;
@@ -182,6 +183,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
         backButton = view.findViewById(R.id.back_button);
+        resetDefaultProfileButton = view.findViewById(R.id.reset_default_profile_button);
         addShortcutButton = view.findViewById(R.id.add_shortcut_button);
         detailProfileName = view.findViewById(R.id.detail_profile_name);
         detailProfileDescription = view.findViewById(R.id.detail_profile_description);
@@ -199,7 +201,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         browsePickAdapter.setRowInteraction(new ShortcutSectionPickAdapter.RowInteraction() {
             @Override
             public void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut) {
-                executeShortcut(shortcut);
+                openEditShortcutFromBrowse(shortcut);
             }
 
             @Override
@@ -329,6 +331,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Back button - return to profile list
         backButton.setOnClickListener(v -> showProfileList());
 
+        resetDefaultProfileButton.setOnClickListener(v -> showResetDefaultProfileDialog());
+
         // Add shortcut button
         addShortcutButton.setOnClickListener(v -> {
             if (selectedProfile != null) {
@@ -374,6 +378,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         detailProfileName.setText(ProfileUiStrings.displayName(requireContext(), profile));
         detailProfileDescription.setText(ProfileUiStrings.displayDescription(requireContext(), profile));
+
+        resetDefaultProfileButton.setVisibility("default".equals(profile.id) ? View.VISIBLE : View.GONE);
 
         // Load persisted My Shortcuts for this profile (sanitize dedupes / drops orphans)
         profileManager.sanitizeMyShortcutsForProfile(profile.id);
@@ -555,7 +561,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsReorderAdapter.setRowInteraction(new MyShortcutsReorderAdapter.RowInteraction() {
                 @Override
                 public void onRowClick(ShortcutProfileManager.Shortcut shortcut) {
-                    executeShortcut(shortcut);
+                    openEditShortcutFromBrowse(shortcut);
                 }
 
                 @Override
@@ -677,10 +683,14 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void showShortcutActionsMenu(ShortcutProfileManager.Shortcut shortcut) {
-        final boolean isFavorite = myShortcutsList.stream()
-                .anyMatch(s -> s.id.equals(shortcut.id));
+        if (shortcut == null || selectedProfile == null) {
+            return;
+        }
+        final boolean isFavorite = shortcut.id != null
+                && myShortcutsList.stream().anyMatch(s -> s != null && s.id != null && s.id.equals(shortcut.id));
 
         java.util.ArrayList<String> options = new java.util.ArrayList<>();
+        options.add(getString(R.string.shortcut_hub_run_shortcut));
         options.add("Edit");
         options.add("Delete");
         if (isFavorite) {
@@ -694,12 +704,18 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .setItems(options.toArray(new String[0]), (dialog, which) -> {
                     switch (which) {
                         case 0:
-                            showEditShortcutDialog(shortcut);
+                            executeShortcut(shortcut);
                             break;
-                        case 1:
+                        case 1: {
+                            ShortcutProfileManager.Shortcut t = profileManager.findShortcutInProfile(
+                                    selectedProfile, shortcut.id);
+                            showEditShortcutDialog(t != null ? t : shortcut);
+                            break;
+                        }
+                        case 2:
                             confirmDeleteShortcut(shortcut);
                             break;
-                        case 2:
+                        case 3:
                             if (isFavorite) {
                                 confirmRemoveFromFavorites(shortcut);
                             } else {
@@ -711,7 +727,37 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .show();
     }
 
+    private void openEditShortcutFromBrowse(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null || shortcut.id == null) {
+            return;
+        }
+        ShortcutProfileManager.Shortcut canonical = profileManager.findShortcutInProfile(
+                selectedProfile, shortcut.id);
+        showEditShortcutDialog(canonical != null ? canonical : shortcut);
+    }
+
+    private void showResetDefaultProfileDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_reset_default_title)
+                .setMessage(R.string.shortcut_hub_reset_default_message)
+                .setPositiveButton(R.string.shortcut_hub_reset_default, (d, w) -> {
+                    profileManager.resetDefaultProfileAndFavoritesToFactory();
+                    loadProfiles();
+                    notifyKeyboardStripRefresh();
+                    Toast.makeText(requireContext(), R.string.shortcut_hub_reset_default_toast, Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void showEditShortcutDialog(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null) {
+            return;
+        }
+        ShortcutProfileManager.Shortcut resolved = profileManager.findShortcutInProfile(
+                selectedProfile, shortcut.id);
+        final ShortcutProfileManager.Shortcut editTarget = resolved != null ? resolved : shortcut;
+
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_add_shortcut, null, false);
 
@@ -722,12 +768,12 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         LinearLayout chipsRow = dialogView.findViewById(R.id.key_chips_row);
         TextView previewText = dialogView.findViewById(R.id.shortcut_preview);
 
-        nameInput.setText(shortcut.name);
-        String dataToken = KeyParser.toToken(shortcut.keyCode, shortcut.modifiers);
+        nameInput.setText(editTarget.name);
+        String dataToken = KeyParser.toToken(editTarget.keyCode, editTarget.modifiers);
         dataInput.setText(dataToken);
-        iconInput.setText(shortcut.icon != null ? shortcut.icon : "");
-        if (shortcut.displayOrder > 0) {
-            orderInput.setText(String.valueOf(shortcut.displayOrder));
+        iconInput.setText(editTarget.icon != null ? editTarget.icon : "");
+        if (editTarget.displayOrder > 0) {
+            orderInput.setText(String.valueOf(editTarget.displayOrder));
         }
 
         String[][] tokens = {
@@ -783,7 +829,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 }
             }
         });
-        previewText.setText("Preview: " + shortcut.label);
+        previewText.setText("Preview: " + editTarget.label);
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("Edit Shortcut")
@@ -803,14 +849,17 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     }
 
                     String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, getTargetOs());
-                    shortcut.name = name;
-                    shortcut.label = label;
-                    shortcut.modifiers = parsed.modifiers;
-                    shortcut.keyCode = parsed.keyCode;
-                    shortcut.icon = iconInput.getText().toString().trim();
-                    shortcut.displayOrder = parseDisplayOrder(orderInput.getText().toString().trim(), shortcut.displayOrder);
+                    editTarget.name = name;
+                    editTarget.label = label;
+                    editTarget.modifiers = parsed.modifiers;
+                    editTarget.keyCode = parsed.keyCode;
+                    editTarget.icon = iconInput.getText().toString().trim();
+                    editTarget.displayOrder = parseDisplayOrder(orderInput.getText().toString().trim(), editTarget.displayOrder);
 
                     profileManager.updateProfile(selectedProfile);
+                    if (editTarget.id != null) {
+                        profileManager.refreshMyShortcutClonesFromProfile(selectedProfile.id, editTarget.id);
+                    }
                     loadProfiles();
                     refreshSelectedProfileAndGrid();
                     Toast.makeText(getContext(), getString(R.string.create_shortcut_saved, name), Toast.LENGTH_SHORT).show();

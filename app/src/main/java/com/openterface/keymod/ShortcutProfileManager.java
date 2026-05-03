@@ -1263,6 +1263,92 @@ public class ShortcutProfileManager {
     }
 
     /**
+     * Returns the shortcut in the profile's categories or flat list with the given id, or null.
+     */
+    @Nullable
+    public Shortcut findShortcutInProfile(ShortcutProfile profile, String shortcutId) {
+        if (profile == null || shortcutId == null || shortcutId.isEmpty()) {
+            return null;
+        }
+        for (Shortcut s : profile.getAllShortcutsFlat()) {
+            if (s != null && shortcutId.equals(s.id)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Refreshes My Shortcuts clones for {@code shortcutId} from the profile catalog so Favorites
+     * rows match edited name, icon, and chord.
+     */
+    public void refreshMyShortcutClonesFromProfile(String profileId, String shortcutId) {
+        if (profileId == null || shortcutId == null || shortcutId.isEmpty()) {
+            return;
+        }
+        ShortcutProfile p = getProfileById(profileId);
+        if (p == null) {
+            return;
+        }
+        Shortcut catalog = findShortcutInProfile(p, shortcutId);
+        if (catalog == null) {
+            return;
+        }
+        List<Shortcut> my = new ArrayList<>(getMyShortcuts(profileId));
+        boolean changed = false;
+        for (int i = 0; i < my.size(); i++) {
+            Shortcut m = my.get(i);
+            if (m != null && shortcutId.equals(m.id)) {
+                int ord = m.displayOrder;
+                Shortcut repl = cloneShortcut(catalog);
+                if (ord > 0) {
+                    repl.displayOrder = ord;
+                }
+                my.set(i, repl);
+                changed = true;
+            }
+        }
+        if (changed) {
+            updateMyShortcuts(profileId, my);
+        }
+    }
+
+    /**
+     * Replaces the Default profile and its Favorites with the same layout as a first install:
+     * factory General shortcuts and seeded Favorites.
+     */
+    public void resetDefaultProfileAndFavoritesToFactory() {
+        ShortcutProfile fresh = createDefaultProfile();
+        List<Shortcut> flat = fresh.shortcuts != null ? new ArrayList<>(fresh.shortcuts) : new ArrayList<>();
+        fresh.shortcuts = new ArrayList<>();
+        ShortcutCategory general = new ShortcutCategory("general", "General");
+        general.shortcuts = new ArrayList<>();
+        general.shortcuts.addAll(flat);
+        if (fresh.categories == null) {
+            fresh.categories = new ArrayList<>();
+        }
+        fresh.categories.add(general);
+        renumberDisplayOrder(general.shortcuts);
+
+        for (int i = 0; i < profiles.size(); i++) {
+            ShortcutProfile p = profiles.get(i);
+            if (p != null && "default".equals(p.id)) {
+                profiles.set(i, fresh);
+                break;
+            }
+        }
+        List<Shortcut> seeded = buildSeededMyShortcuts(fresh);
+        renumberDisplayOrder(seeded);
+        writeMyShortcutsToPrefs("default", seeded, true);
+        sanitizeMyShortcutsForProfile("default");
+        saveProfiles();
+        ShortcutProfile def = getProfileById("default");
+        if (listener != null && def != null) {
+            listener.onProfileUpdated(def);
+        }
+    }
+
+    /**
      * Delete profile
      */
     public void deleteProfile(String profileId) {

@@ -526,6 +526,11 @@ by TechxArtisan</string>
     <string name="strip_edition_dialog_message">Edit rows 2–3 presets, import/export strip JSON, and slot overrides in Shortcut Hub.\n\nCustom slot overrides active: %1$d</string>
     <string name="strip_edition_open_shortcut_hub">Open Shortcut Hub</string>
     <string name="shortcut_hub_back">Back</string>
+    <string name="shortcut_hub_reset_default">Reset</string>
+    <string name="shortcut_hub_reset_default_title">Reset Default profile?</string>
+    <string name="shortcut_hub_reset_default_message">This restores the Default shortcut catalog (General tab) and Favorites to a fresh install. Other profiles are not changed.</string>
+    <string name="shortcut_hub_reset_default_toast">Default profile was reset</string>
+    <string name="shortcut_hub_run_shortcut">Run shortcut</string>
     <string name="shortcut_hub_add_shortcut">Add</string>
     <string name="shortcut_hub_cd_share_profile">Share profile JSON</string>
     <string name="shortcut_hub_share_profile_chooser">Share profile</string>
