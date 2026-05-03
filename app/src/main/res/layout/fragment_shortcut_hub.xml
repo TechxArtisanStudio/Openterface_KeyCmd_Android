@@ -16,35 +16,33 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
             android:background="@color/header_background"
             android:elevation="4dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Shortcut Hub"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary" />
+                android:text="@string/shortcut_hub_title"
+                android:textColor="@color/text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/active_profile_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Active: Default"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="@color/primary"
                 android:layout_marginStart="12dp"
                 android:background="@drawable/active_badge_bg"
                 android:paddingStart="8dp"
-                android:paddingEnd="8dp"
                 android:paddingTop="2dp"
-                android:paddingBottom="2dp" />
-
+                android:paddingEnd="8dp"
+                android:paddingBottom="2dp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Action Buttons -->
@@ -52,60 +50,61 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="12dp">
 
             <Button
                 android:id="@+id/create_profile_button"
+                style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="➕ Create"
                 android:layout_marginEnd="8dp"
-                style="@style/Widget.MaterialComponents.Button" />
+                android:layout_weight="1"
+                android:text="@string/shortcut_hub_create_profile" />
 
             <Button
                 android:id="@+id/import_button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="📥 Import"
                 android:layout_marginEnd="8dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                android:layout_weight="1"
+                android:text="@string/shortcut_hub_import" />
 
             <Button
                 android:id="@+id/export_button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="📤 Export"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
+                android:text="@string/shortcut_hub_export" />
         </LinearLayout>
 
-        <!-- Profiles Grid -->
-        <GridView
-            android:id="@+id/profiles_gridview"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:numColumns="2"
-            android:horizontalSpacing="8dp"
-            android:verticalSpacing="8dp"
-            android:padding="16dp"
-            android:stretchMode="columnWidth"
-            android:gravity="center" />
+            android:layout_weight="1">
 
-        <!-- Empty State -->
-        <TextView
-            android:id="@+id/empty_textview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:text="No profiles yet\nTap Create to make one"
-            android:textSize="16sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
-            android:visibility="gone"
-            android:layout_margin="32dp" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/profiles_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="4dp"
+                android:paddingBottom="16dp"
+                android:scrollbars="vertical" />
+
+            <TextView
+                android:id="@+id/empty_textview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_margin="32dp"
+                android:gravity="center"
+                android:text="@string/shortcut_hub_empty_profiles"
+                android:textColor="@color/text_secondary"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </FrameLayout>
 
     </LinearLayout>
 
@@ -121,84 +120,80 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="12dp"
             android:background="@color/header_background"
             android:elevation="4dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
 
             <Button
                 android:id="@+id/back_button"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="← Back"
-                android:textSize="14sp"
                 android:minWidth="0dp"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
-                style="@style/Widget.MaterialComponents.Button.TextButton" />
+                android:text="@string/shortcut_hub_back"
+                android:textSize="14sp" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginStart="8dp">
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/detail_profile_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Profile Name"
+                    android:textColor="@color/text_primary"
                     android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary" />
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/detail_profile_description"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Description"
-                    android:textSize="12sp"
+                    android:layout_marginTop="2dp"
                     android:textColor="@color/text_secondary"
-                    android:layout_marginTop="2dp" />
-
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <Button
                 android:id="@+id/add_shortcut_button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="+ Add"
-                android:textSize="12sp"
                 android:minWidth="0dp"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
+                android:text="@string/shortcut_hub_add_shortcut"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- Tab bar: Favorites (fixed) | Category buttons (scrollable) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="@color/header_background"
             android:layout_marginTop="1dp"
-            android:gravity="center_vertical">
+            android:background="@color/header_background"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/tab_my"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="@string/my_shortcuts_tab_favorites"
-                android:textSize="12sp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="4dp"
                 android:minWidth="0dp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="4dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                android:text="@string/my_shortcuts_tab_favorites"
+                android:textSize="12sp" />
 
             <HorizontalScrollView
                 android:layout_width="0dp"
@@ -210,60 +205,54 @@
                     android:id="@+id/tabs_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:paddingStart="6dp"
-                    android:paddingEnd="10dp"
                     android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:gravity="center_vertical" />
-
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="10dp" />
             </HorizontalScrollView>
-
         </LinearLayout>
 
-        <!-- Content area: shortcuts grid or empty-My state -->
+        <!-- Content area: favorites list, browse list, or empty -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
 
-        <!-- Favorites: vertical drag-reorder list; other tabs: 3-column grid -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/my_shortcuts_recycler"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="16dp"
-            android:visibility="gone" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/my_shortcuts_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="16dp"
+                android:visibility="gone" />
 
-        <!-- Shortcuts Grid -->
-        <GridView
-            android:id="@+id/shortcuts_gridview"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:numColumns="3"
-            android:horizontalSpacing="8dp"
-            android:verticalSpacing="8dp"
-            android:padding="16dp"
-            android:stretchMode="columnWidth"
-            android:gravity="center" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/browse_shortcuts_recycler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="16dp"
+                android:visibility="gone" />
 
-        <!-- Empty: My Shortcuts -->
-        <TextView
-            android:id="@+id/empty_my_shortcuts"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="No favorites yet.\nLong-press any shortcut in &quot;All&quot; to add it here."
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
-            android:padding="32dp"
-            android:visibility="gone" />
-
+            <TextView
+                android:id="@+id/empty_my_shortcuts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="32dp"
+                android:text="@string/shortcut_hub_empty_favorites"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
         </FrameLayout>
 
     </LinearLayout>

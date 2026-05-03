@@ -300,6 +300,18 @@ by TechxArtisan</string>
     <string name="my_shortcuts_removed_from_my">Removed from Favorites</string>
     <string name="cd_add_to_favorites">Add to Favorites</string>
     <string name="cd_remove_from_favorites">Remove from Favorites</string>
+    <!-- Shortcut Hub full-screen fragment -->
+    <string name="shortcut_hub_title">Shortcut Hub</string>
+    <string name="shortcut_hub_active_profile">Active: %1$s</string>
+    <string name="shortcut_hub_empty_profiles">No profiles yet.\nTap Create to add one.</string>
+    <string name="shortcut_hub_create_profile">Create</string>
+    <string name="shortcut_hub_import">Import</string>
+    <string name="shortcut_hub_export">Export</string>
+    <string name="shortcut_hub_back">Back</string>
+    <string name="shortcut_hub_add_shortcut">Add</string>
+    <string name="shortcut_hub_profile_shortcut_count">%1$d shortcuts</string>
+    <string name="shortcut_hub_profile_active_badge">Active</string>
+    <string name="shortcut_hub_empty_favorites">No favorites yet.\nOpen another tab and use the bookmark to add shortcuts here.</string>
     <string name="shortcut_hub_already_in_favorites_title">Already in Favorites</string>
     <string name="shortcut_hub_add_to_favorites_title">Add to Favorites</string>
     <string name="shortcut_hub_added_to_favorites_toast">Added to Favorites: %1$s</string>

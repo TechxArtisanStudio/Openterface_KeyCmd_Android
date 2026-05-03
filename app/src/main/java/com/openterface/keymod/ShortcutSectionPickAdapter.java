@@ -30,12 +30,21 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
         void onRemoveFromFavorites(@NonNull ShortcutProfileManager.Shortcut shortcut);
     }
 
+    /** Optional: tap / long-press on the row body (not the bookmark). */
+    public interface RowInteraction {
+        void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut);
+
+        void onRowLongClick(@NonNull ShortcutProfileManager.Shortcut shortcut);
+    }
+
     private final String targetOs;
     private final List<ShortcutProfileManager.Shortcut> items;
     @Nullable
     private FavoriteMembershipChecker favoriteChecker;
     @Nullable
     private OnBookmarkActionListener bookmarkListener;
+    @Nullable
+    private RowInteraction rowInteraction;
 
     public ShortcutSectionPickAdapter(Context context, String targetOs,
             List<ShortcutProfileManager.Shortcut> items) {
@@ -57,6 +66,10 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
 
     public void setBookmarkListener(@Nullable OnBookmarkActionListener listener) {
         this.bookmarkListener = listener;
+    }
+
+    public void setRowInteraction(@Nullable RowInteraction rowInteraction) {
+        this.rowInteraction = rowInteraction;
     }
 
     @NonNull
@@ -87,6 +100,19 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
             } else {
                 bookmarkListener.onAddToFavorites(shortcut);
             }
+        });
+
+        holder.contentRow.setOnClickListener(v -> {
+            if (rowInteraction != null) {
+                rowInteraction.onRowClick(shortcut);
+            }
+        });
+        holder.contentRow.setOnLongClickListener(v -> {
+            if (rowInteraction != null) {
+                rowInteraction.onRowLongClick(shortcut);
+                return true;
+            }
+            return false;
         });
     }
 
