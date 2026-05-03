@@ -5587,6 +5587,11 @@ public class CustomKeyboardView extends LinearLayout {
         if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k)) {
             return null;
         }
+        // Fixed strip page 1 (ESC/nav): no top-right local-Fn corner hints on its two rows (strip row 2
+        // and row 3) — avoids redundant overlay labels (e.g. SCR LK / PRT SC / CAPS on modifiers).
+        if (fixedTopRowsPageIndex == 1) {
+            return null;
+        }
         FnMapping overlay = resolveFixedTopOverlayMapping(k);
         if (overlay == null) {
             return null;
