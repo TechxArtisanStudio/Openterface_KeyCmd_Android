@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
@@ -58,6 +59,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        AppLocaleManager.applyPersistedLocales(this);
         ThemeManager.applyTheme(this);
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
@@ -184,7 +186,11 @@ public class LaunchPanelActivity extends AppCompatActivity {
                 .putString(LAST_MODE_KEY, normalizedMode)
                 .apply();
             
-            Toast.makeText(this, "Will remember: " + getModeDisplayName(normalizedMode), Toast.LENGTH_SHORT).show();
+            Toast.makeText(
+                this,
+                getString(R.string.launch_panel_will_remember, getModeDisplayName(normalizedMode)),
+                Toast.LENGTH_SHORT
+            ).show();
         } else {
             // Clear remembered choice
             prefs.edit()
@@ -204,25 +210,30 @@ public class LaunchPanelActivity extends AppCompatActivity {
         finish();
     }
 
-    private String getModeDisplayName(String mode) {
-        switch (mode) {
+    @StringRes
+    private int modeTitleRes(String mode) {
+        switch (normalizeMode(mode)) {
             case MODE_KEYBOARD_MOUSE:
-                return "Keyboard & Mouse";
+                return R.string.top_mode_label_keyboard_mouse;
             case MODE_GAMEPAD:
-                return "Gamepad";
+                return R.string.top_mode_label_gamepad;
             case MODE_NUMPAD:
-                return "Numpad";
+                return R.string.top_mode_label_keyboard_mouse;
             case MODE_SHORTCUTS:
-                return "Shortcut Hub";
+                return R.string.top_mode_label_shortcuts;
             case MODE_MACROS:
-                return "Macros";
+                return R.string.top_mode_label_macros;
             case MODE_VOICE:
-                return "Voice Input";
+                return R.string.voice_hub_title;
             case MODE_PRESENTATION:
-                return "Presentation";
+                return R.string.presentation_mode;
             default:
-                return "Keyboard & Mouse";
+                return R.string.top_mode_label_keyboard_mouse;
         }
+    }
+
+    private String getModeDisplayName(String mode) {
+        return getString(modeTitleRes(mode));
     }
 
     private String normalizeMode(String mode) {

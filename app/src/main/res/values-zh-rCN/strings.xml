@@ -1,38 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
-    <string name="settings_title">Settings</string>
-    <string name="settings_tab_general">General</string>
-    <string name="settings_tab_voice">Voice</string>
-    <string name="settings_tab_ai">AI</string>
-    <string name="settings_tab_history">History</string>
-
-    <string name="settings_language_section_title">Language</string>
-    <string name="settings_app_language_label">App language</string>
-    <string name="app_language_follow_system">Follow system language</string>
-
-    <!-- Welcome & Guide (mode picker + tutorial); opened from launcher or side menu -->
-    <string name="nav_welcome_guide">Welcome &amp; Guide</string>
-    <string name="nav_welcome_guide_content_description">Welcome screen, mode picker, and tutorial</string>
-    <string name="launch_panel_welcome_prefix">Welcome to</string>
-    <string name="launch_panel_subtitle">Turn Your Phone into a Smart Keyboard</string>
-    <string name="launch_panel_land_subtitle">Turn Your Phone into a Smart Keyboard</string>
-    <string name="launch_panel_credit">Learn more at openterface.com
-by TechxArtisan</string>
-    <string name="show_tutorial_link">Show tutorial</string>
-    <string name="launch_panel_remember_choice">Remember and auto-enter this mode</string>
-    <string name="launch_panel_start">Start</string>
-    <string name="launch_panel_skip">Skip for now</string>
-    <string name="launch_panel_will_remember">Will remember: %1$s</string>
-    <string name="PrtSc">PrtSc</string>
-    <string name="ScrLk">ScrLk</string>
-    <string name="Pause">Pause</string>
-    <string name="Ins">Ins</string>
-    <string name="Home">Home</string>
-    <string name="PgUp">PgUp</string>
-    <string name="Delete">DEL</string>
-    <string name="End">End</string>
-    <string name="PgDn">PgDn</string>
-
+    <string name="app_name">按键模块</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_tab_general">一般的</string>
+    <string name="settings_tab_voice">嗓音</string>
+    <string name="settings_tab_ai">人工智能</string>
+    <string name="settings_tab_history">历史</string>
+    <string name="settings_language_section_title">语言</string>
+    <string name="settings_app_language_label">应用语言</string>
+    <string name="app_language_follow_system">遵循系统语言</string>
+    <string name="nav_welcome_guide">欢迎与指导</string>
+    <string name="nav_welcome_guide_content_description">欢迎屏幕、模式选择器和教程</string>
+    <string name="launch_panel_welcome_prefix">欢迎来到</string>
+    <string name="launch_panel_subtitle">将您的手机变成智能键盘</string>
+    <string name="launch_panel_land_subtitle">将您的手机变成智能键盘</string>
+    <string name="launch_panel_credit">了解更多信息，请访问 openterface.com
+通过 TechxArtisan</string>
+    <string name="show_tutorial_link">显示教程</string>
+    <string name="launch_panel_remember_choice">记住并自动进入该模式</string>
+    <string name="launch_panel_start">开始</string>
+    <string name="launch_panel_skip">暂时跳过</string>
+    <string name="PrtSc">普罗特斯克</string>
+    <string name="ScrLk">斯克里克</string>
+    <string name="Pause">暂停</string>
+    <string name="Ins">INS</string>
+    <string name="Home">家</string>
+    <string name="PgUp">上页</string>
+    <string name="Delete">德尔</string>
+    <string name="End">结尾</string>
+    <string name="PgDn">前列腺素</string>
     <string name="Function1">F1</string>
     <string name="Function2">F2</string>
     <string name="Function3">F3</string>
@@ -45,7 +41,6 @@ by TechxArtisan</string>
     <string name="Function10">F10</string>
     <string name="Function11">F11</string>
     <string name="Function12">F12</string>
-
     <string name="One_Sigh_Button">!\n1</string>
     <string name="Two_At_Button">@\n2</string>
     <string name="Three_Pound_Button">#\n3</string>
@@ -56,8 +51,7 @@ by TechxArtisan</string>
     <string name="Eight_Asterisk_Button">*\n8</string>
     <string name="Nine_Left_Parenthesis_Button">(\n9</string>
     <string name="Zero_Right_Parenthesis_Button">)\n0</string>
-
-    <string name="Tilde">~\n`</string>
+    <string name="Tilde">〜\n`</string>
     <string name="Minus_Sign_Button">_\n-</string>
     <string name="Plus_Sign_Button">+\n=</string>
     <string name="Left_Bracket_Button">{\n[</string>
@@ -68,7 +62,6 @@ by TechxArtisan</string>
     <string name="Less_Sign_Button">&lt;\n,</string>
     <string name="Greater_Sign_Button">&gt;\n.</string>
     <string name="Question_Mark">\?\n/</string>
-
     <string name="Q_Button">Q</string>
     <string name="W_Button">W</string>
     <string name="E_Button">E</string>
@@ -79,7 +72,6 @@ by TechxArtisan</string>
     <string name="I_Button">I</string>
     <string name="O_Button">O</string>
     <string name="P_Button">P</string>
-
     <string name="A_Button">A</string>
     <string name="S_Button">S</string>
     <string name="D_Button">D</string>
@@ -89,7 +81,6 @@ by TechxArtisan</string>
     <string name="J_Button">J</string>
     <string name="K_Button">K</string>
     <string name="L_Button">L</string>
-
     <string name="Z_Button">Z</string>
     <string name="X_Button">X</string>
     <string name="C_Button">C</string>
@@ -97,7 +88,6 @@ by TechxArtisan</string>
     <string name="B_Button">B</string>
     <string name="N_Button">N</string>
     <string name="M_Button">M</string>
-
     <string name="q_Button">q</string>
     <string name="w_Button">w</string>
     <string name="e_Button">e</string>
@@ -108,7 +98,6 @@ by TechxArtisan</string>
     <string name="i_Button">i</string>
     <string name="o_Button">o</string>
     <string name="p_Button">p</string>
-
     <string name="a_Button">a</string>
     <string name="s_Button">s</string>
     <string name="d_Button">d</string>
@@ -118,7 +107,6 @@ by TechxArtisan</string>
     <string name="j_Button">j</string>
     <string name="k_Button">k</string>
     <string name="l_Button">l</string>
-
     <string name="z_Button">z</string>
     <string name="x_Button">x</string>
     <string name="c_Button">c</string>
@@ -126,7 +114,6 @@ by TechxArtisan</string>
     <string name="b_Button">b</string>
     <string name="n_Button">n</string>
     <string name="m_Button">m</string>
-
     <string name="Esc">Esc</string>
     <string name="TAB">TAB</string>
     <string name="Caps">Caps</string>
@@ -146,15 +133,13 @@ by TechxArtisan</string>
     <string name="Fn">Fn</string>
     <string name="Symbols_123">\?123</string>
     <string name="BackSpace">BackSpace</string>
-    <string name="DEL_Button">DEL</string>
+    <string name="DEL_Button">德尔</string>
     <string name="Space_Button">Space</string>
     <string name="Enter_Button">Enter</string>
-
     <string name="Up_arrow">Up_arrow</string>
     <string name="Down_arrow">Down_arrow</string>
     <string name="Left_arrow">Left_arrow</string>
     <string name="Right_arrow">Right_arrow</string>
-
     <string name="Q_Button_Upper">Q</string>
     <string name="W_Button_Upper">W</string>
     <string name="E_Button_Upper">E</string>
@@ -182,43 +167,32 @@ by TechxArtisan</string>
     <string name="N_Button_Upper">N</string>
     <string name="M_Button_Upper">M</string>
     <string name="Symbol">Sym</string>
-
-    <!-- shortCut -->
     <string name="KeyBoard_Ctrl_Add_C">Ctrl+C\nCopy</string>
     <string name="KeyBoard_Ctrl_Add_V">Ctrl+V\nPaste</string>
     <string name="KeyBoard_Ctrl_Add_A">Ctrl+A\nSelect All</string>
     <string name="KeyBoard_Ctrl_Add_X">Ctrl+X\nCut</string>
     <string name="KeyBoard_Ctrl_Add_Z">Ctrl+Z\nRevocation</string>
     <string name="KeyBoard_Ctrl_Add_S">Ctrl+S\nSave</string>
-
     <string name="KeyBoard_Win_Add_Tab">Win+Tab\nTask View</string>
     <string name="KeyBoard_Win_Add_S">Win+S\nSearch</string>
     <string name="KeyBoard_Win_Add_E">Win+E\nExplorer</string>
     <string name="KeyBoard_Win_Add_R">Win+R\nCommand</string>
     <string name="KeyBoard_Win_Add_D">Win+D\nDesktop</string>
     <string name="KeyBoard_Win_Add_L">Win+L\nLock PC</string>
-
     <string name="KeyBoard_Alt_Add_F4">Alt+F4\nClose Window</string>
     <string name="KeyBoard_Ctrl_Add_Alt_Add_Del">Ctrl+Alt+Del\nTask Manager</string>
     <string name="KeyBoard_Alt_Add_PrtScr">Alt+PrtScr\nWindow Screenshot</string>
-
-
     <string-array name="planets_array">
         <item>Touchpad + Keyboard</item>
         <item>Full KeyBoard</item>
     </string-array>
-
-    <string name="usbConnect">UsbConnect</string>
     <string name="bluetooth">Bluetooth</string>
     <string name="KeyBoard">KeyBoard</string>
     <string name="Mouse">Mouse</string>
     <string name="CompositeMode">Composite Mode</string>
     <string name="Instructions">Instructions</string>
     <string name="About">About</string>
-
     <string name="ShortCut">ShortCut</string>
-    
-    <!-- Connection Dialog Strings -->
     <string name="connection_title">Device Connection</string>
     <string name="connection_type">Connection Type</string>
     <string name="connection_status">Connection Status</string>
@@ -251,8 +225,6 @@ by TechxArtisan</string>
     <string name="bt_disconnect_confirm">Disconnect</string>
     <string name="bt_device_forgotten_toast">Device forgotten: %1$s</string>
     <string name="bt_disconnected_toast">Disconnected: %1$s</string>
-    
-    <!-- Mode Selection Strings -->
     <string name="mode_keyboard">Keyboard Mode</string>
     <string name="mode_mouse">Mouse Mode</string>
     <string name="mode_composite">Keyboard + Mouse Mode</string>
@@ -261,8 +233,6 @@ by TechxArtisan</string>
     <string name="mouse_mode">Mouse Only</string>
     <string name="composite_mode">Keyboard + Mouse</string>
     <string name="mode_info">Select your preferred input mode</string>
-
-    <!-- Compose submode (used by CustomKeyboardView IME sub-compose flow) -->
     <string name="compose_ascii_warning">Non-ASCII characters are not supported for HID send. Remove them to enable Send.</string>
     <string name="compose_clear">Clear</string>
     <string name="compose_undo">Undo</string>
@@ -273,12 +243,9 @@ by TechxArtisan</string>
     <string name="compose_empty">No text to send.</string>
     <string name="compose_sent">Sent %1$d characters.</string>
     <string name="compose_cancelled">Send stopped.</string>
-
-    <!-- Top strip PH1–PH3: long-press mode picker -->
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>
     <string name="top_profile_slot_picker_title">Choose Shortcut Hub profile for this slot</string>
     <string name="top_strip_favorite_picker_title">Choose shortcut for this slot</string>
-    <!-- Top strip long-press: subtitle for favourite picker (title above). -->
     <string name="top_strip_favorite_picker_subtitle">Place a shortcut from your favourites list in this slot.</string>
     <string name="top_strip_favorite_picker_empty">Add shortcuts to ⭐ Favorites in Shortcut Hub first.</string>
     <string name="my_shortcuts_reorder_sheet_title">Favorites</string>
@@ -292,7 +259,6 @@ by TechxArtisan</string>
     <string name="my_shortcuts_reorder_reset_unsupported">Reset is available only for built-in profiles.</string>
     <string name="my_shortcuts_reorder_info_cd">Show help for reordering Favorites</string>
     <string name="my_shortcuts_reorder_help_read_mode_title">%1$s · %2$d in Favorites</string>
-    <!-- HTML for bold labels (HtmlCompat.fromHtml). -->
     <string name="my_shortcuts_reorder_help_read_mode_block1"><![CDATA[<b>Order</b> — Drag the handle to reorder. <b>Top</b> = first on the keyboard strip; swipe the strip sideways for more pages.]]></string>
     <string name="my_shortcuts_reorder_help_read_mode_block2"><![CDATA[<b>Create</b> — In <b>Favorites</b>, Create adds a new shortcut to <b>General</b> and to Favorites. In <b>General/other tabs</b>, Create adds to that tab only (not Favorites).]]></string>
     <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>Reset</b> — Restores this active built-in profile’s Favorites to fresh-install defaults after confirmation. Custom/imported profiles do not support Reset. <b>Done</b> saves; <b>Cancel</b> discards staged reordering.]]></string>
@@ -305,7 +271,6 @@ by TechxArtisan</string>
     <string name="my_shortcuts_removed_from_my">Removed from Favorites</string>
     <string name="cd_add_to_favorites">Add to Favorites</string>
     <string name="cd_remove_from_favorites">Remove from Favorites</string>
-    <!-- Shortcut Hub full-screen fragment -->
     <string name="shortcut_hub_title">Shortcut Hub</string>
     <string name="shortcut_hub_active_profile">Active: %1$s</string>
     <string name="shortcut_hub_empty_profiles">No profiles yet.\nTap Create to add one.</string>
@@ -322,8 +287,6 @@ by TechxArtisan</string>
     <string name="shortcut_hub_added_to_favorites_toast">Added to Favorites: %1$s</string>
     <string name="shortcut_hub_remove_from_favorites_message">Remove \'%1$s\' from Favorites?</string>
     <string name="my_shortcuts_sheet_empty_profile">No shortcuts in this profile to add.</string>
-
-    <!-- Macros hub (aligned with Shortcut Hub chrome) -->
     <string name="macros_title">Macros</string>
     <string name="macros_empty">No macros yet.\nTap Add to create one.</string>
     <string name="macros_add">Add</string>
@@ -372,13 +335,10 @@ by TechxArtisan</string>
     <string name="macros_help_read_mode_block1"><![CDATA[<b>Sequence</b> — Type text and tokens in <b>Macro sequence</b>. Use <b>Insert tokens</b> for modifiers, keys, and delays. Match opening and closing tags (e.g. <tt>&lt;CTRL&gt;</tt> … <tt>&lt;/CTRL&gt;</tt>).]]></string>
     <string name="macros_help_read_mode_block2"><![CDATA[<b>Timing</b> — <b>Send char interval</b> sets delay between keystrokes when the macro runs.]]></string>
     <string name="macros_help_read_mode_block3"><![CDATA[<b>Scheduler</b> — Optional: pick a run time and repeat options. Tap <b>Save</b> when finished.]]></string>
-
-    <!-- Quick create shortcut from favorites strip (last page) -->
     <string name="top_strip_create_shortcut_label">Create</string>
     <string name="top_strip_create_shortcut_cd">Create new shortcut</string>
     <string name="create_shortcut_sheet_title">New shortcut</string>
     <string name="create_shortcut_info_cd">How to use New shortcut</string>
-    <!-- Full-screen help (same pattern as reorder Favorites help). -->
     <string name="create_shortcut_help_read_mode_title">New shortcut · %1$s</string>
     <string name="create_shortcut_help_read_mode_block1"><![CDATA[<b>Where it saves</b> — The shortcut is added to <b>General</b> in Shortcut Hub and to your <b>Favorites</b> strip. To change the name, icon, or order, open Shortcut Hub.]]></string>
     <string name="create_shortcut_help_read_mode_block2"><![CDATA[<b>Keys</b> — Toggle modifiers, then tap <b>one</b> letter or key chip. Chips wrap to more lines on small screens. <b>Advanced</b> lets you type token syntax (e.g. <tt>&lt;CTRL&gt;c&lt;/CTRL&gt;</tt>) instead; choosing a chip clears Advanced.]]></string>
@@ -386,7 +346,6 @@ by TechxArtisan</string>
     <string name="create_shortcut_preview_empty">Pick a key below, or use Advanced.</string>
     <string name="create_shortcut_preview_invalid">No valid key yet</string>
     <string name="create_shortcut_modifiers_label">Modifiers</string>
-    <!-- Defaults; labels are set in code from Target OS. -->
     <string name="create_shortcut_mod_cmd">⌘</string>
     <string name="create_shortcut_mod_ctrl">Ctrl</string>
     <string name="create_shortcut_mod_shift">Shift</string>
@@ -422,8 +381,6 @@ by TechxArtisan</string>
     <string name="ime_sub_compose_mode_toggle_direct">Switch to direct HID: each key sends as you type</string>
     <string name="ime_sub_compose_mode_toggle_compose">Switch to compose: type a buffer, then tap Send</string>
     <string name="ime_sub_compose_direct_hid_hint">Keys send out directly as you type</string>
-
-    <!-- Voice input mode (hub-aligned chrome; strings for theme-independent copy) -->
     <string name="voice_hub_title">Voice input</string>
     <string name="voice_transcribed_hint">Transcribed text appears here…</string>
     <string name="voice_status_ready_setup_api">Ready — set API key in Settings</string>
@@ -467,15 +424,13 @@ by TechxArtisan</string>
     <string name="voice_cd_record_start">Start recording</string>
     <string name="voice_cd_record_stop">Stop recording</string>
     <string name="voice_cd_waveform">Audio waveform</string>
-    <string name="voice_history_section">History</string>
+    <string name="voice_history_section">历史</string>
     <string name="voice_history_clear_all">Clear all</string>
     <string name="voice_history_empty">No messages sent yet</string>
     <string name="voice_clear">Clear</string>
     <string name="voice_send">Send</string>
     <string name="voice_history_edit">Edit</string>
     <string name="voice_history_resend">Resend</string>
-
-    <!-- Presentation Mode Strings -->
     <string name="presentation_mode">Presentation</string>
     <string name="slide_progress_label">PRESENTATION</string>
     <string name="timer_pace_label">TIMER</string>
@@ -497,9 +452,9 @@ by TechxArtisan</string>
     <string name="pointer">TOUCHPAD</string>
     <string name="list">List</string>
     <string name="of">/</string>
-    <string name="timer_start">Start</string>
+    <string name="timer_start">开始</string>
     <string name="timer_reset">Reset</string>
-    <string name="timer_pause">Pause</string>
+    <string name="timer_pause">暂停</string>
     <string name="timer_settings_minutes_label">Duration</string>
     <string name="timer_settings_minutes_hint">Minutes</string>
     <string name="timer_settings_quick_select_label">Quick Select</string>
@@ -513,15 +468,12 @@ by TechxArtisan</string>
     <string name="timer_mode_countdown">Countdown</string>
     <string name="timer_mode_countup">Count Up</string>
     <string name="timer_settings_gesture_hint">Tip: Double-tap the timer card to reset time.</string>
-
     <string name="target_os_picker_title">Target OS</string>
     <string name="target_os_header_cd">Target operating system</string>
     <string name="target_os_header_cd_selected">Target OS: %1$s</string>
     <string name="target_os_macos">macOS</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
-
-    <!-- Keyboard + mouse mode touchpad overlay (plain fallback for layout preview; runtime uses spans) -->
     <string name="touch_pad_title">TouchPad</string>
     <string name="touch_pad_status_buttons_up">Buttons: up (no drag)</string>
     <string name="touch_pad_status_buttons_drag">Buttons: left held (drag)</string>

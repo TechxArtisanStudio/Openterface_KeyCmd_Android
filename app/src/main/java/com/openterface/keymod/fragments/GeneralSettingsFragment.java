@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.AppLocaleManager;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
@@ -59,6 +60,8 @@ public class GeneralSettingsFragment extends Fragment {
     private TextView touchpadScrollSensitivityValueText;
     private boolean isLoadingSettings;
     private boolean ignoreNextThemeSelectionEvent;
+    /** Spinner index 0 = follow system; 1..n match R.array.language_codes order. */
+    private String[] localeSpinnerTags;
 
     private SharedPreferences prefs;
 
@@ -89,12 +92,19 @@ public class GeneralSettingsFragment extends Fragment {
         touchpadScrollSensitivitySeekBar = view.findViewById(R.id.touchpad_scroll_sensitivity_seekbar);
         touchpadScrollSensitivityValueText = view.findViewById(R.id.touchpad_scroll_sensitivity_value_text);
         
-        // Setup language spinner
-        String[] languages = {"English", "中文 (Chinese)", "Español", "Français"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, languages);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        languageSpinner.setAdapter(adapter);
+        String followLabel = getString(R.string.app_language_follow_system);
+        String[] langNames = getResources().getStringArray(R.array.language_names);
+        String[] langCodes = getResources().getStringArray(R.array.language_codes);
+        localeSpinnerTags = new String[1 + langCodes.length];
+        localeSpinnerTags[0] = AppLocaleManager.LOCALE_FOLLOW_SYSTEM;
+        System.arraycopy(langCodes, 0, localeSpinnerTags, 1, langCodes.length);
+        String[] labels = new String[1 + langNames.length];
+        labels[0] = followLabel;
+        System.arraycopy(langNames, 0, labels, 1, langNames.length);
+        ArrayAdapter<String> langAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, labels);
+        langAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        languageSpinner.setAdapter(langAdapter);
 
         ArrayAdapter<String> themeAdapter = new ArrayAdapter<>(requireContext(),
                 R.layout.item_theme_family_spinner, THEME_FAMILY_LABELS);
@@ -110,9 +120,8 @@ public class GeneralSettingsFragment extends Fragment {
         hapticFeedbackCheckBox.setChecked(prefs.getBoolean(PREF_HAPTIC_FEEDBACK, true));
         orientationLockCheckBox.setChecked(prefs.getBoolean(PREF_ORIENTATION_LOCK, false));
         
-        // Load language preference
-        int languageIndex = prefs.getInt("language_index", 0);
-        languageSpinner.setSelection(languageIndex);
+        int localeIndex = indexForLocaleTag(AppLocaleManager.getPersistedLocaleTag(requireContext()));
+        languageSpinner.setSelection(localeIndex);
 
         // Sensitivity is stored as an int percentage from 20..200; 100 means 1.0x.
         int sensitivityPercent = prefs.getInt(PREF_TOUCHPAD_SCROLL_SENSITIVITY, 100);
@@ -160,7 +169,21 @@ public class GeneralSettingsFragment extends Fragment {
         languageSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                prefs.edit().putInt("language_index", position).apply();
+                if (isLoadingSettings) {
+                    return;
+                }
+                String tag = localeSpinnerTags[position];
+                if (tag.equals(AppLocaleManager.getPersistedLocaleTag(requireContext()))) {
+                    return;
+                }
+                AppLocaleManager.persistAndApplyLocales(requireContext(), tag);
+                // Defer so AppCompatDelegate can apply locales before we recreate (avoids stale configuration).
+                parent.post(() -> {
+                    if (!isAdded() || getActivity() == null || getActivity().isFinishing()) {
+                        return;
+                    }
+                    getActivity().recreate();
+                });
             }
 
             @Override
@@ -238,6 +261,18 @@ public class GeneralSettingsFragment extends Fragment {
             return ThemeManager.FAMILY_ORANGE;
         }
         return THEME_FAMILY_VALUES[index];
+    }
+
+    private int indexForLocaleTag(String tag) {
+        if (localeSpinnerTags == null) {
+            return 0;
+        }
+        for (int i = 0; i < localeSpinnerTags.length; i++) {
+            if (localeSpinnerTags[i].equals(tag)) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     private void applyThemeFromUi() {

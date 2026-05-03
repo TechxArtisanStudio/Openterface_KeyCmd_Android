@@ -295,6 +295,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppLocaleManager.applyPersistedLocales(this);
         ThemeManager.applyTheme(this);
         appliedThemeResId = ThemeManager.getSelectedThemeResId(this);
         super.onCreate(savedInstanceState);

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="language_names">
+        <item>Englisch</item>
+        <item>Chinesisch</item>
+        <item>Spanisch</item>
+        <item>Französisch</item>
+        <item>Deutsch</item>
+        <item>Japanisch</item>
+    </string-array>
+    <string-array name="voice_language_names">
+        <item>Automatisch</item>
+        <item>Englisch</item>
+        <item>Chinesisch</item>
+        <item>Spanisch</item>
+        <item>Französisch</item>
+        <item>Deutsch</item>
+        <item>Italienisch</item>
+        <item>Japanisch</item>
+        <item>Koreanisch</item>
+        <item>Portugiesisch</item>
+        <item>Russisch</item>
+        <item>Arabisch</item>
+        <item>Hindi</item>
+    </string-array>
+</resources>
