@@ -318,6 +318,56 @@ by TechxArtisan</string>
     <string name="shortcut_hub_remove_from_favorites_message">Remove \'%1$s\' from Favorites?</string>
     <string name="my_shortcuts_sheet_empty_profile">No shortcuts in this profile to add.</string>
 
+    <!-- Macros hub (aligned with Shortcut Hub chrome) -->
+    <string name="macros_title">Macros</string>
+    <string name="macros_empty">No macros yet.\nTap Add to create one.</string>
+    <string name="macros_add">Add</string>
+    <string name="macros_edit_layout">Edit layout</string>
+    <string name="macros_done_layout">Done</string>
+    <string name="macros_row_scheduled">Scheduled</string>
+    <string name="macros_action_edit">Edit</string>
+    <string name="macros_action_delete">Delete</string>
+    <string name="macros_delete_title">Delete macro</string>
+    <string name="macros_delete_message">Delete \"%1$s\"?</string>
+    <string name="macros_delete_confirm">Delete</string>
+    <string name="macros_editor_title_add">Add macro</string>
+    <string name="macros_editor_title_edit">Edit macro</string>
+    <string name="macros_editor_section_name">Name</string>
+    <string name="macros_editor_name_hint">Macro name (label)</string>
+    <string name="macros_editor_section_data">Macro data</string>
+    <string name="macros_editor_data_hint">e.g. &lt;CTRL&gt;C&lt;/CTRL&gt;&lt;DELAY1S&gt;&lt;ENTER&gt;</string>
+    <string name="macros_editor_section_tokens">Insert tokens</string>
+    <string name="macros_editor_interval_ms">Send char interval (ms): %1$d</string>
+    <string name="macros_editor_section_scheduler">Scheduler (optional)</string>
+    <string name="macros_editor_scheduler_enable">Enable scheduler</string>
+    <string name="macros_editor_pick_run_time">Pick run time</string>
+    <string name="macros_editor_run_at_line">Run at: %1$s</string>
+    <string name="macros_editor_run_at_not_set">Run at: not set</string>
+    <string name="macros_editor_repeat_count_hint">Repeat count (optional)</string>
+    <string name="macros_editor_repeat_interval_hint">Repeat interval seconds (optional)</string>
+    <string name="macros_save">Save</string>
+    <string name="macros_toast_not_connected">Not connected — cannot run macro</string>
+    <string name="macros_toast_playing">Running: %1$s</string>
+    <string name="macros_toast_deleted">Macro deleted</string>
+    <string name="macros_toast_name_required">Macro name is required</string>
+    <string name="macros_toast_data_required">Macro data is required</string>
+    <string name="macros_toast_no_events">No valid key events from macro data</string>
+    <string name="macros_toast_updated">Macro updated</string>
+    <string name="macros_toast_added">Macro added</string>
+    <string name="macros_toast_save_failed">Could not save macro</string>
+    <string name="macros_toast_playback_complete">Macro finished</string>
+    <string name="macros_preview_empty">No sequence yet</string>
+    <string name="macros_sheet_title_new">New macro</string>
+    <string name="macros_sheet_title_edit">Edit macro</string>
+    <string name="macros_sheet_section_name">Macro name</string>
+    <string name="macros_sheet_section_sequence">Macro sequence</string>
+    <string name="macros_preview_sheet_empty">Name and sequence appear here as you type.</string>
+    <string name="macros_info_cd">How to use macros</string>
+    <string name="macros_help_read_mode_title">Macros · help</string>
+    <string name="macros_help_read_mode_block1"><![CDATA[<b>Sequence</b> — Type text and tokens in <b>Macro sequence</b>. Use <b>Insert tokens</b> for modifiers, keys, and delays. Match opening and closing tags (e.g. <tt>&lt;CTRL&gt;</tt> … <tt>&lt;/CTRL&gt;</tt>).]]></string>
+    <string name="macros_help_read_mode_block2"><![CDATA[<b>Timing</b> — <b>Send char interval</b> sets delay between keystrokes when the macro runs.]]></string>
+    <string name="macros_help_read_mode_block3"><![CDATA[<b>Scheduler</b> — Optional: pick a run time and repeat options. Tap <b>Save</b> when finished.]]></string>
+
     <!-- Quick create shortcut from favorites strip (last page) -->
     <string name="top_strip_create_shortcut_label">Create</string>
     <string name="top_strip_create_shortcut_cd">Create new shortcut</string>
