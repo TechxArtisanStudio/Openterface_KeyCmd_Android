@@ -39,6 +39,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
+import com.openterface.keymod.preset.FixedStripCatalogAdapter;
+import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.tabs.TabLayout;
 
@@ -86,6 +88,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private TabLayout hubMainTabs;
     private View hubTabContentProfiles;
     private View hubTabContentStrip;
+    private RecyclerView hubStripCatalogRecycler;
+    private FixedStripCatalogAdapter hubStripCatalogAdapter;
     /** Avoid reacting when {@link #showProfileList()} resets the main hub tab. */
     private boolean suppressMainHubTabSelection;
 
@@ -185,6 +189,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         hubMainTabs = view.findViewById(R.id.hub_main_tabs);
         hubTabContentProfiles = view.findViewById(R.id.hub_tab_content_profiles);
         hubTabContentStrip = view.findViewById(R.id.hub_tab_content_strip);
+        hubStripCatalogRecycler = view.findViewById(R.id.hub_strip_catalog_recycler);
 
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
@@ -291,6 +296,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         profilesRecyclerAdapter.notifyDataSetChanged();
         updateActiveProfileDisplay();
         updateEmptyState();
+        if (hubMainTabs != null && hubMainTabs.getSelectedTabPosition() == 1) {
+            refreshStripCatalog();
+        }
         if (selectedProfile != null && panelShortcutsDetail != null
                 && panelShortcutsDetail.getVisibility() == View.VISIBLE) {
             myShortcutsList = profileManager.getMyShortcuts(selectedProfile.id);
@@ -424,10 +432,23 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         if (position == 1) {
             hubTabContentProfiles.setVisibility(View.GONE);
             hubTabContentStrip.setVisibility(View.VISIBLE);
+            refreshStripCatalog();
         } else {
             hubTabContentProfiles.setVisibility(View.VISIBLE);
             hubTabContentStrip.setVisibility(View.GONE);
         }
+    }
+
+    private void refreshStripCatalog() {
+        if (hubStripCatalogRecycler == null || profileManager == null) {
+            return;
+        }
+        if (hubStripCatalogAdapter == null) {
+            hubStripCatalogRecycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+            hubStripCatalogAdapter = new FixedStripCatalogAdapter(requireContext(), profileManager);
+            hubStripCatalogRecycler.setAdapter(hubStripCatalogAdapter);
+        }
+        hubStripCatalogAdapter.setRows(FixedStripLayoutCatalog.build(requireContext(), profileManager));
     }
 
     private void rebuildCategoryTabs(ShortcutProfileManager.ShortcutProfile profile) {

@@ -511,9 +511,11 @@ by TechxArtisan</string>
     <string name="shortcut_hub_create_profile">Create</string>
     <string name="shortcut_hub_import">Import</string>
     <string name="shortcut_hub_export">Export</string>
-    <string name="shortcut_hub_tab_app_profiles">App profiles</string>
-    <string name="shortcut_hub_tab_fixed_strip">Fixed strip</string>
-    <string name="shortcut_hub_strip_tab_intro">Rows 2–3 are shared for every app profile (Default, Blender, …). Use Import / Export here for strip preset JSON: hub button row, strip display mode, favorites order for the active profile, and optional slot overrides.</string>
+    <string name="shortcut_hub_tab_app_profiles">Row 1 · Profiles</string>
+    <string name="shortcut_hub_tab_fixed_strip">Rows 2–3 · Strip</string>
+    <string name="shortcut_hub_strip_tab_intro">Rows 2–3 are the same on every app profile. Below is a read-only map of each strip page (swipe the keyboard strip horizontally). Use Import / Export for strip preset JSON (favorites order, display mode, optional slot overrides).</string>
+    <string name="shortcut_hub_strip_catalog_override_named">Override: %1$s</string>
+    <string name="shortcut_hub_strip_catalog_override_id">Override shortcut id: %1$s</string>
     <string name="shortcut_hub_import_strip_preset">Import strip</string>
     <string name="shortcut_hub_export_strip_preset">Export strip</string>
     <string name="shortcut_hub_strip_export_choose_title">Export strip preset</string>
