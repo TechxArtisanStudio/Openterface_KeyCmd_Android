@@ -57,6 +57,9 @@ public final class MyShortcutsReorderBottomSheet {
                     continue;
                 }
                 String label = cat.name != null && !cat.name.trim().isEmpty() ? cat.name.trim() : cat.id;
+                if ("general".equals(cat.id)) {
+                    label = activity.getString(R.string.my_shortcuts_tab_general);
+                }
                 out.add(new BrowsePage(label, cat.id, new ArrayList<>(cat.shortcuts)));
             }
         } else {

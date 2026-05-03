@@ -46,6 +46,7 @@ public final class AppLocaleManager {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         migrateFromLanguageIndexIfNeeded(prefs);
         migrateBareZhTagToZhCnIfNeeded(prefs);
+        migrateZhTwToZhHkIfNeeded(prefs);
         return prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
     }
 
@@ -53,6 +54,7 @@ public final class AppLocaleManager {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
         migrateFromLanguageIndexIfNeeded(prefs);
         migrateBareZhTagToZhCnIfNeeded(prefs);
+        migrateZhTwToZhHkIfNeeded(prefs);
         String tag = prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
         applyLocaleTag(tag);
     }
@@ -66,6 +68,17 @@ public final class AppLocaleManager {
             return;
         }
         prefs.edit().putString(PREF_APP_LOCALE, "zh-CN").apply();
+    }
+
+    /**
+     * Traditional Chinese UI moved from Taiwan ({@code zh-TW}) to Hong Kong ({@code zh-HK}) so
+     * resources resolve from {@code values-zh-rHK}.
+     */
+    private static void migrateZhTwToZhHkIfNeeded(SharedPreferences prefs) {
+        if (!"zh-TW".equals(prefs.getString(PREF_APP_LOCALE, ""))) {
+            return;
+        }
+        prefs.edit().putString(PREF_APP_LOCALE, "zh-HK").apply();
     }
 
     public static void applyLocaleTag(String tag) {

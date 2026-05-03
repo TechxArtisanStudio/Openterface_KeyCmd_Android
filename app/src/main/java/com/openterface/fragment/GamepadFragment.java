@@ -398,8 +398,7 @@ public class GamepadFragment extends Fragment {
             if (toggleRow != null) toggleRow.setVisibility(View.GONE);
             if (doneBtn != null) doneBtn.setVisibility(View.VISIBLE);
             gamepadView.invalidate();
-            Toast.makeText(requireContext(), "Drag components to reposition, tap Done when finished",
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(requireContext(), R.string.gamepad_toast_edit_layout_hint, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1230,7 +1229,7 @@ public class GamepadFragment extends Fragment {
                     }
                 } catch (java.io.IOException e) {
                     Log.e(TAG, "Failed to load background image", e);
-                    Toast.makeText(requireContext(), "Failed to load image", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), R.string.gamepad_toast_image_load_failed, Toast.LENGTH_SHORT).show();
                 }
             }
         }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">キーモッド</string>
+    <string name="app_name">KeyMod</string>
     <string name="settings_title">設定</string>
     <string name="settings_tab_general">一般的な</string>
     <string name="settings_tab_voice">声</string>
@@ -36,6 +36,10 @@ TechxArtisan により</string>
     <string name="main_toast_bluetooth_disconnected">Bluetoothが切断されました</string>
     <string name="main_toast_usb_device_disconnected">USBデバイスが切断されました</string>
     <string name="main_toast_usb_permission_denied">USBの権限が拒否されました</string>
+    <string name="main_toast_no_usb_serial_devices">USBシリアルデバイスが見つかりません</string>
+    <string name="main_toast_usb_serial_connection_failed">USBデバイス接続を開けませんでした</string>
+    <string name="main_toast_serial_port_open_success">シリアルポートを開きました</string>
+    <string name="main_toast_serial_port_open_failed">シリアルポートを開けませんでした</string>
     <string name="launch_panel_remember_choice">このモードを記憶し、自動的に入力します</string>
     <string name="launch_panel_start">始める</string>
     <string name="launch_panel_skip">今のところスキップしてください</string>
@@ -278,12 +282,27 @@ TechxArtisan により</string>
     <string name="my_shortcuts_reorder_reset_unsupported">リセットは、組み込みプロファイルでのみ使用できます。</string>
     <string name="my_shortcuts_reorder_info_cd">お気に入りの並べ替えに関するヘルプを表示する</string>
     <string name="my_shortcuts_reorder_help_read_mode_title">%1$s · %2$d (お気に入り)</string>
-    <string name="my_shortcuts_reorder_help_read_mode_block1"><![CDATA[<b>Order</b> — Drag the handle to reorder. <b>Top</b> = first on the keyboard strip; swipe the strip sideways for more pages.]]></string>
-    <string name="my_shortcuts_reorder_help_read_mode_block2"><![CDATA[<b>Create</b> — In <b>Favorites</b>, Create adds a new shortcut to <b>General</b> and to Favorites. In <b>General/other tabs</b>, Create adds to that tab only (not Favorites).]]></string>
-    <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>Reset</b> — Restores this active built-in profile’s Favorites to fresh-install defaults after confirmation. Custom/imported profiles do not support Reset. <b>Done</b> saves; <b>Cancel</b> discards staged reordering.]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block1"><![CDATA[<b>順序</b> — ハンドルをドラッグして並べ替えます。<b>先頭</b> はキーボードのショートカット行で最初に表示されます。横にスワイプするとさらにページがあります。]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block2"><![CDATA[<b>作成</b> — <b>お気に入り</b> では、作成したショートカットが <b>一般</b> とお気に入りの両方に追加されます。<b>一般/その他のタブ</b> では、そのタブのみに追加されます（お気に入りには追加されません）。]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>リセット</b> — 確認後、有効な組み込みプロファイルのお気に入りを初回インストール時の既定に戻します。カスタムまたはインポートしたプロファイルではリセットできません。<b>完了</b> で保存、<b>キャンセル</b> で並べ替えを破棄します。]]></string>
     <string name="my_shortcuts_reorder_help_read_mode_footer">どこかをタップして閉じます。</string>
     <string name="my_shortcuts_reorder_drag_handle_cd">ドラッグして並べ替えます</string>
+    <string name="shortcut_row_name_fallback">キー</string>
+    <string name="default_shortcut_select_all">すべて選択</string>
+    <string name="default_shortcut_copy">コピー</string>
+    <string name="default_shortcut_cut">切り取り</string>
+    <string name="default_shortcut_paste">貼り付け</string>
+    <string name="default_shortcut_save">保存</string>
+    <string name="default_shortcut_undo">元に戻す</string>
+    <string name="default_shortcut_redo">やり直し</string>
+    <string name="default_shortcut_find">検索</string>
+    <string name="default_shortcut_new">新規</string>
+    <string name="default_shortcut_open">開く</string>
+    <string name="default_shortcut_print">印刷</string>
+    <string name="default_shortcut_close">閉じる</string>
+    <string name="default_shortcut_replace">置換</string>
     <string name="my_shortcuts_tab_favorites">⭐ お気に入り</string>
+    <string name="my_shortcuts_tab_general">一般</string>
     <string name="my_shortcuts_tab_all">全て</string>
     <string name="my_shortcuts_added_to_my">お気に入りに追加されました</string>
     <string name="my_shortcuts_already_in_my">すでにお気に入りに登録されています</string>
@@ -305,6 +324,21 @@ TechxArtisan により</string>
     <string name="shortcut_hub_add_to_favorites_title">お気に入りに追加</string>
     <string name="shortcut_hub_added_to_favorites_toast">お気に入りに追加されました: %1$s</string>
     <string name="shortcut_hub_remove_from_favorites_message">\'%1$s\' をお気に入りから削除しますか?</string>
+    <string name="shortcut_hub_toast_no_active_profile">アクティブなプロファイルがありません</string>
+    <string name="shortcut_hub_toast_all_fields_required">すべての項目を入力してください</string>
+    <string name="shortcut_hub_toast_not_connected">未接続</string>
+    <string name="shortcut_hub_toast_created_profile">作成しました: %1$s</string>
+    <string name="shortcut_hub_toast_enter_profile_name">名前を入力してください</string>
+    <string name="shortcut_hub_toast_duplicated_profile">複製しました: %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_generic">エクスポートに失敗しました</string>
+    <string name="shortcut_hub_toast_saved_to_path">保存しました: %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_detail">エクスポートに失敗しました: %1$s</string>
+    <string name="shortcut_hub_toast_paste_json_required">JSON を貼り付けてください</string>
+    <string name="shortcut_hub_toast_imported_profile">インポートしました: %1$s</string>
+    <string name="shortcut_hub_toast_import_invalid_json">インポートに失敗しました — JSON が無効です</string>
+    <string name="shortcut_hub_toast_permission_denied">権限が拒否されました</string>
+    <string name="shortcut_hub_toast_import_failed_detail">インポートに失敗しました: %1$s</string>
+    <string name="shortcut_hub_toast_deleted_name">削除しました: %1$s</string>
     <string name="my_shortcuts_sheet_empty_profile">このプロファイルには追加するショートカットはありません。</string>
     <string name="macros_title">マクロ</string>
     <string name="macros_empty">まだマクロがありません。\nマクロを作成するには、「追加」をタップします。</string>
@@ -382,6 +416,8 @@ TechxArtisan により</string>
     <string name="my_shortcuts_sheet_empty_my_hint">上のタブを使用してショートカットを参照し、ブックマーク アイコンをタップしてお気に入りに追加し、ここに戻ってドラッグして並べ替えます。</string>
     <string name="top_mode_label_keyboard_mouse">キーボードとマウス</string>
     <string name="top_mode_label_gamepad">ゲームパッド</string>
+    <string name="gamepad_toast_edit_layout_hint">コンポーネントをドラッグして配置し、終わったら「完了」をタップします。</string>
+    <string name="gamepad_toast_image_load_failed">画像を読み込めませんでした</string>
     <string name="top_mode_label_shortcuts">ショートカットハブ</string>
     <string name="top_mode_label_macros">マクロ</string>
     <string name="top_shortcut_display_mode_cd_name">ショートカット ストリップ: ショートカット名を表示します。タップするとアイコンに切り替わります。</string>

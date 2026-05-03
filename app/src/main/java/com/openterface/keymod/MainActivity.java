@@ -1282,7 +1282,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
         List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
         if (availableDrivers.isEmpty()) {
-            Toast.makeText(this, "No USB serial devices found", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.main_toast_no_usb_serial_devices, Toast.LENGTH_LONG).show();
             usbConnect.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.usb_plug_disconnect, 0, 0);
             usbConnect.setTextColor(getResources().getColor(android.R.color.holo_red_light));
             usbConnectDrawable.setColorFilter(getResources().getColor(android.R.color.holo_red_light), PorterDuff.Mode.SRC_IN);
@@ -1303,7 +1303,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
         UsbDeviceConnection connection = manager.openDevice(device);
         if (connection == null) {
-            Toast.makeText(this, "Failed to open USB device connection", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.main_toast_usb_serial_connection_failed, Toast.LENGTH_LONG).show();
             isUsbConnected = false;
             return;
         }
@@ -1312,7 +1312,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         try {
             port.open(manager.openDevice(device));
             port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-            Toast.makeText(this, "Successful to open serial port", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.main_toast_serial_port_open_success, Toast.LENGTH_LONG).show();
 
             Drawable usbConnectDrawableTint = ContextCompat.getDrawable(this, R.drawable.usb_plug);
             if (usbConnectDrawableTint != null) {
@@ -1328,7 +1328,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             startReading();
         } catch (IOException e) {
             Log.e(TAG, "Failed to open serial port: " + e.getMessage());
-            Toast.makeText(this, "Failed to open serial port", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.main_toast_serial_port_open_failed, Toast.LENGTH_LONG).show();
             isUsbConnected = false;
         }
     }

@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
+import com.openterface.keymod.ShortcutUiStrings;
 
 /**
  * Shared row binding for "My shortcuts" list rows (strip picker, reorder sheet, Hub list).
@@ -63,16 +64,7 @@ public final class ShortcutFavoriteRowViews {
         }
         chordTv.setText(chord);
 
-        String displayName = "";
-        if (!TextUtils.isEmpty(shortcut.name)) {
-            displayName = shortcut.name.trim();
-        } else if (shortcut.label != null) {
-            displayName = shortcut.label.trim();
-        }
-        if (displayName.isEmpty()) {
-            displayName = "Key";
-        }
-        nameTv.setText(displayName);
+        nameTv.setText(ShortcutUiStrings.shortcutDisplayName(ctx, shortcut));
 
         int iconRes = resolveShortcutIconRes(ctx, shortcut.icon);
         if (iconRes != 0) {

@@ -147,6 +147,10 @@ by TechxArtisan</string>
     <string name="main_toast_bluetooth_disconnected">Bluetooth disconnected</string>
     <string name="main_toast_usb_device_disconnected">USB device disconnected</string>
     <string name="main_toast_usb_permission_denied">USB permission denied</string>
+    <string name="main_toast_no_usb_serial_devices">No USB serial devices found</string>
+    <string name="main_toast_usb_serial_connection_failed">Failed to open USB device connection</string>
+    <string name="main_toast_serial_port_open_success">Serial port opened successfully</string>
+    <string name="main_toast_serial_port_open_failed">Failed to open serial port</string>
 
     <string name="launch_panel_remember_choice">Remember and auto-enter this mode</string>
     <string name="launch_panel_start">Start</string>
@@ -478,7 +482,22 @@ by TechxArtisan</string>
     <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>Reset</b> — Restores this active built-in profile’s Favorites to fresh-install defaults after confirmation. Custom/imported profiles do not support Reset. <b>Done</b> saves; <b>Cancel</b> discards staged reordering.]]></string>
     <string name="my_shortcuts_reorder_help_read_mode_footer">Tap anywhere to close.</string>
     <string name="my_shortcuts_reorder_drag_handle_cd">Drag to reorder</string>
+    <string name="shortcut_row_name_fallback">Key</string>
+    <string name="default_shortcut_select_all">Select All</string>
+    <string name="default_shortcut_copy">Copy</string>
+    <string name="default_shortcut_cut">Cut</string>
+    <string name="default_shortcut_paste">Paste</string>
+    <string name="default_shortcut_save">Save</string>
+    <string name="default_shortcut_undo">Undo</string>
+    <string name="default_shortcut_redo">Redo</string>
+    <string name="default_shortcut_find">Find</string>
+    <string name="default_shortcut_new">New</string>
+    <string name="default_shortcut_open">Open</string>
+    <string name="default_shortcut_print">Print</string>
+    <string name="default_shortcut_close">Close</string>
+    <string name="default_shortcut_replace">Replace</string>
     <string name="my_shortcuts_tab_favorites">⭐ Favorites</string>
+    <string name="my_shortcuts_tab_general">General</string>
     <string name="my_shortcuts_tab_all">All</string>
     <string name="my_shortcuts_added_to_my">Added to Favorites</string>
     <string name="my_shortcuts_already_in_my">Already in Favorites</string>
@@ -501,6 +520,21 @@ by TechxArtisan</string>
     <string name="shortcut_hub_add_to_favorites_title">Add to Favorites</string>
     <string name="shortcut_hub_added_to_favorites_toast">Added to Favorites: %1$s</string>
     <string name="shortcut_hub_remove_from_favorites_message">Remove \'%1$s\' from Favorites?</string>
+    <string name="shortcut_hub_toast_no_active_profile">No active profile</string>
+    <string name="shortcut_hub_toast_all_fields_required">All fields are required</string>
+    <string name="shortcut_hub_toast_not_connected">Not connected</string>
+    <string name="shortcut_hub_toast_created_profile">Created: %1$s</string>
+    <string name="shortcut_hub_toast_enter_profile_name">Please enter a name</string>
+    <string name="shortcut_hub_toast_duplicated_profile">Duplicated: %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_generic">Export failed</string>
+    <string name="shortcut_hub_toast_saved_to_path">Saved to: %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_detail">Export failed: %1$s</string>
+    <string name="shortcut_hub_toast_paste_json_required">Please paste JSON</string>
+    <string name="shortcut_hub_toast_imported_profile">Imported: %1$s</string>
+    <string name="shortcut_hub_toast_import_invalid_json">Import failed — invalid JSON</string>
+    <string name="shortcut_hub_toast_permission_denied">Permission denied</string>
+    <string name="shortcut_hub_toast_import_failed_detail">Import failed: %1$s</string>
+    <string name="shortcut_hub_toast_deleted_name">Deleted: %1$s</string>
     <string name="my_shortcuts_sheet_empty_profile">No shortcuts in this profile to add.</string>
 
     <!-- Macros hub (aligned with Shortcut Hub chrome) -->
@@ -584,6 +618,8 @@ by TechxArtisan</string>
     <string name="my_shortcuts_sheet_empty_my_hint">Use the tabs above to browse shortcuts, tap the bookmark icon to add to Favorites, then return here to drag and reorder.</string>
     <string name="top_mode_label_keyboard_mouse">Keyboard &amp; Mouse</string>
     <string name="top_mode_label_gamepad">Gamepad</string>
+    <string name="gamepad_toast_edit_layout_hint">Drag components to reposition, tap Done when finished.</string>
+    <string name="gamepad_toast_image_load_failed">Failed to load image</string>
     <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
     <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>

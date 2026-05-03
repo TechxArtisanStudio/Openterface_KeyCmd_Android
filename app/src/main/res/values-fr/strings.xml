@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CléMod</string>
+    <string name="app_name">KeyMod</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_tab_general">Général</string>
     <string name="settings_tab_voice">Voix</string>
@@ -36,6 +36,10 @@ par TechxArtisan</string>
     <string name="main_toast_bluetooth_disconnected">Bluetooth déconnecté</string>
     <string name="main_toast_usb_device_disconnected">Périphérique USB déconnecté</string>
     <string name="main_toast_usb_permission_denied">Autorisation USB refusée</string>
+    <string name="main_toast_no_usb_serial_devices">Aucun périphérique série USB trouvé</string>
+    <string name="main_toast_usb_serial_connection_failed">Impossible d\'ouvrir la connexion USB du périphérique</string>
+    <string name="main_toast_serial_port_open_success">Port série ouvert avec succès</string>
+    <string name="main_toast_serial_port_open_failed">Impossible d\'ouvrir le port série</string>
     <string name="launch_panel_remember_choice">N\'oubliez pas et entrez automatiquement dans ce mode</string>
     <string name="launch_panel_start">Commencer</string>
     <string name="launch_panel_skip">Passer pour l\'instant</string>
@@ -279,12 +283,27 @@ par TechxArtisan</string>
     <string name="my_shortcuts_reorder_reset_unsupported">La réinitialisation est disponible uniquement pour les profils intégrés.</string>
     <string name="my_shortcuts_reorder_info_cd">Afficher l\'aide pour réorganiser les favoris</string>
     <string name="my_shortcuts_reorder_help_read_mode_title">%1$s · %2$d dans les favoris</string>
-    <string name="my_shortcuts_reorder_help_read_mode_block1"><![CDATA[<b>Order</b> — Drag the handle to reorder. <b>Top</b> = first on the keyboard strip; swipe the strip sideways for more pages.]]></string>
-    <string name="my_shortcuts_reorder_help_read_mode_block2"><![CDATA[<b>Create</b> — In <b>Favorites</b>, Create adds a new shortcut to <b>General</b> and to Favorites. In <b>General/other tabs</b>, Create adds to that tab only (not Favorites).]]></string>
-    <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>Reset</b> — Restores this active built-in profile’s Favorites to fresh-install defaults after confirmation. Custom/imported profiles do not support Reset. <b>Done</b> saves; <b>Cancel</b> discards staged reordering.]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block1"><![CDATA[<b>Ordre</b> — Faites glisser la poignée pour réorganiser. <b>Haut</b> = premier sur la barre du clavier ; faites défiler la barre latéralement pour d\'autres pages.]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block2"><![CDATA[<b>Créer</b> — Dans <b>Favoris</b>, Créer ajoute un raccourci à <b>Général</b> et aux favoris. Dans <b>Général/autres onglets</b>, ajoute uniquement à cet onglet (pas aux favoris).]]></string>
+    <string name="my_shortcuts_reorder_help_read_mode_block3"><![CDATA[<b>Réinitialiser</b> — Après confirmation, restaure les favoris du profil intégré actif aux valeurs d\'installation initiale. Les profils personnalisés ou importés ne prennent pas en charge la réinitialisation. <b>Terminé</b> enregistre ; <b>Annuler</b> abandonne le tri en cours.]]></string>
     <string name="my_shortcuts_reorder_help_read_mode_footer">Appuyez n\'importe où pour fermer.</string>
     <string name="my_shortcuts_reorder_drag_handle_cd">Faites glisser pour réorganiser</string>
+    <string name="shortcut_row_name_fallback">Touche</string>
+    <string name="default_shortcut_select_all">Tout sélectionner</string>
+    <string name="default_shortcut_copy">Copier</string>
+    <string name="default_shortcut_cut">Couper</string>
+    <string name="default_shortcut_paste">Coller</string>
+    <string name="default_shortcut_save">Enregistrer</string>
+    <string name="default_shortcut_undo">Annuler</string>
+    <string name="default_shortcut_redo">Rétablir</string>
+    <string name="default_shortcut_find">Rechercher</string>
+    <string name="default_shortcut_new">Nouveau</string>
+    <string name="default_shortcut_open">Ouvrir</string>
+    <string name="default_shortcut_print">Imprimer</string>
+    <string name="default_shortcut_close">Fermer</string>
+    <string name="default_shortcut_replace">Remplacer</string>
     <string name="my_shortcuts_tab_favorites">⭐ Favoris</string>
+    <string name="my_shortcuts_tab_general">Général</string>
     <string name="my_shortcuts_tab_all">Tous</string>
     <string name="my_shortcuts_added_to_my">Ajouté aux favoris</string>
     <string name="my_shortcuts_already_in_my">Déjà dans les favoris</string>
@@ -306,6 +325,21 @@ par TechxArtisan</string>
     <string name="shortcut_hub_add_to_favorites_title">Ajouter aux favoris</string>
     <string name="shortcut_hub_added_to_favorites_toast">Ajouté aux favoris : %1$s</string>
     <string name="shortcut_hub_remove_from_favorites_message">Supprimer « %1$s » des favoris ?</string>
+    <string name="shortcut_hub_toast_no_active_profile">Aucun profil actif</string>
+    <string name="shortcut_hub_toast_all_fields_required">Tous les champs sont obligatoires</string>
+    <string name="shortcut_hub_toast_not_connected">Non connecté</string>
+    <string name="shortcut_hub_toast_created_profile">Créé : %1$s</string>
+    <string name="shortcut_hub_toast_enter_profile_name">Veuillez saisir un nom</string>
+    <string name="shortcut_hub_toast_duplicated_profile">Dupliqué : %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_generic">Échec de l\'exportation</string>
+    <string name="shortcut_hub_toast_saved_to_path">Enregistré sous : %1$s</string>
+    <string name="shortcut_hub_toast_export_failed_detail">Échec de l\'exportation : %1$s</string>
+    <string name="shortcut_hub_toast_paste_json_required">Veuillez coller le JSON</string>
+    <string name="shortcut_hub_toast_imported_profile">Importé : %1$s</string>
+    <string name="shortcut_hub_toast_import_invalid_json">Échec de l\'importation : JSON non valide</string>
+    <string name="shortcut_hub_toast_permission_denied">Autorisation refusée</string>
+    <string name="shortcut_hub_toast_import_failed_detail">Échec de l\'importation : %1$s</string>
+    <string name="shortcut_hub_toast_deleted_name">Supprimé : %1$s</string>
     <string name="my_shortcuts_sheet_empty_profile">Aucun raccourci à ajouter dans ce profil.</string>
     <string name="macros_title">Macro</string>
     <string name="macros_empty">Aucune macro pour l\'instant.\nAppuyez sur Ajouter pour en créer une.</string>
@@ -383,6 +417,8 @@ par TechxArtisan</string>
     <string name="my_shortcuts_sheet_empty_my_hint">Utilisez les onglets ci-dessus pour parcourir les raccourcis, appuyez sur l\'icône de signet pour l\'ajouter aux Favoris, puis revenez ici pour faire glisser et réorganiser.</string>
     <string name="top_mode_label_keyboard_mouse">Clavier et souris</string>
     <string name="top_mode_label_gamepad">Manette de jeu</string>
+    <string name="gamepad_toast_edit_layout_hint">Faites glisser les éléments pour les repositionner, puis touchez Terminé lorsque vous avez fini.</string>
+    <string name="gamepad_toast_image_load_failed">Impossible de charger l\'image</string>
     <string name="top_mode_label_shortcuts">Centre de raccourcis</string>
     <string name="top_mode_label_macros">Macro</string>
     <string name="top_shortcut_display_mode_cd_name">Bande de raccourcis : affichage des noms de raccourcis. Appuyez pour passer aux icônes.</string>

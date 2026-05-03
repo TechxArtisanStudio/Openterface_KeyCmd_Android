@@ -274,7 +274,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             if (activeProfile != null) {
                 exportProfileToFile(activeProfile);
             } else {
-                Toast.makeText(getContext(), "No active profile", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.shortcut_hub_toast_no_active_profile, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -711,13 +711,13 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     String name = nameInput.getText().toString().trim();
                     String inputData = dataInput.getText().toString().trim();
                     if (name.isEmpty() || inputData.isEmpty()) {
-                        Toast.makeText(getContext(), "All fields are required", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_all_fields_required, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
                     KeyParser.ParsedKey parsed = KeyParser.parse(inputData);
                     if (parsed.keyCode < 0) {
-                        Toast.makeText(getContext(), "No valid key found in shortcut data", Toast.LENGTH_LONG).show();
+                        Toast.makeText(getContext(), R.string.create_shortcut_invalid, Toast.LENGTH_LONG).show();
                         return;
                     }
 
@@ -732,7 +732,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     profileManager.updateProfile(selectedProfile);
                     loadProfiles();
                     refreshSelectedProfileAndGrid();
-                    Toast.makeText(getContext(), "Saved: " + name, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.create_shortcut_saved, name), Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -768,7 +768,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                         loadProfiles();
                         refreshSelectedProfileAndGrid();
                     }
-                    Toast.makeText(getContext(), "Deleted: " + shortcut.name, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_deleted_name, shortcut.name), Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -788,7 +788,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private void executeShortcut(ShortcutProfileManager.Shortcut shortcut) {
         if (connectionManager == null) {
-            Toast.makeText(getContext(), "Not connected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -836,9 +836,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 if (!name.isEmpty()) {
                     ShortcutProfile profile = profileManager.createProfile(name, "Custom profile");
                     loadProfiles();
-                    Toast.makeText(getContext(), "Created: " + profile.name, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_created_profile, profile.name), Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getContext(), "Please enter a name", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.shortcut_hub_toast_enter_profile_name, Toast.LENGTH_SHORT).show();
                 }
             })
             .setNegativeButton("Cancel", null)
@@ -945,7 +945,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         ShortcutProfile duplicate = profileManager.duplicateProfile(profile.id);
         if (duplicate != null) {
             loadProfiles();
-            Toast.makeText(getContext(), "Duplicated: " + duplicate.name, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_duplicated_profile, duplicate.name), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -956,7 +956,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private void exportProfileToFile(ShortcutProfile profile) {
         String json = profileManager.exportProfile(profile.id);
         if (json == null) {
-            Toast.makeText(getContext(), "Export failed", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -971,11 +971,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             writer.write(json);
             writer.close();
             
-            Toast.makeText(getContext(), "Saved to: " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_saved_to_path, outputFile.getAbsolutePath()), Toast.LENGTH_LONG).show();
             Log.d(TAG, "Exported profile to: " + outputFile.getAbsolutePath());
         } catch (Exception e) {
             Log.e(TAG, "Export failed: " + e.getMessage());
-            Toast.makeText(getContext(), "Export failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1012,7 +1012,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 if (!json.isEmpty()) {
                     importProfileFromJson(json);
                 } else {
-                    Toast.makeText(getContext(), "Please paste JSON", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.shortcut_hub_toast_paste_json_required, Toast.LENGTH_SHORT).show();
                 }
             })
             .setNegativeButton("Cancel", null)
@@ -1038,9 +1038,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         ShortcutProfileManager.ShortcutProfile profile = profileManager.importProfile(json);
         if (profile != null) {
             loadProfiles();
-            Toast.makeText(getContext(), "Imported: " + profile.name, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_imported_profile, profile.name), Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(getContext(), "Import failed - Invalid JSON", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_import_invalid_json, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1052,7 +1052,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 openFilePicker();
             } else {
-                Toast.makeText(getContext(), "Permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.shortcut_hub_toast_permission_denied, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -1082,7 +1082,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             }
         } catch (Exception e) {
             Log.e(TAG, "Import from URI failed: " + e.getMessage());
-            Toast.makeText(getContext(), "Import failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_import_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1093,7 +1093,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             .setPositiveButton("Delete", (dialog, which) -> {
                 profileManager.deleteProfile(profile.id);
                 loadProfiles();
-                Toast.makeText(getContext(), "Deleted: " + profile.name, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_deleted_name, profile.name), Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Cancel", null)
             .show();

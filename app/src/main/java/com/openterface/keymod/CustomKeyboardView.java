@@ -3631,10 +3631,13 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private String compactShortcutName(ShortcutProfileManager.Shortcut shortcut) {
-        if (shortcut.name == null || shortcut.name.trim().isEmpty()) {
+        if (shortcut == null || getContext() == null) {
             return "";
         }
-        String label = shortcut.name.trim();
+        String label = ShortcutUiStrings.shortcutDisplayName(getContext(), shortcut).trim();
+        if (label.isEmpty()) {
+            return "";
+        }
         return label.length() > 8 ? label.substring(0, 8) : label;
     }
 
