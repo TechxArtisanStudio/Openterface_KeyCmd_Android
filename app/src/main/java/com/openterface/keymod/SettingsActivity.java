@@ -2,13 +2,17 @@ package com.openterface.keymod;
 
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -34,9 +38,9 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ThemeManager.applyTheme(this);
         super.onCreate(savedInstanceState);
-        // Lay out below status bar (targetSdk 35+ defaults to edge-to-edge).
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_settings);
+        setupWindowInsets();
         applyNonImmersiveSystemBars();
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
@@ -74,6 +78,21 @@ public class SettingsActivity extends AppCompatActivity {
                 (tab, position) -> tab.setText(tabTitles[position])).attach();
     }
 
+    private void setupWindowInsets() {
+        View root = findViewById(R.id.settings_root);
+        if (root == null) {
+            return;
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(root);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -81,13 +100,15 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     /**
-     * Settings uses normal system bars (contrast with MainActivity immersive). Keeps status/nav
-     * colors aligned with {@link R.color#background_light} and icon appearance in sync with theme.
+     * Settings uses normal system bars (contrast with MainActivity immersive). On API 35+,
+     * status/navigation bar colors are managed by edge-to-edge; we only adjust icon contrast here.
      */
     private void applyNonImmersiveSystemBars() {
-        int bg = ContextCompat.getColor(this, R.color.background_light);
-        getWindow().setStatusBarColor(bg);
-        getWindow().setNavigationBarColor(bg);
+        if (Build.VERSION.SDK_INT < 35) {
+            int bg = ContextCompat.getColor(this, R.color.background_light);
+            getWindow().setStatusBarColor(bg);
+            getWindow().setNavigationBarColor(bg);
+        }
 
         View decor = getWindow().getDecorView();
         WindowInsetsControllerCompat controller =
