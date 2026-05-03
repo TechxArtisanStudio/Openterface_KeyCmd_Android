@@ -392,6 +392,10 @@ par TechxArtisan</string>
     <string name="top_strip_create_shortcut_label">Créer</string>
     <string name="top_strip_create_shortcut_cd">Créer un nouveau raccourci</string>
     <string name="create_shortcut_sheet_title">Nouveau raccourci</string>
+    <string name="create_shortcut_sheet_title_edit">Modifier le raccourci</string>
+    <string name="create_shortcut_edit_name_hint">Nom (ex. Copier)</string>
+    <string name="create_shortcut_edit_icon_hint">Icône (emoji ou nom du drawable)</string>
+    <string name="create_shortcut_edit_order_hint">Ordre d’affichage (facultatif)</string>
     <string name="create_shortcut_info_cd">Comment utiliser le nouveau raccourci</string>
     <string name="create_shortcut_help_read_mode_title">Nouveau raccourci · %1$s</string>
     <string name="create_shortcut_help_read_mode_block1"><![CDATA[<b>Where it saves</b> — The shortcut is added to <b>General</b> in Shortcut Hub and to your <b>Favorites</b> strip. To change the name, icon, or order, open Shortcut Hub.]]></string>

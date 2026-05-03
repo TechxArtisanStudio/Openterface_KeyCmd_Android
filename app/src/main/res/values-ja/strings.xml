@@ -391,6 +391,10 @@ TechxArtisan により</string>
     <string name="top_strip_create_shortcut_label">作成する</string>
     <string name="top_strip_create_shortcut_cd">新しいショートカットを作成する</string>
     <string name="create_shortcut_sheet_title">新しいショートカット</string>
+    <string name="create_shortcut_sheet_title_edit">ショートカットを編集</string>
+    <string name="create_shortcut_edit_name_hint">名前（例：コピー）</string>
+    <string name="create_shortcut_edit_icon_hint">アイコン（絵文字または drawable 名）</string>
+    <string name="create_shortcut_edit_order_hint">表示順（任意）</string>
     <string name="create_shortcut_info_cd">新しいショートカットの使い方</string>
     <string name="create_shortcut_help_read_mode_title">新しいショートカット · %1$s</string>
     <string name="create_shortcut_help_read_mode_block1"><![CDATA[<b>Where it saves</b> — The shortcut is added to <b>General</b> in Shortcut Hub and to your <b>Favorites</b> strip. To change the name, icon, or order, open Shortcut Hub.]]></string>

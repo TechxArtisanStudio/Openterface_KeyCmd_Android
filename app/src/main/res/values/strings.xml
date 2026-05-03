@@ -613,6 +613,10 @@ by TechxArtisan</string>
     <string name="top_strip_create_shortcut_label">Create</string>
     <string name="top_strip_create_shortcut_cd">Create new shortcut</string>
     <string name="create_shortcut_sheet_title">New shortcut</string>
+    <string name="create_shortcut_sheet_title_edit">Edit shortcut</string>
+    <string name="create_shortcut_edit_name_hint">Name (e.g. Copy)</string>
+    <string name="create_shortcut_edit_icon_hint">Icon (emoji or drawable name)</string>
+    <string name="create_shortcut_edit_order_hint">Display order (optional)</string>
     <string name="create_shortcut_info_cd">How to use New shortcut</string>
     <!-- Full-screen help (same pattern as reorder Favorites help). -->
     <string name="create_shortcut_help_read_mode_title">New shortcut · %1$s</string>

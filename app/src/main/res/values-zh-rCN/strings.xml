@@ -544,6 +544,10 @@
     <string name="top_strip_create_shortcut_label">创建</string>
     <string name="top_strip_create_shortcut_cd">新建快捷方式</string>
     <string name="create_shortcut_sheet_title">新建快捷方式</string>
+    <string name="create_shortcut_sheet_title_edit">编辑快捷方式</string>
+    <string name="create_shortcut_edit_name_hint">名称（例如：复制）</string>
+    <string name="create_shortcut_edit_icon_hint">图标（表情或 drawable 名称）</string>
+    <string name="create_shortcut_edit_order_hint">显示顺序（可选）</string>
     <string name="create_shortcut_info_cd">如何使用「新建快捷方式」</string>
     <string name="create_shortcut_help_read_mode_title">新建快捷方式 · %1$s</string>
     <string name="create_shortcut_help_read_mode_block1"><![CDATA[<b>保存位置</b> — 快捷方式会加入快捷方式中心的<b>通用</b>分类，并出现在键盘顶部的<b>收藏</b>条。若要修改名称、图标或顺序，请打开快捷方式中心。]]></string>

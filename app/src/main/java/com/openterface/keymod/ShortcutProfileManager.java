@@ -1708,6 +1708,38 @@ public class ShortcutProfileManager {
         return false;
     }
 
+    /**
+     * Same as {@link #profileContainsChordNormalized} but ignores the shortcut with {@code excludeShortcutId}
+     * (for edit flows where the chord may match the row being edited).
+     */
+    public boolean profileContainsChordNormalizedExcluding(
+            ShortcutProfile profile,
+            int keyCode,
+            int modifiers,
+            String targetOs,
+            @Nullable String excludeShortcutId
+    ) {
+        if (profile == null) {
+            return false;
+        }
+        int want = normalizeModifiersForTargetOs(modifiers, targetOs);
+        for (Shortcut s : profile.getAllShortcutsFlat()) {
+            if (s == null) {
+                continue;
+            }
+            if (excludeShortcutId != null
+                    && s.id != null
+                    && excludeShortcutId.equals(s.id)) {
+                continue;
+            }
+            int have = normalizeModifiersForTargetOs(s.modifiers, targetOs);
+            if (s.keyCode == keyCode && have == want) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** True if the profile contains the same chord (normalized per target OS). */
     public boolean profileHasChord(String profileId, int keyCode, int modifiers, String targetOs) {
         ShortcutProfile p = getProfileById(profileId);
@@ -1715,6 +1747,21 @@ public class ShortcutProfileManager {
             return false;
         }
         return profileContainsChordNormalized(p, keyCode, modifiers, targetOs);
+    }
+
+    /** Like {@link #profileHasChord} but ignores the shortcut with the given id (e.g. when saving an edit). */
+    public boolean profileHasChordExcluding(
+            String profileId,
+            int keyCode,
+            int modifiers,
+            String targetOs,
+            @Nullable String excludeShortcutId
+    ) {
+        ShortcutProfile p = getProfileById(profileId);
+        if (p == null) {
+            return false;
+        }
+        return profileContainsChordNormalizedExcluding(p, keyCode, modifiers, targetOs, excludeShortcutId);
     }
 
     /**

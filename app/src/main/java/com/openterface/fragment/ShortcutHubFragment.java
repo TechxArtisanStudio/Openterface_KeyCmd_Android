@@ -11,9 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
@@ -54,7 +52,6 @@ import com.openterface.keymod.ShortcutSectionPickAdapter;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.ShortcutProfileManager.ShortcutProfile;
 import com.openterface.keymod.ShortcutProfileManager.ProfileChangeListener;
-import com.openterface.keymod.util.KeyParser;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -487,10 +484,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         suppressHubTabSelection = false;
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * requireContext().getResources().getDisplayMetrics().density);
-    }
-
     private void refreshShortcutsGrid() {
         if (selectedProfile == null) return;
 
@@ -882,115 +875,15 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         ShortcutProfileManager.Shortcut resolved = profileManager.findShortcutInProfile(
                 selectedProfile, shortcut.id);
         final ShortcutProfileManager.Shortcut editTarget = resolved != null ? resolved : shortcut;
-
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_shortcut, null, false);
-
-        EditText nameInput = dialogView.findViewById(R.id.shortcut_name_input);
-        EditText dataInput = dialogView.findViewById(R.id.shortcut_data_input);
-        EditText iconInput = dialogView.findViewById(R.id.shortcut_icon_input);
-        EditText orderInput = dialogView.findViewById(R.id.shortcut_order_input);
-        LinearLayout chipsRow = dialogView.findViewById(R.id.key_chips_row);
-        TextView previewText = dialogView.findViewById(R.id.shortcut_preview);
-
-        nameInput.setText(editTarget.name);
-        String dataToken = KeyParser.toToken(editTarget.keyCode, editTarget.modifiers);
-        dataInput.setText(dataToken);
-        iconInput.setText(editTarget.icon != null ? editTarget.icon : "");
-        if (editTarget.displayOrder > 0) {
-            orderInput.setText(String.valueOf(editTarget.displayOrder));
+        if (!(requireActivity() instanceof AppCompatActivity)) {
+            Toast.makeText(requireContext(), R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
+            return;
         }
-
-        String[][] tokens = {
-            {"⎇ Alt", "<ALT>"}, {"^ Ctrl", "<CTRL>"}, {"⇧ Shift", "<SHIFT>"}, {"⌘ Cmd", "<CMD>"},
-            {"</ALT>", "</ALT>"}, {"</CTRL>", "</CTRL>"}, {"</SHIFT>", "</SHIFT>"}, {"</CMD>", "</CMD>"},
-            {"⎋ Esc", "<ESC>"}, {"⌫ Back", "<BACK>"}, {"⏎ Enter", "<ENTER>"}, {"␣ Space", "<SPACE>"},
-            {"←", "<LEFT>"}, {"→", "<RIGHT>"}, {"↑", "<UP>"}, {"↓", "<DOWN>"},
-            {"⇱ Home", "<HOME>"}, {"⇲ End", "<END>"}, {"⇥ Tab", "<TAB>"}, {"⌦ Del", "<DEL>"},
-            {"F1", "<F1>"}, {"F2", "<F2>"}, {"F3", "<F3>"}, {"F4", "<F4>"},
-            {"F5", "<F5>"}, {"F6", "<F6>"}, {"F7", "<F7>"}, {"F8", "<F8>"},
-            {"F9", "<F9>"}, {"F10", "<F10>"}, {"F11", "<F11>"}, {"F12", "<F12>"}
-        };
-
-        for (String[] entry : tokens) {
-            Button chip = new Button(requireContext());
-            chip.setText(entry[0]);
-            chip.setAllCaps(false);
-            chip.setTextSize(11);
-            chip.setMinHeight(0);
-            chip.setMinimumHeight(0);
-            chip.setMinWidth(0);
-            chip.setMinimumWidth(0);
-            int pad = dpToPx(8);
-            chip.setPadding(pad, dpToPx(2), pad, dpToPx(2));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 0, dpToPx(6), 0);
-            chip.setLayoutParams(lp);
-            final String token = entry[1];
-            chip.setOnClickListener(v -> {
-                int start = Math.max(dataInput.getSelectionStart(), 0);
-                int end = Math.max(dataInput.getSelectionEnd(), 0);
-                dataInput.getText().replace(Math.min(start, end), Math.max(start, end), token, 0, token.length());
-            });
-            chipsRow.addView(chip);
-        }
-
-        dataInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                String d = s.toString().trim();
-                if (d.isEmpty()) {
-                    previewText.setText("Preview: ...");
-                    return;
-                }
-                KeyParser.ParsedKey parsed = KeyParser.parse(d);
-                if (parsed.keyCode >= 0) {
-                    previewText.setText("Preview: " + KeyParser.toLabelForTargetOs(
-                            parsed.keyCode, parsed.modifiers, getTargetOs()));
-                } else {
-                    previewText.setText("Preview: no valid key detected");
-                }
-            }
+        AppCompatActivity act = (AppCompatActivity) requireActivity();
+        CreateShortcutBottomSheet.showEdit(act, profileManager, selectedProfile.id, getTargetOs(), editTarget, () -> {
+            loadProfiles();
+            refreshSelectedProfileAndGrid();
         });
-        previewText.setText("Preview: " + editTarget.label);
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Edit Shortcut")
-                .setView(dialogView)
-                .setPositiveButton("Save", (d, w) -> {
-                    String name = nameInput.getText().toString().trim();
-                    String inputData = dataInput.getText().toString().trim();
-                    if (name.isEmpty() || inputData.isEmpty()) {
-                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_all_fields_required, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    KeyParser.ParsedKey parsed = KeyParser.parse(inputData);
-                    if (parsed.keyCode < 0) {
-                        Toast.makeText(getContext(), R.string.create_shortcut_invalid, Toast.LENGTH_LONG).show();
-                        return;
-                    }
-
-                    String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, getTargetOs());
-                    editTarget.name = name;
-                    editTarget.label = label;
-                    editTarget.modifiers = parsed.modifiers;
-                    editTarget.keyCode = parsed.keyCode;
-                    editTarget.icon = iconInput.getText().toString().trim();
-                    editTarget.displayOrder = parseDisplayOrder(orderInput.getText().toString().trim(), editTarget.displayOrder);
-
-                    profileManager.updateProfile(selectedProfile);
-                    if (editTarget.id != null) {
-                        profileManager.refreshMyShortcutClonesFromProfile(selectedProfile.id, editTarget.id);
-                    }
-                    loadProfiles();
-                    refreshSelectedProfileAndGrid();
-                    Toast.makeText(getContext(), getString(R.string.create_shortcut_saved, name), Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void confirmDeleteShortcut(ShortcutProfileManager.Shortcut shortcut) {
@@ -1168,18 +1061,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     /** After New shortcut sheet saves from Shortcut Hub (same UX as top-strip CREATE). */
     private void hubAfterShortcutCreated() {
         loadProfiles();
-    }
-
-    private int parseDisplayOrder(String raw, int fallback) {
-        if (TextUtils.isEmpty(raw)) {
-            return fallback > 0 ? fallback : 0;
-        }
-        try {
-            int value = Integer.parseInt(raw);
-            return Math.max(value, 0);
-        } catch (NumberFormatException ignored) {
-            return fallback > 0 ? fallback : 0;
-        }
     }
 
     private void viewShortcuts(ShortcutProfile profile) {

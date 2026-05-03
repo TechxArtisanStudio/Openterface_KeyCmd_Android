@@ -3,6 +3,7 @@ package com.openterface.keymod;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextWatcher;
@@ -204,15 +205,115 @@ public final class CreateShortcutBottomSheet {
         group.addView(chip);
     }
 
-    public static void show(
+    private static void setModifierButtonsFromMask(
+            MaterialButton modCmd,
+            MaterialButton modCtrl,
+            MaterialButton modShift,
+            MaterialButton modAlt,
+            int modifiersMask
+    ) {
+        modCmd.setChecked((modifiersMask & 0x08) != 0);
+        modCtrl.setChecked((modifiersMask & 0x01) != 0);
+        modShift.setChecked((modifiersMask & 0x02) != 0);
+        modAlt.setChecked((modifiersMask & 0x04) != 0);
+    }
+
+    private static boolean chordMatchesShortcut(
+            KeyParser.ParsedKey parsed,
+            int keyCode,
+            int modifiers,
+            String targetOs
+    ) {
+        if (parsed.keyCode < 0 || parsed.keyCode != keyCode) {
+            return false;
+        }
+        int pa = ShortcutProfileManager.normalizeModifiersForTargetOs(parsed.modifiers, targetOs);
+        int pb = ShortcutProfileManager.normalizeModifiersForTargetOs(modifiers, targetOs);
+        return pa == pb;
+    }
+
+    private static void tryBindChordUiFromShortcut(
+            ShortcutProfileManager.Shortcut shortcut,
+            String targetOs,
+            MaterialButton modCmd,
+            MaterialButton modCtrl,
+            MaterialButton modShift,
+            MaterialButton modAlt,
+            ChipGroup keyChips,
+            TextInputEditText advanced
+    ) {
+        setModifierButtonsFromMask(modCmd, modCtrl, modShift, modAlt, shortcut.modifiers);
+        for (int i = 0; i < keyChips.getChildCount(); i++) {
+            View v = keyChips.getChildAt(i);
+            if (!(v instanceof Chip)) {
+                continue;
+            }
+            Chip chip = (Chip) v;
+            Object tag = chip.getTag();
+            if (!(tag instanceof String)) {
+                continue;
+            }
+            String token = (String) tag;
+            String data = buildMacroData(readModifierMask(modCmd, modCtrl, modShift, modAlt), token);
+            KeyParser.ParsedKey p = KeyParser.parse(data);
+            if (chordMatchesShortcut(p, shortcut.keyCode, shortcut.modifiers, targetOs)) {
+                chip.setChecked(true);
+                advanced.setText("");
+                return;
+            }
+        }
+        keyChips.clearCheck();
+        advanced.setText(KeyParser.toToken(shortcut.keyCode, shortcut.modifiers));
+    }
+
+    private static int parseDisplayOrderInternal(String raw, int fallback) {
+        if (TextUtils.isEmpty(raw)) {
+            return fallback > 0 ? fallback : 0;
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return Math.max(value, 0);
+        } catch (NumberFormatException ignored) {
+            return fallback > 0 ? fallback : 0;
+        }
+    }
+
+    private static void populateKeyChips(AppCompatActivity activity, ChipGroup keyChips) {
+        int letterLayout = R.layout.item_create_shortcut_key_chip;
+        int specialLayout = R.layout.item_create_shortcut_key_chip_small;
+        for (char c = 'A'; c <= 'Z'; c++) {
+            String display = String.valueOf(c);
+            String token = String.valueOf((char) ('a' + (c - 'A')));
+            addKeyChip(activity, keyChips, letterLayout, display, token);
+        }
+        String[][] tokens = {
+                {"Esc", "<ESC>"}, {"Back", "<BACK>"}, {"Enter", "<ENTER>"}, {"Space", "<SPACE>"},
+                {"←", "<LEFT>"}, {"→", "<RIGHT>"}, {"↑", "<UP>"}, {"↓", "<DOWN>"},
+                {"Home", "<HOME>"}, {"End", "<END>"}, {"Tab", "<TAB>"}, {"Del", "<DEL>"},
+                {"F1", "<F1>"}, {"F2", "<F2>"}, {"F3", "<F3>"}, {"F4", "<F4>"},
+                {"F5", "<F5>"}, {"F6", "<F6>"}, {"F7", "<F7>"}, {"F8", "<F8>"},
+                {"F9", "<F9>"}, {"F10", "<F10>"}, {"F11", "<F11>"}, {"F12", "<F12>"}
+        };
+        for (String[] entry : tokens) {
+            addKeyChip(activity, keyChips, specialLayout, entry[0], entry[1]);
+        }
+    }
+
+    private static void installShortcutSheet(
             @NonNull AppCompatActivity activity,
             @NonNull ShortcutProfileManager profileManager,
             @NonNull String profileId,
             @NonNull String targetOs,
-            @NonNull CreateMode mode,
+            @Nullable CreateMode createMode,
             @Nullable String categoryId,
+            @Nullable ShortcutProfileManager.Shortcut editShortcut,
             @Nullable Runnable onSaved
     ) {
+        final boolean isEdit = editShortcut != null;
+        if (!isEdit && createMode == null) {
+            return;
+        }
+
         ShortcutProfileManager.ShortcutProfile profile = profileManager.getProfileById(profileId);
         if (profile == null) {
             Toast.makeText(activity, R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
@@ -222,6 +323,12 @@ public final class CreateShortcutBottomSheet {
         View root = activity.getLayoutInflater().inflate(R.layout.bottomsheet_create_shortcut, null, false);
         BottomSheetDialog dialog = new BottomSheetDialog(activity);
         dialog.setContentView(root);
+
+        TextView sheetTitle = root.findViewById(R.id.create_shortcut_sheet_title);
+        View metaContainer = root.findViewById(R.id.create_shortcut_edit_meta_container);
+        TextInputEditText nameInput = root.findViewById(R.id.create_shortcut_edit_name_input);
+        TextInputEditText iconInput = root.findViewById(R.id.create_shortcut_edit_icon_input);
+        TextInputEditText orderInput = root.findViewById(R.id.create_shortcut_edit_order_input);
 
         ImageButton info = root.findViewById(R.id.create_shortcut_info);
         if (info != null) {
@@ -240,26 +347,29 @@ public final class CreateShortcutBottomSheet {
         MaterialButton cancel = root.findViewById(R.id.create_shortcut_cancel);
         MaterialButton save = root.findViewById(R.id.create_shortcut_save);
 
-        int letterLayout = R.layout.item_create_shortcut_key_chip;
-        int specialLayout = R.layout.item_create_shortcut_key_chip_small;
+        populateKeyChips(activity, keyChips);
 
-        for (char c = 'A'; c <= 'Z'; c++) {
-            String display = String.valueOf(c);
-            // Lowercase token so KeyParser does not auto-add Shift for A–Z (needsShift on uppercase).
-            String token = String.valueOf((char) ('a' + (c - 'A')));
-            addKeyChip(activity, keyChips, letterLayout, display, token);
-        }
-
-        String[][] tokens = {
-                {"Esc", "<ESC>"}, {"Back", "<BACK>"}, {"Enter", "<ENTER>"}, {"Space", "<SPACE>"},
-                {"←", "<LEFT>"}, {"→", "<RIGHT>"}, {"↑", "<UP>"}, {"↓", "<DOWN>"},
-                {"Home", "<HOME>"}, {"End", "<END>"}, {"Tab", "<TAB>"}, {"Del", "<DEL>"},
-                {"F1", "<F1>"}, {"F2", "<F2>"}, {"F3", "<F3>"}, {"F4", "<F4>"},
-                {"F5", "<F5>"}, {"F6", "<F6>"}, {"F7", "<F7>"}, {"F8", "<F8>"},
-                {"F9", "<F9>"}, {"F10", "<F10>"}, {"F11", "<F11>"}, {"F12", "<F12>"}
-        };
-        for (String[] entry : tokens) {
-            addKeyChip(activity, keyChips, specialLayout, entry[0], entry[1]);
+        if (isEdit) {
+            if (sheetTitle != null) {
+                sheetTitle.setText(R.string.create_shortcut_sheet_title_edit);
+            }
+            if (metaContainer != null) {
+                metaContainer.setVisibility(View.VISIBLE);
+            }
+            if (nameInput != null) {
+                nameInput.setText(editShortcut.name != null ? editShortcut.name : "");
+            }
+            if (iconInput != null) {
+                iconInput.setText(editShortcut.icon != null ? editShortcut.icon : "");
+            }
+            if (orderInput != null && editShortcut.displayOrder > 0) {
+                orderInput.setText(String.valueOf(editShortcut.displayOrder));
+            }
+            tryBindChordUiFromShortcut(editShortcut, targetOs, modCmd, modCtrl, modShift, modAlt, keyChips, advanced);
+        } else {
+            if (metaContainer != null) {
+                metaContainer.setVisibility(View.GONE);
+            }
         }
 
         Runnable updatePreview = () -> {
@@ -285,7 +395,12 @@ public final class CreateShortcutBottomSheet {
             } else {
                 String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, targetOs);
                 preview.setText(KeyParser.displayLabel(label, targetOs));
-                save.setEnabled(true);
+                if (isEdit && nameInput != null) {
+                    String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
+                    save.setEnabled(!name.isEmpty());
+                } else {
+                    save.setEnabled(true);
+                }
             }
         };
 
@@ -323,6 +438,23 @@ public final class CreateShortcutBottomSheet {
             }
         });
 
+        if (isEdit && nameInput != null) {
+            nameInput.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    updatePreview.run();
+                }
+            });
+        }
+
         cancel.setOnClickListener(v -> dialog.dismiss());
 
         save.setOnClickListener(v -> {
@@ -345,26 +477,61 @@ public final class CreateShortcutBottomSheet {
                 Toast.makeText(activity, R.string.create_shortcut_invalid, Toast.LENGTH_LONG).show();
                 return;
             }
-            if (profileManager.profileHasChord(profileId, parsed.keyCode, parsed.modifiers, targetOs)) {
-                Toast.makeText(activity, R.string.create_shortcut_duplicate, Toast.LENGTH_LONG).show();
-                return;
-            }
-            ShortcutProfileManager.Shortcut created;
-            if (mode == CreateMode.CATEGORY_ONLY) {
-                created = profileManager.addQuickShortcutToCategoryOnly(
-                        profileId, categoryId, parsed.keyCode, parsed.modifiers, targetOs);
+            if (isEdit) {
+                String name = nameInput != null && nameInput.getText() != null
+                        ? nameInput.getText().toString().trim() : "";
+                if (name.isEmpty()) {
+                    Toast.makeText(activity, R.string.shortcut_hub_toast_all_fields_required, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                String excludeId = editShortcut.id != null && !editShortcut.id.isEmpty() ? editShortcut.id : null;
+                if (profileManager.profileHasChordExcluding(
+                        profileId, parsed.keyCode, parsed.modifiers, targetOs, excludeId)) {
+                    Toast.makeText(activity, R.string.create_shortcut_duplicate, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, targetOs);
+                editShortcut.name = name;
+                editShortcut.label = label;
+                editShortcut.modifiers = parsed.modifiers;
+                editShortcut.keyCode = parsed.keyCode;
+                if (iconInput != null) {
+                    editShortcut.icon = iconInput.getText() != null ? iconInput.getText().toString().trim() : "";
+                }
+                if (orderInput != null) {
+                    String orderRaw = orderInput.getText() != null ? orderInput.getText().toString().trim() : "";
+                    editShortcut.displayOrder = parseDisplayOrderInternal(orderRaw, editShortcut.displayOrder);
+                }
+                profileManager.updateProfile(profile);
+                if (editShortcut.id != null) {
+                    profileManager.refreshMyShortcutClonesFromProfile(profileId, editShortcut.id);
+                }
+                Toast.makeText(
+                        activity,
+                        activity.getString(R.string.create_shortcut_saved, name),
+                        Toast.LENGTH_SHORT).show();
             } else {
-                created = profileManager.addQuickShortcutToGeneralAndFavorites(
-                        profileId, parsed.keyCode, parsed.modifiers, targetOs);
+                if (profileManager.profileHasChord(profileId, parsed.keyCode, parsed.modifiers, targetOs)) {
+                    Toast.makeText(activity, R.string.create_shortcut_duplicate, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                ShortcutProfileManager.Shortcut created;
+                if (createMode == CreateMode.CATEGORY_ONLY) {
+                    created = profileManager.addQuickShortcutToCategoryOnly(
+                            profileId, categoryId, parsed.keyCode, parsed.modifiers, targetOs);
+                } else {
+                    created = profileManager.addQuickShortcutToGeneralAndFavorites(
+                            profileId, parsed.keyCode, parsed.modifiers, targetOs);
+                }
+                if (created == null) {
+                    Toast.makeText(activity, R.string.create_shortcut_save_failed, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(
+                        activity,
+                        activity.getString(R.string.create_shortcut_saved, created.label),
+                        Toast.LENGTH_SHORT).show();
             }
-            if (created == null) {
-                Toast.makeText(activity, R.string.create_shortcut_save_failed, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Toast.makeText(
-                    activity,
-                    activity.getString(R.string.create_shortcut_saved, created.label),
-                    Toast.LENGTH_SHORT).show();
             dialog.dismiss();
             if (onSaved != null) {
                 onSaved.run();
@@ -373,6 +540,32 @@ public final class CreateShortcutBottomSheet {
 
         updatePreview.run();
         dialog.show();
+    }
+
+    public static void show(
+            @NonNull AppCompatActivity activity,
+            @NonNull ShortcutProfileManager profileManager,
+            @NonNull String profileId,
+            @NonNull String targetOs,
+            @NonNull CreateMode mode,
+            @Nullable String categoryId,
+            @Nullable Runnable onSaved
+    ) {
+        installShortcutSheet(activity, profileManager, profileId, targetOs, mode, categoryId, null, onSaved);
+    }
+
+    /**
+     * Edit an existing profile shortcut using the same bottom sheet as {@link #show} (New shortcut).
+     */
+    public static void showEdit(
+            @NonNull AppCompatActivity activity,
+            @NonNull ShortcutProfileManager profileManager,
+            @NonNull String profileId,
+            @NonNull String targetOs,
+            @NonNull ShortcutProfileManager.Shortcut editShortcut,
+            @Nullable Runnable onSaved
+    ) {
+        installShortcutSheet(activity, profileManager, profileId, targetOs, null, null, editShortcut, onSaved);
     }
 
     public static void show(

@@ -392,6 +392,10 @@ von TechxArtisan</string>
     <string name="top_strip_create_shortcut_label">Erstellen</string>
     <string name="top_strip_create_shortcut_cd">Neue Verknüpfung erstellen</string>
     <string name="create_shortcut_sheet_title">Neue Verknüpfung</string>
+    <string name="create_shortcut_sheet_title_edit">Verknüpfung bearbeiten</string>
+    <string name="create_shortcut_edit_name_hint">Name (z. B. Kopieren)</string>
+    <string name="create_shortcut_edit_icon_hint">Symbol (Emoji oder Drawable-Name)</string>
+    <string name="create_shortcut_edit_order_hint">Anzeigereihenfolge (optional)</string>
     <string name="create_shortcut_info_cd">So verwenden Sie die neue Verknüpfung</string>
     <string name="create_shortcut_help_read_mode_title">Neue Verknüpfung · %1$s</string>
     <string name="create_shortcut_help_read_mode_block1"><![CDATA[<b>Where it saves</b> — The shortcut is added to <b>General</b> in Shortcut Hub and to your <b>Favorites</b> strip. To change the name, icon, or order, open Shortcut Hub.]]></string>
