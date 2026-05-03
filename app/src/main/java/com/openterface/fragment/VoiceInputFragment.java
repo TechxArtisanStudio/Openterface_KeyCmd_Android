@@ -8,7 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -22,8 +22,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -41,10 +39,13 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
+
 import com.openterface.keymod.R;
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 
 import org.json.JSONArray;
@@ -84,8 +85,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
     // UI Components
     private ImageButton recordButton;
-    private Button pasteButton;
-    private Button clearButton;
+    private MaterialButton pasteButton;
+    private MaterialButton clearButton;
     private ImageButton copyButton;
     private ImageButton clearTopButton;
     private EditText transcribedText;
@@ -105,7 +106,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
     // History UI
     private RecyclerView historyRecyclerView;
     private TextView historyEmptyText;
-    private Button clearHistoryButton;
+    private MaterialButton clearHistoryButton;
     private List<HistoryItem> sentHistory = new ArrayList<>();
     private VoiceHistoryAdapter historyAdapter;
 
@@ -161,6 +162,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         setupListeners();
         initializeTTS();
         updateSendButtonState();
+        refreshStatusLineForSettings();
 
         return view;
     }
@@ -175,6 +177,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
     private void initializeViews(View view) {
         recordButton = view.findViewById(R.id.record_button);
+        applyRecordButtonBackground(false);
         pasteButton = view.findViewById(R.id.paste_button);
         clearButton = view.findViewById(R.id.clear_button);
         copyButton = view.findViewById(R.id.copy_button);
@@ -226,9 +229,20 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         autoSendToTarget = prefs.getBoolean(PREF_AUTO_SEND, false);
         autoLineReturn = prefs.getBoolean(PREF_AUTO_LINE_RETURN, false);
         updateMiniToolbarState();
-        
-        Log.d(TAG, "Loaded settings - API Key: " + (apiKey.isEmpty() ? "not set" : "set") + 
-              ", Language: " + language);
+
+        Log.d(TAG, "Loaded settings - API Key: " + (apiKey.isEmpty() ? "not set" : "set") +
+                ", Language: " + language);
+    }
+
+    private void refreshStatusLineForSettings() {
+        if (statusText == null) {
+            return;
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            statusText.setText(R.string.voice_status_ready_setup_api);
+        } else {
+            statusText.setText(R.string.voice_status_ready);
+        }
     }
 
     private void setupListeners() {
@@ -258,19 +272,19 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         // Clear button
         clearButton.setOnClickListener(v -> {
             transcribedText.setText("");
-            statusText.setText("Ready");
+            refreshStatusLineForSettings();
         });
 
         clearTopButton.setOnClickListener(v -> {
             transcribedText.setText("");
-            statusText.setText("Ready");
+            refreshStatusLineForSettings();
         });
 
         // Mini toolbar copy button
         copyButton.setOnClickListener(v -> {
             String text = transcribedText.getText().toString();
             if (text.trim().isEmpty()) {
-                Toast.makeText(getContext(), "No text to copy", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_no_text_copy, Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -279,7 +293,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             if (clipboardManager != null) {
                 ClipData clip = ClipData.newPlainText("voice_transcript", text);
                 clipboardManager.setPrimaryClip(clip);
-                Toast.makeText(getContext(), "Copied to clipboard", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_copied, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -309,32 +323,32 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         }
 
         int neutralColor = ContextCompat.getColor(requireContext(), R.color.text_secondary);
-        int sendActive = ContextCompat.getColor(requireContext(), R.color.primary);
-        int returnActive = ContextCompat.getColor(requireContext(), R.color.connecting);
+        int sendActive = ThemeManager.getColorPrimary(requireContext());
+        int returnActive = ThemeManager.getColorPrimaryContainer(requireContext());
 
         if (copyButton != null) {
             copyButton.setColorFilter(neutralColor);
-            copyButton.setBackgroundColor(Color.TRANSPARENT);
+            copyButton.setBackgroundColor(0x00000000);
         }
 
         if (autoSendButton != null) {
             autoSendButton.setColorFilter(autoSendToTarget ? sendActive : neutralColor);
             autoSendButton.setAlpha(autoSendToTarget ? 1.0f : 0.7f);
-            autoSendButton.setBackgroundColor(Color.TRANSPARENT);
+            autoSendButton.setBackgroundColor(0x00000000);
         }
 
         if (autoLineReturnButton != null) {
             autoLineReturnButton.setColorFilter(autoLineReturn ? returnActive : neutralColor);
             autoLineReturnButton.setAlpha(autoLineReturn ? 1.0f : 0.7f);
-            autoLineReturnButton.setBackgroundColor(Color.TRANSPARENT);
+            autoLineReturnButton.setBackgroundColor(0x00000000);
         }
 
         if (aiRefineButton != null) {
             boolean aiEnabled = prefs.getBoolean(PREF_AI_ENABLED, false);
-            int aiActive = Color.parseColor("#9C27B0"); // purple
+            int aiActive = ThemeManager.getColorPrimaryContainer(requireContext());
             aiRefineButton.setColorFilter(aiEnabled ? aiActive : neutralColor);
             aiRefineButton.setAlpha(aiEnabled ? 1.0f : 0.7f);
-            aiRefineButton.setBackgroundColor(Color.TRANSPARENT);
+            aiRefineButton.setBackgroundColor(0x00000000);
         }
     }
 
@@ -343,16 +357,16 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             pasteButton.setEnabled(false);
             pasteButton.setAlpha(0.45f);
             if (!fromAutoSend) {
-                Toast.makeText(getContext(), "Bluetooth not connected", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_bt_not_connected, Toast.LENGTH_SHORT).show();
             }
-            statusText.setText("Bluetooth not connected");
+            statusText.setText(R.string.voice_status_bt_not_connected);
             return;
         }
 
         String text = transcribedText.getText().toString().trim();
         if (text.isEmpty()) {
             if (!fromAutoSend) {
-                Toast.makeText(getContext(), "No text to send", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_no_text_send, Toast.LENGTH_SHORT).show();
             }
             return;
         }
@@ -362,9 +376,9 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         addToHistory(text);
 
         if (fromAutoSend) {
-            statusText.setText("✅ Transcribed and sent");
+            statusText.setText(R.string.voice_status_transcribed_sent);
         }
-        Toast.makeText(getContext(), "Sent: " + text.length() + " characters", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), getString(R.string.voice_toast_sent_chars, text.length()), Toast.LENGTH_SHORT).show();
     }
 
     private boolean isBluetoothConnected() {
@@ -395,6 +409,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         super.onResume();
         // Re-read language in case it was changed in Settings
         language = getLanguageCodeFromSettings();
+        apiKey = prefs.getString("whisper_api_key", "");
+        refreshStatusLineForSettings();
         updateSendButtonState();
         mainHandler.post(sendButtonStateUpdater);
     }
@@ -428,15 +444,15 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(getContext(), "Microphone permission granted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_mic_granted, Toast.LENGTH_SHORT).show();
                 if (isSystemSttEnabled()) {
                     startSystemSpeechRecognition();
                 } else {
                     startRecording();
                 }
             } else {
-                Toast.makeText(getContext(), "Microphone permission required", Toast.LENGTH_LONG).show();
-                statusText.setText("Microphone permission required");
+                Toast.makeText(getContext(), R.string.voice_toast_mic_required, Toast.LENGTH_LONG).show();
+                statusText.setText(R.string.voice_status_mic_required);
             }
         }
     }
@@ -452,7 +468,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                     if (results != null && !results.isEmpty()) {
                         String recognizedText = results.get(0).trim();
                         appendTranscribedText(recognizedText);
-                        statusText.setText("✅ Transcribed");
+                        statusText.setText(R.string.voice_status_transcribed);
 
                         if (!recognizedText.isEmpty()) {
                             if (prefs.getBoolean(PREF_AI_ENABLED, false)) {
@@ -465,7 +481,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                     }
                 }
 
-                statusText.setText("No speech recognized");
+                statusText.setText(R.string.voice_status_no_speech);
             }
         );
     }
@@ -514,36 +530,51 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, toRecognizerLocaleTag(language));
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now");
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_recognizer_prompt));
 
         if (intent.resolveActivity(requireContext().getPackageManager()) == null) {
-            Toast.makeText(getContext(), "No speech recognizer available on this device", Toast.LENGTH_LONG).show();
-            statusText.setText("Speech recognizer unavailable");
+            Toast.makeText(getContext(), R.string.voice_toast_no_recognizer, Toast.LENGTH_LONG).show();
+            statusText.setText(R.string.voice_status_speech_unavailable);
             return;
         }
 
         updateRecordButtonUi(true);
-        statusText.setText("🎤 Listening...");
+        statusText.setText(R.string.voice_status_listening);
         speechRecognizerLauncher.launch(intent);
     }
 
-    private void updateRecordButtonUi(boolean listening) {
-        if (recordButton == null) return;
+    private void applyRecordButtonBackground(boolean listening) {
+        if (recordButton == null || getContext() == null) {
+            return;
+        }
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.OVAL);
+        if (listening) {
+            gd.setColor(ContextCompat.getColor(requireContext(), R.color.holo_red_light));
+        } else {
+            gd.setColor(ThemeManager.getColorPrimary(requireContext()));
+        }
+        recordButton.setBackground(gd);
+    }
 
+    private void updateRecordButtonUi(boolean listening) {
+        if (recordButton == null) {
+            return;
+        }
         if (listening) {
             recordButton.setImageResource(R.drawable.ic_toolbar_stop);
-            recordButton.setBackgroundResource(R.drawable.bg_record_button_active);
-            recordButton.setContentDescription("Stop recording");
+            applyRecordButtonBackground(true);
+            recordButton.setContentDescription(getString(R.string.voice_cd_record_stop));
         } else {
             recordButton.setImageResource(R.drawable.ic_toolbar_mic);
-            recordButton.setBackgroundResource(R.drawable.bg_record_button_idle);
-            recordButton.setContentDescription("Start recording");
+            applyRecordButtonBackground(false);
+            recordButton.setContentDescription(getString(R.string.voice_cd_record_start));
         }
     }
 
     private void startRecording() {
         if (apiKey.isEmpty()) {
-            Toast.makeText(getContext(), "Please set Whisper API key in Settings", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), R.string.voice_toast_set_whisper_key, Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -561,7 +592,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             );
 
             if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
-                Toast.makeText(getContext(), "Failed to initialize audio recorder", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.voice_toast_audio_init_failed, Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -571,7 +602,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
             // Update UI
             updateRecordButtonUi(true);
-            statusText.setText("🎤 Listening...");
+            statusText.setText(R.string.voice_status_listening);
             progressBar.setVisibility(View.VISIBLE);
 
             // Start recording thread
@@ -582,10 +613,10 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
         } catch (SecurityException e) {
             Log.e(TAG, "Permission denied", e);
-            Toast.makeText(getContext(), "Microphone permission required", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.voice_toast_mic_required, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Log.e(TAG, "Failed to start recording", e);
-            Toast.makeText(getContext(), "Failed to start: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.voice_toast_failed_start, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -605,7 +636,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
         // Update UI
         updateRecordButtonUi(false);
-        statusText.setText("⏳ Processing...");
+        statusText.setText(R.string.voice_status_processing);
         progressBar.setVisibility(View.VISIBLE);
 
         Log.d(TAG, "Recording stopped");
@@ -632,7 +663,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                 sendToWhisper(audioData);
             } else {
                 mainHandler.post(() -> {
-                    statusText.setText("No audio recorded");
+                    statusText.setText(R.string.voice_status_no_audio);
                     progressBar.setVisibility(View.GONE);
                 });
             }
@@ -640,7 +671,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         } catch (Exception e) {
             Log.e(TAG, "Recording error", e);
             mainHandler.post(() -> {
-                statusText.setText("Error: " + e.getMessage());
+                statusText.setText(getString(R.string.voice_status_error, e.getMessage()));
                 progressBar.setVisibility(View.GONE);
             });
         } finally {
@@ -664,7 +695,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                 mainHandler.post(() -> {
                     if (result != null) {
                         appendTranscribedText(result);
-                        statusText.setText("✅ Transcribed");
+                        statusText.setText(R.string.voice_status_transcribed);
                         Log.d(TAG, "Transcription: " + result);
                         if (!result.trim().isEmpty()) {
                             if (prefs.getBoolean(PREF_AI_ENABLED, false)) {
@@ -674,7 +705,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                             }
                         }
                     } else {
-                        statusText.setText("❌ Transcription failed");
+                        statusText.setText(R.string.voice_status_transcription_failed);
                     }
                     progressBar.setVisibility(View.GONE);
                 });
@@ -682,7 +713,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             } catch (Exception e) {
                 Log.e(TAG, "Whisper API error", e);
                 mainHandler.post(() -> {
-                    statusText.setText("❌ Error: " + e.getMessage());
+                    statusText.setText(getString(R.string.voice_status_error, e.getMessage()));
                     progressBar.setVisibility(View.GONE);
                 });
             }
@@ -863,8 +894,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
     private void updateOsButtonState() {
         if (osMacosButton == null) return;
-        int activeColor = requireContext().getColor(R.color.primary);
-        int inactiveColor = requireContext().getColor(R.color.text_secondary);
+        int activeColor = ThemeManager.getColorPrimary(requireContext());
+        int inactiveColor = ContextCompat.getColor(requireContext(), R.color.text_secondary);
         osMacosButton.setImageTintList(
             android.content.res.ColorStateList.valueOf("macos".equals(targetOs) ? activeColor : inactiveColor));
         osWindowsButton.setImageTintList(
@@ -942,7 +973,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
     private void resendHistoryItem(String text) {
         if (!isBluetoothConnected()) {
-            Toast.makeText(getContext(), "Bluetooth not connected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.voice_toast_bt_not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
         String payload = autoLineReturn ? text + "\n" : text;
@@ -986,7 +1017,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
         class VH extends RecyclerView.ViewHolder {
             TextView textView, timestampView;
-            Button editButton, resendButton;
+            MaterialButton editButton;
+            MaterialButton resendButton;
 
             VH(View itemView) {
                 super(itemView);
@@ -1036,14 +1068,12 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                     "Groq", "Alibaba (Qwen)", "DeepSeek", "Custom"};
             int pIdx = prefs.getInt("ai_provider", 0);
             String pName = (pIdx < providerNames.length) ? providerNames[pIdx] : "the selected provider";
-            Toast.makeText(getContext(),
-                    "No API key for " + pName + ". Go to AI Settings and enter your key.",
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), getString(R.string.voice_toast_ai_no_key, pName), Toast.LENGTH_LONG).show();
             if (autoSendToTarget) sendTranscribedText(true);
             return;
         }
 
-        statusText.setText("🤖 Refining...");
+        statusText.setText(R.string.voice_status_refining);
         progressBar.setVisibility(View.VISIBLE);
 
         final String finalApiKey = aiApiKey;
@@ -1059,10 +1089,10 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                     if (refined != null && !refined.isEmpty()) {
                         transcribedText.setText(refined);
                         transcribedText.setSelection(refined.length());
-                        statusText.setText("✅ Refined");
+                        statusText.setText(R.string.voice_status_refined);
                         if (autoSendToTarget) sendTranscribedText(true);
                     } else {
-                        statusText.setText("⚠️ Refinement failed — original kept");
+                        statusText.setText(R.string.voice_status_refinement_failed);
                         if (autoSendToTarget) sendTranscribedText(true);
                     }
                 });
@@ -1070,7 +1100,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                 Log.e(TAG, "AI refinement error", e);
                 mainHandler.post(() -> {
                     progressBar.setVisibility(View.GONE);
-                    statusText.setText("⚠️ AI error: " + e.getMessage());
+                    statusText.setText(getString(R.string.voice_status_ai_error, e.getMessage()));
                     if (autoSendToTarget) sendTranscribedText(true);
                 });
             }

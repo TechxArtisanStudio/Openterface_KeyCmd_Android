@@ -1,157 +1,166 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/background_light">
+    android:background="@color/background_light"
+    android:orientation="vertical">
 
-    <!-- Mini toolbar aligned with iOS quick actions -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:background="@color/header_background"
+        android:elevation="4dp"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
-        android:background="@color/header_background">
+        android:orientation="horizontal"
+        android:padding="16dp">
 
-        <ImageButton
-            android:id="@+id/copy_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Copy text"
-            android:padding="8dp"
-            android:src="@drawable/ic_toolbar_copy"
-            android:tint="@color/text_secondary" />
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <ImageButton
-            android:id="@+id/clear_top_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Clear text"
-            android:padding="8dp"
-            android:src="@drawable/ic_toolbar_clear"
-            android:tint="@color/text_secondary" />
-
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="1dp" />
-
-        <ImageButton
-            android:id="@+id/os_macos_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Target macOS"
-            android:padding="8dp"
-            android:src="@drawable/ic_os_macos"
-            android:tint="@color/text_secondary" />
-
-        <ImageButton
-            android:id="@+id/os_windows_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Target Windows"
-            android:padding="8dp"
-            android:src="@drawable/ic_os_windows"
-            android:tint="@color/text_secondary" />
-
-        <ImageButton
-            android:id="@+id/os_linux_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Target Linux"
-            android:padding="8dp"
-            android:src="@drawable/ic_os_linux"
-            android:tint="@color/text_secondary" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <ImageButton
-            android:id="@+id/ai_refine_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="AI refinement"
-            android:padding="8dp"
-            android:src="@drawable/ic_toolbar_ai"
-            android:tint="@color/text_secondary" />
-
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="1dp" />
-
-        <ImageButton
-            android:id="@+id/auto_line_return_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Auto return"
-            android:padding="8dp"
-            android:src="@drawable/ic_toolbar_return"
-            android:tint="@color/text_secondary" />
-
-        <Space
-            android:layout_width="12dp"
-            android:layout_height="1dp" />
-
-        <ImageButton
-            android:id="@+id/auto_send_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Auto send"
-            android:padding="8dp"
-            android:src="@drawable/ic_toolbar_send"
-            android:tint="@color/text_secondary" />
-
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/voice_hub_title"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Transcribed Text (primary content, like iOS text area) -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/header_background"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp">
+
+            <ImageButton
+                android:id="@+id/copy_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_copy"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_toolbar_copy"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/clear_top_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_clear_field"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_toolbar_clear"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/os_macos_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_target_macos"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_os_macos"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/os_windows_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_target_windows"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_os_windows"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/os_linux_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_target_linux"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_os_linux"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/ai_refine_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_ai_refine"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_toolbar_ai"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/auto_line_return_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_auto_line_return"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_toolbar_return"
+                app:tint="?attr/colorControlNormal" />
+
+            <ImageButton
+                android:id="@+id/auto_send_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voice_cd_auto_send"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_toolbar_send"
+                app:tint="?attr/colorControlNormal" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <EditText
         android:id="@+id/transcribed_text"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:hint="Transcribed text will appear here..."
-        android:gravity="top|start"
-        android:padding="16dp"
-        android:background="@drawable/voice_input_text_background"
         android:layout_margin="16dp"
-        android:inputType="textMultiLine"
-        android:scrollbars="vertical"
+        android:layout_weight="1"
+        android:background="@drawable/voice_input_text_background"
         android:fontFamily="sans-serif"
-        android:textSize="16sp"
+        android:gravity="top|start"
+        android:hint="@string/voice_transcribed_hint"
+        android:inputType="textMultiLine"
+        android:padding="16dp"
+        android:scrollbars="vertical"
         android:textColor="@color/text_primary"
-        android:textColorHint="@color/text_secondary" />
+        android:textColorHint="@color/text_secondary"
+        android:textSize="16sp" />
 
-    <!-- Status + Progress -->
     <TextView
         android:id="@+id/status_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ready - Set API key in Settings"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:textColor="@color/primary"
+        android:background="@color/header_background"
         android:paddingStart="16dp"
-        android:paddingEnd="16dp"
         android:paddingTop="6dp"
+        android:paddingEnd="16dp"
         android:paddingBottom="6dp"
-        android:background="@color/header_background" />
+        android:text="@string/voice_status_ready_setup_api"
+        android:textColor="?attr/colorPrimary"
+        android:textSize="13sp"
+        android:textStyle="bold" />
 
     <ProgressBar
         android:id="@+id/progress_bar"
@@ -159,105 +168,107 @@
         android:layout_width="match_parent"
         android:layout_height="3dp"
         android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
         android:layout_marginTop="6dp"
+        android:layout_marginEnd="16dp"
         android:layout_marginBottom="10dp"
+        android:indeterminateTint="?attr/colorPrimary"
+        android:progressTint="?attr/colorPrimary"
         android:visibility="gone" />
 
-    <!-- Hidden placeholder to keep existing fragment binding intact -->
     <ImageView
         android:id="@+id/waveform_view"
         android:layout_width="1dp"
         android:layout_height="1dp"
-        android:visibility="gone"
-        android:contentDescription="Audio waveform" />
+        android:contentDescription="@string/voice_cd_waveform"
+        android:visibility="gone" />
 
-    <!-- History Section (mirrors iOS resizable history panel) -->
     <LinearLayout
         android:id="@+id/history_section"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/header_background">
+        android:background="@color/header_background"
+        android:orientation="vertical">
 
-        <View
+        <com.google.android.material.divider.MaterialDivider
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/text_secondary"
-            android:alpha="0.2" />
+            android:layout_height="wrap_content"
+            app:dividerColor="@color/divider" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:paddingStart="16dp"
+            android:paddingTop="8dp"
             android:paddingEnd="8dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:paddingBottom="4dp">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="History"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_secondary" />
+                android:text="@string/voice_history_section"
+                android:textAllCaps="true"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+                android:textColor="@color/text_secondary"
+                android:textStyle="bold" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/clear_history_button"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="Clear All"
-                android:textSize="11sp"
-                android:textAllCaps="false"
+                android:layout_height="wrap_content"
                 android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                style="@style/Widget.MaterialComponents.Button.TextButton" />
-
+                android:text="@string/voice_history_clear_all"
+                android:textAllCaps="false"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/history_empty_text"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="No messages sent yet"
-            android:textSize="13sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="12dp"
+            android:text="@string/voice_history_empty"
             android:textColor="@color/text_secondary"
+            android:textSize="14sp"
             android:visibility="visible" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/history_recycler_view"
             android:layout_width="match_parent"
             android:layout_height="180dp"
-            android:visibility="gone"
-            android:overScrollMode="ifContentScrolls" />
-
+            android:clipToPadding="false"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Action Row (iOS-like clear / record / send) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:background="@color/header_background"
         android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingStart="16dp"
-        android:paddingEnd="16dp"
         android:paddingTop="12dp"
-        android:paddingBottom="16dp"
-        android:background="@color/header_background">
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/clear_button"
+            style="@style/Widget.KeyMod.HubHeaderButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Clear"
-            android:textAllCaps="false"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+            android:text="@string/voice_clear"
+            android:textAllCaps="false" />
 
         <Space
             android:layout_width="12dp"
@@ -267,26 +278,24 @@
             android:id="@+id/record_button"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:background="@drawable/bg_record_button_idle"
-            android:contentDescription="Start recording"
+            android:contentDescription="@string/voice_cd_record_start"
             android:padding="14dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_toolbar_mic"
-            android:tint="@color/white" />
+            app:tint="@color/white" />
 
         <Space
             android:layout_width="12dp"
             android:layout_height="1dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/paste_button"
+            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Send"
-            android:textAllCaps="false"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
+            android:text="@string/voice_send"
+            android:textAllCaps="false" />
     </LinearLayout>
 
 </LinearLayout>
