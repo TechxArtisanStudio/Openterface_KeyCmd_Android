@@ -22,12 +22,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.CreateShortcutBottomSheet;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
@@ -877,138 +879,39 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void showAddShortcutDialog(ShortcutProfile profile) {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_shortcut, null, false);
+        if (profile == null || profile.id == null) {
+            return;
+        }
+        if (!(requireActivity() instanceof AppCompatActivity)) {
+            Toast.makeText(requireContext(), R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AppCompatActivity act = (AppCompatActivity) requireActivity();
 
-        EditText nameInput = dialogView.findViewById(R.id.shortcut_name_input);
-        EditText dataInput = dialogView.findViewById(R.id.shortcut_data_input);
-        EditText iconInput = dialogView.findViewById(R.id.shortcut_icon_input);
-        EditText orderInput = dialogView.findViewById(R.id.shortcut_order_input);
-        LinearLayout chipsRow = dialogView.findViewById(R.id.key_chips_row);
-        TextView previewText = dialogView.findViewById(R.id.shortcut_preview);
+        boolean hasCategories = profile.categories != null && !profile.categories.isEmpty();
+        boolean detailForThisProfile = selectedProfile != null
+                && profile.id.equals(selectedProfile.id)
+                && panelShortcutsDetail != null
+                && panelShortcutsDetail.getVisibility() == View.VISIBLE;
 
-        String[][] tokens = {
-            {"⎇ Alt", "<ALT>"}, {"^ Ctrl", "<CTRL>"}, {"⇧ Shift", "<SHIFT>"}, {"⌘ Cmd", "<CMD>"},
-            {"</ALT>", "</ALT>"}, {"</CTRL>", "</CTRL>"}, {"</SHIFT>", "</SHIFT>"}, {"</CMD>", "</CMD>"},
-            {"⎋ Esc", "<ESC>"}, {"⌫ Back", "<BACK>"}, {"⏎ Enter", "<ENTER>"}, {"␣ Space", "<SPACE>"},
-            {"←", "<LEFT>"}, {"→", "<RIGHT>"}, {"↑", "<UP>"}, {"↓", "<DOWN>"},
-            {"⇱ Home", "<HOME>"}, {"⇲ End", "<END>"}, {"⇥ Tab", "<TAB>"}, {"⌦ Del", "<DEL>"},
-            {"F1", "<F1>"}, {"F2", "<F2>"}, {"F3", "<F3>"}, {"F4", "<F4>"},
-            {"F5", "<F5>"}, {"F6", "<F6>"}, {"F7", "<F7>"}, {"F8", "<F8>"},
-            {"F9", "<F9>"}, {"F10", "<F10>"}, {"F11", "<F11>"}, {"F12", "<F12>"}
-        };
-
-        for (String[] entry : tokens) {
-            Button chip = new Button(requireContext());
-            chip.setText(entry[0]);
-            chip.setAllCaps(false);
-            chip.setTextSize(11);
-            chip.setMinHeight(0);
-            chip.setMinimumHeight(0);
-            chip.setMinWidth(0);
-            chip.setMinimumWidth(0);
-            int pad = dpToPx(8);
-            chip.setPadding(pad, dpToPx(2), pad, dpToPx(2));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 0, dpToPx(6), 0);
-            chip.setLayoutParams(lp);
-            final String token = entry[1];
-            chip.setOnClickListener(v -> {
-                int start = Math.max(dataInput.getSelectionStart(), 0);
-                int end = Math.max(dataInput.getSelectionEnd(), 0);
-                dataInput.getText().replace(Math.min(start, end), Math.max(start, end), token, 0, token.length());
-            });
-            chipsRow.addView(chip);
+        CreateShortcutBottomSheet.CreateMode mode;
+        String categoryId = null;
+        if (!hasCategories) {
+            mode = CreateShortcutBottomSheet.CreateMode.GENERAL_AND_FAVORITES;
+        } else if (detailForThisProfile && TAB_BROWSE.equals(currentTab) && currentCategoryId != null) {
+            mode = CreateShortcutBottomSheet.CreateMode.CATEGORY_ONLY;
+            categoryId = currentCategoryId;
+        } else {
+            mode = CreateShortcutBottomSheet.CreateMode.GENERAL_AND_FAVORITES;
         }
 
-        // Live preview: parse data input and show computed label
-        dataInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                String data = s.toString().trim();
-                if (data.isEmpty()) {
-                    previewText.setText("Preview: ...");
-                    return;
-                }
-                KeyParser.ParsedKey parsed = KeyParser.parse(data);
-                if (parsed.keyCode >= 0) {
-                    String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, getTargetOs());
-                    previewText.setText("Preview: " + label);
-                } else {
-                    previewText.setText("Preview: no valid key detected");
-                }
-            }
-        });
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Add Shortcut to " + profile.name)
-                .setView(dialogView)
-                .setPositiveButton("Add", (d, w) -> {
-                    String name = nameInput.getText().toString().trim();
-                    String data = dataInput.getText().toString().trim();
-                    if (name.isEmpty()) {
-                        Toast.makeText(getContext(), "Name is required", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (data.isEmpty()) {
-                        Toast.makeText(getContext(), "Shortcut data is required", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    KeyParser.ParsedKey parsed = KeyParser.parse(data);
-                    if (parsed.keyCode < 0) {
-                        Toast.makeText(getContext(), "No valid key found in shortcut data", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-
-                    String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, getTargetOs());
-                    ShortcutProfileManager.Shortcut shortcut = new ShortcutProfileManager.Shortcut(
-                            "user-" + System.currentTimeMillis(), name, label, parsed.modifiers, parsed.keyCode);
-                    shortcut.icon = iconInput.getText().toString().trim();
-                    shortcut.displayOrder = parseDisplayOrder(
-                            orderInput.getText().toString().trim(),
-                            nextDisplayOrder(profile));
-
-                    profile.shortcuts.add(shortcut);
-                    profileManager.updateProfile(profile);
-                    loadProfiles();
-
-                    // Rebind selectedProfile to the refreshed copy
-                    for (ShortcutProfile p : profilesList) {
-                        if (p.id.equals(profile.id)) {
-                            selectedProfile = p;
-                            break;
-                        }
-                    }
-
-                    // If profile has categories, switch to the last category to show the new shortcut
-                    if (selectedProfile.categories != null && !selectedProfile.categories.isEmpty()) {
-                        String lastCatId = selectedProfile.categories.get(
-                                selectedProfile.categories.size() - 1).id;
-                        currentTab = TAB_BROWSE;
-                        currentCategoryId = lastCatId;
-                        rebuildCategoryTabs(selectedProfile);
-                    }
-                    syncHubDetailTabsSelection();
-                    refreshShortcutsGrid();
-
-                    Toast.makeText(getContext(), "Added shortcut: " + name, Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        CreateShortcutBottomSheet.show(act, profileManager, profile.id, getTargetOs(), mode, categoryId,
+                this::hubAfterShortcutCreated);
     }
 
-    private int nextDisplayOrder(ShortcutProfile profile) {
-        int max = 0;
-        List<ShortcutProfileManager.Shortcut> all = profile.getAllShortcutsFlat();
-        for (ShortcutProfileManager.Shortcut shortcut : all) {
-            if (shortcut != null && shortcut.displayOrder > max) {
-                max = shortcut.displayOrder;
-            }
-        }
-        return max + 1;
+    /** After New shortcut sheet saves from Shortcut Hub (same UX as top-strip CREATE). */
+    private void hubAfterShortcutCreated() {
+        loadProfiles();
     }
 
     private int parseDisplayOrder(String raw, int fallback) {
