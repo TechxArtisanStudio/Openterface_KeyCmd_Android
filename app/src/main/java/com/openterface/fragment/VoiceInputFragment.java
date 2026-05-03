@@ -513,7 +513,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
     }
 
     private String toRecognizerLocaleTag(String code) {
-        if ("zh".equalsIgnoreCase(code)) return "zh-CN";
+        if ("zh".equalsIgnoreCase(code) || "zh-CN".equalsIgnoreCase(code)) return "zh-CN";
+        if ("zh-TW".equalsIgnoreCase(code)) return "zh-TW";
         if ("es".equalsIgnoreCase(code)) return "es-ES";
         if ("fr".equalsIgnoreCase(code)) return "fr-FR";
         if ("de".equalsIgnoreCase(code)) return "de-DE";

@@ -267,7 +267,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 if (connectionManager != null && 
                     connectionManager.getCurrentConnectionType() == ConnectionManager.ConnectionType.USB) {
                     connectionManager.disconnect();
-                    UiToastLimiter.show(context, "usb_device_disconnected", "USB device disconnected", Toast.LENGTH_SHORT, 1800);
+                    UiToastLimiter.show(
+                            context,
+                            "usb_device_disconnected",
+                            context.getString(R.string.main_toast_usb_device_disconnected),
+                            Toast.LENGTH_SHORT,
+                            1800);
                 }
             }
         }
@@ -286,7 +291,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                             connectionManager.connectUsb();
                         }
                     } else {
-                        UiToastLimiter.show(context, "usb_permission_denied", "USB permission denied", Toast.LENGTH_SHORT, 1800);
+                        UiToastLimiter.show(
+                                context,
+                                "usb_permission_denied",
+                                context.getString(R.string.main_toast_usb_permission_denied),
+                                Toast.LENGTH_SHORT,
+                                1800);
                     }
                 }
             }
@@ -703,7 +713,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             public void onAutoConnectStarted() {
                 Log.d(TAG, "Auto-connect started");
                 runOnUiThread(() -> {
-                    UiToastLimiter.show(MainActivity.this, "auto_connect_started", "Auto-connecting to Bluetooth...", Toast.LENGTH_SHORT, 2200);
+                    UiToastLimiter.show(
+                            MainActivity.this,
+                            "auto_connect_started",
+                            getString(R.string.main_toast_auto_connecting_bluetooth),
+                            Toast.LENGTH_SHORT,
+                            2200);
                 });
             }
 
@@ -722,7 +737,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                     UiToastLimiter.show(
                             MainActivity.this,
                             "bluetooth_connected",
-                            "Auto-connected to " + device.getName(),
+                            getString(R.string.main_toast_auto_connected_to, device.getName()),
                             Toast.LENGTH_SHORT,
                             3000);
                 });
@@ -732,7 +747,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             public void onAutoConnectFailed(String reason) {
                 Log.e(TAG, "Auto-connect failed: " + reason);
                 runOnUiThread(() -> {
-                    UiToastLimiter.show(MainActivity.this, "auto_connect_failed", "Auto-connect failed: " + reason, Toast.LENGTH_SHORT, 2500);
+                    UiToastLimiter.show(
+                            MainActivity.this,
+                            "auto_connect_failed",
+                            getString(R.string.main_toast_auto_connect_failed, reason),
+                            Toast.LENGTH_SHORT,
+                            2500);
                 });
             }
 
@@ -743,7 +763,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                     runOnUiThread(() -> UiToastLimiter.show(
                             MainActivity.this,
                             "auto_connect_retry",
-                            "Retrying Bluetooth connection...",
+                            getString(R.string.main_toast_auto_connect_retry),
                             Toast.LENGTH_SHORT,
                             3000));
                 }
@@ -1339,9 +1359,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         
         if (isConnected) {
-            UiToastLimiter.show(this, "bluetooth_connected", "Bluetooth connected", Toast.LENGTH_SHORT, 2500);
+            UiToastLimiter.show(
+                    this,
+                    "bluetooth_connected",
+                    getString(R.string.main_toast_bluetooth_connected),
+                    Toast.LENGTH_SHORT,
+                    2500);
         } else {
-            UiToastLimiter.show(this, "bluetooth_disconnected", "Bluetooth disconnected", Toast.LENGTH_SHORT, 1800);
+            UiToastLimiter.show(
+                    this,
+                    "bluetooth_disconnected",
+                    getString(R.string.main_toast_bluetooth_disconnected),
+                    Toast.LENGTH_SHORT,
+                    1800);
         }
     }
 
@@ -1362,18 +1392,18 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         overlay.setSteps(new TutorialOverlay.Step[]{
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.menu_button}; }
-                public String description() { return "Tap here to open the menu: switch modes, open Welcome & Guide (mode picker and tutorial), or Settings."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_menu); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.connection_container}; }
-                public String description() { return "Tap the Bluetooth icon to connect via USB or Bluetooth. Green signal bars appear when connected."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_bluetooth_header); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.nav_keyboard_mouse}; }
-                public String description() { return "Open the menu to choose your preferred input mode: Keyboard & Mouse, Presentation, Shortcuts, Macros, Voice, or Gamepad."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_drawer_modes); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
                     androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
                     if (drawer != null) drawer.openDrawer(android.view.Gravity.START);
@@ -1382,8 +1412,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.target_os_header_button}; }
-                public String description() { return "Tap the target OS icon in the header to choose macOS, Windows, or Linux for correct key mappings."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_target_os); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
                     androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
                     if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) {
@@ -1394,8 +1424,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.keyboard_view, R.id.keyboard_view_left}; }
-                public String description() { return "Tap ABC, !?#, or 123 keys on the keyboard to switch between letter, number, and symbol layouts."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_keyboard_modes); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
                     androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
                     if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) drawer.closeDrawer(android.view.Gravity.START);
@@ -1404,15 +1434,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.keyboard_view}; }
-                public String description() { return "The keyboard shortcuts row at the top can be scrolled left or right to reveal more options."; }
-                public String buttonText() { return "Next"; }
+                public String description() { return getString(R.string.tutorial_desc_shortcut_row); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
                 public int insetTopDp() { return 0; }
                 public int insetBottomDp() { return -200; }
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() { return new int[]{R.id.touchPad}; }
-                public String description() { return "Use the touchpad to control the cursor. Long press to start drag; tap to release."; }
-                public String buttonText() { return "Done"; }
+                public String description() { return getString(R.string.tutorial_desc_touchpad); }
+                public String buttonText() { return getString(R.string.tutorial_done); }
             }
         });
 

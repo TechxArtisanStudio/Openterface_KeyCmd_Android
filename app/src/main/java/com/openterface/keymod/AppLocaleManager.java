@@ -17,7 +17,7 @@ public final class AppLocaleManager {
     public static final String LOCALE_FOLLOW_SYSTEM = "system";
 
     private static final String LEGACY_LANGUAGE_INDEX = "language_index";
-    private static final String[] LEGACY_INDEX_TO_TAG = {"en", "zh", "es", "fr", "de", "ja"};
+    private static final String[] LEGACY_INDEX_TO_TAG = {"en", "zh-CN", "es", "fr", "de", "ja"};
 
     private AppLocaleManager() {
     }
@@ -45,14 +45,27 @@ public final class AppLocaleManager {
     public static String getPersistedLocaleTag(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         migrateFromLanguageIndexIfNeeded(prefs);
+        migrateBareZhTagToZhCnIfNeeded(prefs);
         return prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
     }
 
     public static void applyPersistedLocales(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
         migrateFromLanguageIndexIfNeeded(prefs);
+        migrateBareZhTagToZhCnIfNeeded(prefs);
         String tag = prefs.getString(PREF_APP_LOCALE, LOCALE_FOLLOW_SYSTEM);
         applyLocaleTag(tag);
+    }
+
+    /**
+     * Older builds stored {@code zh} for Chinese UI; map to {@code zh-CN} so it matches
+     * {@link androidx.appcompat.app.AppCompatDelegate} resource resolution with {@code values-zh-rCN}.
+     */
+    private static void migrateBareZhTagToZhCnIfNeeded(SharedPreferences prefs) {
+        if (!"zh".equals(prefs.getString(PREF_APP_LOCALE, ""))) {
+            return;
+        }
+        prefs.edit().putString(PREF_APP_LOCALE, "zh-CN").apply();
     }
 
     public static void applyLocaleTag(String tag) {

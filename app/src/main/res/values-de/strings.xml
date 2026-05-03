@@ -17,6 +17,25 @@
     <string name="launch_panel_credit">Erfahren Sie mehr unter openterface.com
 von TechxArtisan</string>
     <string name="show_tutorial_link">Tutorial anzeigen</string>
+    <string name="tutorial_skip">Überspringen</string>
+    <string name="tutorial_next">Weiter</string>
+    <string name="tutorial_done">Fertig</string>
+    <string name="tutorial_step_indicator">Schritt %1$d/%2$d: </string>
+    <string name="tutorial_desc_menu">Tippen Sie hier, um das Menü zu öffnen: Modi wechseln, Willkommen &amp; Anleitung (Modusauswahl und Tutorial) oder Einstellungen.</string>
+    <string name="tutorial_desc_bluetooth_header">Tippen Sie auf das Bluetooth-Symbol, um eine Verbindung per USB oder Bluetooth herzustellen. Grüne Signalbalken erscheinen bei erfolgreicher Verbindung.</string>
+    <string name="tutorial_desc_drawer_modes">Öffnen Sie das Menü, um den Eingabemodus zu wählen: Tastatur und Maus, Präsentation, Verknüpfungen, Makros, Sprachsteuerung oder Gamepad.</string>
+    <string name="tutorial_desc_target_os">Tippen Sie auf das Ziel-Betriebssystem-Symbol in der Kopfzeile, um macOS, Windows oder Linux für die richtige Tastenbelegung auszuwählen.</string>
+    <string name="tutorial_desc_keyboard_modes">Tippen Sie auf die Tasten ABC, !?# oder 123 der Tastatur, um zwischen Buchstaben-, Zahlen- und Symboltastaturen zu wechseln.</string>
+    <string name="tutorial_desc_shortcut_row">Die Verknüpfungszeile oben können Sie nach links und rechts scrollen, um weitere Optionen anzuzeigen.</string>
+    <string name="tutorial_desc_touchpad">Verwenden Sie das Touchpad, um den Cursor zu steuern. Lange drücken zum Ziehen; tippen zum Loslassen.</string>
+    <string name="main_toast_auto_connecting_bluetooth">Automatische Bluetooth-Verbindung…</string>
+    <string name="main_toast_auto_connected_to">Automatisch mit %1$s verbunden</string>
+    <string name="main_toast_auto_connect_failed">Automatische Verbindung fehlgeschlagen: %1$s</string>
+    <string name="main_toast_auto_connect_retry">Bluetooth-Verbindung wird erneut versucht…</string>
+    <string name="main_toast_bluetooth_connected">Bluetooth verbunden</string>
+    <string name="main_toast_bluetooth_disconnected">Bluetooth getrennt</string>
+    <string name="main_toast_usb_device_disconnected">USB-Gerät getrennt</string>
+    <string name="main_toast_usb_permission_denied">USB-Berechtigung verweigert</string>
     <string name="launch_panel_remember_choice">Merken Sie sich diesen Modus und rufen Sie ihn automatisch auf</string>
     <string name="launch_panel_start">Start</string>
     <string name="launch_panel_skip">Überspringen Sie es vorerst</string>

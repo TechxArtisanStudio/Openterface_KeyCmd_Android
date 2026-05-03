@@ -17,6 +17,25 @@
     <string name="launch_panel_credit">En savoir plus sur openterface.com
 par TechxArtisan</string>
     <string name="show_tutorial_link">Afficher le didacticiel</string>
+    <string name="tutorial_skip">Passer</string>
+    <string name="tutorial_next">Suivant</string>
+    <string name="tutorial_done">Terminé</string>
+    <string name="tutorial_step_indicator">Étape %1$d/%2$d : </string>
+    <string name="tutorial_desc_menu">Touchez ici pour ouvrir le menu : changer de mode, ouvrir Bienvenue et guide (sélecteur de mode et didacticiel) ou les paramètres.</string>
+    <string name="tutorial_desc_bluetooth_header">Touchez l\'icône Bluetooth pour vous connecter via USB ou Bluetooth. Des barres de signal vertes s\'affichent lorsque la connexion est établie.</string>
+    <string name="tutorial_desc_drawer_modes">Ouvrez le menu pour choisir le mode de saisie : Clavier et souris, Présentation, Raccourcis, Macros, Voix ou Manette.</string>
+    <string name="tutorial_desc_target_os">Touchez l\'icône du système cible dans l\'en-tête pour choisir macOS, Windows ou Linux et obtenir le bon mappage des touches.</string>
+    <string name="tutorial_desc_keyboard_modes">Touchez les touches ABC, !?# ou 123 du clavier pour basculer entre les dispositions lettres, chiffres et symboles.</string>
+    <string name="tutorial_desc_shortcut_row">La rangée de raccourcis en haut du clavier peut être défilée vers la gauche ou la droite pour afficher plus d\'options.</string>
+    <string name="tutorial_desc_touchpad">Utilisez le pavé tactile pour contrôler le curseur. Appui long pour commencer à faire glisser ; touchez pour relâcher.</string>
+    <string name="main_toast_auto_connecting_bluetooth">Connexion automatique au Bluetooth…</string>
+    <string name="main_toast_auto_connected_to">Connexion automatique à %1$s</string>
+    <string name="main_toast_auto_connect_failed">Échec de la connexion automatique : %1$s</string>
+    <string name="main_toast_auto_connect_retry">Nouvelle tentative de connexion Bluetooth…</string>
+    <string name="main_toast_bluetooth_connected">Bluetooth connecté</string>
+    <string name="main_toast_bluetooth_disconnected">Bluetooth déconnecté</string>
+    <string name="main_toast_usb_device_disconnected">Périphérique USB déconnecté</string>
+    <string name="main_toast_usb_permission_denied">Autorisation USB refusée</string>
     <string name="launch_panel_remember_choice">N\'oubliez pas et entrez automatiquement dans ce mode</string>
     <string name="launch_panel_start">Commencer</string>
     <string name="launch_panel_skip">Passer pour l\'instant</string>

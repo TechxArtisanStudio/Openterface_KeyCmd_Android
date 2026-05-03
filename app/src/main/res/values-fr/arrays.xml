@@ -2,7 +2,8 @@
 <resources>
     <string-array name="language_names">
         <item>Anglais</item>
-        <item>Chinois</item>
+        <item>Chinois (simplifié)</item>
+        <item>Chinois (traditionnel)</item>
         <item>Espagnol</item>
         <item>Français</item>
         <item>Allemand</item>

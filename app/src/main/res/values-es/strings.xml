@@ -17,6 +17,25 @@
     <string name="launch_panel_credit">Obtenga más información en openterface.com
 por TechxArtisan</string>
     <string name="show_tutorial_link">Mostrar tutorial</string>
+    <string name="tutorial_skip">Omitir</string>
+    <string name="tutorial_next">Siguiente</string>
+    <string name="tutorial_done">Listo</string>
+    <string name="tutorial_step_indicator">Paso %1$d/%2$d: </string>
+    <string name="tutorial_desc_menu">Pulse aquí para abrir el menú: cambiar de modo, abrir Bienvenida y guía (selector de modo y tutorial) o Ajustes.</string>
+    <string name="tutorial_desc_bluetooth_header">Pulse el icono de Bluetooth para conectarse por USB o Bluetooth. Las barras de señal verdes aparecen cuando hay conexión.</string>
+    <string name="tutorial_desc_drawer_modes">Abra el menú para elegir el modo de entrada: Teclado y ratón, Presentación, Accesos directos, Macros, Voz o Mando.</string>
+    <string name="tutorial_desc_target_os">Pulse el icono del SO de destino en la cabecera para elegir macOS, Windows o Linux y obtener la asignación de teclas correcta.</string>
+    <string name="tutorial_desc_keyboard_modes">Pulse las teclas ABC, !?# o 123 del teclado para alternar entre las distribuciones de letras, números y símbolos.</string>
+    <string name="tutorial_desc_shortcut_row">La fila de accesos directos superior se puede desplazar a izquierda y derecha para ver más opciones.</string>
+    <string name="tutorial_desc_touchpad">Use el panel táctil para controlar el cursor. Mantenga pulsado para arrastrar; toque para soltar.</string>
+    <string name="main_toast_auto_connecting_bluetooth">Conectando automáticamente por Bluetooth…</string>
+    <string name="main_toast_auto_connected_to">Conectado automáticamente a %1$s</string>
+    <string name="main_toast_auto_connect_failed">Falló la conexión automática: %1$s</string>
+    <string name="main_toast_auto_connect_retry">Reintentando la conexión Bluetooth…</string>
+    <string name="main_toast_bluetooth_connected">Bluetooth conectado</string>
+    <string name="main_toast_bluetooth_disconnected">Bluetooth desconectado</string>
+    <string name="main_toast_usb_device_disconnected">Dispositivo USB desconectado</string>
+    <string name="main_toast_usb_permission_denied">Permiso USB denegado</string>
     <string name="launch_panel_remember_choice">Recordar e ingresar automáticamente a este modo</string>
     <string name="launch_panel_start">Iniciar</string>
     <string name="launch_panel_skip">Saltar por ahora</string>

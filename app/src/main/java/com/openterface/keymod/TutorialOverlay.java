@@ -98,7 +98,7 @@ public class TutorialOverlay extends FrameLayout {
         buttonRow.setLayoutParams(rowParams);
 
         skipButton = new Button(context);
-        skipButton.setText("Skip");
+        skipButton.setText(context.getString(R.string.tutorial_skip));
         skipButton.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
         skipButton.setTextColor(secondaryTextColor);
         skipButton.setBackgroundColor(0x00000000);
@@ -109,7 +109,7 @@ public class TutorialOverlay extends FrameLayout {
         skipButton.setOnClickListener(v -> dismiss());
 
         nextButton = new Button(context);
-        nextButton.setText("Next");
+        nextButton.setText(context.getString(R.string.tutorial_next));
         nextButton.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
         nextButton.setTextColor(0xFFFFFFFF);
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
@@ -148,13 +148,14 @@ public class TutorialOverlay extends FrameLayout {
 
         Step step = steps[currentStep];
         step.onShow(getContext());
-        String stepIndicator = "Step " + (currentStep + 1) + "/" + steps.length + ": ";
+        String stepIndicator =
+                getContext().getString(R.string.tutorial_step_indicator, currentStep + 1, steps.length);
         tooltipText.setText(stepIndicator + step.description());
 
         if (currentStep == steps.length - 1) {
-            nextButton.setText("Done");
+            nextButton.setText(getContext().getString(R.string.tutorial_done));
         } else {
-            nextButton.setText("Next");
+            nextButton.setText(getContext().getString(R.string.tutorial_next));
         }
 
         // Find the target view

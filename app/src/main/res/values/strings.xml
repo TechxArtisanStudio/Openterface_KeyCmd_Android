@@ -124,6 +124,30 @@
     <string name="launch_panel_credit">Learn more at openterface.com
 by TechxArtisan</string>
     <string name="show_tutorial_link">Show tutorial</string>
+
+    <!-- Beginner tutorial overlay (TutorialOverlay + MainActivity.showTutorial) -->
+    <string name="tutorial_skip">Skip</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_done">Done</string>
+    <string name="tutorial_step_indicator">Step %1$d/%2$d: </string>
+    <string name="tutorial_desc_menu">Tap here to open the menu: switch modes, open Welcome &amp; Guide (mode picker and tutorial), or Settings.</string>
+    <string name="tutorial_desc_bluetooth_header">Tap the Bluetooth icon to connect via USB or Bluetooth. Green signal bars appear when connected.</string>
+    <string name="tutorial_desc_drawer_modes">Open the menu to choose your preferred input mode: Keyboard &amp; Mouse, Presentation, Shortcuts, Macros, Voice, or Gamepad.</string>
+    <string name="tutorial_desc_target_os">Tap the target OS icon in the header to choose macOS, Windows, or Linux for correct key mappings.</string>
+    <string name="tutorial_desc_keyboard_modes">Tap ABC, !?#, or 123 keys on the keyboard to switch between letter, number, and symbol layouts.</string>
+    <string name="tutorial_desc_shortcut_row">The keyboard shortcuts row at the top can be scrolled left or right to reveal more options.</string>
+    <string name="tutorial_desc_touchpad">Use the touchpad to control the cursor. Long press to start drag; tap to release.</string>
+
+    <!-- MainActivity connection toasts -->
+    <string name="main_toast_auto_connecting_bluetooth">Auto-connecting to Bluetooth…</string>
+    <string name="main_toast_auto_connected_to">Auto-connected to %1$s</string>
+    <string name="main_toast_auto_connect_failed">Auto-connect failed: %1$s</string>
+    <string name="main_toast_auto_connect_retry">Retrying Bluetooth connection…</string>
+    <string name="main_toast_bluetooth_connected">Bluetooth connected</string>
+    <string name="main_toast_bluetooth_disconnected">Bluetooth disconnected</string>
+    <string name="main_toast_usb_device_disconnected">USB device disconnected</string>
+    <string name="main_toast_usb_permission_denied">USB permission denied</string>
+
     <string name="launch_panel_remember_choice">Remember and auto-enter this mode</string>
     <string name="launch_panel_start">Start</string>
     <string name="launch_panel_skip">Skip for now</string>

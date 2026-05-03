@@ -17,6 +17,25 @@
     <string name="launch_panel_credit">詳細については、openterface.com をご覧ください。
 TechxArtisan により</string>
     <string name="show_tutorial_link">チュートリアルを表示する</string>
+    <string name="tutorial_skip">スキップ</string>
+    <string name="tutorial_next">次へ</string>
+    <string name="tutorial_done">完了</string>
+    <string name="tutorial_step_indicator">ステップ %1$d/%2$d：</string>
+    <string name="tutorial_desc_menu">ここをタップしてメニューを開きます。モードの切り替え、「ようこそ＆ガイド」（モード選択とチュートリアル）、または設定が利用できます。</string>
+    <string name="tutorial_desc_bluetooth_header">Bluetoothアイコンをタップして、USBまたはBluetoothで接続します。接続が成功すると緑の信号バーが表示されます。</string>
+    <string name="tutorial_desc_drawer_modes">メニューを開き、入力モードを選びます。キーボードとマウス、プレゼンテーション、ショートカット、マクロ、音声、ゲームパッドです。</string>
+    <string name="tutorial_desc_target_os">ヘッダーの接続先OSアイコンをタップし、macOS、Windows、Linuxから選ぶと、正しいキー割り当てになります。</string>
+    <string name="tutorial_desc_keyboard_modes">キーボードの ABC、!?#、123 キーをタップして、英字・数字・記号のレイアウトを切り替えます。</string>
+    <string name="tutorial_desc_shortcut_row">上部のキーボードショートカット行は左右にスクロールすると、さらに多くの項目が表示されます。</string>
+    <string name="tutorial_desc_touchpad">タッチパッドでポインターを操作します。長押しでドラッグ開始、タップで離します。</string>
+    <string name="main_toast_auto_connecting_bluetooth">Bluetoothに自動接続しています…</string>
+    <string name="main_toast_auto_connected_to">%1$s に自動接続しました</string>
+    <string name="main_toast_auto_connect_failed">自動接続に失敗しました：%1$s</string>
+    <string name="main_toast_auto_connect_retry">Bluetooth接続を再試行しています…</string>
+    <string name="main_toast_bluetooth_connected">Bluetoothに接続しました</string>
+    <string name="main_toast_bluetooth_disconnected">Bluetoothが切断されました</string>
+    <string name="main_toast_usb_device_disconnected">USBデバイスが切断されました</string>
+    <string name="main_toast_usb_permission_denied">USBの権限が拒否されました</string>
     <string name="launch_panel_remember_choice">このモードを記憶し、自動的に入力します</string>
     <string name="launch_panel_start">始める</string>
     <string name="launch_panel_skip">今のところスキップしてください</string>
