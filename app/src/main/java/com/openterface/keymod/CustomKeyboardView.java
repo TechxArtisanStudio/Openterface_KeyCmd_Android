@@ -3137,15 +3137,20 @@ public class CustomKeyboardView extends LinearLayout {
             bindSplitFixedTopRowsPanelView(
                     splitPreviousFixedTopRowsContainerLeft,
                     splitPreviousFixedTopRowsContainerRight,
-                    fixedPrevious);
+                    fixedPrevious,
+                    fixedTopRowsPageIndex > 0 ? fixedTopRowsPageIndex - 1 : -1);
             bindSplitFixedTopRowsPanelView(
                     splitActiveFixedTopRowsContainerLeft,
                     splitActiveFixedTopRowsContainerRight,
-                    fixedActive);
+                    fixedActive,
+                    fixedTopRowsPageIndex);
             bindSplitFixedTopRowsPanelView(
                     splitNextFixedTopRowsContainerLeft,
                     splitNextFixedTopRowsContainerRight,
-                    fixedNext);
+                    fixedNext,
+                    fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
+                            ? fixedTopRowsPageIndex + 1
+                            : -1);
             if (splitActiveFixedTopRowsContainerLeft != null) {
                 splitActiveFixedTopRowsContainerLeft.bringToFront();
             }
@@ -3166,9 +3171,26 @@ public class CustomKeyboardView extends LinearLayout {
         List<Key> fixedActive = fixedTopRowsPanels.get(fixedTopRowsPageIndex);
         List<Key> fixedNext = fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
                 ? fixedTopRowsPanels.get(fixedTopRowsPageIndex + 1) : null;
-        bindFixedTopRowsPanelView(previousFixedTopRowsContainer, fixedPrevious, 0, TOP_PANEL_COLUMNS);
-        bindFixedTopRowsPanelView(activeFixedTopRowsContainer, fixedActive, 0, TOP_PANEL_COLUMNS);
-        bindFixedTopRowsPanelView(nextFixedTopRowsContainer, fixedNext, 0, TOP_PANEL_COLUMNS);
+        bindFixedTopRowsPanelView(
+                previousFixedTopRowsContainer,
+                fixedPrevious,
+                0,
+                TOP_PANEL_COLUMNS,
+                fixedTopRowsPageIndex > 0 ? fixedTopRowsPageIndex - 1 : -1);
+        bindFixedTopRowsPanelView(
+                activeFixedTopRowsContainer,
+                fixedActive,
+                0,
+                TOP_PANEL_COLUMNS,
+                fixedTopRowsPageIndex);
+        bindFixedTopRowsPanelView(
+                nextFixedTopRowsContainer,
+                fixedNext,
+                0,
+                TOP_PANEL_COLUMNS,
+                fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
+                        ? fixedTopRowsPageIndex + 1
+                        : -1);
         if (activeFixedTopRowsContainer != null) {
             activeFixedTopRowsContainer.bringToFront();
         }
@@ -3238,7 +3260,8 @@ public class CustomKeyboardView extends LinearLayout {
             LinearLayout container,
             List<Key> panelKeys,
             int startColInclusive,
-            int endColExclusive
+            int endColExclusive,
+            int fixedTopBindPageIndex
     ) {
         if (container == null) {
             return;
@@ -3249,25 +3272,29 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         container.setVisibility(View.VISIBLE);
-        addShortcutPanelRows(container, panelKeys, startColInclusive, endColExclusive, 0, 2);
+        addShortcutPanelRows(
+                container, panelKeys, startColInclusive, endColExclusive, 0, 2, fixedTopBindPageIndex);
     }
 
     private void bindSplitFixedTopRowsPanelView(
             LinearLayout leftContainer,
             LinearLayout rightContainer,
-            List<Key> panelKeys
+            List<Key> panelKeys,
+            int fixedTopBindPageIndex
     ) {
         bindFixedTopRowsPanelView(
                 leftContainer,
                 panelKeys,
                 TOP_PANEL_LEFT_START_COL,
-                TOP_PANEL_LEFT_END_COL
+                TOP_PANEL_LEFT_END_COL,
+                fixedTopBindPageIndex
         );
         bindFixedTopRowsPanelView(
                 rightContainer,
                 panelKeys,
                 TOP_PANEL_RIGHT_START_COL,
-                TOP_PANEL_RIGHT_END_COL
+                TOP_PANEL_RIGHT_END_COL,
+                fixedTopBindPageIndex
         );
     }
 
@@ -3755,6 +3782,24 @@ public class CustomKeyboardView extends LinearLayout {
             int startRowInclusive,
             int endRowExclusive
     ) {
+        addShortcutPanelRows(
+                parent, panelKeys, startColInclusive, endColExclusive,
+                startRowInclusive, endRowExclusive, -1);
+    }
+
+    /**
+     * @param fixedTopBindPageIndex strip page index (0–2) for the keys in {@code panelKeys} when
+     *        rendering the two fixed rows; {@code -1} when not a fixed-rows slice (ignored).
+     */
+    private void addShortcutPanelRows(
+            LinearLayout parent,
+            List<Key> panelKeys,
+            int startColInclusive,
+            int endColExclusive,
+            int startRowInclusive,
+            int endRowExclusive,
+            int fixedTopBindPageIndex
+    ) {
         int m = dpToPx(KEY_OUTER_MARGIN_DP);
         int clampedStart = Math.max(0, startColInclusive);
         int clampedEnd = Math.min(TOP_PANEL_COLUMNS, endColExclusive);
@@ -3764,6 +3809,9 @@ public class CustomKeyboardView extends LinearLayout {
         boolean fixedRowsSlice = panelKeys != null
                 && panelKeys.size() == TOP_PANEL_COLUMNS * 2
                 && (clampedEndRow - clampedStartRow) == 2;
+        int fixedTopPageForResolvers = fixedRowsSlice && fixedTopBindPageIndex >= 0
+                ? fixedTopBindPageIndex
+                : fixedTopRowsPageIndex;
         for (int rowIndex = clampedStartRow; rowIndex < clampedEndRow; rowIndex++) {
             LinearLayout rowLayout = new LinearLayout(getContext());
             rowLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, TOP_PANEL_ROW_WEIGHT));
@@ -3799,7 +3847,9 @@ public class CustomKeyboardView extends LinearLayout {
                 boolean keyLockedVisualState = isFixedTopLocalFnKey(k)
                         ? fixedTopLocalFnLocked
                         : (modifierLocked || isTopProfileSlotActive(k));
-                FnMapping fixedTopLocalFn = resolveFixedTopLocalFnMapping(k);
+                FnMapping fixedTopLocalFn = fixedRowsSlice
+                        ? resolveFixedTopLocalFnMapping(k, fixedTopPageForResolvers)
+                        : resolveFixedTopLocalFnMapping(k);
                 int effectiveTopIconResId = resolveFixedTopLocalFnIconRes(k, fixedTopLocalFn);
                 String effectiveTopLabel = fixedTopLocalFn != null ? fixedTopLocalFn.label : k.label;
                 boolean stripEligible = isTopShortcutActionLabelEligible(k);
@@ -3812,7 +3862,8 @@ public class CustomKeyboardView extends LinearLayout {
                         && k.customIconGlyph != null
                         && !k.customIconGlyph.trim().isEmpty();
                 String fnCornerHint = fixedRowsSlice
-                        ? resolveFixedTopLocalFnCornerHint(k, fixedTopLocalFn, renderAsActionLabel)
+                        ? resolveFixedTopLocalFnCornerHint(
+                                k, fixedTopLocalFn, renderAsActionLabel, fixedTopPageForResolvers)
                         : null;
                 final boolean iconPrimaryCap;
                 if (!stripEligible) {
@@ -4813,7 +4864,10 @@ public class CustomKeyboardView extends LinearLayout {
                             splitNextFixedTopRowsContainerRight,
                             fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
                                     ? fixedTopRowsPanels.get(fixedTopRowsPageIndex + 1)
-                                    : null);
+                                    : null,
+                            fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
+                                    ? fixedTopRowsPageIndex + 1
+                                    : -1);
                     resetFixedTopRowsPositions(0f);
                     splitActiveFixedTopRowsContainerLeft.bringToFront();
                     splitActiveFixedTopRowsContainerRight.bringToFront();
@@ -4845,7 +4899,8 @@ public class CustomKeyboardView extends LinearLayout {
                             splitPreviousFixedTopRowsContainerRight,
                             fixedTopRowsPageIndex > 0
                                     ? fixedTopRowsPanels.get(fixedTopRowsPageIndex - 1)
-                                    : null);
+                                    : null,
+                            fixedTopRowsPageIndex > 0 ? fixedTopRowsPageIndex - 1 : -1);
                     resetFixedTopRowsPositions(0f);
                     splitActiveFixedTopRowsContainerLeft.bringToFront();
                     splitActiveFixedTopRowsContainerRight.bringToFront();
@@ -4871,12 +4926,16 @@ public class CustomKeyboardView extends LinearLayout {
                 previousFixedTopRowsContainer = activeFixedTopRowsContainer;
                 activeFixedTopRowsContainer = nextFixedTopRowsContainer;
                 nextFixedTopRowsContainer = recycledContainer;
-                bindFixedTopRowsPanelView(nextFixedTopRowsContainer,
+                bindFixedTopRowsPanelView(
+                        nextFixedTopRowsContainer,
                         fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
                                 ? fixedTopRowsPanels.get(fixedTopRowsPageIndex + 1)
                                 : null,
                         0,
-                        TOP_PANEL_COLUMNS);
+                        TOP_PANEL_COLUMNS,
+                        fixedTopRowsPageIndex < fixedTopRowsPanels.size() - 1
+                                ? fixedTopRowsPageIndex + 1
+                                : -1);
                 resetFixedTopRowsPositions(0f);
                 activeFixedTopRowsContainer.bringToFront();
             }).start();
@@ -4893,12 +4952,14 @@ public class CustomKeyboardView extends LinearLayout {
                 nextFixedTopRowsContainer = activeFixedTopRowsContainer;
                 activeFixedTopRowsContainer = previousFixedTopRowsContainer;
                 previousFixedTopRowsContainer = recycledContainer;
-                bindFixedTopRowsPanelView(previousFixedTopRowsContainer,
+                bindFixedTopRowsPanelView(
+                        previousFixedTopRowsContainer,
                         fixedTopRowsPageIndex > 0
                                 ? fixedTopRowsPanels.get(fixedTopRowsPageIndex - 1)
                                 : null,
                         0,
-                        TOP_PANEL_COLUMNS);
+                        TOP_PANEL_COLUMNS,
+                        fixedTopRowsPageIndex > 0 ? fixedTopRowsPageIndex - 1 : -1);
                 resetFixedTopRowsPositions(0f);
                 activeFixedTopRowsContainer.bringToFront();
             }).start();
@@ -5467,8 +5528,13 @@ public class CustomKeyboardView extends LinearLayout {
      * Local Fn overlay mapping for fixed rows when the latch matches the current strip page.
      * Page 0 (F7–F12 / F1–F6 / =): digit overlay when latch is off. Page 1 (ESC / nav): overlay when
      * latch is on. Page 2 uses rebuilt rows instead. Keys with no overlay return null.
+     * Use {@link #resolveFixedTopLocalFnMapping(Key)} for HID / behavior (visible strip page).
      */
     private FnMapping resolveFixedTopLocalFnMapping(Key key) {
+        return resolveFixedTopLocalFnMapping(key, fixedTopRowsPageIndex);
+    }
+
+    private FnMapping resolveFixedTopLocalFnMapping(Key key, int panelPageIndex) {
         FnMapping overlay = resolveFixedTopOverlayMapping(key);
         if (overlay == null) {
             return null;
@@ -5478,12 +5544,12 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         if (isFixedTopRowsFnDigitStripKey(key)) {
-            if (fixedTopRowsPageIndex == 0) {
+            if (panelPageIndex == 0) {
                 return !fixedTopLocalFnLocked ? overlay : null;
             }
             return null;
         }
-        if (fixedTopRowsPageIndex == 1 && isFixedTopRowsPage1FnOverlayKey(key)) {
+        if (panelPageIndex == 1 && isFixedTopRowsPage1FnOverlayKey(key)) {
             return fixedTopLocalFnLocked ? overlay : null;
         }
         return null;
@@ -5584,13 +5650,14 @@ public class CustomKeyboardView extends LinearLayout {
     @Nullable
     private String resolveFixedTopLocalFnCornerHint(Key k,
             @Nullable FnMapping activeOverlay,
-            boolean renderAsActionLabel) {
+            boolean renderAsActionLabel,
+            int panelPageIndex) {
         if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k)) {
             return null;
         }
         // Fixed strip page 1 (ESC/nav): no top-right local-Fn corner hints on its two rows (strip row 2
         // and row 3) — avoids redundant overlay labels (e.g. SCR LK / PRT SC / CAPS on modifiers).
-        if (fixedTopRowsPageIndex == 1) {
+        if (panelPageIndex == 1) {
             return null;
         }
         FnMapping overlay = resolveFixedTopOverlayMapping(k);
@@ -5601,10 +5668,6 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         if (activeOverlay != null && suppressFixedTopFnBaseCornerHintWhenLocalFnOn(k.code)) {
-            return null;
-        }
-        // Page 0 "=": overlay shows "*" for Fn-on only; do not show that hint when latch is off.
-        if (activeOverlay == null && fixedTopRowsPageIndex == 0 && k.code == 0x2E) {
             return null;
         }
         String raw = activeOverlay != null
