@@ -39,7 +39,7 @@ public final class TopShortcutProfileSlotPrefs {
             case 3:
                 return "blender";
             case 4:
-                return "blender";
+                return "fusion360";
             case 5:
                 return "vscode";
             case 6:

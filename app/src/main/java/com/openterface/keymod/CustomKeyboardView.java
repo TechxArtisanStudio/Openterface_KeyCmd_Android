@@ -208,7 +208,7 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_TOP_STRIP_CREATE_SHORTCUT = 0xF014;
     /** Rows 2–3 strip profile quick toggles (page 3 row 3). */
     private static final int KEY_TOP_STRIP_PROFILE_SLOT_1 = 0xF015;
-    private static final int KEY_TOP_STRIP_PROFILE_SLOT_3 = 0xF017;
+    private static final int KEY_TOP_STRIP_PROFILE_SLOT_6 = 0xF01A;
     private static final int KEY_NOOP_PLACEHOLDER = -1;
     private static final String APP_PREFS_NAME = "AppPrefs";
     private static final String KEY_SYSTEM_IME_CAPTURE = "system_ime_capture_mode";
@@ -912,7 +912,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private static int topStripProfileSlotIndexFromKeyCode(int code) {
-        if (code >= KEY_TOP_STRIP_PROFILE_SLOT_1 && code <= KEY_TOP_STRIP_PROFILE_SLOT_3) {
+        if (code >= KEY_TOP_STRIP_PROFILE_SLOT_1 && code <= KEY_TOP_STRIP_PROFILE_SLOT_6) {
             return code - KEY_TOP_STRIP_PROFILE_SLOT_1 + 1;
         }
         return 0;
@@ -3702,17 +3702,12 @@ public class CustomKeyboardView extends LinearLayout {
      */
     private List<Key> buildFixedTopRowsPage3() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
-        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(1), 3, 2, 0));
-        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(2), 3, 2, 1));
-        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(3), 3, 2, 2));
-        for (int c = 3; c < TOP_PANEL_COLUMNS; c++) {
-            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 2, c));
+        for (int s = 1; s <= 6; s++) {
+            keys.add(fixedStripSlotKey(buildProfileHubSlotKey(s), 3, 2, s - 1));
         }
-        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(1), 3, 3, 0));
-        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(2), 3, 3, 1));
-        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(3), 3, 3, 2));
-        for (int c = 3; c < TOP_PANEL_COLUMNS - 1; c++) {
-            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 3, c));
+        keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 2, 6));
+        for (int s = 1; s <= 6; s++) {
+            keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(s), 3, 3, s - 1));
         }
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
@@ -6065,7 +6060,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (c >= KEY_TOP_PROFILE_SLOT_1 && c <= KEY_TOP_PROFILE_SLOT_7) {
             return true;
         }
-        if (c >= KEY_TOP_STRIP_PROFILE_SLOT_1 && c <= KEY_TOP_STRIP_PROFILE_SLOT_3) {
+        if (c >= KEY_TOP_STRIP_PROFILE_SLOT_1 && c <= KEY_TOP_STRIP_PROFILE_SLOT_6) {
             return true;
         }
         switch (c) {

@@ -9,7 +9,7 @@ import com.openterface.keymod.preset.Rows23StripProfileConstants;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 
 /**
- * Persists which Rows 2–3 strip profile id is bound to each of three quick-toggle slots on
+ * Persists which Rows 2–3 strip profile id is bound to each of six quick-toggle slots on
  * fixed strip page 3 (row 3). Independent of {@link TopShortcutProfileSlotPrefs} (Row 1 app profiles).
  */
 public final class TopRows23StripProfileSlotPrefs {
@@ -29,7 +29,7 @@ public final class TopRows23StripProfileSlotPrefs {
         return KEY_PREFIX + slotIndex1Based;
     }
 
-    /** Default strip profile id for slot 1..3 (left-to-right on page 3 row 3). */
+    /** Default strip profile id for slot 1..6 (left-to-right on page 3 row 3). */
     @NonNull
     public static String defaultStripProfileIdForSlot(int slotIndex1Based) {
         switch (slotIndex1Based) {
@@ -39,6 +39,12 @@ public final class TopRows23StripProfileSlotPrefs {
                 return Rows23StripProfileConstants.SYMBOLS_PROFILE_ID;
             case 3:
                 return Rows23StripProfileConstants.MATH_PROFILE_ID;
+            case 4:
+                return Rows23StripProfileConstants.ARROWS_PROFILE_ID;
+            case 5:
+                return Rows23StripProfileConstants.CURRENCY_PROFILE_ID;
+            case 6:
+                return Rows23StripProfileConstants.BOX_LINES_PROFILE_ID;
             default:
                 return Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
         }
@@ -46,7 +52,7 @@ public final class TopRows23StripProfileSlotPrefs {
 
     @NonNull
     public static String getStripProfileIdForSlot(Context context, int slotIndex1Based) {
-        if (slotIndex1Based < 1 || slotIndex1Based > 3) {
+        if (slotIndex1Based < 1 || slotIndex1Based > 6) {
             return Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
         }
         String def = defaultStripProfileIdForSlot(slotIndex1Based);
@@ -70,7 +76,7 @@ public final class TopRows23StripProfileSlotPrefs {
     }
 
     public static void setStripProfileIdForSlot(Context context, int slotIndex1Based, String profileId) {
-        if (slotIndex1Based < 1 || slotIndex1Based > 3 || profileId == null) {
+        if (slotIndex1Based < 1 || slotIndex1Based > 6 || profileId == null) {
             return;
         }
         prefs(context).edit().putString(prefKey(slotIndex1Based), profileId).apply();

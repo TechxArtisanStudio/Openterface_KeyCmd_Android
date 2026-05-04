@@ -291,19 +291,14 @@ public final class FixedStripLayoutCatalog {
     ) {
         final int latch = FN_LATCH_NONE;
         out.add(Row.section("Row 2", null, latch));
-        addSlot(out, 3, 2, 0, resolveHubSlotTitle(context, pm, 1), null, 1, latch);
-        addSlot(out, 3, 2, 1, resolveHubSlotTitle(context, pm, 2), null, 2, latch);
-        addSlot(out, 3, 2, 2, resolveHubSlotTitle(context, pm, 3), null, 3, latch);
-        for (int c = 3; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
-            addSlot(out, 3, 2, c, "—", null, 0, latch);
+        for (int s = 1; s <= 6; s++) {
+            addSlot(out, 3, 2, s - 1, resolveHubSlotTitle(context, pm, s), null, s, latch);
         }
+        addSlot(out, 3, 2, 6, "—", null, 0, latch);
         out.add(Row.section("Row 3", null, latch));
         Rows23StripProfileManager sm = new Rows23StripProfileManager(context, pm);
-        addSlot(out, 3, 3, 0, resolveStripHubSlotTitle(context, sm, 1), null, 0, latch);
-        addSlot(out, 3, 3, 1, resolveStripHubSlotTitle(context, sm, 2), null, 0, latch);
-        addSlot(out, 3, 3, 2, resolveStripHubSlotTitle(context, sm, 3), null, 0, latch);
-        for (int c = 3; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS - 1; c++) {
-            addSlot(out, 3, 3, c, "—", null, 0, latch);
+        for (int s = 1; s <= 6; s++) {
+            addSlot(out, 3, 3, s - 1, resolveStripHubSlotTitle(context, sm, s), null, 0, latch);
         }
         addSlot(out, 3, 3, 6, "FN", null, 0, latch);
     }
