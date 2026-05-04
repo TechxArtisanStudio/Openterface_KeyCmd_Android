@@ -102,7 +102,8 @@ public class GamepadView extends View {
     // Configurable keycode for the main button (button_a)
     private int buttonAKeyCode = 40; // default: HID Enter
     private boolean showTwoButtons = false;
-    private boolean longPressEnabled = true;
+    /** Default false: fragment enables with Edit toggle; avoids config menus in play until sync. */
+    private boolean longPressEnabled = false;
 
     // Button size scale (0.5 = 50%, 1.0 = 100%, 2.0 = 200%)
     private float buttonSizeScale = 1.0f;
@@ -486,7 +487,7 @@ public class GamepadView extends View {
                 dynamicHitTestOrder.add(m.id);
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
                 FaceStyle fs = faceStyleForModuleId(m.id);
-                String disp = m.displayLabel != null ? m.displayLabel : shortButtonLabel(m);
+                String disp = resolveButtonDisplayLabel(m);
                 drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp);
                 dynamicHitTestOrder.add(m.id);
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
@@ -496,6 +497,18 @@ public class GamepadView extends View {
                 dynamicHitTestOrder.add(m.id);
             }
         }
+    }
+
+    /** Label on the face button: preset displayLabel, synced map from fragment, else key id. */
+    private String resolveButtonDisplayLabel(GamepadLayoutPresetDocument.GamepadModule m) {
+        if (m.displayLabel != null && !m.displayLabel.trim().isEmpty()) {
+            return m.displayLabel.trim();
+        }
+        String fromSync = componentDisplayLabels.get(m.id);
+        if (fromSync != null && !fromSync.isEmpty()) {
+            return fromSync;
+        }
+        return shortButtonLabel(m);
     }
 
     private String shortButtonLabel(GamepadLayoutPresetDocument.GamepadModule m) {
@@ -914,8 +927,8 @@ public class GamepadView extends View {
                 if (componentId != null && !isComponentDisabled(componentId)) {
                     pointerComponents.put(pointerId, componentId);
 
-                    // Start long press timer only when enabled
-                    if (longPressEnabled) {
+                    // Config long press only while editing (play mode: no menu on hold)
+                    if (longPressEnabled && isEditMode) {
                         longPressComponentId = componentId;
                         longPressDownX = x;
                         longPressDownY = y;
@@ -1205,7 +1218,8 @@ public class GamepadView extends View {
                 String componentId = getComponentAt(x, y);
                 if (componentId != null && !isComponentDisabled(componentId)) {
                     pointerComponents.put(pointerId, componentId);
-                    if (longPressEnabled && (touchpadDeltaListener == null || !componentId.startsWith("touchpad_"))) {
+                    if (longPressEnabled && isEditMode
+                            && (touchpadDeltaListener == null || !componentId.startsWith("touchpad_"))) {
                         longPressComponentId = componentId;
                         longPressDownX = x;
                         longPressDownY = y;

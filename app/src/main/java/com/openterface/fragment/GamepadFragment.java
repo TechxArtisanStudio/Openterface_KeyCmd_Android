@@ -215,6 +215,11 @@ public class GamepadFragment extends Fragment {
             }
             Log.d(TAG, "Edit mode: " + (isChecked ? "enabled" : "disabled"));
         });
+        // Listener does not run for initial unchecked state; align view with play mode.
+        if (gamepadView != null) {
+            gamepadView.setLongPressEnabled(editModeMaterialButton.isChecked());
+            gamepadView.setEditMode(editModeMaterialButton.isChecked());
+        }
 
         MaterialButton editDoneBtn = view.findViewById(R.id.edit_done_btn);
         editDoneBtn.setOnClickListener(v -> {
@@ -1736,6 +1741,8 @@ public class GamepadFragment extends Fragment {
         if (keyCode >= 30 && keyCode <= 38) return String.valueOf(keyCode - 29);
         // Numpad digits 1-9 (HID 89-97)
         if (keyCode >= 89 && keyCode <= 97) return "Num" + (keyCode - 88);
+        // HID F1–F12 (0x3A–0x45)
+        if (keyCode >= 58 && keyCode <= 69) return "F" + (keyCode - 57);
         return String.valueOf(keyCode);
     }
 
