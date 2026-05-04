@@ -1,5 +1,7 @@
 package com.openterface.fragment;
 
+import android.content.Context;
+import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -13,11 +15,13 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
@@ -462,28 +466,43 @@ public class Rows23SlotEditorFragment extends Fragment {
         public void onBindViewHolder(@NonNull VH holder, int position) {
             IconCatalog.Entry e = entries.get(position);
             boolean sel = e.value.equals(selected);
+            Context ctx = holder.itemView.getContext();
+            int onSurface = MaterialColors.getColor(
+                    holder.itemView,
+                    com.google.android.material.R.attr.colorOnSurface,
+                    ContextCompat.getColor(ctx, R.color.text_primary));
+            int onPrimaryContainer = MaterialColors.getColor(
+                    holder.itemView,
+                    com.google.android.material.R.attr.colorOnPrimaryContainer,
+                    onSurface);
+            int iconTint = sel ? onPrimaryContainer : onSurface;
+            holder.itemView.setBackgroundResource(
+                    sel ? R.drawable.bg_rows23_icon_cell_selected : R.drawable.bg_rows23_icon_cell_unselected);
+            holder.drawable.clearColorFilter();
             if (e.kind == IconCatalog.Kind.EMOJI) {
                 holder.emoji.setVisibility(View.VISIBLE);
                 holder.drawable.setVisibility(View.GONE);
+                holder.drawable.setImageDrawable(null);
                 holder.emoji.setTextSize(24);
                 holder.emoji.setText(e.value);
+                holder.emoji.setTextColor(iconTint);
             } else {
                 holder.emoji.setTextSize(24);
                 holder.emoji.setText("");
-                int res = requireContext().getResources().getIdentifier(e.value, "drawable",
-                        requireContext().getPackageName());
+                int res = ctx.getResources().getIdentifier(e.value, "drawable", ctx.getPackageName());
                 if (res != 0) {
                     holder.emoji.setVisibility(View.GONE);
                     holder.drawable.setVisibility(View.VISIBLE);
                     holder.drawable.setImageResource(res);
+                    holder.drawable.setColorFilter(iconTint, PorterDuff.Mode.SRC_IN);
                 } else {
                     holder.drawable.setVisibility(View.GONE);
                     holder.emoji.setVisibility(View.VISIBLE);
                     holder.emoji.setText(e.value);
                     holder.emoji.setTextSize(10);
+                    holder.emoji.setTextColor(iconTint);
                 }
             }
-            holder.itemView.setAlpha(sel ? 1f : 0.75f);
             holder.itemView.setOnClickListener(v -> {
                 iconValue = e.value;
                 selected = e.value;
