@@ -5,7 +5,9 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
+import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 
 import java.util.ArrayList;
@@ -24,6 +26,13 @@ public final class FixedStripLayoutCatalog {
     public static final int VIEW_TYPE_SECTION = 0;
     public static final int VIEW_TYPE_SLOT = 1;
 
+    /** Page 0–1 and generic sections; shown in every Fn tab filter. */
+    public static final int FN_LATCH_NONE = 0;
+    /** Page 2 catalog rows when local Fn latch is off. */
+    public static final int FN_LATCH_OFF = 1;
+    /** Page 2 catalog rows when local Fn latch is on. */
+    public static final int FN_LATCH_ON = 2;
+
     public static final class Row {
         public final int viewType;
         @NonNull
@@ -38,9 +47,13 @@ public final class FixedStripLayoutCatalog {
         public final int col;
         /** 1 or 2 when this cell is a Shortcut Hub profile slot (page 2, Fn on); otherwise 0. */
         public final int profileSlot1Based;
+        /**
+         * Distinguishes page 2 Fn-off vs Fn-on blocks for Hub filtering; {@link #FN_LATCH_NONE} elsewhere.
+         */
+        public final int fnLatchGroup;
 
         Row(int viewType, @NonNull String primary, @Nullable String secondary,
-                int pageIndex, int stripRow, int col, int profileSlot1Based) {
+                int pageIndex, int stripRow, int col, int profileSlot1Based, int fnLatchGroup) {
             this.viewType = viewType;
             this.primary = primary;
             this.secondary = secondary;
@@ -48,15 +61,25 @@ public final class FixedStripLayoutCatalog {
             this.stripRow = stripRow;
             this.col = col;
             this.profileSlot1Based = profileSlot1Based;
+            this.fnLatchGroup = fnLatchGroup;
         }
 
         static Row section(@NonNull String title, @Nullable String subtitle) {
-            return new Row(VIEW_TYPE_SECTION, title, subtitle, -1, -1, -1, 0);
+            return section(title, subtitle, FN_LATCH_NONE);
+        }
+
+        static Row section(@NonNull String title, @Nullable String subtitle, int fnLatchGroup) {
+            return new Row(VIEW_TYPE_SECTION, title, subtitle, -1, -1, -1, 0, fnLatchGroup);
         }
 
         static Row slot(int page, int stripRow, int col, @NonNull String label, @Nullable String fnHint,
                 int profileSlot1Based) {
-            return new Row(VIEW_TYPE_SLOT, label, fnHint, page, stripRow, col, profileSlot1Based);
+            return slot(page, stripRow, col, label, fnHint, profileSlot1Based, FN_LATCH_NONE);
+        }
+
+        static Row slot(int page, int stripRow, int col, @NonNull String label, @Nullable String fnHint,
+                int profileSlot1Based, int fnLatchGroup) {
+            return new Row(VIEW_TYPE_SLOT, label, fnHint, page, stripRow, col, profileSlot1Based, fnLatchGroup);
         }
     }
 
@@ -159,6 +182,31 @@ public final class FixedStripLayoutCatalog {
         }
     }
 
+    /**
+     * Human key/chord label for strip catalog list cells. Uses Fn overlay hints when present; otherwise
+     * {@link KeyParser#toLabelForTargetOs} with catalog cap fallback when the parser yields {@code Key <id>}.
+     */
+    @NonNull
+    private static String stripCatalogKeyEventLabel(
+            int hidCode,
+            boolean hidShift,
+            boolean fnLayer,
+            @Nullable String fnOverlayHint,
+            @NonNull String fallbackPhysicalLabel,
+            @NonNull String targetOs
+    ) {
+        String os = targetOs != null && !targetOs.trim().isEmpty() ? targetOs.trim() : "macos";
+        if (fnLayer && fnOverlayHint != null && !fnOverlayHint.isEmpty()) {
+            return fnOverlayHint;
+        }
+        int mod = hidShift ? 0x02 : 0;
+        String parsed = KeyParser.toLabelForTargetOs(hidCode, mod, os);
+        if (parsed.startsWith("Key ")) {
+            return fallbackPhysicalLabel;
+        }
+        return parsed;
+    }
+
     private static void addPage(
             List<Row> out,
             int pageIndex,
@@ -177,13 +225,13 @@ public final class FixedStripLayoutCatalog {
         out.add(Row.section("Row 2", null));
         for (int c = 0; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
             String hint = overlayFnHint(row2Codes[c], row2Shift[c]);
-            String sub = hint != null ? "Fn: " + hint : null;
+            String sub = hint;
             out.add(Row.slot(pageIndex, 2, c, row2[c][0], sub, row2ProfileSlot[c]));
         }
         out.add(Row.section("Row 3", null));
         for (int c = 0; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
             String hint = overlayFnHint(row3Codes[c], row3Shift[c]);
-            String sub = hint != null ? "Fn: " + hint : null;
+            String sub = hint;
             out.add(Row.slot(pageIndex, 3, c, row3[c][0], sub, row3ProfileSlot[c]));
         }
     }
@@ -197,14 +245,15 @@ public final class FixedStripLayoutCatalog {
         List<Row> out = new ArrayList<>();
         int[] noSlot = new int[]{0, 0, 0, 0, 0, 0, 0};
 
-        String p0sub = "F-keys show digit overlays when local Fn is off (strip page 0).";
+        String p0sub = context.getString(R.string.shortcut_hub_strip_catalog_page0_subtitle);
         String[][] p0r2 = {{"F7"}, {"F8"}, {"F9"}, {"F10"}, {"F11"}, {"F12"}, {"="}};
         int[] p0r2c = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x2E};
         boolean[] p0r2s = {false, false, false, false, false, false, false};
         String[][] p0r3 = {{"F1"}, {"F2"}, {"F3"}, {"F4"}, {"F5"}, {"F6"}, {"FN"}};
         int[] p0r3c = {0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0xF00C};
         boolean[] p0r3s = {false, false, false, false, false, false, false};
-        addPage(out, 0, "Page 0 — F-keys", p0sub, p0r2, p0r3, p0r2c, p0r2s, p0r3c, p0r3s, noSlot, noSlot);
+        addPage(out, 0, context.getString(R.string.shortcut_hub_strip_catalog_page0_title), p0sub, p0r2, p0r3,
+                p0r2c, p0r2s, p0r3c, p0r3s, noSlot, noSlot);
 
         String p1sub = "Modifiers and navigation; second row shows overlays when local Fn is latched on.";
         String[][] p1r2 = {{"Ctrl"}, {"Alt"}, {"Win/Cmd"}, {"Tab"}, {"Up"}, {"Enter"}, {"PH1"}};
@@ -223,54 +272,219 @@ public final class FixedStripLayoutCatalog {
         return out;
     }
 
+    /**
+     * Flat list for strip profile grid UI: page and row band headers (full width) plus slot cells in
+     * row-major order (col0 base, col0 fn, col1 base, …) for a 2-column {@link androidx.recyclerview.widget.GridLayoutManager}.
+     */
+    @NonNull
+    public static List<StripCatalogGridItem> buildGridItems(
+            @NonNull Context context,
+            @NonNull ShortcutProfileManager pm,
+            @NonNull String targetOs
+    ) {
+        List<StripCatalogGridItem> out = new ArrayList<>();
+
+        appendGridPage0(context, out, targetOs);
+
+        appendGridPage(
+                context, out, 1,
+                "Page 1 — Modifiers & nav",
+                "Modifiers and navigation; second row shows overlays when local Fn is latched on.",
+                new String[]{"Ctrl", "Alt", "Win/Cmd", "Tab", "Up", "Enter", "PH1"},
+                new int[]{0xE0, 0xE2, 0xE3, 0x2B, 0x52, 0x28, 0xF00A},
+                new boolean[]{false, false, false, false, false, false, false},
+                new String[]{"Esc", "Shift", "Del", "Left", "Down", "Right", "FN"},
+                new int[]{0x29, 0xE1, 0x4C, 0x50, 0x51, 0x4F, 0xF00C},
+                new boolean[]{false, false, false, false, false, false, false},
+                targetOs);
+
+        appendGridPage2(context, out, pm, targetOs);
+        return out;
+    }
+
+    private static void appendGridPage0(
+            @NonNull Context context,
+            @NonNull List<StripCatalogGridItem> out,
+            @NonNull String targetOs
+    ) {
+        out.add(StripCatalogGridItem.pageHeader(
+                context.getString(R.string.shortcut_hub_strip_catalog_page0_title),
+                context.getString(R.string.shortcut_hub_strip_catalog_page0_subtitle)));
+        appendGridStripRowPage0(context, out, 2,
+                new String[]{"F7", "F8", "F9", "F10", "F11", "F12", "="},
+                new int[]{0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x2E},
+                new boolean[]{false, false, false, false, false, false, false},
+                targetOs);
+        appendGridStripRowPage0(context, out, 3,
+                new String[]{"F1", "F2", "F3", "F4", "F5", "F6", "FN"},
+                new int[]{0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0xF00C},
+                new boolean[]{false, false, false, false, false, false, false},
+                targetOs);
+    }
+
+    /**
+     * Page 0 grid: Base column shows unlatched strip caps (digits/symbols); Fn column shows F-key labels,
+     * matching {@link com.openterface.keymod.CustomKeyboardView#resolveFixedTopLocalFnMapping} (latch off → overlay).
+     * Layer chips use the same strings as {@link #appendGridStripRow}: Base and Fn.
+     */
+    private static void appendGridStripRowPage0(
+            @NonNull Context context,
+            @NonNull List<StripCatalogGridItem> out,
+            int stripRow,
+            @NonNull String[] fLabels,
+            @NonNull int[] codes,
+            @NonNull boolean[] shifts,
+            @NonNull String targetOs
+    ) {
+        out.add(StripCatalogGridItem.rowBandHeader(stripRow == 2 ? "Row 2" : "Row 3"));
+        String baseLayer = context.getString(R.string.shortcut_hub_strip_grid_layer_base);
+        String fnLayerLbl = context.getString(R.string.shortcut_hub_strip_grid_layer_fn);
+        for (int c = 0; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
+            String baseKey = StripSlotMapStore.slotKey(0, stripRow, c, false);
+            String fnKey = StripSlotMapStore.slotKey(0, stripRow, c, true);
+            String fCap = fLabels[c];
+            String digit = overlayFnHint(codes[c], shifts[c]);
+            String basePhysical = digit != null ? digit : fCap;
+            String baseEv = stripCatalogKeyEventLabel(codes[c], shifts[c], false, null, basePhysical, targetOs);
+            String fnEv = stripCatalogKeyEventLabel(codes[c], shifts[c], true, null, fCap, targetOs);
+            out.add(StripCatalogGridItem.slotCell(
+                    baseKey, 0, stripRow, c, false, baseLayer, basePhysical, null, baseEv));
+            out.add(StripCatalogGridItem.slotCell(
+                    fnKey, 0, stripRow, c, true, fnLayerLbl, fCap, null, fnEv));
+        }
+    }
+
+    private static void appendGridPage(
+            @NonNull Context context,
+            List<StripCatalogGridItem> out,
+            int pageIndex,
+            @NonNull String pageTitle,
+            @Nullable String pageSubtitle,
+            @NonNull String[] row2Labels,
+            @NonNull int[] row2Codes,
+            @NonNull boolean[] row2Shift,
+            @NonNull String[] row3Labels,
+            @NonNull int[] row3Codes,
+            @NonNull boolean[] row3Shift,
+            @NonNull String targetOs
+    ) {
+        out.add(StripCatalogGridItem.pageHeader(pageTitle, pageSubtitle));
+        appendGridStripRow(context, out, pageIndex, 2, row2Labels, row2Codes, row2Shift, null, targetOs);
+        appendGridStripRow(context, out, pageIndex, 3, row3Labels, row3Codes, row3Shift, null, targetOs);
+    }
+
+    private static void appendGridStripRow(
+            @NonNull Context context,
+            List<StripCatalogGridItem> out,
+            int pageIndex,
+            int stripRow,
+            @NonNull String[] labels,
+            @NonNull int[] codes,
+            @NonNull boolean[] shifts,
+            @Nullable String[] latchOnPrimaryPerCol,
+            @NonNull String targetOs
+    ) {
+        out.add(StripCatalogGridItem.rowBandHeader(stripRow == 2 ? "Row 2" : "Row 3"));
+        for (int c = 0; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
+            String baseKey = StripSlotMapStore.slotKey(pageIndex, stripRow, c, false);
+            String fnKey = StripSlotMapStore.slotKey(pageIndex, stripRow, c, true);
+            String phy = labels[c];
+            String hint = overlayFnHint(codes[c], shifts[c]);
+            String fnPrimary = hint != null ? hint
+                    : context.getString(R.string.shortcut_hub_strip_grid_fn_layer);
+            String latchLine = null;
+            if (latchOnPrimaryPerCol != null && c < latchOnPrimaryPerCol.length) {
+                String onCap = latchOnPrimaryPerCol[c];
+                if (onCap != null && !onCap.equals(phy)) {
+                    latchLine = context.getString(R.string.shortcut_hub_strip_grid_fn_on_hint, onCap);
+                }
+            }
+            String baseLayer = context.getString(R.string.shortcut_hub_strip_grid_layer_base);
+            String fnLayerLbl = context.getString(R.string.shortcut_hub_strip_grid_layer_fn);
+            String baseEv = stripCatalogKeyEventLabel(codes[c], shifts[c], false, null, phy, targetOs);
+            String fnEv = stripCatalogKeyEventLabel(codes[c], shifts[c], true, hint, fnPrimary, targetOs);
+            out.add(StripCatalogGridItem.slotCell(
+                    baseKey, pageIndex, stripRow, c, false, baseLayer, phy, latchLine, baseEv));
+            out.add(StripCatalogGridItem.slotCell(
+                    fnKey, pageIndex, stripRow, c, true, fnLayerLbl, fnPrimary, null, fnEv));
+        }
+    }
+
+    private static void appendGridPage2(
+            @NonNull Context context,
+            List<StripCatalogGridItem> out,
+            @NonNull ShortcutProfileManager pm,
+            @NonNull String targetOs
+    ) {
+        out.add(StripCatalogGridItem.pageHeader(
+                "Page 2 — Hub & symbols",
+                "Caps swap when local Fn is latched; slot keys are the same in both states."));
+
+        String[] r2Off = {"(", ")", "[", "]", ":", "#", "@"};
+        String[] r3Off = {"/", "\\", "|", "?", "-", "_", "FN"};
+        String s1 = resolveHubSlotTitle(context, pm, 1);
+        String s2 = resolveHubSlotTitle(context, pm, 2);
+        String[] r2On = {s1, s2, "~", "'", "\"", "%", "^"};
+        String[] r3On = {"<", ">", "*", "&", ",", ".", "FN"};
+
+        int[] r2OffCodes = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
+        boolean[] r2OffShift = {true, true, false, false, true, true, true};
+        int[] r3OffCodes = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
+        boolean[] r3OffShift = {false, false, false, true, false, true, false};
+
+        appendGridStripRow(context, out, 2, 2, r2Off, r2OffCodes, r2OffShift, r2On, targetOs);
+        appendGridStripRow(context, out, 2, 3, r3Off, r3OffCodes, r3OffShift, r3On, targetOs);
+    }
+
     private static void addPage2Variant(
             @NonNull Context context,
             List<Row> out,
             boolean fnOn,
             @NonNull ShortcutProfileManager pm
     ) {
-        out.add(Row.section(fnOn ? "Page 2 — local Fn on" : "Page 2 — local Fn off", null));
-        out.add(Row.section("Row 2", null));
+        final int latch = fnOn ? FN_LATCH_ON : FN_LATCH_OFF;
+        out.add(Row.section(fnOn ? "Page 2 — local Fn on" : "Page 2 — local Fn off", null, latch));
+        out.add(Row.section("Row 2", null, latch));
         if (fnOn) {
             String s1 = resolveHubSlotTitle(context, pm, 1);
             String s2 = resolveHubSlotTitle(context, pm, 2);
-            addSlot(out, 2, 2, 0, s1, null, 1);
-            addSlot(out, 2, 2, 1, s2, null, 2);
-            addSlot(out, 2, 2, 2, "~", overlayFnHint(0x35, true), 0);
-            addSlot(out, 2, 2, 3, "'", overlayFnHint(0x34, false), 0);
-            addSlot(out, 2, 2, 4, "\"", overlayFnHint(0x34, true), 0);
-            addSlot(out, 2, 2, 5, "%", overlayFnHint(0x22, true), 0);
-            addSlot(out, 2, 2, 6, "^", overlayFnHint(0x23, true), 0);
-            out.add(Row.section("Row 3", null));
-            addSlot(out, 2, 3, 0, "<", overlayFnHint(0x36, true), 0);
-            addSlot(out, 2, 3, 1, ">", overlayFnHint(0x37, true), 0);
-            addSlot(out, 2, 3, 2, "*", overlayFnHint(0x25, true), 0);
-            addSlot(out, 2, 3, 3, "&", overlayFnHint(0x24, true), 0);
-            addSlot(out, 2, 3, 4, ",", overlayFnHint(0x36, false), 0);
-            addSlot(out, 2, 3, 5, ".", overlayFnHint(0x37, false), 0);
-            addSlot(out, 2, 3, 6, "FN", null, 0);
+            addSlot(out, 2, 2, 0, s1, null, 1, latch);
+            addSlot(out, 2, 2, 1, s2, null, 2, latch);
+            addSlot(out, 2, 2, 2, "~", overlayFnHint(0x35, true), 0, latch);
+            addSlot(out, 2, 2, 3, "'", overlayFnHint(0x34, false), 0, latch);
+            addSlot(out, 2, 2, 4, "\"", overlayFnHint(0x34, true), 0, latch);
+            addSlot(out, 2, 2, 5, "%", overlayFnHint(0x22, true), 0, latch);
+            addSlot(out, 2, 2, 6, "^", overlayFnHint(0x23, true), 0, latch);
+            out.add(Row.section("Row 3", null, latch));
+            addSlot(out, 2, 3, 0, "<", overlayFnHint(0x36, true), 0, latch);
+            addSlot(out, 2, 3, 1, ">", overlayFnHint(0x37, true), 0, latch);
+            addSlot(out, 2, 3, 2, "*", overlayFnHint(0x25, true), 0, latch);
+            addSlot(out, 2, 3, 3, "&", overlayFnHint(0x24, true), 0, latch);
+            addSlot(out, 2, 3, 4, ",", overlayFnHint(0x36, false), 0, latch);
+            addSlot(out, 2, 3, 5, ".", overlayFnHint(0x37, false), 0, latch);
+            addSlot(out, 2, 3, 6, "FN", null, 0, latch);
         } else {
-            addSlot(out, 2, 2, 0, "(", null, 0);
-            addSlot(out, 2, 2, 1, ")", null, 0);
-            addSlot(out, 2, 2, 2, "[", overlayFnHint(0x2F, false), 0);
-            addSlot(out, 2, 2, 3, "]", overlayFnHint(0x30, false), 0);
-            addSlot(out, 2, 2, 4, ":", overlayFnHint(0x33, true), 0);
-            addSlot(out, 2, 2, 5, "#", overlayFnHint(0x20, true), 0);
-            addSlot(out, 2, 2, 6, "@", overlayFnHint(0x1F, true), 0);
-            out.add(Row.section("Row 3", null));
-            addSlot(out, 2, 3, 0, "/", overlayFnHint(0x38, false), 0);
-            addSlot(out, 2, 3, 1, "\\", overlayFnHint(0x31, false), 0);
-            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x64, false), 0);
-            addSlot(out, 2, 3, 3, "?", overlayFnHint(0x38, true), 0);
-            addSlot(out, 2, 3, 4, "-", overlayFnHint(0x2D, false), 0);
-            addSlot(out, 2, 3, 5, "_", overlayFnHint(0x2D, true), 0);
-            addSlot(out, 2, 3, 6, "FN", null, 0);
+            addSlot(out, 2, 2, 0, "(", null, 0, latch);
+            addSlot(out, 2, 2, 1, ")", null, 0, latch);
+            addSlot(out, 2, 2, 2, "[", overlayFnHint(0x2F, false), 0, latch);
+            addSlot(out, 2, 2, 3, "]", overlayFnHint(0x30, false), 0, latch);
+            addSlot(out, 2, 2, 4, ":", overlayFnHint(0x33, true), 0, latch);
+            addSlot(out, 2, 2, 5, "#", overlayFnHint(0x20, true), 0, latch);
+            addSlot(out, 2, 2, 6, "@", overlayFnHint(0x1F, true), 0, latch);
+            out.add(Row.section("Row 3", null, latch));
+            addSlot(out, 2, 3, 0, "/", overlayFnHint(0x38, false), 0, latch);
+            addSlot(out, 2, 3, 1, "\\", overlayFnHint(0x31, false), 0, latch);
+            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x64, false), 0, latch);
+            addSlot(out, 2, 3, 3, "?", overlayFnHint(0x38, true), 0, latch);
+            addSlot(out, 2, 3, 4, "-", overlayFnHint(0x2D, false), 0, latch);
+            addSlot(out, 2, 3, 5, "_", overlayFnHint(0x2D, true), 0, latch);
+            addSlot(out, 2, 3, 6, "FN", null, 0, latch);
         }
     }
 
     private static void addSlot(List<Row> out, int page, int stripRow, int col,
-            @NonNull String label, @Nullable String fnHint, int profileSlot) {
-        out.add(Row.slot(page, stripRow, col, label, fnHint, profileSlot));
+            @NonNull String label, @Nullable String fnHint, int profileSlot, int fnLatch) {
+        out.add(Row.slot(page, stripRow, col, label, fnHint, profileSlot, fnLatch));
     }
 
     @NonNull

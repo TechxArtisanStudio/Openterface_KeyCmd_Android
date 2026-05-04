@@ -4,24 +4,24 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingStart="12dp"
-    android:paddingTop="14dp"
-    android:paddingEnd="16dp"
-    android:paddingBottom="6dp">
+    android:paddingTop="16dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="8dp">
 
     <TextView
-        android:id="@+id/fixed_strip_section_title"
+        android:id="@+id/strip_catalog_grid_page_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="@color/text_primary"
-        android:textSize="15sp"
+        android:textSize="16sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/fixed_strip_section_subtitle"
+        android:id="@+id/strip_catalog_grid_page_subtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="4dp"
         android:textColor="@color/text_secondary"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:visibility="gone" />
 </LinearLayout>
