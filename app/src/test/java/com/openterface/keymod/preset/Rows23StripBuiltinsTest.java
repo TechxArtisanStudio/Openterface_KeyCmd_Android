@@ -10,38 +10,94 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Validates the two non-deletable Rows 2–3 built-ins ("Symbols ★", "Math ∑") so future edits to
- * {@link Rows23StripProfileBuiltins} cannot regress slot integrity, modifier limits, or the
- * non-deletable contract enforced by {@link Rows23StripProfileConstants#isBuiltInProfileId}.
+ * Validates the non-deletable Rows 2–3 built-ins so future edits to
+ * {@link Rows23StripProfileBuiltins} cannot regress slot integrity, modifier limits, the
+ * non-deletable contract enforced by {@link Rows23StripProfileConstants#isBuiltInProfileId},
+ * the page-2 row-2 paren/grave-tilde invariant relied on by
+ * {@code Rows23StripProfileManager.replaceBuiltInProfileIfPage2Row2LayoutStale}, or the
+ * "Unicode shortcut → no HID keyCode/modifiers, icon == codepoint string" contract used by
+ * {@code CustomKeyboardView.sendStripUnicodeShortcut}.
  */
 public class Rows23StripBuiltinsTest {
 
+    /**
+     * All built-in profiles whose page-2 row-2 cols 0–1 must keep ASCII paren / grave-tilde and
+     * which are subject to the slot-integrity / coverage / modifier checks below.
+     */
+    private static Rows23StripProfile[] allBuiltIns() {
+        return new Rows23StripProfile[]{
+                Rows23StripProfileBuiltins.buildSymbolsProfile(),
+                Rows23StripProfileBuiltins.buildMathProfile(),
+                Rows23StripProfileBuiltins.buildBoxLinesProfile(),
+                Rows23StripProfileBuiltins.buildLatinProfile(),
+                Rows23StripProfileBuiltins.buildArrowsProfile(),
+                Rows23StripProfileBuiltins.buildCurrencyProfile(),
+        };
+    }
+
     @Test
-    public void isBuiltInProfileId_recognizesAllThree() {
-        Assert.assertTrue(Rows23StripProfileConstants.isBuiltInProfileId(
-                Rows23StripProfileConstants.DEFAULT_PROFILE_ID));
-        Assert.assertTrue(Rows23StripProfileConstants.isBuiltInProfileId(
-                Rows23StripProfileConstants.SYMBOLS_PROFILE_ID));
-        Assert.assertTrue(Rows23StripProfileConstants.isBuiltInProfileId(
-                Rows23StripProfileConstants.MATH_PROFILE_ID));
+    public void isBuiltInProfileId_recognizesAllSeven() {
+        String[] builtIns = new String[]{
+                Rows23StripProfileConstants.DEFAULT_PROFILE_ID,
+                Rows23StripProfileConstants.SYMBOLS_PROFILE_ID,
+                Rows23StripProfileConstants.MATH_PROFILE_ID,
+                Rows23StripProfileConstants.BOX_LINES_PROFILE_ID,
+                Rows23StripProfileConstants.LATIN_PROFILE_ID,
+                Rows23StripProfileConstants.ARROWS_PROFILE_ID,
+                Rows23StripProfileConstants.CURRENCY_PROFILE_ID,
+        };
+        for (String id : builtIns) {
+            Assert.assertTrue("expected built-in: " + id,
+                    Rows23StripProfileConstants.isBuiltInProfileId(id));
+        }
         Assert.assertFalse(Rows23StripProfileConstants.isBuiltInProfileId("strip_user_made"));
         Assert.assertFalse(Rows23StripProfileConstants.isBuiltInProfileId(null));
     }
 
     @Test
     public void symbolsProfile_hasIdNameAndContent() {
-        Rows23StripProfile p = Rows23StripProfileBuiltins.buildSymbolsProfile();
-        Assert.assertEquals(Rows23StripProfileConstants.SYMBOLS_PROFILE_ID, p.id);
-        Assert.assertNotNull(p.name);
-        Assert.assertFalse(p.name.trim().isEmpty());
-        Assert.assertFalse(p.slotMap.isEmpty());
-        Assert.assertFalse(p.shortcuts.isEmpty());
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildSymbolsProfile(),
+                Rows23StripProfileConstants.SYMBOLS_PROFILE_ID);
     }
 
     @Test
     public void mathProfile_hasIdNameAndContent() {
-        Rows23StripProfile p = Rows23StripProfileBuiltins.buildMathProfile();
-        Assert.assertEquals(Rows23StripProfileConstants.MATH_PROFILE_ID, p.id);
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildMathProfile(),
+                Rows23StripProfileConstants.MATH_PROFILE_ID);
+    }
+
+    @Test
+    public void boxLinesProfile_hasIdNameAndContent() {
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildBoxLinesProfile(),
+                Rows23StripProfileConstants.BOX_LINES_PROFILE_ID);
+    }
+
+    @Test
+    public void latinProfile_hasIdNameAndContent() {
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildLatinProfile(),
+                Rows23StripProfileConstants.LATIN_PROFILE_ID);
+    }
+
+    @Test
+    public void arrowsProfile_hasIdNameAndContent() {
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildArrowsProfile(),
+                Rows23StripProfileConstants.ARROWS_PROFILE_ID);
+    }
+
+    @Test
+    public void currencyProfile_hasIdNameAndContent() {
+        assertProfileShellComplete(
+                Rows23StripProfileBuiltins.buildCurrencyProfile(),
+                Rows23StripProfileConstants.CURRENCY_PROFILE_ID);
+    }
+
+    private static void assertProfileShellComplete(Rows23StripProfile p, String expectedId) {
+        Assert.assertEquals(expectedId, p.id);
         Assert.assertNotNull(p.name);
         Assert.assertFalse(p.name.trim().isEmpty());
         Assert.assertFalse(p.slotMap.isEmpty());
@@ -49,33 +105,24 @@ public class Rows23StripBuiltinsTest {
     }
 
     @Test
-    public void symbolsProfile_everySlotKeyParsesAndPointsAtKnownShortcut() {
-        assertProfileSlotIntegrity(Rows23StripProfileBuiltins.buildSymbolsProfile());
+    public void allBuiltIns_everySlotKeyParsesAndPointsAtKnownShortcut() {
+        for (Rows23StripProfile p : allBuiltIns()) {
+            assertProfileSlotIntegrity(p);
+        }
     }
 
     @Test
-    public void mathProfile_everySlotKeyParsesAndPointsAtKnownShortcut() {
-        assertProfileSlotIntegrity(Rows23StripProfileBuiltins.buildMathProfile());
+    public void allBuiltIns_modifiersAreStripCompliant() {
+        for (Rows23StripProfile p : allBuiltIns()) {
+            assertModifiersStripCompliant(p);
+        }
     }
 
     @Test
-    public void symbolsProfile_modifiersAreStripCompliant() {
-        assertModifiersStripCompliant(Rows23StripProfileBuiltins.buildSymbolsProfile());
-    }
-
-    @Test
-    public void mathProfile_modifiersAreStripCompliant() {
-        assertModifiersStripCompliant(Rows23StripProfileBuiltins.buildMathProfile());
-    }
-
-    @Test
-    public void symbolsProfile_coversBothLayersAcrossAllPages() {
-        assertCoversAllSlotPositions(Rows23StripProfileBuiltins.buildSymbolsProfile());
-    }
-
-    @Test
-    public void mathProfile_coversBothLayersAcrossAllPages() {
-        assertCoversAllSlotPositions(Rows23StripProfileBuiltins.buildMathProfile());
+    public void allBuiltIns_coversBothLayersAcrossAllPages() {
+        for (Rows23StripProfile p : allBuiltIns()) {
+            assertCoversAllSlotPositions(p);
+        }
     }
 
     private static void assertProfileSlotIntegrity(Rows23StripProfile p) {
@@ -138,50 +185,40 @@ public class Rows23StripBuiltinsTest {
     }
 
     @Test
-    public void symbolsAndMathProfiles_page2Row2FnUsesGraveTildeHid() {
-        for (Rows23StripProfile p : new Rows23StripProfile[]{
-                Rows23StripProfileBuiltins.buildSymbolsProfile(),
-                Rows23StripProfileBuiltins.buildMathProfile(),
-        }) {
+    public void allBuiltIns_page2Row2FnUsesGraveTildeHid() {
+        for (Rows23StripProfile p : allBuiltIns()) {
             for (int col = 0; col <= 1; col++) {
                 String sk = StripSlotMapStore.slotKey(2, 2, col, true);
                 String sid = p.slotMap.get(sk);
                 Assert.assertNotNull("slot " + sk, sid);
-                Shortcut found = null;
-                for (Shortcut x : p.shortcuts) {
-                    if (sid.equals(x.id)) {
-                        found = x;
-                        break;
-                    }
-                }
+                Shortcut found = findShortcut(p, sid);
                 Assert.assertNotNull(found);
-                Assert.assertEquals(0x35, found.keyCode);
+                Assert.assertEquals(
+                        "page-2 row-2 fn col " + col + " in " + p.id + " must keep grave/tilde HID",
+                        0x35, found.keyCode);
                 int m = HidKeyCatalog.normalizeStripModifiers(found.modifiers);
                 Assert.assertEquals(col == 0 ? 0 : 0x02, m);
+                Assert.assertEquals(
+                        "page-2 row-2 fn col " + col + " must not be a Unicode shortcut",
+                        0, found.unicodeCodePoint);
             }
         }
     }
 
     @Test
-    public void symbolsAndMathProfiles_page2Row2BaseUsesParenHid() {
-        for (Rows23StripProfile p : new Rows23StripProfile[]{
-                Rows23StripProfileBuiltins.buildSymbolsProfile(),
-                Rows23StripProfileBuiltins.buildMathProfile(),
-        }) {
+    public void allBuiltIns_page2Row2BaseUsesParenHid() {
+        for (Rows23StripProfile p : allBuiltIns()) {
             for (int col = 0; col <= 1; col++) {
                 String sk = StripSlotMapStore.slotKey(2, 2, col, false);
                 String sid = p.slotMap.get(sk);
                 Assert.assertNotNull("slot " + sk, sid);
-                Shortcut found = null;
-                for (Shortcut x : p.shortcuts) {
-                    if (sid.equals(x.id)) {
-                        found = x;
-                        break;
-                    }
-                }
+                Shortcut found = findShortcut(p, sid);
                 Assert.assertNotNull(found);
                 Assert.assertEquals(col == 0 ? 0x26 : 0x27, found.keyCode);
                 Assert.assertEquals(0x02, HidKeyCatalog.normalizeStripModifiers(found.modifiers));
+                Assert.assertEquals(
+                        "page-2 row-2 base col " + col + " must not be a Unicode shortcut",
+                        0, found.unicodeCodePoint);
             }
         }
     }
@@ -189,14 +226,11 @@ public class Rows23StripBuiltinsTest {
     /**
      * Every built-in slot must populate {@link Shortcut#icon} so the strip cell renderer always
      * has a glyph to draw (drawable name OR Unicode glyph). Future authors stripping this would
-     * regress Symbols ★ / Math ∑ to text-only caps.
+     * regress every themed built-in to text-only caps.
      */
     @Test
-    public void symbolsAndMathProfiles_everySlotShortcutHasNonEmptyIcon() {
-        for (Rows23StripProfile p : new Rows23StripProfile[]{
-                Rows23StripProfileBuiltins.buildSymbolsProfile(),
-                Rows23StripProfileBuiltins.buildMathProfile(),
-        }) {
+    public void allBuiltIns_everySlotShortcutHasNonEmptyIcon() {
+        for (Rows23StripProfile p : allBuiltIns()) {
             for (Shortcut s : p.shortcuts) {
                 Assert.assertNotNull("shortcut " + s.id + " missing icon", s.icon);
                 Assert.assertFalse(
@@ -207,50 +241,112 @@ public class Rows23StripBuiltinsTest {
     }
 
     /**
-     * Symbols/Math use non-ASCII display glyphs for page 2 row 2 cols 1–2 (same HID as "(" / ")")
-     * so the strip uses the same centered-glyph autosize path as other slots.
+     * Page 2 row 2 cols 0–1 are ASCII "(" / ")"; renderer's {@code isEmojiIcon} treats pure
+     * printable-ASCII as text-path so chord cap typography wins. This test locks the data side of
+     * that contract: those slots' icons must be ASCII so they do NOT get routed through the
+     * larger {@code customIconGlyph} centered path.
      */
     @Test
-    public void mathProfile_page2Row2BaseUsesAngleBracketGlyphs() {
-        Rows23StripProfile p = Rows23StripProfileBuiltins.buildMathProfile();
-        Shortcut b0 = shortcutForSlot(p, StripSlotMapStore.slotKey(2, 2, 0, false));
-        Shortcut b1 = shortcutForSlot(p, StripSlotMapStore.slotKey(2, 2, 1, false));
-        Assert.assertEquals("\u27E8", b0.label.trim());
-        Assert.assertEquals("\u27E9", b1.label.trim());
-        Assert.assertEquals("\u27E8", b0.icon.trim());
-        Assert.assertEquals("\u27E9", b1.icon.trim());
-    }
-
-    @Test
-    public void symbolsProfile_page2Row2BaseUsesTortoiseShellGlyphs() {
-        Rows23StripProfile p = Rows23StripProfileBuiltins.buildSymbolsProfile();
-        Shortcut b0 = shortcutForSlot(p, StripSlotMapStore.slotKey(2, 2, 0, false));
-        Shortcut b1 = shortcutForSlot(p, StripSlotMapStore.slotKey(2, 2, 1, false));
-        Assert.assertEquals("\u2985", b0.label.trim());
-        Assert.assertEquals("\u2986", b1.label.trim());
-    }
-
-    @Test
-    public void symbolsAndMathProfiles_page2Row2FnCol2UsesQuoteNotDuplicateGrave() {
-        for (Rows23StripProfile p : new Rows23StripProfile[]{
-                Rows23StripProfileBuiltins.buildSymbolsProfile(),
-                Rows23StripProfileBuiltins.buildMathProfile(),
-        }) {
-            Shortcut fn = shortcutForSlot(p, StripSlotMapStore.slotKey(2, 2, 2, true));
-            Assert.assertEquals(0x34, fn.keyCode);
-            Assert.assertEquals(0, HidKeyCatalog.normalizeStripModifiers(fn.modifiers));
+    public void allBuiltIns_page2Row2BaseIconsAreAsciiForChordTextPath() {
+        for (Rows23StripProfile p : allBuiltIns()) {
+            for (int col = 0; col <= 1; col++) {
+                String sk = StripSlotMapStore.slotKey(2, 2, col, false);
+                String sid = p.slotMap.get(sk);
+                Shortcut found = findShortcut(p, sid);
+                Assert.assertNotNull(found);
+                String expected = col == 0 ? "(" : ")";
+                Assert.assertEquals(expected, found.icon);
+                assertPureAscii("page-2 row-2 base col " + col + " icon (" + p.id + ")",
+                        found.icon);
+            }
         }
     }
 
-    private static Shortcut shortcutForSlot(Rows23StripProfile p, String slotKey) {
-        String sid = p.slotMap.get(slotKey);
-        Assert.assertNotNull(sid);
+    /**
+     * Every {@link Shortcut#unicodeCodePoint} that is non-zero must:
+     * (1) zero out {@link Shortcut#keyCode} / {@link Shortcut#modifiers} so the strip dispatcher
+     *     never accidentally falls through to {@code sendShortcutWithModifiers},
+     * (2) populate {@link Shortcut#icon} with the exact codepoint string, so the chord/glyph
+     *     renderer shows the same character that gets typed, and
+     * (3) be a single BMP code point (the per-OS Unicode Hex Input path emits 4 hex digits).
+     */
+    @Test
+    public void unicodeProfiles_unicodeShortcuts_haveZeroKeyCodeAndCodepointMatchesIcon() {
+        for (Rows23StripProfile p : allBuiltIns()) {
+            for (Shortcut s : p.shortcuts) {
+                if (s.unicodeCodePoint == 0) {
+                    continue;
+                }
+                Assert.assertEquals(
+                        "Unicode shortcut " + s.id + " must have keyCode 0",
+                        0, s.keyCode);
+                Assert.assertEquals(
+                        "Unicode shortcut " + s.id + " must have modifiers 0",
+                        0, s.modifiers);
+                String expected = new String(Character.toChars(s.unicodeCodePoint));
+                Assert.assertEquals(
+                        "Unicode shortcut " + s.id + " icon must equal codepoint string",
+                        expected, s.icon);
+                Assert.assertTrue(
+                        "Unicode shortcut " + s.id + " must be in BMP for OS hex-input path: U+"
+                                + Integer.toHexString(s.unicodeCodePoint),
+                        s.unicodeCodePoint >= 0x80 && s.unicodeCodePoint <= 0xFFFF);
+            }
+        }
+    }
+
+    /**
+     * The four newer Unicode-typing profiles ("Box & Lines", "Latin Extended", "Arrows & Shapes",
+     * "Currency & Punctuation") should populate every customizable slot apart from the four
+     * page-2 row-2 cols 0–1 paren/grave-tilde reservations with a non-zero
+     * {@link Shortcut#unicodeCodePoint}. This guards against accidentally leaving an ASCII HID
+     * shortcut in a slot of a Unicode profile (which would type the wrong character).
+     */
+    @Test
+    public void unicodeProfiles_haveExactlyFourAsciiReservedSlots() {
+        Rows23StripProfile[] unicodeProfiles = new Rows23StripProfile[]{
+                Rows23StripProfileBuiltins.buildBoxLinesProfile(),
+                Rows23StripProfileBuiltins.buildLatinProfile(),
+                Rows23StripProfileBuiltins.buildArrowsProfile(),
+                Rows23StripProfileBuiltins.buildCurrencyProfile(),
+        };
+        for (Rows23StripProfile p : unicodeProfiles) {
+            int asciiCount = 0;
+            int unicodeCount = 0;
+            for (Shortcut s : p.shortcuts) {
+                if (s.unicodeCodePoint == 0) {
+                    asciiCount++;
+                } else {
+                    unicodeCount++;
+                }
+            }
+            Assert.assertEquals(
+                    "Unicode profile " + p.id + " should have exactly 4 ASCII paren/grave-tilde slots",
+                    4, asciiCount);
+            Assert.assertEquals(
+                    "Unicode profile " + p.id + " should have 72 Unicode-typing slots",
+                    72, unicodeCount);
+        }
+    }
+
+    private static Shortcut findShortcut(Rows23StripProfile p, String shortcutId) {
         for (Shortcut x : p.shortcuts) {
-            if (sid.equals(x.id)) {
+            if (shortcutId.equals(x.id)) {
                 return x;
             }
         }
-        Assert.fail("missing shortcut for " + slotKey);
         return null;
+    }
+
+    private static void assertPureAscii(String message, String s) {
+        Assert.assertNotNull(message, s);
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            Assert.assertTrue(
+                    message + ": expected pure printable ASCII, got code point 0x"
+                            + Integer.toHexString(cp),
+                    cp >= 0x21 && cp <= 0x7E);
+            i += Character.charCount(cp);
+        }
     }
 }

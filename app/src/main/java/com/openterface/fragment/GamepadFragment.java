@@ -184,7 +184,8 @@ public class GamepadFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        // Allow both landscape directions; LANDSCAPE alone locks to one side only.
+        requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
     }
 
     @Override

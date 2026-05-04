@@ -1952,6 +1952,13 @@ public class ShortcutProfileManager {
         public int keyCode;
         public String icon;
         public int displayOrder;
+        /**
+         * When non-zero, dispatch as a Unicode code point via {@code HidTextKeystrokeSender} (per-OS
+         * Unicode Hex Input alt-code) instead of a single HID press. {@link #keyCode} and
+         * {@link #modifiers} are ignored in that case. Backward-compatible: persisted profiles
+         * without this field deserialize to 0 and behave exactly as before.
+         */
+        public int unicodeCodePoint;
 
         public Shortcut() {}
 
@@ -1963,6 +1970,7 @@ public class ShortcutProfileManager {
             this.keyCode = keyCode;
             this.icon = "";
             this.displayOrder = 0;
+            this.unicodeCodePoint = 0;
         }
 
         public Shortcut(String id, String name, String label, int modifiers, int keyCode, String icon, int displayOrder) {

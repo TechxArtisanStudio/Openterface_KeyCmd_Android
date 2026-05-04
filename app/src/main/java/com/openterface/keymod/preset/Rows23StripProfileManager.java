@@ -300,6 +300,18 @@ public class Rows23StripProfileManager {
         changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
                 Rows23StripProfileConstants.MATH_PROFILE_ID,
                 Rows23StripProfileBuiltins.buildMathProfile());
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.BOX_LINES_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildBoxLinesProfile());
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.LATIN_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildLatinProfile());
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.ARROWS_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildArrowsProfile());
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.CURRENCY_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildCurrencyProfile());
         return changed;
     }
 
@@ -372,6 +384,22 @@ public class Rows23StripProfileManager {
         }
         if (getProfileById(Rows23StripProfileConstants.MATH_PROFILE_ID) == null) {
             profiles.add(Rows23StripProfileBuiltins.buildMathProfile());
+            changed = true;
+        }
+        if (getProfileById(Rows23StripProfileConstants.BOX_LINES_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildBoxLinesProfile());
+            changed = true;
+        }
+        if (getProfileById(Rows23StripProfileConstants.LATIN_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildLatinProfile());
+            changed = true;
+        }
+        if (getProfileById(Rows23StripProfileConstants.ARROWS_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildArrowsProfile());
+            changed = true;
+        }
+        if (getProfileById(Rows23StripProfileConstants.CURRENCY_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildCurrencyProfile());
             changed = true;
         }
         return changed;
@@ -459,6 +487,7 @@ public class Rows23StripProfileManager {
         c.keyCode = s.keyCode;
         c.icon = s.icon != null ? s.icon : "";
         c.displayOrder = s.displayOrder;
+        c.unicodeCodePoint = s.unicodeCodePoint;
         return c;
     }
 

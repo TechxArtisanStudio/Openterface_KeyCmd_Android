@@ -448,6 +448,13 @@ public class CustomKeyboardView extends LinearLayout {
         int stripSlotCol = -1;
         /** Factory HID scan before Rows 2–3 overrides rewrite {@link #code}; used for page-0 digit overlay lookup. */
         int stripSlotFactoryCode;
+        /**
+         * When non-zero, this strip cap was bound to a Rows 2–3 shortcut whose
+         * {@link com.openterface.keymod.ShortcutProfileManager.Shortcut#unicodeCodePoint} is set.
+         * The strip-press handler dispatches via {@code HidTextKeystrokeSender} (per-OS Unicode
+         * Hex Input alt-code) instead of {@link #sendShortcutWithModifiers}.
+         */
+        int unicodeCodePoint;
 
         Key(String label, String symbolLabel, String alternates, String cornerHint, int code, String codeStr, float widthPercent, int iconResId,
             float horizontalGap, boolean isRepeatable, boolean requiresShift, int shortcutModifiers, boolean isTopPanelKey) {
@@ -3821,6 +3828,16 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
+     * Any page-2 row-2/3 strip slot follows {@link #fixedTopLocalFnLocked} so {@link #buildFixedTopRowsPage2()}
+     * (which swaps physical caps per latch) and {@link #applyStripSlotOverrides} read the same layer
+     * (b-p2… when off, f-p2… when on). Without this, Rows 2–3 strip profiles (Math ∑, Symbols ★) only
+     * see the base layer slot map and Fn-layer glyphs are never rendered.
+     */
+    private static boolean isPage2Rows23DualLayerStripSlot(@Nullable Key k) {
+        return k != null && k.stripSlotPage == 2 && (k.stripSlotRow == 2 || k.stripSlotRow == 3);
+    }
+
+    /**
      * Page 0 row 2/3 F-keys: {@link Key#label}/{@link Key#code} are the latch-on (Fn) layer; digit overlay is
      * latch-off (base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code f-p…}
      * slots for page-0 F-row keys and {@code b-p…} elsewhere when applying overrides to the key itself.
@@ -3842,7 +3859,7 @@ public class CustomKeyboardView extends LinearLayout {
                 continue;
             }
             boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(k);
-            if (isPage2Row2ParenGraveDualLayerStripSlot(k)) {
+            if (isPage2Rows23DualLayerStripSlot(k)) {
                 latchOnLayer = fixedTopLocalFnLocked;
             }
             String slotKey = StripSlotMapStore.slotKey(
@@ -3865,6 +3882,7 @@ public class CustomKeyboardView extends LinearLayout {
         key.codeStr = String.format("%02X", shortcut.keyCode);
         key.iconResId = iconResId;
         key.shortcutModifiers = normalizedModifiers;
+        key.unicodeCodePoint = shortcut.unicodeCodePoint;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         } else {
@@ -3896,7 +3914,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
         Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
         boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(key);
-        if (isPage2Row2ParenGraveDualLayerStripSlot(key)) {
+        if (isPage2Rows23DualLayerStripSlot(key)) {
             latchOnLayer = fixedTopLocalFnLocked;
         }
         String overlayKey = StripSlotMapStore.slotKey(
@@ -6650,7 +6668,11 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.shortcutModifiers >= 0 && !isTopModifierLockCandidate(key)) {
             FnMapping fnOverride = extraNumpadFnLocked ? resolveExtraNumpadFnMapping(key) : null;
             if (fnOverride == null) {
-                sendShortcutWithModifiers(key.shortcutModifiers, key.code);
+                if (key.unicodeCodePoint != 0) {
+                    sendStripUnicodeShortcut(key.unicodeCodePoint);
+                } else {
+                    sendShortcutWithModifiers(key.shortcutModifiers, key.code);
+                }
                 return;
             }
             // Local Fn overrides row-2 # (→|) and Tab cell (→Save), etc. — continue to merged HID send below.
@@ -6858,6 +6880,35 @@ public class CustomKeyboardView extends LinearLayout {
             combinedValue |= parseHex(CH9329MSKBMap.KBShortCutKey().get("Win"));
         }
         sendKeyData(combinedValue, keyCode);
+    }
+
+    /**
+     * Strip-cap dispatch for Rows 2–3 shortcuts whose
+     * {@link com.openterface.keymod.ShortcutProfileManager.Shortcut#unicodeCodePoint} is set:
+     * forwards the BMP code point to the host through {@link HidTextKeystrokeSender} on the
+     * shared {@link #imeTextExecutor} thread (mirrors {@link #sendAlternateOption}'s Unicode
+     * branch). Requires Unicode Hex Input enabled on the host (Mac layout / Windows
+     * EnableHexNumpad / Linux IBus); silently no-ops if there is no active connection.
+     */
+    private void sendStripUnicodeShortcut(int codePoint) {
+        if (codePoint == 0) {
+            return;
+        }
+        ConnectionManager cm = peekConnectionManager();
+        if (cm == null) {
+            Log.w(TAG, "Unicode strip shortcut needs ConnectionManager; skipping U+"
+                    + Integer.toHexString(codePoint));
+            return;
+        }
+        String targetOs = getTargetOs();
+        String ch = new String(Character.toChars(codePoint));
+        imeTextExecutor.execute(() -> {
+            try {
+                HidTextKeystrokeSender.send(ch, cm, targetOs, true, null);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
 
     private void sendKeyData(int modifiers, int keyCode) {

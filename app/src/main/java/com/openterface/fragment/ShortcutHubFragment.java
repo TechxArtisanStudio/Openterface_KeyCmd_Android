@@ -50,6 +50,7 @@ import com.openterface.keymod.CreateShortcutBottomSheet;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.StripCatalogGridAdapter;
 import com.openterface.keymod.preset.StripCatalogGridItem;
+import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.ShortcutProfileManager.Shortcut;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
@@ -1375,6 +1376,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             return;
         }
 
+        if (shortcut.unicodeCodePoint != 0) {
+            executeUnicodeShortcut(shortcut);
+            return;
+        }
+
         connectionManager.sendKeyEvent(normalizeModifiersForTargetOs(shortcut.modifiers), shortcut.keyCode);
         // Small delay then release key
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
@@ -1390,6 +1396,40 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         Log.d(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
                 + " modifiers=" + shortcut.modifiers + " key=" + shortcut.keyCode);
+    }
+
+    /**
+     * Hub picker tap on a Rows 2–3 strip shortcut whose
+     * {@link ShortcutProfileManager.Shortcut#unicodeCodePoint} is set: send the BMP code point via
+     * the OS-specific Unicode Hex Input alt-code path on a worker thread (mirrors
+     * {@code CustomKeyboardView.sendStripUnicodeShortcut}). Requires Unicode Hex Input enabled on
+     * the host (Mac layout / Windows EnableHexNumpad / Linux IBus).
+     */
+    private void executeUnicodeShortcut(ShortcutProfileManager.Shortcut shortcut) {
+        final ConnectionManager cm = connectionManager;
+        if (cm == null) {
+            return;
+        }
+        final int codePoint = shortcut.unicodeCodePoint;
+        if (codePoint == 0) {
+            return;
+        }
+        final String targetOs = getTargetOs();
+        final String ch = new String(Character.toChars(codePoint));
+        new Thread(() -> {
+            try {
+                HidTextKeystrokeSender.send(ch, cm, targetOs, true, null);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, "ShortcutHubUnicodeSend").start();
+
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
+        }
+
+        Log.d(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"
+                + Integer.toHexString(codePoint).toUpperCase() + " (" + ch + ")");
     }
 
     private int normalizeModifiersForTargetOs(int modifiers) {
