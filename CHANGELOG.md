@@ -33,7 +33,7 @@ Openterface KeyMod **0.9** (`versionCode` **9**) includes the **gamepad-ux** wor
 
 - **Strip catalog** in the hub: browse fixed-strip pages and slots with clearer labels (including Row 1 vs Rows 2–3 scope).
 - **Strip catalog grid** and underlying **Rows 2–3 strip profile** model: multiple named strip profiles, import/export style workflows, and unit tests for builtins and slot maps.
-- **Built-in strip profiles**: **Symbols** and **Math** presets for the Rows 2–3 strip.
+- **Built-in strip profiles**: six themed presets only (**Symbols**, **Math**, **Box & Lines**, **Latin Extended**, **Arrows**, **Currency**); the old factory **Default** strip built-in (`strip_default`) is removed on upgrade (active and quick-toggle prefs migrate; legacy keyboard-strip data becomes a deletable **Migrated strip** profile when the one-time v1 migration still applies).
 - **Canonical slot keys** (for example `b-p0r2c1` … `f-p…`) used consistently for maps, docs, and sharing.
 - **Rows 2–3 slot editor**: replaces the old small sheet with a **full-screen, single-key** editor; UI patterns match the create-shortcut flow.
 - After hub edits, the keyboard **reloads strip-related preferences**; slot rows show **id badges** where helpful; strip profiles support **Reset** where applicable.
@@ -43,7 +43,7 @@ Openterface KeyMod **0.9** (`versionCode` **9**) includes the **gamepad-ux** wor
 
 ### Keyboard (page 3 quick toggles)
 
-- On **Keyboard and Mouse** mode, **fixed strip page 3** now exposes **six Row 1 profile** quick toggles and **six Rows 2–3 strip profile** quick toggles (defaults include Fusion 360, VS Code, Photoshop for new profile slots, and Arrows / Currency / Box Lines for new strip slots). Column 7 on row 2 remains intentionally blank; column 7 on row 3 remains **FN**.
+- On **Keyboard and Mouse** mode, **fixed strip page 3** now exposes **six Row 1 profile** quick toggles and **six Rows 2–3 strip profile** quick toggles (defaults include Fusion 360, VS Code, Photoshop for new profile slots; strip quick-toggle defaults are **Symbols**, **Math**, **Box & Lines**, **Latin Extended**, **Arrows**, **Currency**). Column 7 on row 2 remains intentionally blank; column 7 on row 3 remains **FN**.
 
 ### Localization
 

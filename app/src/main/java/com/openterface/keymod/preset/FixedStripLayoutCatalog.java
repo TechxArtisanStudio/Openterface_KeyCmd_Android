@@ -356,12 +356,15 @@ public final class FixedStripLayoutCatalog {
     ) {
         String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
                 context, slot1Based, mgr);
+        if (id == null || id.trim().isEmpty()) {
+            return "\u2014";
+        }
         Rows23StripProfile p = mgr.getProfileById(id);
         if (p != null && p.name != null && !p.name.trim().isEmpty()) {
             String n = p.name.trim();
             return n.length() > 12 ? n.substring(0, 12) + "\u2026" : n;
         }
-        return "Strip " + slot1Based;
+        return "\u2014";
     }
 
     /**

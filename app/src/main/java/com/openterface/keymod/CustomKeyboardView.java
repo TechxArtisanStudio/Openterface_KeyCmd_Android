@@ -933,7 +933,10 @@ public class CustomKeyboardView extends LinearLayout {
         }
         Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
         String sid = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(ctx, slot, mgr);
-        return sid != null && sid.equals(mgr.getActiveProfileId());
+        if (sid == null || sid.trim().isEmpty()) {
+            return false;
+        }
+        return sid.equals(mgr.getActiveProfileId());
     }
 
     private boolean isTopProfileSlotActive(Key key) {
@@ -1281,17 +1284,20 @@ public class CustomKeyboardView extends LinearLayout {
         if (profiles.isEmpty()) {
             return;
         }
-        CharSequence[] labels = new CharSequence[profiles.size()];
-        String[] ids = new String[profiles.size()];
-        for (int i = 0; i < profiles.size(); i++) {
+        int n = profiles.size();
+        CharSequence[] labels = new CharSequence[n + 1];
+        String[] ids = new String[n + 1];
+        labels[0] = act.getString(R.string.top_rows23_strip_slot_unassigned);
+        ids[0] = TopRows23StripProfileSlotPrefs.STRIP_PROFILE_SLOT_UNASSIGNED;
+        for (int i = 0; i < n; i++) {
             Rows23StripProfile p = profiles.get(i);
-            labels[i] = p.name != null ? p.name : (p.id != null ? p.id : "");
-            ids[i] = p.id != null ? p.id : "";
+            labels[i + 1] = p.name != null ? p.name : (p.id != null ? p.id : "");
+            ids[i + 1] = p.id != null ? p.id : "";
         }
         String current = TopRows23StripProfileSlotPrefs.getStripProfileIdForSlot(appCtx, slotIndex1Based);
-        int checked = 0;
+        int checked = -1;
         for (int i = 0; i < ids.length; i++) {
-            if (ids[i].equals(current)) {
+            if (ids[i].equals(current) || (ids[i].isEmpty() && (current == null || current.trim().isEmpty()))) {
                 checked = i;
                 break;
             }
@@ -3745,11 +3751,15 @@ public class CustomKeyboardView extends LinearLayout {
             Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
             String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
                     ctx, slotIndex1Based, mgr);
-            Rows23StripProfile p = mgr.getProfileById(id);
-            if (p != null && p.name != null && !p.name.trim().isEmpty()) {
-                fullName = p.name.trim();
+            if (id == null || id.trim().isEmpty()) {
+                fullName = "";
             } else {
-                fullName = "?";
+                Rows23StripProfile p = mgr.getProfileById(id);
+                if (p != null && p.name != null && !p.name.trim().isEmpty()) {
+                    fullName = p.name.trim();
+                } else {
+                    fullName = "?";
+                }
             }
         }
         String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
@@ -3825,7 +3835,7 @@ public class CustomKeyboardView extends LinearLayout {
     /**
      * Any page-2 row-2/3 strip slot follows {@link #fixedTopLocalFnLocked} so {@link #buildFixedTopRowsPage2()}
      * (which swaps physical caps per latch) and {@link #applyStripSlotOverrides} read the same layer
-     * (b-p2… when off, f-p2… when on). Without this, Rows 2–3 strip profiles (Math ∑, Symbols ★) only
+     * (b-p2… when off, f-p2… when on). Without this, Rows 2–3 strip profile overrides only
      * see the base layer slot map and Fn-layer glyphs are never rendered.
      */
     private static boolean isPage2Rows23DualLayerStripSlot(@Nullable Key k) {
@@ -3978,7 +3988,7 @@ public class CustomKeyboardView extends LinearLayout {
      * True when {@code raw} should be rendered through the {@link Key#customIconGlyph} centered-glyph
      * path instead of as a drawable resource name. Excludes pure printable-ASCII punctuation so plain
      * caps such as "(", ")", "*", "?" stay on the standard chord-text path (with strip cap typography),
-     * even when a profile (e.g. Symbols ★, Math ∑) populates {@code shortcut.icon} with that punctuation.
+     * even when a strip shortcut populates {@code shortcut.icon} with that punctuation.
      */
     private boolean isEmojiIcon(String raw) {
         if (raw == null) {
@@ -4468,7 +4478,7 @@ public class CustomKeyboardView extends LinearLayout {
                     iconTextButton.setGravity(Gravity.CENTER);
                     if (fixedRowsSlice) {
                         // Tight padding so autosize can use most of the cell; dingbat / math glyphs
-                        // (Symbols ★ / Math ∑ profiles) then approach drawable-icon visual weight.
+                        // in custom strip shortcuts then approach drawable-icon visual weight.
                         int glyphPad = dpToPx(1);
                         iconTextButton.setPadding(glyphPad, glyphPad, glyphPad, glyphPad);
                         TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
@@ -6585,7 +6595,7 @@ public class CustomKeyboardView extends LinearLayout {
                 Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
                 String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
                         ctx, stripProfileSlot, mgr);
-                if (mgr.getProfileById(id) != null) {
+                if (id != null && !id.trim().isEmpty() && mgr.getProfileById(id) != null) {
                     mgr.setActiveProfileId(id);
                 }
                 refreshProfileSlotStrip();

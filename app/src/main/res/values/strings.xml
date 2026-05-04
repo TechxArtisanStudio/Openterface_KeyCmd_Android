@@ -462,6 +462,7 @@ by TechxArtisan</string>
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>
     <string name="top_profile_slot_picker_title">Choose Shortcut Hub profile for this slot</string>
     <string name="top_rows23_strip_slot_picker_title">Choose Rows 2–3 strip profile for this slot</string>
+    <string name="top_rows23_strip_slot_unassigned">Unassigned</string>
     <string name="top_strip_favorite_picker_title">Choose shortcut for this slot</string>
     <!-- Top strip long-press: subtitle for favourite picker (title above). -->
     <string name="top_strip_favorite_picker_subtitle">Place a shortcut from your favourites list in this slot.</string>
