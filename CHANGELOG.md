@@ -4,7 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.8] — 2026-05-04
+## [0.9] — 2026-05-04
+
+### Release summary (pull request and GitHub release)
+
+Openterface KeyMod **0.9** (`versionCode` **9**) includes the **gamepad-ux** workstream: a more capable **virtual gamepad** (optional third key stick, square touchpad with long-press size, bundled touchpad mouse buttons, **Preset**-based layouts with tap/long-press, Material toolbar, stick cardinal and haptics fixes, optional **rightStickMouseGain** for right-stick mouse), a reworked **Shortcut Hub** with a visual **strip catalog**, **Symbols** / **Math** Rows 2–3 profiles, **canonical slot IDs**, a **full-screen strip key editor**, **fixed strip page 3** profile and strip quick toggles, **Presentation mode** strings in the localization set, and **CI** tweaks. The **keyboard** gains a correctness fix for **fixed strip page 2 (punctuation)**: **local Fn** top-right corner hints now follow the **same-column latch swap** (shared `PAGE2_ROW*` caps with the catalog), not HID overlay pairings. See **Upgrade notes** for gamepad migration.
 
 ### Highlights
 
