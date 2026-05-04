@@ -5,9 +5,12 @@ import android.content.SharedPreferences;
 
 import androidx.preference.PreferenceManager;
 
+import com.google.gson.Gson;
+
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,8 @@ import java.util.Map;
  * Writes a validated {@link GamepadLayoutPresetDocument} into SharedPreferences and {@link GamepadConfigManager}.
  */
 public final class GamepadLayoutPresetApplier {
+
+    private static final Gson GSON = new Gson();
 
     private GamepadLayoutPresetApplier() {}
 
@@ -27,13 +32,29 @@ public final class GamepadLayoutPresetApplier {
         ed.putFloat(GamepadPreferenceKeys.MOUSE_SENSITIVITY, L.mouseSensitivity);
         ed.putBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, L.showTwoButtons);
         if (L.backgroundImageFile != null) {
-            ed.putString(GamepadPreferenceKeys.BG_IMAGE, L.backgroundImageFile);
+            File bg = new File(context.getFilesDir(), L.backgroundImageFile);
+            if (bg.isFile()) {
+                ed.putString(GamepadPreferenceKeys.BG_IMAGE, L.backgroundImageFile);
+                ed.putFloat(GamepadPreferenceKeys.BG_SCALE, L.backgroundScale);
+                ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_X, L.backgroundOffsetX);
+                ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, L.backgroundOffsetY);
+            } else {
+                // Shared JSON cannot carry image bytes; missing file → no background on this device.
+                L.backgroundImageFile = null;
+                L.backgroundScale = 1.0f;
+                L.backgroundOffsetX = 0f;
+                L.backgroundOffsetY = 0f;
+                ed.remove(GamepadPreferenceKeys.BG_IMAGE);
+                ed.remove(GamepadPreferenceKeys.BG_SCALE);
+                ed.remove(GamepadPreferenceKeys.BG_OFFSET_X);
+                ed.remove(GamepadPreferenceKeys.BG_OFFSET_Y);
+            }
         } else {
             ed.remove(GamepadPreferenceKeys.BG_IMAGE);
+            ed.putFloat(GamepadPreferenceKeys.BG_SCALE, L.backgroundScale);
+            ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_X, L.backgroundOffsetX);
+            ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, L.backgroundOffsetY);
         }
-        ed.putFloat(GamepadPreferenceKeys.BG_SCALE, L.backgroundScale);
-        ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_X, L.backgroundOffsetX);
-        ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, L.backgroundOffsetY);
 
         List<GamepadLayoutPresetDocument.GamepadModule> modules = doc.modules;
         GamepadLayoutPresetDocument.GamepadModule stick = require(modules, "stick_left");
@@ -67,15 +88,14 @@ public final class GamepadLayoutPresetApplier {
             ed.putInt(GamepadPreferenceKeys.BUTTON_B_MOD, btnB.modifierMask != null ? btnB.modifierMask : 0);
         }
 
+        ed.putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc));
         ed.apply();
 
         Map<String, GamepadConfigManager.ComponentPosition> positions = new HashMap<>();
-        positions.put("stick_left", new GamepadConfigManager.ComponentPosition(stick.anchorX, stick.anchorY));
-        positions.put("button_a", new GamepadConfigManager.ComponentPosition(btnA.anchorX, btnA.anchorY));
-        if (L.showTwoButtons) {
-            GamepadLayoutPresetDocument.GamepadModule btnB = require(modules, "button_b");
-            positions.put("button_b", new GamepadConfigManager.ComponentPosition(btnB.anchorX, btnB.anchorY));
-        } else {
+        for (GamepadLayoutPresetDocument.GamepadModule m : modules) {
+            positions.put(m.id, new GamepadConfigManager.ComponentPosition(m.anchorX, m.anchorY));
+        }
+        if (!L.showTwoButtons && !positions.containsKey("button_b")) {
             positions.put("button_b", new GamepadConfigManager.ComponentPosition(0.93f, 0.40f));
         }
         new GamepadConfigManager(context).saveLayoutPositions(GamepadLayout.SIMPLE, positions);

@@ -47,6 +47,8 @@ public class GamepadLayoutPresetDocument {
         public float anchorY;
         @Nullable public Float widthNorm;
         @Nullable public Float heightNorm;
+        /** BUTTON: optional short label shown on the control. */
+        @Nullable public String displayLabel;
         /** STICK_*: HID key codes for virtual D-pad on analog ring. */
         @Nullable public Integer stickUpKey;
         @Nullable public Integer stickLeftKey;
@@ -91,7 +93,8 @@ public class GamepadLayoutPresetDocument {
         if (!GamepadLayoutPresetConstants.DOCUMENT_FORMAT.equals(d.format)) {
             throw new IllegalArgumentException("Unknown format: " + d.format);
         }
-        if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION) {
+        if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION
+                && d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION_V1) {
             throw new IllegalArgumentException("Unsupported schemaVersion: " + d.schemaVersion);
         }
         if (d.layout == null) {
@@ -100,6 +103,7 @@ public class GamepadLayoutPresetDocument {
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
+        GamepadLayoutPresetUpgrader.upgradeToLatest(d);
         GamepadModule stick = findModule(d.modules, "stick_left");
         if (stick == null) {
             throw new IllegalArgumentException("Missing module id=stick_left");
@@ -127,13 +131,67 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_b with hidKey");
             }
         }
+        int stickCount = 0;
+        int touchpadCount = 0;
+        int buttonCount = 0;
+        boolean hasStickLeft = false;
         for (GamepadModule m : d.modules) {
+            if (m == null || m.id == null || m.type == null) {
+                throw new IllegalArgumentException("Invalid module entry");
+            }
             if (m.scale <= 0 || m.scale > 4.0f) {
                 throw new IllegalArgumentException("Module " + m.id + ": scale out of range (0,4]");
             }
             if (m.anchorX < 0 || m.anchorX > 1 || m.anchorY < 0 || m.anchorY > 1) {
                 throw new IllegalArgumentException("Module " + m.id + ": anchor must be in [0,1]");
             }
+            if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                stickCount++;
+                if (!"stick_left".equals(m.id) && !"stick_right".equals(m.id)) {
+                    throw new IllegalArgumentException("Stick module id must be stick_left or stick_right: " + m.id);
+                }
+                if ("stick_left".equals(m.id)) {
+                    hasStickLeft = true;
+                }
+                if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                        && (m.stickUpKey == null || m.stickLeftKey == null
+                        || m.stickDownKey == null || m.stickRightKey == null)) {
+                    throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY needs four direction keys");
+                }
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                buttonCount++;
+                if (m.hidKey == null) {
+                    throw new IllegalArgumentException("Module " + m.id + ": BUTTON needs hidKey");
+                }
+                if (!m.id.matches("button_[a-z0-9]+")) {
+                    throw new IllegalArgumentException("Invalid button id: " + m.id);
+                }
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                touchpadCount++;
+                if (!"touchpad_1".equals(m.id)) {
+                    throw new IllegalArgumentException("Touchpad id must be touchpad_1");
+                }
+                if (m.widthNorm == null || m.heightNorm == null
+                        || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
+                    throw new IllegalArgumentException("Module " + m.id + ": TOUCHPAD needs widthNorm/heightNorm in (0,1]");
+                }
+            } else {
+                throw new IllegalArgumentException("Unknown module type: " + m.type);
+            }
+        }
+        if (!hasStickLeft) {
+            throw new IllegalArgumentException("Missing stick_left");
+        }
+        if (stickCount > 2) {
+            throw new IllegalArgumentException("At most two stick modules allowed");
+        }
+        if (touchpadCount > 1) {
+            throw new IllegalArgumentException("At most one touchpad module allowed");
+        }
+        if (buttonCount > GamepadLayoutPresetConstants.MAX_BUTTON_MODULES) {
+            throw new IllegalArgumentException("Too many BUTTON modules (max "
+                    + GamepadLayoutPresetConstants.MAX_BUTTON_MODULES + ")");
         }
     }
 

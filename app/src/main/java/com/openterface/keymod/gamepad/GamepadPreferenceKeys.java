@@ -24,6 +24,9 @@ public final class GamepadPreferenceKeys {
     public static final String BG_OFFSET_Y = "gamepad_bg_offset_y";
     public static final String TWO_BUTTON_MODE = "gamepad_two_button_mode";
 
+    /** Full {@link GamepadLayoutPresetDocument} JSON (schema v2); authoritative for modules. */
+    public static final String LAYOUT_DOCUMENT_JSON = "gamepad_layout_document_json";
+
     /** Default {@link androidx.preference.PreferenceManager} key for mouse speed (shared with app). */
     public static final String MOUSE_SENSITIVITY = "mouse_sensitivity";
 }

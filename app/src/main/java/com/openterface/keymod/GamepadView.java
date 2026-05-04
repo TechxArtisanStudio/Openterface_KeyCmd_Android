@@ -1,22 +1,38 @@
 package com.openterface.keymod;
 
 import android.content.Context;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.android.material.color.MaterialColors;
+
 import com.openterface.keymod.GamepadConfigManager.ComponentPosition;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 
 /**
  * Gamepad View - Custom view for rendering and interacting with gamepad components
@@ -114,6 +130,46 @@ public class GamepadView extends View {
     private float bgStartOffsetY = 0f;
     private float bgStartScale = 1.0f;
 
+    /** Schema-driven SIMPLE layout (v2); when non-null, replaces fixed drawSimpleLayout. */
+    private GamepadLayoutPresetDocument layoutDocument;
+    private KeyCodeProvider keyCodeProvider;
+    private TouchpadDeltaListener touchpadDeltaListener;
+    private final List<String> dynamicHitTestOrder = new ArrayList<>();
+    private final Map<Integer, String> dynamicPointerStick = new HashMap<>();
+    private final Map<String, float[]> dynamicStickOffset = new HashMap<>();
+    private int touchpadPointerId = -1;
+    private float touchpadLastX;
+    private float touchpadLastY;
+
+    /** SNES/GBA pastel face + rim + label (Material theme accent used separately for presses). */
+    private static final class FaceStyle {
+        final int body;
+        final int rim;
+        final int label;
+        FaceStyle(int body, int rim, int label) {
+            this.body = body;
+            this.rim = rim;
+            this.label = label;
+        }
+    }
+
+    private static final FaceStyle FACE_A = new FaceStyle(0xFFA7E3B5, 0xFF5FB57A, 0xFF1F4D2B);
+    private static final FaceStyle FACE_B = new FaceStyle(0xFFF7B2B7, 0xFFD87078, 0xFF5A1D22);
+    private static final FaceStyle FACE_X = new FaceStyle(0xFFA9CCEB, 0xFF4F86C6, 0xFF152F50);
+    private static final FaceStyle FACE_Y = new FaceStyle(0xFFF7E89F, 0xFFC9A640, 0xFF4D3A04);
+    private static final FaceStyle FACE_PS_SQUARE = new FaceStyle(0xFFE1D5F5, 0xFF9575CD, 0xFF311B92);
+    private static final FaceStyle FACE_NEUTRAL = new FaceStyle(0xFFE0E0E0, 0xFF9E9E9E, 0xFF424242);
+
+    private int themeAccentPrimary = 0xFFF57C00;
+    private final Paint retroShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint retroBodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint retroRingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint retroGlossPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint retroTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint retroDpadFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path retroWorkPath = new Path();
+    private Typeface retroLabelTypeface;
+
     public GamepadView(Context context) {
         super(context);
         init();
@@ -135,7 +191,7 @@ public class GamepadView extends View {
 
         // Initialize paints
         bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bgPaint.setColor(Color.parseColor("#1A1A1A"));
+        bgPaint.setColor(Color.parseColor("#F5F5F5"));
 
         buttonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         buttonPaint.setColor(Color.parseColor("#2196F3"));
@@ -151,20 +207,42 @@ public class GamepadView extends View {
         dpadPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         dpadPaint.setColor(Color.parseColor("#444444"));
 
+        retroLabelTypeface = Typeface.create("sans-serif-medium", Typeface.BOLD);
+        if (retroLabelTypeface == null) {
+            retroLabelTypeface = Typeface.DEFAULT_BOLD;
+        }
+
         // Default layout
         currentLayout = GamepadLayout.XBOX;
         componentPositions = configManager.loadLayoutPositions(currentLayout);
     }
 
     @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        refreshThemeAccent();
+    }
+
+    @Override
+    protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        refreshThemeAccent();
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        refreshThemeAccent();
 
-        // Draw background image if set, otherwise solid color
+        // Draw background image if set, otherwise light vertical gradient (app surface tone)
         if (backgroundBitmap != null) {
             drawBackgroundWithPanZoom(canvas);
         } else {
+            Shader sh = new LinearGradient(0, 0, 0, getHeight(),
+                    Color.parseColor("#F5F5F5"), Color.parseColor("#ECECEC"), Shader.TileMode.CLAMP);
+            bgPaint.setShader(sh);
             canvas.drawRect(0, 0, getWidth(), getHeight(), bgPaint);
+            bgPaint.setShader(null);
         }
 
         // Draw components based on layout
@@ -206,8 +284,376 @@ public class GamepadView extends View {
                 drawNESLayout(canvas);
                 break;
             case SIMPLE:
-                drawSimpleLayout(canvas);
+                if (useDynamicLayout()) {
+                    drawDynamicSimpleLayout(canvas);
+                } else {
+                    drawSimpleLayout(canvas);
+                }
                 break;
+        }
+        if (isEditMode) {
+            drawEditModeOutlines(canvas);
+        }
+    }
+
+    private boolean useDynamicLayout() {
+        return layoutDocument != null && layoutDocument.modules != null;
+    }
+
+    private void refreshThemeAccent() {
+        if (!isAttachedToWindow()) {
+            return;
+        }
+        themeAccentPrimary = MaterialColors.getColor(this,
+                com.google.android.material.R.attr.colorPrimary,
+                Color.parseColor("#F57C00"));
+    }
+
+    private static int darkenArgb(int color, float valueMul) {
+        int a = Color.alpha(color);
+        int r = Math.min(255, Math.round(Color.red(color) * valueMul));
+        int g = Math.min(255, Math.round(Color.green(color) * valueMul));
+        int b = Math.min(255, Math.round(Color.blue(color) * valueMul));
+        return Color.argb(a, r, g, b);
+    }
+
+    private static boolean isLightFace(int body) {
+        return Color.red(body) * 0.299 + Color.green(body) * 0.587 + Color.blue(body) * 0.114 > 160;
+    }
+
+    private static FaceStyle faceStyleFromLegacy(int body) {
+        int rim = darkenArgb(body, 0.78f);
+        int label = isLightFace(body) ? 0xFF212121 : 0xFFFFFFFF;
+        return new FaceStyle(body, rim, label);
+    }
+
+    private static int applyAlphaInt(int color, int alpha) {
+        return Color.argb(Math.min(255, Math.max(0, alpha)), Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    private FaceStyle faceStyleForFaceLabel(String label, int legacyColor) {
+        if (label == null) {
+            return faceStyleFromLegacy(legacyColor);
+        }
+        String t = label.trim();
+        if ("△".equals(t)) {
+            return FACE_A;
+        }
+        if ("×".equals(t)) {
+            return FACE_X;
+        }
+        if ("○".equals(t)) {
+            return FACE_B;
+        }
+        if ("□".equals(t)) {
+            return FACE_PS_SQUARE;
+        }
+        if (t.equalsIgnoreCase("a")) {
+            return FACE_A;
+        }
+        if (t.equalsIgnoreCase("b")) {
+            return FACE_B;
+        }
+        if (t.equalsIgnoreCase("x")) {
+            return FACE_X;
+        }
+        if (t.equalsIgnoreCase("y")) {
+            return FACE_Y;
+        }
+        String u = t.toUpperCase(Locale.US);
+        if (u.contains("SELECT") || u.contains("START") || "≡".equals(t) || "⊞".equals(t)) {
+            return FACE_NEUTRAL;
+        }
+        return faceStyleFromLegacy(legacyColor);
+    }
+
+    private FaceStyle faceStyleForModuleId(String moduleId) {
+        int h = Math.abs(moduleId.hashCode());
+        FaceStyle[] cycle = new FaceStyle[]{FACE_A, FACE_B, FACE_X, FACE_Y};
+        return cycle[h % cycle.length];
+    }
+
+    private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
+                                     boolean pressed, String text) {
+        float shadowDy = r * 0.07f;
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(3f, r * 0.14f), BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setColor(0x66000000);
+        canvas.drawCircle(cx, cy + shadowDy * 0.5f, r * 0.96f, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+
+        int body = pressed ? darkenArgb(style.body, 0.9f) : style.body;
+        Shader lg = new LinearGradient(cx - r, cy - r, cx + r, cy + r, body, style.rim, Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(lg);
+        canvas.drawCircle(cx, cy, r, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(Math.max(2f, r * 0.07f));
+        retroRingPaint.setColor(pressed ? themeAccentPrimary : applyAlphaInt(style.rim, 230));
+        canvas.drawCircle(cx, cy, r * 0.995f, retroRingPaint);
+        if (pressed) {
+            retroRingPaint.setStrokeWidth(Math.max(2.5f, r * 0.05f));
+            retroRingPaint.setColor(applyAlphaInt(themeAccentPrimary, 190));
+            canvas.drawCircle(cx, cy, r * 1.06f, retroRingPaint);
+        }
+
+        float glossR = r * 0.9f;
+        Shader rg = new RadialGradient(cx - r * 0.28f, cy - r * 0.32f, glossR,
+                0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+        retroGlossPaint.setShader(rg);
+        canvas.drawCircle(cx, cy, r * 0.92f, retroGlossPaint);
+        retroGlossPaint.setShader(null);
+
+        if (text != null && !text.isEmpty()) {
+            float textScale = text.length() > 6 ? 0.4f : text.length() > 4 ? 0.5f : 0.6f;
+            retroTextPaint.setColor(style.label);
+            retroTextPaint.setTextAlign(Paint.Align.CENTER);
+            retroTextPaint.setTextSize(r * textScale);
+            retroTextPaint.setFakeBoldText(true);
+            retroTextPaint.setTypeface(retroLabelTypeface);
+            retroTextPaint.setShadowLayer(2f, 0f, 1f, 0x33000000);
+            canvas.drawText(text, cx, cy + r * 0.32f, retroTextPaint);
+            retroTextPaint.clearShadowLayer();
+        }
+    }
+
+    private void drawEditModeOutlines(Canvas canvas) {
+        float density = getResources().getDisplayMetrics().density;
+        float stroke = 1.5f * density;
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(stroke);
+        retroRingPaint.setColor(themeAccentPrimary);
+        retroRingPaint.setPathEffect(new DashPathEffect(new float[]{8f * density, 5f * density}, 0f));
+        for (RectF b : componentBounds.values()) {
+            float rr = Math.min(b.width(), b.height()) * 0.12f;
+            canvas.drawRoundRect(b, rr, rr, retroRingPaint);
+        }
+        retroRingPaint.setPathEffect(null);
+    }
+
+    private boolean isDpadDirPressed(String dir) {
+        String id = "dpad_" + dir;
+        return dpadPressedSet.contains(id) || id.equals(pressedComponentId);
+    }
+
+    public void setLayoutDocument(@androidx.annotation.Nullable GamepadLayoutPresetDocument doc) {
+        this.layoutDocument = doc;
+        dynamicHitTestOrder.clear();
+        dynamicPointerStick.clear();
+        dynamicStickOffset.clear();
+        touchpadPointerId = -1;
+        invalidate();
+    }
+
+    public void setKeyCodeProvider(@androidx.annotation.Nullable KeyCodeProvider provider) {
+        this.keyCodeProvider = provider;
+    }
+
+    public void setTouchpadDeltaListener(@androidx.annotation.Nullable TouchpadDeltaListener listener) {
+        this.touchpadDeltaListener = listener;
+    }
+
+    private void drawDynamicSimpleLayout(Canvas canvas) {
+        dynamicHitTestOrder.clear();
+        int w = getWidth();
+        int h = getHeight();
+        List<GamepadLayoutPresetDocument.GamepadModule> mods = new ArrayList<>(layoutDocument.modules);
+        Collections.sort(mods, Comparator.comparingInt(m -> m.zIndex));
+        for (GamepadLayoutPresetDocument.GamepadModule m : mods) {
+            if (m == null) {
+                continue;
+            }
+            float x = m.anchorX * w;
+            float y = m.anchorY * h;
+            if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                String upL = componentDisplayLabels.getOrDefault("stick_up", "W");
+                String dnL = componentDisplayLabels.getOrDefault("stick_down", "S");
+                String lfL = componentDisplayLabels.getOrDefault("stick_left", "A");
+                String rtL = componentDisplayLabels.getOrDefault("stick_right", "D");
+                if ("stick_right".equals(m.id)) {
+                    upL = componentDisplayLabels.getOrDefault("stick_r_up", "I");
+                    dnL = componentDisplayLabels.getOrDefault("stick_r_down", "K");
+                    lfL = componentDisplayLabels.getOrDefault("stick_r_left", "J");
+                    rtL = componentDisplayLabels.getOrDefault("stick_r_right", "L");
+                }
+                String shortLabel = "stick_left".equals(m.id) ? "L" : "R";
+                drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
+                        GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
+                        GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? dnL : null,
+                        GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? lfL : null,
+                        GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? rtL : null);
+                dynamicHitTestOrder.add(m.id);
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                FaceStyle fs = faceStyleForModuleId(m.id);
+                String disp = m.displayLabel != null ? m.displayLabel : shortButtonLabel(m);
+                drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp);
+                dynamicHitTestOrder.add(m.id);
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
+                float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
+                drawTouchpadModule(canvas, m.id, x, y, ww, hh);
+                dynamicHitTestOrder.add(m.id);
+            }
+        }
+    }
+
+    private String shortButtonLabel(GamepadLayoutPresetDocument.GamepadModule m) {
+        if (m.hidKey == null) {
+            return "?";
+        }
+        return String.valueOf(m.hidKey);
+    }
+
+    private void drawButtonForModule(Canvas canvas, float cx, float cy, float radiusPx, String id,
+                                     FaceStyle style, String displayLabel) {
+        RectF bounds = new RectF(cx - radiusPx, cy - radiusPx, cx + radiusPx, cy + radiusPx);
+        componentBounds.put(id, bounds);
+        String textLabel = displayLabel != null ? displayLabel : id;
+        drawRetroFaceButton(canvas, cx, cy, radiusPx, style, id.equals(pressedComponentId), textLabel);
+    }
+
+    private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh) {
+        float density = getResources().getDisplayMetrics().density;
+        float corner = 12f * density;
+        float borderW = 1.5f * density;
+        RectF bounds = new RectF(cx - ww / 2f, cy - hh / 2f, cx + ww / 2f, cy + hh / 2f);
+        componentBounds.put(id, bounds);
+
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setColor(0x33000000);
+        RectF shadowBounds = new RectF(bounds);
+        shadowBounds.offset(0, 2f * density);
+        canvas.drawRoundRect(shadowBounds, corner, corner, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+
+        Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.left, bounds.bottom,
+                Color.parseColor("#F8F4F0"), Color.parseColor("#EDE6DF"), Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(surface);
+        canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroGlossPaint.setColor(Color.parseColor("#33D9D2CC"));
+        float step = 16f * density;
+        for (float px = bounds.left + step * 0.5f; px < bounds.right; px += step) {
+            for (float py = bounds.top + step * 0.5f; py < bounds.bottom; py += step) {
+                canvas.drawCircle(px, py, 1.1f * density, retroGlossPaint);
+            }
+        }
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(borderW);
+        retroRingPaint.setColor(Color.parseColor("#C9C2BB"));
+        retroRingPaint.setShader(null);
+        canvas.drawRoundRect(bounds, corner, corner, retroRingPaint);
+
+        retroTextPaint.setColor(Color.parseColor("#757575"));
+        retroTextPaint.setTextAlign(Paint.Align.CENTER);
+        retroTextPaint.setTextSize(Math.min(ww, hh) * 0.11f);
+        retroTextPaint.setFakeBoldText(true);
+        retroTextPaint.setLetterSpacing(0.08f);
+        retroTextPaint.setTypeface(retroLabelTypeface);
+        retroTextPaint.setShadowLayer(1f, 0f, 0.5f, 0x22FFFFFF);
+        canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.35f, retroTextPaint);
+        retroTextPaint.clearShadowLayer();
+        retroTextPaint.setLetterSpacing(0f);
+    }
+
+    /**
+     * Analog stick for SIMPLE v2: {@code boundsId} is stick_left / stick_right (matches positions JSON).
+     */
+    private void drawAnalogStickForModule(Canvas canvas, float cx, float cy, float baseRadius, float moduleScale,
+                                          String boundsId, String shortLabel,
+                                          String upLabel, String downLabel, String leftLabel, String rightLabel) {
+        float scaledRadius = baseRadius * stickSizeScale * moduleScale;
+        float density = getResources().getDisplayMetrics().density;
+        RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
+        componentBounds.put(boundsId, bounds);
+
+        float hx = cx;
+        float hy = cy - scaledRadius * 0.18f;
+        Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
+                Color.parseColor("#5C5660"), Color.parseColor("#3E3A45"), Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(outer);
+        canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(Math.max(2.5f, 2.5f * density));
+        retroRingPaint.setColor(Color.parseColor("#9B92A8"));
+        canvas.drawCircle(cx, cy, scaledRadius * 0.995f, retroRingPaint);
+
+        float innerCx = cx;
+        float innerCy = cy;
+        float ox = 0;
+        float oy = 0;
+        if (useDynamicLayout() && dynamicStickOffset.containsKey(boundsId)) {
+            float[] d = dynamicStickOffset.get(boundsId);
+            ox = d[0];
+            oy = d[1];
+        } else if (boundsId.equals(activeStickId)) {
+            ox = stickOffsetX;
+            oy = stickOffsetY;
+        }
+        innerCx += ox;
+        innerCy += oy;
+
+        boolean centerTap = boundsId.equals(activeStickId)
+                && Math.abs(ox) < scaledRadius * 0.15f && Math.abs(oy) < scaledRadius * 0.15f;
+        float capR = scaledRadius * 0.58f;
+        Shader capShader;
+        if (centerTap) {
+            capShader = new RadialGradient(innerCx - capR * 0.25f, innerCy - capR * 0.28f, capR * 1.1f,
+                    applyAlphaInt(themeAccentPrimary, 240),
+                    darkenArgb(themeAccentPrimary, 0.55f),
+                    Shader.TileMode.CLAMP);
+        } else {
+            capShader = new RadialGradient(innerCx - capR * 0.35f, innerCy - capR * 0.38f, capR * 1.05f,
+                    Color.parseColor("#B7AEC0"), Color.parseColor("#6E6575"), Shader.TileMode.CLAMP);
+        }
+        retroBodyPaint.setShader(capShader);
+        canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        Shader spec = new RadialGradient(innerCx - capR * 0.35f, innerCy - capR * 0.35f, capR * 0.45f,
+                0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+        retroGlossPaint.setShader(spec);
+        canvas.drawCircle(innerCx, innerCy, capR * 0.92f, retroGlossPaint);
+        retroGlossPaint.setShader(null);
+
+        if (upLabel != null) {
+            Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            dirPaint.setTextAlign(Paint.Align.CENTER);
+            dirPaint.setFakeBoldText(true);
+            dirPaint.setTextSize(scaledRadius * 0.22f);
+            dirPaint.setTypeface(retroLabelTypeface);
+            dirPaint.setShadowLayer(1.5f, 0f, 1f, 0x44000000);
+            int accent = themeAccentPrimary;
+            int dim = Color.WHITE;
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? accent : dim);
+            canvas.drawText(upLabel, cx, cy - scaledRadius * 0.65f, dirPaint);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? accent : dim);
+            canvas.drawText(downLabel, cx, cy + scaledRadius * 0.75f, dirPaint);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? accent : dim);
+            canvas.drawText(leftLabel, cx - scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? accent : dim);
+            canvas.drawText(rightLabel, cx + scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
+            dirPaint.clearShadowLayer();
+        } else {
+            Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            labelPaint.setColor(Color.WHITE);
+            labelPaint.setTextSize(baseRadius * moduleScale * 0.5f);
+            labelPaint.setTextAlign(Paint.Align.CENTER);
+            labelPaint.setFakeBoldText(true);
+            labelPaint.setTypeface(retroLabelTypeface);
+            labelPaint.setShadowLayer(2f, 0f, 1f, 0x44000000);
+            canvas.drawText(shortLabel, cx, cy + baseRadius * moduleScale * 0.3f, labelPaint);
+            labelPaint.clearShadowLayer();
+            Paint l3Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            l3Paint.setColor(Color.parseColor("#D0CCD6"));
+            l3Paint.setTextSize(baseRadius * moduleScale * 0.25f);
+            l3Paint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.62f, l3Paint);
         }
     }
 
@@ -531,6 +977,9 @@ public class GamepadView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (useDynamicLayout()) {
+            return onTouchDynamicLayout(event);
+        }
         int action = event.getActionMasked();
         int pointerIndex = event.getActionIndex();
         int pointerId = event.getPointerId(pointerIndex);
@@ -823,7 +1272,287 @@ public class GamepadView extends View {
         return keys;
     }
 
+    private boolean onTouchDynamicLayout(MotionEvent event) {
+        int action = event.getActionMasked();
+        int pointerIndex = event.getActionIndex();
+        int pointerId = event.getPointerId(pointerIndex);
+        float x = event.getX(pointerIndex);
+        float y = event.getY(pointerIndex);
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN: {
+                String componentId = getComponentAt(x, y);
+                if (componentId != null && !isComponentDisabled(componentId)) {
+                    pointerComponents.put(pointerId, componentId);
+                    if (longPressEnabled && (touchpadDeltaListener == null || !componentId.startsWith("touchpad_"))) {
+                        longPressComponentId = componentId;
+                        longPressDownX = x;
+                        longPressDownY = y;
+                        longPressCancelled = false;
+                        longPressRunnable = () -> {
+                            if (longPressListener != null && longPressComponentId != null && !longPressCancelled) {
+                                longPressListener.onComponentLongPress(longPressComponentId);
+                            }
+                        };
+                        longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_THRESHOLD);
+                    }
+                    if (isDpadComponent(componentId)) {
+                        if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
+                            dpadStateListener.onDpadStateChanged(getCurrentDpadKeys());
+                        }
+                    } else if (componentId.startsWith("touchpad_")) {
+                        touchpadPointerId = pointerId;
+                        touchpadLastX = x;
+                        touchpadLastY = y;
+                    } else if (componentId.startsWith("stick_") && !isEditMode) {
+                        dynamicPointerStick.put(pointerId, componentId);
+                        dynamicStickOffset.put(componentId, new float[]{0f, 0f});
+                        invalidate();
+                    } else if (isEditMode) {
+                        draggedComponentId = componentId;
+                    } else {
+                        pressedComponentId = componentId;
+                        buttonsPressedSet.add(componentId);
+                        if (buttonPressListener != null) {
+                            int keyCode = getKeyCodeForComponent(componentId);
+                            buttonPressListener.onButtonPress(componentId, keyCode);
+                        }
+                        invalidate();
+                    }
+                } else if (longPressEnabled) {
+                    longPressDownX = x;
+                    longPressDownY = y;
+                    longPressCancelled = false;
+                    Runnable emptyAreaRunnable = () -> {
+                        if (!longPressCancelled && emptyAreaLongPressListener != null) {
+                            emptyAreaLongPressListener.onEmptyAreaLongPress();
+                        }
+                    };
+                    longPressRunnable = emptyAreaRunnable;
+                    longPressHandler.postDelayed(emptyAreaRunnable, LONG_PRESS_THRESHOLD);
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_POINTER_DOWN: {
+                String componentId = getComponentAt(x, y);
+                if (componentId != null && !isComponentDisabled(componentId)) {
+                    pointerComponents.put(pointerId, componentId);
+                    if (isDpadComponent(componentId)) {
+                        if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
+                            dpadStateListener.onDpadStateChanged(getCurrentDpadKeys());
+                        }
+                    } else if (componentId.startsWith("touchpad_")) {
+                        if (touchpadPointerId < 0) {
+                            touchpadPointerId = pointerId;
+                            touchpadLastX = x;
+                            touchpadLastY = y;
+                        }
+                    } else if (componentId.startsWith("stick_") && !isEditMode) {
+                        dynamicPointerStick.put(pointerId, componentId);
+                        dynamicStickOffset.put(componentId, new float[]{0f, 0f});
+                        invalidate();
+                    } else if (!isEditMode && buttonPressListener != null) {
+                        buttonsPressedSet.add(componentId);
+                        int keyCode = getKeyCodeForComponent(componentId);
+                        buttonPressListener.onButtonPress(componentId, keyCode);
+                    }
+                } else if (event.getPointerCount() >= 2 && backgroundBitmap != null) {
+                    int otherIdx = pointerIndex == 0 ? 1 : 0;
+                    float ox = event.getX(otherIdx);
+                    float oy = event.getY(otherIdx);
+                    String otherComponent = getComponentAt(ox, oy);
+                    if (otherComponent == null) {
+                        isManipulatingBg = true;
+                        float dx = x - ox;
+                        float dy = y - oy;
+                        bgLastDistance = (float) Math.sqrt(dx * dx + dy * dy);
+                        bgLastCenterX = (x + ox) / 2f;
+                        bgLastCenterY = (y + oy) / 2f;
+                        bgStartOffsetX = bgOffsetX;
+                        bgStartOffsetY = bgOffsetY;
+                        bgStartScale = bgScale;
+                    }
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_MOVE: {
+                if (!longPressCancelled && longPressRunnable != null) {
+                    for (int i = 0; i < event.getPointerCount(); i++) {
+                        float mx = event.getX(i);
+                        float my = event.getY(i);
+                        float dx = mx - longPressDownX;
+                        float dy = my - longPressDownY;
+                        if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD) {
+                            longPressHandler.removeCallbacks(longPressRunnable);
+                            longPressCancelled = true;
+                        }
+                    }
+                }
+                if (isManipulatingBg && event.getPointerCount() >= 2) {
+                    float x0 = event.getX(0), y0 = event.getY(0);
+                    float x1 = event.getX(1), y1 = event.getY(1);
+                    float dist = (float) Math.sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+                    float cx = (x0 + x1) / 2f;
+                    float cy = (y0 + y1) / 2f;
+                    if (bgLastDistance > 0) {
+                        bgScale = Math.max(0.1f, bgStartScale * dist / bgLastDistance);
+                    }
+                    int vw = getWidth();
+                    int vh = getHeight();
+                    int bw = backgroundBitmap.getWidth();
+                    int bh = backgroundBitmap.getHeight();
+                    float s = bgInitialScale * bgScale;
+                    float dx = (cx - bgLastCenterX) / (s != 0 ? s : 1f);
+                    float dy = (cy - bgLastCenterY) / (s != 0 ? s : 1f);
+                    bgOffsetX = bgStartOffsetX + dx;
+                    bgOffsetY = bgStartOffsetY + dy;
+                    bgLastCenterX = cx;
+                    bgLastCenterY = cy;
+                    bgLastDistance = dist;
+                    bgStartOffsetX = bgOffsetX;
+                    bgStartOffsetY = bgOffsetY;
+                    bgStartScale = bgScale;
+                    invalidate();
+                    notifyBackgroundViewportChanged();
+                } else if (touchpadPointerId >= 0 && touchpadDeltaListener != null) {
+                    int idx = event.findPointerIndex(touchpadPointerId);
+                    if (idx >= 0) {
+                        float nx = event.getX(idx);
+                        float ny = event.getY(idx);
+                        touchpadDeltaListener.onTouchpadDelta(nx - touchpadLastX, ny - touchpadLastY);
+                        touchpadLastX = nx;
+                        touchpadLastY = ny;
+                    }
+                } else if (!dynamicPointerStick.isEmpty() && analogStickListener != null) {
+                    for (Map.Entry<Integer, String> e : dynamicPointerStick.entrySet()) {
+                        String sid = e.getValue();
+                        int pid = e.getKey();
+                        int idx = event.findPointerIndex(pid);
+                        if (idx < 0) {
+                            continue;
+                        }
+                        float sx = event.getX(idx);
+                        float sy = event.getY(idx);
+                        RectF b = componentBounds.get(sid);
+                        if (b == null) {
+                            continue;
+                        }
+                        float cx = b.centerX();
+                        float cy = b.centerY();
+                        float rad = b.width() / 2f;
+                        float ddx = sx - cx;
+                        float ddy = sy - cy;
+                        float dist = (float) Math.sqrt(ddx * ddx + ddy * ddy);
+                        if (dist > rad) {
+                            ddx = ddx * rad / dist;
+                            ddy = ddy * rad / dist;
+                        }
+                        dynamicStickOffset.put(sid, new float[]{ddx, ddy});
+                        String label = "stick_left".equals(sid) ? "l" : "r";
+                        analogStickListener.onAnalogStickMoved(label, ddx / rad, ddy / rad);
+                    }
+                    invalidate();
+                } else if (draggedComponentId != null && isEditMode) {
+                    GamepadConfigManager.ComponentPosition pos =
+                            componentPositions.get(draggedComponentId);
+                    if (pos != null) {
+                        pos.x = x / getWidth();
+                        pos.y = y / getHeight();
+                        invalidate();
+                    }
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL: {
+                if (isManipulatingBg) {
+                    isManipulatingBg = false;
+                    bgLastDistance = -1f;
+                }
+                if (longPressHandler != null && longPressRunnable != null) {
+                    longPressHandler.removeCallbacks(longPressRunnable);
+                    longPressComponentId = null;
+                }
+                for (Map.Entry<Integer, String> e : new HashMap<>(dynamicPointerStick).entrySet()) {
+                    String sid = e.getValue();
+                    float[] off = dynamicStickOffset.get(sid);
+                    RectF b = componentBounds.get(sid);
+                    float rad = b != null ? b.width() / 2f : 1f;
+                    float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
+                    if (moved < rad * 0.15f && buttonPressListener != null) {
+                        String clickId = "stick_left".equals(sid) ? "stick_l_click" : "stick_r_click";
+                        int code = "stick_left".equals(sid) ? 1001 : 1002;
+                        buttonPressListener.onButtonPress(clickId, code);
+                    }
+                    String label = "stick_left".equals(sid) ? "l" : "r";
+                    if (analogStickListener != null) {
+                        analogStickListener.onAnalogStickMoved(label, 0, 0);
+                    }
+                }
+                dynamicPointerStick.clear();
+                dynamicStickOffset.clear();
+                if (touchpadPointerId == pointerId) {
+                    touchpadPointerId = -1;
+                }
+                if (draggedComponentId != null) {
+                    draggedComponentId = null;
+                }
+                releasePointerComponent(pointerId);
+                if (action == MotionEvent.ACTION_UP) {
+                    pointerComponents.clear();
+                    dpadPressedSet.clear();
+                    buttonsPressedSet.clear();
+                    touchpadPointerId = -1;
+                    if (pressedComponentId != null) {
+                        pressedComponentId = null;
+                    }
+                }
+                invalidate();
+                return true;
+            }
+            case MotionEvent.ACTION_POINTER_UP: {
+                if (isManipulatingBg) {
+                    isManipulatingBg = false;
+                    bgLastDistance = -1f;
+                }
+                String releasedStick = dynamicPointerStick.remove(pointerId);
+                if (releasedStick != null) {
+                    float[] off = dynamicStickOffset.remove(releasedStick);
+                    RectF b = componentBounds.get(releasedStick);
+                    float rad = b != null ? b.width() / 2f : 1f;
+                    float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
+                    if (moved < rad * 0.15f && buttonPressListener != null) {
+                        String clickId = "stick_left".equals(releasedStick) ? "stick_l_click" : "stick_r_click";
+                        int code = "stick_left".equals(releasedStick) ? 1001 : 1002;
+                        buttonPressListener.onButtonPress(clickId, code);
+                    }
+                    String label = "stick_left".equals(releasedStick) ? "l" : "r";
+                    if (analogStickListener != null) {
+                        analogStickListener.onAnalogStickMoved(label, 0, 0);
+                    }
+                }
+                if (touchpadPointerId == pointerId) {
+                    touchpadPointerId = -1;
+                }
+                releasePointerComponent(pointerId);
+                invalidate();
+                return true;
+            }
+            default:
+                return true;
+        }
+    }
+
     private String getComponentAt(float x, float y) {
+        if (useDynamicLayout()) {
+            for (int i = dynamicHitTestOrder.size() - 1; i >= 0; i--) {
+                String id = dynamicHitTestOrder.get(i);
+                RectF b = componentBounds.get(id);
+                if (b != null && b.contains(x, y) && !isComponentDisabled(id)) {
+                    return id;
+                }
+            }
+        }
         // Check D-pad in deterministic order first (they share edges at center)
         String[] dpadOrder = {"dpad_up", "dpad_right", "dpad_down", "dpad_left"};
         for (String id : dpadOrder) {
@@ -887,7 +1616,14 @@ public class GamepadView extends View {
             case "button_select": case "select": return 62; // HID F5
             case "button_⊞": case "start":  case "button_start": return 63; // HID F6
 
-            default: return 0;
+            default:
+                if (keyCodeProvider != null) {
+                    int k = keyCodeProvider.getHidKey(componentId);
+                    if (k != 0) {
+                        return k;
+                    }
+                }
+                return 0;
         }
     }
 
@@ -1137,5 +1873,13 @@ public class GamepadView extends View {
 
     public interface EmptyAreaLongPressListener {
         void onEmptyAreaLongPress();
+    }
+
+    public interface KeyCodeProvider {
+        int getHidKey(String componentId);
+    }
+
+    public interface TouchpadDeltaListener {
+        void onTouchpadDelta(float dxPixels, float dyPixels);
     }
 }

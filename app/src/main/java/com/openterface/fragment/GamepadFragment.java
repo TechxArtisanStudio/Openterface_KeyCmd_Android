@@ -14,6 +14,7 @@ import android.util.Log;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +42,12 @@ import androidx.preference.PreferenceManager;
 import com.openterface.keymod.R;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
 import com.openterface.keymod.GamepadView;
+import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
+import com.openterface.keymod.gamepad.GamepadLayoutDocumentStore;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetApplier;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
@@ -98,6 +103,14 @@ public class GamepadFragment extends Fragment {
     private int stickRightKey = DEFAULT_STICK_RIGHT;
     private float stickSizeScale = 1.0f;
 
+    /** Which stick module id is being edited in the stick dialog ({@code stick_left} / {@code stick_right}). */
+    private String stickConfigModuleId = "stick_left";
+    /** Cardinal HID keys for {@code stick_right} (I/J/K/L defaults). */
+    private int rightStickUpKey = 12;
+    private int rightStickLeftKey = 13;
+    private int rightStickDownKey = 14;
+    private int rightStickRightKey = 15;
+
     // Button config
     private int buttonAKey = DEFAULT_BUTTON_A;
     private int buttonBKey = 41;
@@ -119,17 +132,15 @@ public class GamepadFragment extends Fragment {
     private boolean buttonBPressed = false;
     private boolean twoButtonMode = false;
 
+    private GamepadLayoutPresetDocument layoutDoc;
+    private final Map<String, Boolean> faceButtonPressed = new HashMap<>();
+    private boolean keyRUpPressed;
+    private boolean keyRLeftPressed;
+    private boolean keyRDownPressed;
+    private boolean keyRRightPressed;
+
     private ToggleButton buttonModeToggleRef;
-    private final CompoundButton.OnCheckedChangeListener twoButtonModeListener =
-            (buttonView, isChecked) -> {
-                twoButtonMode = isChecked;
-                prefs.edit().putBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, isChecked).apply();
-                if (gamepadView != null) {
-                    gamepadView.setShowTwoButtons(isChecked);
-                }
-                persistActivePresetSnapshot();
-                Log.d(TAG, "Button mode: " + (twoButtonMode ? "2 buttons (A+B)" : "1 button (A)"));
-            };
+    private CompoundButton.OnCheckedChangeListener twoButtonModeListener;
 
     private GamepadLayoutPresetRepository presetRepository;
     private ActivityResultLauncher<String[]> importPresetLauncher;
@@ -137,6 +148,43 @@ public class GamepadFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        twoButtonModeListener = (buttonView, isChecked) -> {
+            if (layoutDoc == null || layoutDoc.layout == null) {
+                return;
+            }
+            twoButtonMode = isChecked;
+            layoutDoc.layout.showTwoButtons = isChecked;
+            if (isChecked) {
+                GamepadLayoutDocEditor.ensureButtonB(layoutDoc);
+            } else {
+                GamepadLayoutDocEditor.removeModule(layoutDoc, "button_b");
+            }
+            try {
+                GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Two-button toggle: invalid layout", e);
+                Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+                layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
+                syncFieldsFromLayoutDoc();
+                if (buttonModeToggleRef != null) {
+                    buttonModeToggleRef.setOnCheckedChangeListener(null);
+                    buttonModeToggleRef.setChecked(twoButtonMode);
+                    buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
+                }
+                if (gamepadView != null) {
+                    gamepadView.setShowTwoButtons(twoButtonMode);
+                    syncGamepadViewFromDoc();
+                }
+                return;
+            }
+            syncFieldsFromLayoutDoc();
+            if (gamepadView != null) {
+                gamepadView.setShowTwoButtons(twoButtonMode);
+                syncGamepadViewFromDoc();
+            }
+            persistActivePresetSnapshot();
+            Log.d(TAG, "Button mode: " + (twoButtonMode ? "2 buttons (A+B)" : "1 button (A)"));
+        };
         presetRepository = new GamepadLayoutPresetRepository(requireContext());
         presetRepository.ensureMigratedFromLegacy();
         importPresetLauncher = registerForActivityResult(
@@ -167,12 +215,13 @@ public class GamepadFragment extends Fragment {
         vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
 
         loadSavedSensitivity();
-        loadStickConfig();
-        loadButtonConfig();
+        layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
+        syncFieldsFromLayoutDoc();
 
         gamepadView = view.findViewById(R.id.gamepad_view);
         currentLayout = GamepadLayout.SIMPLE;
         gamepadView.setLayout(currentLayout);
+        syncGamepadViewFromDoc();
 
         loadBackground();
 
@@ -207,14 +256,6 @@ public class GamepadFragment extends Fragment {
             Log.d(TAG, "Exited edit mode");
         });
 
-        // Pass configured keycode and labels to the gamepad view
-        if (gamepadView != null) {
-            gamepadView.setButtonAKeyCode(buttonAKey);
-            gamepadView.setButtonSizeScale(buttonSizeScale);
-            gamepadView.setStickSizeScale(stickSizeScale);
-            updateGamepadLabels();
-        }
-
         setupListeners();
 
         return view;
@@ -245,11 +286,13 @@ public class GamepadFragment extends Fragment {
                 sendMouseClick(2, true);
                 gamepadView.postDelayed(() -> sendMouseClick(2, false), 100);
             } else {
-                // Track only the pressed button
-                if (buttonId.equals("button_a")) {
-                    buttonAPressed = true;
-                } else if (buttonId.equals("button_b")) {
-                    buttonBPressed = true;
+                if (buttonId != null && buttonId.startsWith("button_")) {
+                    faceButtonPressed.put(buttonId, true);
+                    if ("button_a".equals(buttonId)) {
+                        buttonAPressed = true;
+                    } else if ("button_b".equals(buttonId)) {
+                        buttonBPressed = true;
+                    }
                 }
                 sendCombinedKeyReport();
             }
@@ -263,11 +306,13 @@ public class GamepadFragment extends Fragment {
         gamepadView.setButtonReleaseListener((buttonId, keyCode) -> {
             if (keyCode == 1001 || keyCode == 1002) return;
             Log.d(TAG, "Button released: " + buttonId);
-            // Track only the released button
-            if (buttonId.equals("button_a")) {
-                buttonAPressed = false;
-            } else if (buttonId.equals("button_b")) {
-                buttonBPressed = false;
+            if (buttonId != null && buttonId.startsWith("button_")) {
+                faceButtonPressed.put(buttonId, false);
+                if ("button_a".equals(buttonId)) {
+                    buttonAPressed = false;
+                } else if ("button_b".equals(buttonId)) {
+                    buttonBPressed = false;
+                }
             }
             sendCombinedKeyReport();
         });
@@ -315,6 +360,16 @@ public class GamepadFragment extends Fragment {
         // Save positions when exiting edit mode
         gamepadView.setEditModeExitListener(positions -> {
             gamepadView.savePositions();
+            if (layoutDoc != null) {
+                mergeViewPositionsIntoLayoutDoc(positions);
+                try {
+                    GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "Could not persist layout after edit", e);
+                }
+                syncFieldsFromLayoutDoc();
+                syncGamepadViewFromDoc();
+            }
             persistActivePresetSnapshot();
             Log.d(TAG, "Saved component positions");
         });
@@ -326,17 +381,150 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    @Nullable
+    private GamepadLayoutPresetDocument.GamepadModule findModuleById(String id) {
+        if (layoutDoc == null || layoutDoc.modules == null || id == null) {
+            return null;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+            if (m != null && id.equals(m.id)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private static int intOr(@Nullable Integer v, int def) {
+        return v != null ? v : def;
+    }
+
+    private void loadStickModuleIntoEditorState(String moduleId) {
+        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(moduleId);
+        if (m == null) {
+            return;
+        }
+        stickMode = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? MODE_KEY : MODE_ANALOG;
+        stickUpKey = intOr(m.stickUpKey, DEFAULT_STICK_UP);
+        stickLeftKey = intOr(m.stickLeftKey, DEFAULT_STICK_LEFT);
+        stickDownKey = intOr(m.stickDownKey, DEFAULT_STICK_DOWN);
+        stickRightKey = intOr(m.stickRightKey, DEFAULT_STICK_RIGHT);
+        stickSizeScale = m.scale;
+    }
+
+    private void syncFieldsFromLayoutDoc() {
+        if (layoutDoc == null || layoutDoc.layout == null || layoutDoc.modules == null) {
+            return;
+        }
+        twoButtonMode = layoutDoc.layout.showTwoButtons;
+        mouseSensitivity = layoutDoc.layout.mouseSensitivity;
+
+        GamepadLayoutPresetDocument.GamepadModule left = findModuleById("stick_left");
+        if (left != null) {
+            stickMode = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(left.type) ? MODE_KEY : MODE_ANALOG;
+            stickUpKey = intOr(left.stickUpKey, DEFAULT_STICK_UP);
+            stickLeftKey = intOr(left.stickLeftKey, DEFAULT_STICK_LEFT);
+            stickDownKey = intOr(left.stickDownKey, DEFAULT_STICK_DOWN);
+            stickRightKey = intOr(left.stickRightKey, DEFAULT_STICK_RIGHT);
+            stickSizeScale = left.scale;
+        }
+
+        GamepadLayoutPresetDocument.GamepadModule right = findModuleById("stick_right");
+        if (right != null) {
+            rightStickUpKey = intOr(right.stickUpKey, 12);
+            rightStickLeftKey = intOr(right.stickLeftKey, 13);
+            rightStickDownKey = intOr(right.stickDownKey, 14);
+            rightStickRightKey = intOr(right.stickRightKey, 15);
+        }
+
+        GamepadLayoutPresetDocument.GamepadModule btnA = findModuleById("button_a");
+        if (btnA != null && btnA.hidKey != null) {
+            buttonAKey = btnA.hidKey;
+            buttonAModifiers = intOr(btnA.modifierMask, 0);
+            buttonSizeScale = btnA.scale;
+        }
+        GamepadLayoutPresetDocument.GamepadModule btnB = findModuleById("button_b");
+        if (btnB != null && btnB.hidKey != null) {
+            buttonBKey = btnB.hidKey;
+            buttonBModifiers = intOr(btnB.modifierMask, 0);
+        }
+    }
+
+    private void syncGamepadViewFromDoc() {
+        if (gamepadView == null) {
+            return;
+        }
+        gamepadView.setLayoutDocument(layoutDoc);
+        gamepadView.setKeyCodeProvider(this::hidKeyFromLayoutDoc);
+        gamepadView.setTouchpadDeltaListener(this::onTouchpadPixelDelta);
+        gamepadView.setButtonAKeyCode(buttonAKey);
+        gamepadView.setShowTwoButtons(twoButtonMode);
+        gamepadView.setStickSizeScale(stickSizeScale);
+        gamepadView.setButtonSizeScale(buttonSizeScale);
+        updateGamepadLabels();
+    }
+
+    private int hidKeyFromLayoutDoc(String componentId) {
+        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(componentId);
+        if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type) && m.hidKey != null) {
+            return m.hidKey;
+        }
+        return 0;
+    }
+
+    private void onTouchpadPixelDelta(float dx, float dy) {
+        if (!(getActivity() instanceof MainActivity)) {
+            return;
+        }
+        ConnectionManager cm = ((MainActivity) getActivity()).getConnectionManager();
+        if (cm == null || !cm.isConnected()) {
+            return;
+        }
+        float s = mouseSensitivity * 1.2f;
+        int cdx = (int) Math.max(-127, Math.min(127, dx * s));
+        int cdy = (int) Math.max(-127, Math.min(127, dy * s));
+        if (cdx != 0 || cdy != 0) {
+            cm.sendMouseMovement(cdx, cdy, 0);
+        }
+    }
+
+    private void applyLayoutDocFromMemory() {
+        if (layoutDoc == null) {
+            return;
+        }
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(layoutDoc);
+            GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Layout document invalid", e);
+            Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+            return;
+        }
+        syncFieldsFromLayoutDoc();
+        syncGamepadViewFromDoc();
+        applyBackgroundFromPrefsOnly();
+        persistActivePresetSnapshot();
+    }
+
+    private void mergeViewPositionsIntoLayoutDoc(Map<String, GamepadConfigManager.ComponentPosition> positions) {
+        if (layoutDoc == null || layoutDoc.modules == null || positions == null) {
+            return;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+            GamepadConfigManager.ComponentPosition p = positions.get(m.id);
+            if (p != null) {
+                m.anchorX = p.x;
+                m.anchorY = p.y;
+            }
+        }
+    }
+
     private void reloadFromPrefsAndApplyView() {
         loadSavedSensitivity();
-        loadStickConfig();
-        loadButtonConfig();
+        layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
+        syncFieldsFromLayoutDoc();
         if (gamepadView != null) {
             gamepadView.setLayout(GamepadLayout.SIMPLE);
-            gamepadView.setButtonAKeyCode(buttonAKey);
-            gamepadView.setButtonSizeScale(buttonSizeScale);
-            gamepadView.setStickSizeScale(stickSizeScale);
-            gamepadView.setShowTwoButtons(twoButtonMode);
-            updateGamepadLabels();
+            syncGamepadViewFromDoc();
         }
         if (buttonModeToggleRef != null) {
             buttonModeToggleRef.setOnCheckedChangeListener(null);
@@ -364,6 +552,23 @@ public class GamepadFragment extends Fragment {
                     return;
                 }
             }
+            prefs.edit()
+                    .remove(GamepadPreferenceKeys.BG_IMAGE)
+                    .remove(GamepadPreferenceKeys.BG_SCALE)
+                    .remove(GamepadPreferenceKeys.BG_OFFSET_X)
+                    .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
+                    .apply();
+            currentBgPath = null;
+            if (layoutDoc != null && layoutDoc.layout != null) {
+                layoutDoc.layout.backgroundImageFile = null;
+                layoutDoc.layout.backgroundScale = 1.0f;
+                layoutDoc.layout.backgroundOffsetX = 0f;
+                layoutDoc.layout.backgroundOffsetY = 0f;
+                try {
+                    GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
         }
         gamepadView.setBackgroundBitmap(null);
     }
@@ -371,12 +576,13 @@ public class GamepadFragment extends Fragment {
     private void showGamepadPresetsMenu() {
         List<GamepadLayoutPresetRepository.PresetRef> refs = presetRepository.listPresets();
         int n = refs.size();
-        String[] items = new String[n + 2];
+        String[] items = new String[n + 3];
         for (int i = 0; i < n; i++) {
             items[i] = refs.get(i).displayName != null ? refs.get(i).displayName : refs.get(i).id;
         }
         items[n] = getString(R.string.gamepad_presets_import);
-        items[n + 1] = getString(R.string.gamepad_presets_export_share);
+        items[n + 1] = getString(R.string.gamepad_presets_add_module);
+        items[n + 2] = getString(R.string.gamepad_presets_export_share);
 
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.gamepad_presets_title)
@@ -392,9 +598,34 @@ public class GamepadFragment extends Fragment {
                         }
                     } else if (which == n) {
                         importPresetLauncher.launch(new String[]{"application/json"});
+                    } else if (which == n + 1) {
+                        showAddModuleMenu();
                     } else {
                         shareCurrentPresetJson();
                     }
+                })
+                .show();
+    }
+
+    private void showAddModuleMenu() {
+        if (layoutDoc == null) {
+            layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.gamepad_add_module_title)
+                .setItems(new String[]{
+                        getString(R.string.gamepad_add_right_stick),
+                        getString(R.string.gamepad_add_extra_button),
+                        getString(R.string.gamepad_add_touchpad),
+                }, (d, which) -> {
+                    if (which == 0) {
+                        GamepadLayoutDocEditor.addStickRight(layoutDoc);
+                    } else if (which == 1) {
+                        GamepadLayoutDocEditor.addButton(layoutDoc);
+                    } else {
+                        GamepadLayoutDocEditor.addTouchpad(layoutDoc);
+                    }
+                    applyLayoutDocFromMemory();
                 })
                 .show();
     }
@@ -455,19 +686,69 @@ public class GamepadFragment extends Fragment {
                 return;
             }
 
-            // Combine modifier bits from all pressed buttons
             int modifiers = 0;
-            if (buttonAPressed) modifiers |= buttonAModifiers;
-            if (buttonBPressed) modifiers |= buttonBModifiers;
+            if (layoutDoc != null && layoutDoc.modules != null) {
+                for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+                    if (m == null || m.id == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                        continue;
+                    }
+                    if (Boolean.TRUE.equals(faceButtonPressed.get(m.id))) {
+                        modifiers |= intOr(m.modifierMask, 0);
+                    }
+                }
+            } else {
+                if (buttonAPressed) {
+                    modifiers |= buttonAModifiers;
+                }
+                if (buttonBPressed) {
+                    modifiers |= buttonBModifiers;
+                }
+            }
 
-            // Build list of regular (non-modifier) keys
             java.util.List<Integer> regularKeys = new java.util.ArrayList<>();
-            if (keyUpPressed) addKeyOrMod(regularKeys, stickUpKey);
-            if (keyLeftPressed) addKeyOrMod(regularKeys, stickLeftKey);
-            if (keyDownPressed) addKeyOrMod(regularKeys, stickDownKey);
-            if (keyRightPressed) addKeyOrMod(regularKeys, stickRightKey);
-            if (buttonAPressed) addKeyOrMod(regularKeys, buttonAKey);
-            if (buttonBPressed) addKeyOrMod(regularKeys, buttonBKey);
+            if (keyUpPressed) {
+                addKeyOrMod(regularKeys, stickUpKey);
+            }
+            if (keyLeftPressed) {
+                addKeyOrMod(regularKeys, stickLeftKey);
+            }
+            if (keyDownPressed) {
+                addKeyOrMod(regularKeys, stickDownKey);
+            }
+            if (keyRightPressed) {
+                addKeyOrMod(regularKeys, stickRightKey);
+            }
+            if (keyRUpPressed) {
+                addKeyOrMod(regularKeys, rightStickUpKey);
+            }
+            if (keyRLeftPressed) {
+                addKeyOrMod(regularKeys, rightStickLeftKey);
+            }
+            if (keyRDownPressed) {
+                addKeyOrMod(regularKeys, rightStickDownKey);
+            }
+            if (keyRRightPressed) {
+                addKeyOrMod(regularKeys, rightStickRightKey);
+            }
+
+            if (layoutDoc != null && layoutDoc.modules != null) {
+                for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+                    if (m == null || m.id == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
+                            || m.hidKey == null) {
+                        continue;
+                    }
+                    if (Boolean.TRUE.equals(faceButtonPressed.get(m.id))) {
+                        addKeyOrMod(regularKeys, m.hidKey);
+                    }
+                }
+            } else {
+                if (buttonAPressed) {
+                    addKeyOrMod(regularKeys, buttonAKey);
+                }
+                if (buttonBPressed) {
+                    addKeyOrMod(regularKeys, buttonBKey);
+                }
+            }
 
             if (regularKeys.isEmpty() && modifiers == 0) {
                 cm.sendKeyRelease();
@@ -482,7 +763,9 @@ public class GamepadFragment extends Fragment {
                 " keys=" + regularKeys +
                 " (U=" + keyUpPressed + " L=" + keyLeftPressed +
                 " D=" + keyDownPressed + " R=" + keyRightPressed +
-                " A=" + buttonAPressed + " B=" + buttonBPressed + ")");
+                " RU=" + keyRUpPressed + " RL=" + keyRLeftPressed +
+                " RD=" + keyRDownPressed + " RR=" + keyRRightPressed +
+                " face=" + faceButtonPressed + ")");
         }
     }
 
@@ -524,29 +807,53 @@ public class GamepadFragment extends Fragment {
     private void showLongPressMenu(String componentId) {
         String componentName;
         final boolean hasKeyMapping;
-        if (componentId.startsWith("stick_")) {
-            componentName = "Stick";
+        if ("stick_left".equals(componentId)) {
+            componentName = getString(R.string.gamepad_component_left_stick);
             hasKeyMapping = true;
-        } else if (componentId.equals("button_a")) {
-            componentName = "Button 1 (A)";
+        } else if ("stick_right".equals(componentId)) {
+            componentName = getString(R.string.gamepad_component_right_stick);
             hasKeyMapping = true;
-        } else if (componentId.equals("button_b")) {
-            componentName = "Button 2 (B)";
+        } else if (componentId != null && componentId.startsWith("stick_")) {
+            componentName = componentId;
             hasKeyMapping = true;
+        } else if ("button_a".equals(componentId)) {
+            componentName = getString(R.string.gamepad_component_button_a);
+            hasKeyMapping = true;
+        } else if ("button_b".equals(componentId)) {
+            componentName = getString(R.string.gamepad_component_button_b);
+            hasKeyMapping = true;
+        } else if (componentId != null && componentId.startsWith("button_")) {
+            componentName = componentId;
+            hasKeyMapping = true;
+        } else if ("touchpad_1".equals(componentId)) {
+            componentName = getString(R.string.gamepad_component_touchpad);
+            hasKeyMapping = false;
         } else {
             componentName = componentId;
             hasKeyMapping = false;
         }
 
+        ArrayList<String> opts = new ArrayList<>();
+        opts.add(getString(R.string.gamepad_menu_move));
+        if (hasKeyMapping) {
+            opts.add(getString(R.string.gamepad_menu_edit_keys));
+        }
+        if (GamepadLayoutDocEditor.canRemove(componentId)) {
+            opts.add(getString(R.string.gamepad_menu_remove));
+        }
+
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
         builder.setTitle(componentName);
-        String[] options = {"Move", "Edit Key Mapping"};
-        builder.setItems(options, (dialog, which) -> {
-            if (which == 0) {
-                // Move mode - enter edit mode briefly
+        builder.setItems(opts.toArray(new String[0]), (dialog, which) -> {
+            String choice = opts.get(which);
+            if (choice.equals(getString(R.string.gamepad_menu_move))) {
                 enterMoveMode(componentId);
-            } else if (which == 1 && hasKeyMapping) {
+            } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
                 showConfigDialog(componentId);
+            } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
+                GamepadLayoutDocEditor.removeModule(layoutDoc, componentId);
+                faceButtonPressed.remove(componentId);
+                applyLayoutDocFromMemory();
             }
         });
         builder.show();
@@ -566,25 +873,16 @@ public class GamepadFragment extends Fragment {
     }
 
     private void showConfigDialog(String componentId) {
-        if (componentId.startsWith("stick_")) {
+        if (componentId != null && componentId.startsWith("stick_")) {
+            stickConfigModuleId = componentId;
             showStickConfigDialog();
-        } else if (componentId.equals("button_a")) {
-            showButtonConfigDialog("Button A", buttonAKey, buttonAModifiers, DEFAULT_BUTTON_A, (key, mod) -> {
-                buttonAKey = key;
-                buttonAModifiers = mod;
-                saveButtonConfig();
-                updateGamepadLabels();
-            });
-        } else if (componentId.equals("button_b")) {
-            showButtonConfigDialog("Button B", buttonBKey, buttonBModifiers, DEFAULT_BUTTON_B, (key, mod) -> {
-                buttonBKey = key;
-                buttonBModifiers = mod;
-                saveButtonConfig();
-            });
+        } else if (componentId != null && componentId.startsWith("button_")) {
+            openButtonConfigDialog(componentId);
         }
     }
 
     private void showStickConfigDialog() {
+        loadStickModuleIntoEditorState(stickConfigModuleId);
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stick_config, null);
         builder.setView(dialogView);
@@ -647,10 +945,17 @@ public class GamepadFragment extends Fragment {
         // Reset
         dialogView.findViewById(R.id.stick_reset_btn).setOnClickListener(v -> {
             stickMode = MODE_KEY;
-            stickUpKey = DEFAULT_STICK_UP;
-            stickLeftKey = DEFAULT_STICK_LEFT;
-            stickDownKey = DEFAULT_STICK_DOWN;
-            stickRightKey = DEFAULT_STICK_RIGHT;
+            if ("stick_right".equals(stickConfigModuleId)) {
+                stickUpKey = 12;
+                stickLeftKey = 13;
+                stickDownKey = 14;
+                stickRightKey = 15;
+            } else {
+                stickUpKey = DEFAULT_STICK_UP;
+                stickLeftKey = DEFAULT_STICK_LEFT;
+                stickDownKey = DEFAULT_STICK_DOWN;
+                stickRightKey = DEFAULT_STICK_RIGHT;
+            }
             stickSizeScale = 1.0f;
             modeGroup.check(R.id.stick_mode_key);
             updateKeySectionVisibility(modeGroup, keySection);
@@ -665,7 +970,6 @@ public class GamepadFragment extends Fragment {
         dialogView.findViewById(R.id.stick_done_btn).setOnClickListener(v -> {
             stickMode = modeGroup.getCheckedRadioButtonId() == R.id.stick_mode_key ? MODE_KEY : MODE_ANALOG;
             saveStickConfig();
-            updateGamepadLabels();
             dialog.dismiss();
         });
 
@@ -679,7 +983,26 @@ public class GamepadFragment extends Fragment {
         right.setText(keyCodeToLabel(stickRightKey));
     }
 
-    private void showButtonConfigDialog(String buttonName, int currentKey, int currentModifiers, int defaultKey, DualKeyModSelectedListener onSave) {
+    private void openButtonConfigDialog(String moduleId) {
+        final GamepadLayoutPresetDocument.GamepadModule m = findModuleById(moduleId);
+        if (m == null || m.hidKey == null) {
+            return;
+        }
+        int currentKey = m.hidKey;
+        int currentModifiers = intOr(m.modifierMask, 0);
+        buttonSizeScale = m.scale;
+
+        String title;
+        if ("button_a".equals(moduleId)) {
+            title = "Button A";
+        } else if ("button_b".equals(moduleId)) {
+            title = "Button B";
+        } else {
+            title = m.displayLabel != null ? m.displayLabel : moduleId;
+        }
+        final int defaultKey = "button_a".equals(moduleId) ? DEFAULT_BUTTON_A
+                : "button_b".equals(moduleId) ? DEFAULT_BUTTON_B : 40;
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_button_config, null);
         builder.setView(dialogView);
@@ -688,7 +1011,7 @@ public class GamepadFragment extends Fragment {
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 
         TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
-        dialogTitle.setText(buttonName + " Configuration");
+        dialogTitle.setText(title + " Configuration");
 
         final int[] selectedKey = { currentKey };
         final int[] selectedModifiers = { currentModifiers };
@@ -696,7 +1019,6 @@ public class GamepadFragment extends Fragment {
         final Button keyLabel = dialogView.findViewById(R.id.button_key_label);
         updateButtonLabel(keyLabel, currentKey, currentModifiers);
 
-        // Button size seekbar
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
         sizeSeekbar.setProgress((int) (buttonSizeScale * 100));
         sizeSeekbar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
@@ -710,7 +1032,6 @@ public class GamepadFragment extends Fragment {
             @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
         });
 
-        // Build modifier checkboxes row above the key label
         LinearLayout modifierRow = new LinearLayout(requireContext());
         modifierRow.setOrientation(LinearLayout.HORIZONTAL);
         modifierRow.setGravity(android.view.Gravity.CENTER);
@@ -732,12 +1053,11 @@ public class GamepadFragment extends Fragment {
             });
             modifierChecks[i] = cb;
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             lp.setMargins(dp(4), 0, dp(4), dp(12));
             modifierRow.addView(cb, lp);
         }
 
-        // Insert modifier row before the key label
         LinearLayout parent = (LinearLayout) keyLabel.getParent();
         parent.addView(modifierRow, parent.indexOfChild(keyLabel));
 
@@ -745,7 +1065,6 @@ public class GamepadFragment extends Fragment {
             selectedKey[0] = key;
             selectedModifiers[0] = mod;
             updateButtonLabel(keyLabel, key, mod);
-            // Update checkbox states to match the picked combination
             for (int i = 0; i < MODIFIER_KEYS.length; i++) {
                 int bit = modifierBit(Integer.parseInt(MODIFIER_KEYS[i][1]));
                 modifierChecks[i].setChecked((mod & bit) != 0);
@@ -762,8 +1081,17 @@ public class GamepadFragment extends Fragment {
         });
 
         dialogView.findViewById(R.id.btn_done).setOnClickListener(v -> {
-            onSave.accept(selectedKey[0], selectedModifiers[0]);
-            saveButtonConfig();
+            m.hidKey = selectedKey[0];
+            m.modifierMask = selectedModifiers[0];
+            m.scale = buttonSizeScale;
+            if ("button_a".equals(moduleId)) {
+                buttonAKey = selectedKey[0];
+                buttonAModifiers = selectedModifiers[0];
+            } else if ("button_b".equals(moduleId)) {
+                buttonBKey = selectedKey[0];
+                buttonBModifiers = selectedModifiers[0];
+            }
+            applyLayoutDocFromMemory();
             dialog.dismiss();
         });
 
@@ -1047,59 +1375,54 @@ public class GamepadFragment extends Fragment {
 
     // ── Persistence ─────────────────────────────────────────────────
 
-    private void loadStickConfig() {
-        stickMode = prefs.getString(GamepadPreferenceKeys.STICK_MODE, MODE_KEY);
-        stickUpKey = prefs.getInt(GamepadPreferenceKeys.STICK_UP, DEFAULT_STICK_UP);
-        stickLeftKey = prefs.getInt(GamepadPreferenceKeys.STICK_LEFT, DEFAULT_STICK_LEFT);
-        stickDownKey = prefs.getInt(GamepadPreferenceKeys.STICK_DOWN, DEFAULT_STICK_DOWN);
-        stickRightKey = prefs.getInt(GamepadPreferenceKeys.STICK_RIGHT, DEFAULT_STICK_RIGHT);
-        stickSizeScale = prefs.getFloat(GamepadPreferenceKeys.STICK_SIZE, 1.0f);
-    }
-
     private void saveStickConfig() {
-        prefs.edit()
-            .putString(GamepadPreferenceKeys.STICK_MODE, stickMode)
-            .putInt(GamepadPreferenceKeys.STICK_UP, stickUpKey)
-            .putInt(GamepadPreferenceKeys.STICK_LEFT, stickLeftKey)
-            .putInt(GamepadPreferenceKeys.STICK_DOWN, stickDownKey)
-            .putInt(GamepadPreferenceKeys.STICK_RIGHT, stickRightKey)
-            .putFloat(GamepadPreferenceKeys.STICK_SIZE, stickSizeScale)
-            .apply();
-        persistActivePresetSnapshot();
-    }
-
-    private void loadButtonConfig() {
-        buttonAKey = prefs.getInt(GamepadPreferenceKeys.BUTTON_A_KEY, DEFAULT_BUTTON_A);
-        buttonBKey = prefs.getInt(GamepadPreferenceKeys.BUTTON_B_KEY, DEFAULT_BUTTON_B);
-        buttonAModifiers = prefs.getInt(GamepadPreferenceKeys.BUTTON_A_MOD, 0);
-        buttonBModifiers = prefs.getInt(GamepadPreferenceKeys.BUTTON_B_MOD, 0);
-        buttonSizeScale = prefs.getFloat(GamepadPreferenceKeys.BUTTON_SIZE, 1.0f);
-        twoButtonMode = prefs.getBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, false);
-    }
-
-    private void saveButtonConfig() {
-        prefs.edit()
-            .putInt(GamepadPreferenceKeys.BUTTON_A_KEY, buttonAKey)
-            .putInt(GamepadPreferenceKeys.BUTTON_B_KEY, buttonBKey)
-            .putInt(GamepadPreferenceKeys.BUTTON_A_MOD, buttonAModifiers)
-            .putInt(GamepadPreferenceKeys.BUTTON_B_MOD, buttonBModifiers)
-            .putFloat(GamepadPreferenceKeys.BUTTON_SIZE, buttonSizeScale)
-            .apply();
-        updateGamepadLabels();
-        persistActivePresetSnapshot();
+        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(stickConfigModuleId);
+        if (m == null) {
+            return;
+        }
+        m.type = MODE_KEY.equals(stickMode)
+                ? GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY
+                : GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE;
+        m.stickUpKey = stickUpKey;
+        m.stickLeftKey = stickLeftKey;
+        m.stickDownKey = stickDownKey;
+        m.stickRightKey = stickRightKey;
+        m.scale = stickSizeScale;
+        if ("stick_right".equals(stickConfigModuleId)) {
+            rightStickUpKey = stickUpKey;
+            rightStickLeftKey = stickLeftKey;
+            rightStickDownKey = stickDownKey;
+            rightStickRightKey = stickRightKey;
+        }
+        applyLayoutDocFromMemory();
     }
 
     // ── Label Sync ──────────────────────────────────────────────────
 
     private void updateGamepadLabels() {
-        if (gamepadView == null) return;
+        if (gamepadView == null) {
+            return;
+        }
         Map<String, String> labels = new HashMap<>();
         labels.put("stick_up", keyCodeToLabel(stickUpKey));
         labels.put("stick_down", keyCodeToLabel(stickDownKey));
         labels.put("stick_left", keyCodeToLabel(stickLeftKey));
         labels.put("stick_right", keyCodeToLabel(stickRightKey));
-        labels.put("button_a", buildFullLabel(buttonAKey, buttonAModifiers));
-        labels.put("button_b", buildFullLabel(buttonBKey, buttonBModifiers));
+        labels.put("stick_r_up", keyCodeToLabel(rightStickUpKey));
+        labels.put("stick_r_down", keyCodeToLabel(rightStickDownKey));
+        labels.put("stick_r_left", keyCodeToLabel(rightStickLeftKey));
+        labels.put("stick_r_right", keyCodeToLabel(rightStickRightKey));
+        if (layoutDoc != null && layoutDoc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule mod : layoutDoc.modules) {
+                if (mod != null && GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(mod.type)
+                        && mod.id != null && mod.hidKey != null) {
+                    labels.put(mod.id, buildFullLabel(mod.hidKey, intOr(mod.modifierMask, 0)));
+                }
+            }
+        } else {
+            labels.put("button_a", buildFullLabel(buttonAKey, buttonAModifiers));
+            labels.put("button_b", buildFullLabel(buttonBKey, buttonBModifiers));
+        }
         gamepadView.setComponentDisplayLabels(labels);
         gamepadView.setButtonAKeyCode(buttonAKey);
     }
@@ -1156,13 +1479,21 @@ public class GamepadFragment extends Fragment {
                 ((MainActivity) getActivity()).getConnectionManager();
             boolean isConnected = connectionManager != null && connectionManager.isConnected();
 
-            if (stickId.equals("r")) {
-                if (isConnected) sendRightStickMouse(connectionManager, x, y);
-            } else if (stickId.equals("l")) {
+            if ("r".equals(stickId)) {
+                GamepadLayoutPresetDocument.GamepadModule rm = findModuleById("stick_right");
+                if (rm == null) {
+                    return;
+                }
+                if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(rm.type)) {
+                    sendRightStickKeys(x, y);
+                } else if (isConnected) {
+                    sendRightStickMouse(connectionManager, x, y);
+                }
+            } else if ("l".equals(stickId)) {
                 if (MODE_KEY.equals(stickMode)) {
                     sendLeftStickKeys(connectionManager, x, y, isConnected);
-                } else {
-                    if (isConnected) sendLeftStickMouse(connectionManager, x, y);
+                } else if (isConnected) {
+                    sendLeftStickMouse(connectionManager, x, y);
                 }
             }
         }
@@ -1241,6 +1572,59 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    private void sendRightStickKeys(float x, float y) {
+        float deadZone = 0.2f;
+        float xAdj = applyDeadZone(x, deadZone);
+        float yAdj = applyDeadZone(y, deadZone);
+
+        boolean wantUp = yAdj < -0.3f;
+        boolean wantDown = yAdj > 0.3f;
+        boolean wantLeft = xAdj < -0.3f;
+        boolean wantRight = xAdj > 0.3f;
+
+        boolean changed = false;
+        if (wantUp != keyRUpPressed) {
+            keyRUpPressed = wantUp;
+            changed = true;
+        }
+        if (wantLeft != keyRLeftPressed) {
+            keyRLeftPressed = wantLeft;
+            changed = true;
+        }
+        if (wantDown != keyRDownPressed) {
+            keyRDownPressed = wantDown;
+            changed = true;
+        }
+        if (wantRight != keyRRightPressed) {
+            keyRRightPressed = wantRight;
+            changed = true;
+        }
+        if (changed) {
+            sendCombinedKeyReport();
+        }
+
+        java.util.Set<String> activeDirs = new java.util.HashSet<>();
+        if (keyRUpPressed) {
+            activeDirs.add("up");
+        }
+        if (keyRDownPressed) {
+            activeDirs.add("down");
+        }
+        if (keyRLeftPressed) {
+            activeDirs.add("left");
+        }
+        if (keyRRightPressed) {
+            activeDirs.add("right");
+        }
+        if (gamepadView != null) {
+            if (activeDirs.isEmpty()) {
+                gamepadView.clearStickDirections("r");
+            } else {
+                gamepadView.setActiveStickDirections("r", activeDirs);
+            }
+        }
+    }
+
     private float applyDeadZone(float value, float deadZone) {
         if (Math.abs(value) < deadZone) return 0;
         return (value - Math.copySign(deadZone, value)) / (1.0f - deadZone);
@@ -1269,9 +1653,19 @@ public class GamepadFragment extends Fragment {
     }
 
     private void releaseAllKeys() {
+        boolean anyFace = false;
+        for (Boolean v : faceButtonPressed.values()) {
+            if (Boolean.TRUE.equals(v)) {
+                anyFace = true;
+                break;
+            }
+        }
+        boolean anyKey = keyUpPressed || keyLeftPressed || keyDownPressed || keyRightPressed
+                || keyRUpPressed || keyRLeftPressed || keyRDownPressed || keyRRightPressed
+                || buttonAPressed || buttonBPressed || anyFace;
         if (getActivity() instanceof MainActivity) {
             ConnectionManager cm = ((MainActivity) getActivity()).getConnectionManager();
-            if (cm != null && cm.isConnected() && (keyUpPressed || keyLeftPressed || keyDownPressed || keyRightPressed || buttonAPressed)) {
+            if (cm != null && cm.isConnected() && anyKey) {
                 cm.sendKeyRelease();
             }
         }
@@ -1279,7 +1673,17 @@ public class GamepadFragment extends Fragment {
         keyLeftPressed = false;
         keyDownPressed = false;
         keyRightPressed = false;
+        keyRUpPressed = false;
+        keyRLeftPressed = false;
+        keyRDownPressed = false;
+        keyRRightPressed = false;
         buttonAPressed = false;
+        buttonBPressed = false;
+        faceButtonPressed.clear();
+        if (gamepadView != null) {
+            gamepadView.clearStickDirections("l");
+            gamepadView.clearStickDirections("r");
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -1299,6 +1703,15 @@ public class GamepadFragment extends Fragment {
 
     private static final int PICK_BG_IMAGE = 1001;
     private String currentBgPath = null;
+
+    /** One background file per preset under app filesDir (not portable in shared JSON). */
+    static String bgFileNameForPresetId(@Nullable String presetId) {
+        if (presetId == null || presetId.isEmpty()) {
+            return "gamepad_bg_inline.png";
+        }
+        String safe = presetId.replaceAll("[^a-zA-Z0-9_-]", "_");
+        return "gamepad_bg_" + safe + ".png";
+    }
 
     private void loadBackground() {
         currentBgPath = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
@@ -1323,13 +1736,15 @@ public class GamepadFragment extends Fragment {
                     // Save bitmap to files dir
                     try {
                         java.io.File dir = requireContext().getFilesDir();
-                        java.io.File file = new java.io.File(dir, "gamepad_bg.png");
+                        String name = bgFileNameForPresetId(
+                                presetRepository != null ? presetRepository.getActivePresetId() : null);
+                        java.io.File file = new java.io.File(dir, name);
                         java.io.FileOutputStream out = new java.io.FileOutputStream(file);
                         bm.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
                         out.flush();
                         out.close();
-                        prefs.edit().putString(GamepadPreferenceKeys.BG_IMAGE, "gamepad_bg.png").apply();
-                        currentBgPath = "gamepad_bg.png";
+                        prefs.edit().putString(GamepadPreferenceKeys.BG_IMAGE, name).apply();
+                        currentBgPath = name;
                         persistActivePresetSnapshot();
                     } catch (java.io.IOException e) {
                         Log.e(TAG, "Failed to save background image", e);
@@ -1377,8 +1792,14 @@ public class GamepadFragment extends Fragment {
                 if (currentBgPath != null) {
                     java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
                     if (file.exists()) file.delete();
-                    prefs.edit().remove(GamepadPreferenceKeys.BG_IMAGE).apply();
+                    prefs.edit()
+                            .remove(GamepadPreferenceKeys.BG_IMAGE)
+                            .remove(GamepadPreferenceKeys.BG_SCALE)
+                            .remove(GamepadPreferenceKeys.BG_OFFSET_X)
+                            .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
+                            .apply();
                     currentBgPath = null;
+                    persistActivePresetSnapshot();
                 }
             }
         });

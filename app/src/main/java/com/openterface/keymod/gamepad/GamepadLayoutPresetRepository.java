@@ -58,8 +58,8 @@ public class GamepadLayoutPresetRepository {
         List<PresetRef> index = readIndex();
         if (index.isEmpty()) {
             try {
-                GamepadLayoutPresetDocument doc = GamepadLayoutPresetSnapshotBuilder.buildFrom(
-                        context, GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, "Default");
+                GamepadLayoutPresetDocument doc = GamepadLayoutDocumentStore.buildDefaultFromLegacyPrefs(context);
+                GamepadLayoutPresetDocument.validateOrThrow(doc);
                 writeFile(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, doc);
                 index.add(new PresetRef(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, "Default"));
                 saveIndex(index);
