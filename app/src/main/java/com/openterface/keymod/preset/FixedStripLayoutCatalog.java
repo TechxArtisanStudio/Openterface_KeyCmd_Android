@@ -148,7 +148,8 @@ public final class FixedStripLayoutCatalog {
             case 0x30:
                 return "'";
             case 0x33:
-                return requiresShift ? "\"" : ":";
+                // US HID: 0x33 unshifted is ';', shifted is ':'.
+                return requiresShift ? "\"" : ";";
             case 0x20:
                 return "%";
             case 0x1F:
@@ -183,6 +184,105 @@ public final class FixedStripLayoutCatalog {
             case 0xF00A:
             case 0xF00C:
                 return null;
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Factory top-right local-Fn corner hint for fixed strip page index 2 (punctuation grid), independent
+     * of Rows 2–3 strip profile decorative glyphs. Matches {@link #addPage2Variant} / {@link #overlayFnHint}.
+     *
+     * @param stripRow    physical strip row {@code 2} or {@code 3}
+     * @param stripCol    column {@code 0…6} (row 3 col {@code 6} is the Fn toggle — returns {@code null})
+     * @param localFnLocked same meaning as {@code CustomKeyboardView#fixedTopLocalFnLocked}
+     * @return opposite-layer legend for the key cap, or {@code null} if none
+     */
+    @Nullable
+    public static String page2LocalFnOppositeCornerHint(int stripRow, int stripCol, boolean localFnLocked) {
+        if (stripRow != 2 && stripRow != 3) {
+            return null;
+        }
+        if (stripCol < 0 || stripCol > 6) {
+            return null;
+        }
+        if (stripRow == 3 && stripCol == 6) {
+            return null;
+        }
+        if (stripRow == 3 && stripCol > 5) {
+            return null;
+        }
+        if (!localFnLocked) {
+            if (stripRow == 2) {
+                switch (stripCol) {
+                    case 0:
+                        return "`";
+                    case 1:
+                        return "~";
+                    case 2:
+                        return "~";
+                    case 3:
+                        return "'";
+                    case 4:
+                        return "\"";
+                    case 5:
+                        return "%";
+                    case 6:
+                        return "^";
+                    default:
+                        return null;
+                }
+            }
+            switch (stripCol) {
+                case 0:
+                    return "<";
+                case 1:
+                    return ">";
+                case 2:
+                    return "*";
+                case 3:
+                    return "&";
+                case 4:
+                    return ",";
+                case 5:
+                    return ".";
+                default:
+                    return null;
+            }
+        }
+        if (stripRow == 2) {
+            switch (stripCol) {
+                case 0:
+                    return "(";
+                case 1:
+                    return ")";
+                case 2:
+                    return "]";
+                case 3:
+                    return ":";
+                case 4:
+                    return "#";
+                case 5:
+                    return "@";
+                case 6:
+                    return "*";
+                default:
+                    return null;
+            }
+        }
+        switch (stripCol) {
+            case 0:
+                return "/";
+            case 1:
+                return "\\";
+            case 2:
+                return "|";
+            case 3:
+                return "?";
+            case 4:
+                return "-";
+            case 5:
+                return "_";
             default:
                 return null;
         }

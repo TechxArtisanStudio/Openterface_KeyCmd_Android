@@ -118,6 +118,8 @@ On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row
 
 On **Page 2** of the fixed strip (**Shortcut Hub**), **local Fn** toggles two full punctuation rows (strip display modes use the row‑1 DISPLAY key after Create, not the fixed strip).
 
+On that page, the **small top‑right corner hints** always show the **factory US‑QWERTY opposite layer** (the physical pairing for the latch), not the decorative alternate glyphs from Symbols/Math strip skins.
+
 - **Fn off — upper row:** **`(`**, **`)`**, **`[`**, **`]`**, **`:`**, **`#`**, **`@`**
 - **Fn off — lower row:** **`/`**, **`\`**, **`|`**, **`?`**, **`-`**, **`_`**, **`Fn`** (toggle)
 - **Fn on — upper row:** two **Shortcut Hub profile** slots (**tap** = activate profile, **long‑press** = assign), then **`~`** **`'`** **`"`** **`%`** **`^`**

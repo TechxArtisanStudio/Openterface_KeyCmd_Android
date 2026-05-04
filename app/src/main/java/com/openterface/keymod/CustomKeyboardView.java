@@ -3832,6 +3832,17 @@ public class CustomKeyboardView extends LinearLayout {
         return k != null && k.stripSlotPage == 2 && (k.stripSlotRow == 2 || k.stripSlotRow == 3);
     }
 
+    /** Page 2 punctuation grid slots that use factory corner hints (excludes row 3 Fn toggle). */
+    private static boolean isPage2FixedPunctStripCornerSlot(@Nullable Key k) {
+        if (k == null || k.stripSlotPage != 2) {
+            return false;
+        }
+        if (k.stripSlotRow == 2) {
+            return k.stripSlotCol >= 0 && k.stripSlotCol <= 6;
+        }
+        return k.stripSlotRow == 3 && k.stripSlotCol >= 0 && k.stripSlotCol <= 5;
+    }
+
     /**
      * Page 0 row 2/3 F-keys: {@link Key#label}/{@link Key#code} are the latch-on (Fn) layer; digit overlay is
      * latch-off (base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code f-p…}
@@ -6277,15 +6288,18 @@ public class CustomKeyboardView extends LinearLayout {
         if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
             return null;
         }
-        // Page-2 row-2 cols 0–1: base vs Fn is already the full cap swap; corner hints duplicate
-        // the partner layer (e.g. "(" on "`") and fight chord/icon layout.
-        if (isPage2Row2ParenGraveDualLayerStripSlot(k)) {
-            return null;
-        }
         int effectivePage = (k.stripSlotPage >= 0) ? k.stripSlotPage : panelPageIndex;
         // Fixed strip page 1 (ESC/nav): no top-right local-Fn corner hints on its two rows (strip row 2
         // and row 3) — avoids redundant overlay labels (e.g. SCR LK / PRT SC / CAPS on modifiers).
         if (effectivePage == 1) {
+            return null;
+        }
+        if (effectivePage == 2 && isPage2FixedPunctStripCornerSlot(k)) {
+            String factory = FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(
+                    k.stripSlotRow, k.stripSlotCol, fixedTopLocalFnLocked);
+            if (!TextUtils.isEmpty(factory)) {
+                return truncateFixedTopFnCornerHint(factory);
+            }
             return null;
         }
         FnMapping overlay = resolveFixedTopOverlayMapping(k);
