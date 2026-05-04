@@ -13,15 +13,16 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.divider.MaterialDivider;
 import com.google.android.material.textfield.TextInputEditText;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
@@ -38,6 +39,7 @@ import java.util.List;
 
 /**
  * Full-screen editor for a single Rows 2–3 strip slot (name, icon, one HID key, persistence key display).
+ * Visual language aligns with {@link com.openterface.keymod.CreateShortcutBottomSheet} / Edit shortcut.
  */
 public class Rows23SlotEditorFragment extends Fragment {
 
@@ -95,7 +97,7 @@ public class Rows23SlotEditorFragment extends Fragment {
     private TextView factoryCapView;
     private TextView factoryEventView;
     private TextInputEditText nameInput;
-    private MaterialButtonToggleGroup iconTabs;
+    private ChipGroup iconChips;
     private RecyclerView iconGrid;
     private TextView keyPreview;
     private LinearLayout keySectionsLayout;
@@ -147,7 +149,7 @@ public class Rows23SlotEditorFragment extends Fragment {
         factoryCapView = root.findViewById(R.id.rows23_slot_editor_factory_cap);
         factoryEventView = root.findViewById(R.id.rows23_slot_editor_factory_event);
         nameInput = root.findViewById(R.id.rows23_slot_editor_name);
-        iconTabs = root.findViewById(R.id.rows23_slot_editor_icon_tabs);
+        iconChips = root.findViewById(R.id.rows23_slot_editor_icon_chips);
         iconGrid = root.findViewById(R.id.rows23_slot_editor_icon_grid);
         keyPreview = root.findViewById(R.id.rows23_slot_editor_key_preview);
         keySectionsLayout = root.findViewById(R.id.rows23_slot_editor_key_sections);
@@ -191,12 +193,29 @@ public class Rows23SlotEditorFragment extends Fragment {
             nameInput.setText(defName);
         }
 
+        iconGrid.setLayoutManager(new GridLayoutManager(requireContext(), 6));
+        iconAdapter = new IconGridAdapter();
+        iconGrid.setAdapter(iconAdapter);
+
+        iconChips.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                return;
+            }
+            int id = checkedIds.get(0);
+            if (id == R.id.rows23_icon_chip_none) {
+                iconValue = "";
+                iconAdapter.setSelectedValue("");
+            }
+            updateIconGridVisibility();
+            bindIconAdapterList();
+        });
+
         if (iconValue.isEmpty()) {
-            iconTabs.check(R.id.rows23_slot_editor_icon_tab_none);
+            iconChips.check(R.id.rows23_icon_chip_none);
         } else if (ShortcutFavoriteRowViews.isEmojiIcon(iconValue)) {
-            iconTabs.check(R.id.rows23_slot_editor_icon_tab_emoji);
+            iconChips.check(R.id.rows23_icon_chip_emoji);
         } else {
-            iconTabs.check(R.id.rows23_slot_editor_icon_tab_vector);
+            iconChips.check(R.id.rows23_icon_chip_vector);
         }
 
         nameInput.addTextChangedListener(new TextWatcher() {
@@ -214,20 +233,7 @@ public class Rows23SlotEditorFragment extends Fragment {
             }
         });
 
-        iconTabs.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) {
-                return;
-            }
-            if (checkedId == R.id.rows23_slot_editor_icon_tab_none) {
-                iconValue = "";
-                iconAdapter.setSelectedValue("");
-            }
-            bindIconAdapterList();
-        });
-
-        iconGrid.setLayoutManager(new GridLayoutManager(requireContext(), 6));
-        iconAdapter = new IconGridAdapter();
-        iconGrid.setAdapter(iconAdapter);
+        updateIconGridVisibility();
         bindIconAdapterList();
 
         buildKeyPickers();
@@ -241,21 +247,26 @@ public class Rows23SlotEditorFragment extends Fragment {
         saveButton.setOnClickListener(v -> onSave());
     }
 
+    private void updateIconGridVisibility() {
+        int checked = iconChips.getCheckedChipId();
+        iconGrid.setVisibility(checked == R.id.rows23_icon_chip_none ? View.GONE : View.VISIBLE);
+    }
+
     private void bindIconAdapterList() {
-        int checked = iconTabs.getCheckedButtonId();
-        if (checked == R.id.rows23_slot_editor_icon_tab_none) {
+        int checked = iconChips.getCheckedChipId();
+        if (checked == R.id.rows23_icon_chip_none) {
             iconAdapter.setEntries(new ArrayList<>());
             iconAdapter.setSelectedValue("");
+            iconAdapter.notifyDataSetChanged();
             return;
         }
-        if (checked == R.id.rows23_slot_editor_icon_tab_emoji) {
+        if (checked == R.id.rows23_icon_chip_emoji) {
             iconAdapter.setEntries(IconCatalog.emojiEntries());
+            iconAdapter.setKind(IconCatalog.Kind.EMOJI);
         } else {
             iconAdapter.setEntries(IconCatalog.vectorEntries());
+            iconAdapter.setKind(IconCatalog.Kind.VECTOR_DRAWABLE);
         }
-        iconAdapter.setKind(checked == R.id.rows23_slot_editor_icon_tab_emoji
-                ? IconCatalog.Kind.EMOJI
-                : IconCatalog.Kind.VECTOR_DRAWABLE);
         iconAdapter.setSelectedValue(iconValue);
         iconAdapter.notifyDataSetChanged();
     }
@@ -263,25 +274,39 @@ public class Rows23SlotEditorFragment extends Fragment {
     private void buildKeyPickers() {
         keySectionsLayout.removeAllViews();
         keyChipGroups.clear();
-        for (HidKeyCatalog.Section section : HidKeyCatalog.buildSections()) {
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        List<HidKeyCatalog.Section> sections = HidKeyCatalog.buildSections();
+        for (int i = 0; i < sections.size(); i++) {
+            HidKeyCatalog.Section section = sections.get(i);
+            if (i > 0) {
+                MaterialDivider divider = new MaterialDivider(requireContext());
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                dlp.topMargin = dp(18);
+                divider.setLayoutParams(dlp);
+                keySectionsLayout.addView(divider);
+            }
+
             TextView title = new TextView(requireContext());
-            title.setTextAppearance(com.google.android.material.R.style.TextAppearance_MaterialComponents_Subtitle2);
+            TextViewCompat.setTextAppearance(title, R.style.TextAppearance_KeyMod_SectionCaption);
             title.setText(section.titleRes);
-            title.setPadding(0, dp(12), 0, dp(4));
+            title.setPadding(0, dp(i == 0 ? 4 : 0), 0, dp(10));
             keySectionsLayout.addView(title);
 
             ChipGroup group = new ChipGroup(requireContext());
             group.setSingleSelection(false);
             group.setChipSpacingHorizontal(dp(6));
-            group.setChipSpacingVertical(dp(6));
+            group.setChipSpacingVertical(dp(8));
             keyChipGroups.add(group);
             keySectionsLayout.addView(group);
 
             for (HidKeyCatalog.Choice choice : section.choices) {
-                Chip chip = new Chip(requireContext());
-                chip.setCheckable(true);
                 String label = HidKeyCatalog.formatChoiceLabel(requireContext(), choice.keyCode,
                         choice.modifiers, targetOs, choice.labelOverride);
+                int chipLayout = label.length() == 1
+                        ? R.layout.item_create_shortcut_key_chip
+                        : R.layout.item_create_shortcut_key_chip_small;
+                Chip chip = (Chip) inflater.inflate(chipLayout, group, false);
                 chip.setText(label);
                 chip.setTag(choice);
                 chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -323,9 +348,8 @@ public class Rows23SlotEditorFragment extends Fragment {
     }
 
     private void updateResetEnabled() {
-        boolean overridden = stripProfileManager.getProfileById(profileId) != null
-                && stripProfileManager.getProfileById(profileId).slotMap != null
-                && stripProfileManager.getProfileById(profileId).slotMap.containsKey(slotKey);
+        Rows23StripProfile p = stripProfileManager.getProfileById(profileId);
+        boolean overridden = p != null && p.slotMap != null && p.slotMap.containsKey(slotKey);
         resetButton.setEnabled(overridden);
     }
 
@@ -464,11 +488,13 @@ public class Rows23SlotEditorFragment extends Fragment {
                 iconValue = e.value;
                 selected = e.value;
                 if (e.kind == IconCatalog.Kind.EMOJI) {
-                    iconTabs.check(R.id.rows23_slot_editor_icon_tab_emoji);
+                    iconChips.check(R.id.rows23_icon_chip_emoji);
                 } else {
-                    iconTabs.check(R.id.rows23_slot_editor_icon_tab_vector);
+                    iconChips.check(R.id.rows23_icon_chip_vector);
                 }
-                notifyDataSetChanged();
+                updateIconGridVisibility();
+                iconAdapter.setSelectedValue(iconValue);
+                iconAdapter.notifyDataSetChanged();
             });
         }
 
