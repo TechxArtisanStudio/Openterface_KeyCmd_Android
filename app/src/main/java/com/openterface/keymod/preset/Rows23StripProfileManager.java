@@ -66,6 +66,9 @@ public class Rows23StripProfileManager {
         }
         activeProfileId = prefs().getString(KEY_ACTIVE_ID, Rows23StripProfileConstants.DEFAULT_PROFILE_ID);
         normalizeLoaded();
+        if (ensureBuiltInProfiles()) {
+            save();
+        }
     }
 
     /**
@@ -95,6 +98,27 @@ public class Rows23StripProfileManager {
     }
 
     /**
+     * Seeds non-deletable built-ins ("Symbols ★", "Math ∑") if they are missing from the in-memory
+     * profile list. Called from {@link #load()} (so storage tampering can't permanently remove
+     * them) and from {@link #migrateFromLegacyIfNeeded()} (so first launch gets all three built-ins
+     * alongside the seeded "Default").
+     *
+     * @return true if any built-in was added (caller decides whether to {@link #save()}).
+     */
+    private boolean ensureBuiltInProfiles() {
+        boolean changed = false;
+        if (getProfileById(Rows23StripProfileConstants.SYMBOLS_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildSymbolsProfile());
+            changed = true;
+        }
+        if (getProfileById(Rows23StripProfileConstants.MATH_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildMathProfile());
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
      * Rewrites legacy {@code p0_r2_c0_base} slot keys to canonical {@code b-p0r2c1} ids so lookups
      * match {@link StripSlotMapStore#slotKey}.
      */
@@ -121,7 +145,10 @@ public class Rows23StripProfileManager {
     }
 
     private void migrateFromLegacyIfNeeded() {
-        if (!prefs().getBoolean(KEY_MIGRATED_V1, false) && profiles.isEmpty()) {
+        boolean changed = false;
+        boolean needsLegacyMigration = !prefs().getBoolean(KEY_MIGRATED_V1, false)
+                && getProfileById(Rows23StripProfileConstants.DEFAULT_PROFILE_ID) == null;
+        if (needsLegacyMigration) {
             Rows23StripProfile def = new Rows23StripProfile();
             def.id = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
             def.name = "Default";
@@ -141,13 +168,11 @@ public class Rows23StripProfileManager {
             profiles.add(def);
             activeProfileId = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
             prefs().edit().putBoolean(KEY_MIGRATED_V1, true).apply();
-            save();
-            return;
-        }
-        if (!prefs().getBoolean(KEY_MIGRATED_V1, false)) {
+            changed = true;
+        } else if (!prefs().getBoolean(KEY_MIGRATED_V1, false)) {
             prefs().edit().putBoolean(KEY_MIGRATED_V1, true).apply();
         }
-        if (profiles.isEmpty()) {
+        if (getProfileById(Rows23StripProfileConstants.DEFAULT_PROFILE_ID) == null) {
             Rows23StripProfile def = new Rows23StripProfile();
             def.id = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
             def.name = "Default";
@@ -156,6 +181,12 @@ public class Rows23StripProfileManager {
             def.shortcuts = new ArrayList<>();
             profiles.add(def);
             activeProfileId = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
+            changed = true;
+        }
+        if (ensureBuiltInProfiles()) {
+            changed = true;
+        }
+        if (changed) {
             save();
         }
     }
@@ -244,7 +275,7 @@ public class Rows23StripProfileManager {
     }
 
     public void deleteProfile(@NonNull String profileId) {
-        if (Rows23StripProfileConstants.DEFAULT_PROFILE_ID.equals(profileId)) {
+        if (Rows23StripProfileConstants.isBuiltInProfileId(profileId)) {
             return;
         }
         for (int i = 0; i < profiles.size(); i++) {

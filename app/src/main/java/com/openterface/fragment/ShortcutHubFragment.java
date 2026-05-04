@@ -2211,7 +2211,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             loadStripProfiles();
             notifyKeyboardStripRefresh();
         });
-        if (!Rows23StripProfileConstants.DEFAULT_PROFILE_ID.equals(profile.id)) {
+        if (!Rows23StripProfileConstants.isBuiltInProfileId(profile.id)) {
             labels.add(getString(R.string.macros_action_delete));
             actions.add(() -> new AlertDialog.Builder(requireContext())
                     .setTitle(R.string.shortcut_hub_strip_delete_profile_title)
