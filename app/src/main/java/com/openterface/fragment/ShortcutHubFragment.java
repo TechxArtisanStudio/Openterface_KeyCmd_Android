@@ -1,38 +1,67 @@
 package com.openterface.fragment;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.FileProvider;
+import androidx.core.graphics.ColorUtils;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
+import com.openterface.keymod.preset.FixedStripLayoutCatalog;
+import com.openterface.keymod.preset.StripCatalogGridAdapter;
+import com.openterface.keymod.preset.StripCatalogGridItem;
+import com.openterface.keymod.util.HidTextKeystrokeSender;
+import com.openterface.keymod.ShortcutProfileManager.Shortcut;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.tabs.TabLayout;
 
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.preset.Rows23StripProfile;
+import com.openterface.keymod.preset.Rows23StripProfileDocument;
+import com.openterface.keymod.preset.Rows23StripProfileConstants;
+import com.openterface.keymod.preset.Rows23StripProfileManager;
+import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.keymod.ProfileUiStrings;
 import com.openterface.keymod.MyShortcutsReorderAdapter;
 import com.openterface.keymod.R;
@@ -40,12 +69,14 @@ import com.openterface.keymod.ShortcutSectionPickAdapter;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.ShortcutProfileManager.ShortcutProfile;
 import com.openterface.keymod.ShortcutProfileManager.ProfileChangeListener;
-import com.openterface.keymod.util.KeyParser;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Shortcut Hub Fragment - Profile management for app-specific shortcuts
@@ -54,6 +85,8 @@ import java.util.List;
 public class ShortcutHubFragment extends Fragment implements ProfileChangeListener {
 
     private static final String TAG = "ShortcutHubFragment";
+    private static final int REQ_IMPORT_PROFILE_FILE = 200;
+    private static final int REQ_IMPORT_STRIP_FILE = 201;
 
     private ShortcutProfileManager profileManager;
     private Vibrator vibrator;
@@ -66,11 +99,45 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private TextView activeProfileText;
     private Button createProfileButton;
     private Button importButton;
-    private Button exportButton;
+    private TabLayout hubMainTabs;
+    private View hubTabContentProfiles;
+    private View hubTabContentStrip;
+    @Nullable
+    private View hubTabContentPage3;
+    private LinearLayout panelStripProfileList;
+    private LinearLayout panelStripProfileDetail;
+    private Button createStripProfileButton;
+    private Button importStripProfileButton;
+    private RecyclerView stripProfilesRecyclerView;
+    private RecyclerView hubStripCatalogRecycler;
+    @Nullable
+    private StripCatalogGridAdapter stripCatalogGridAdapter;
+    @Nullable
+    private ItemTouchHelper stripCatalogSlotTouchHelper;
+    /** Latest pointer in {@link #hubStripCatalogRecycler} coordinates (for strip drag hover hit-test). */
+    private float stripCatalogPointerRvX = Float.NaN;
+    private float stripCatalogPointerRvY = Float.NaN;
+    @Nullable
+    private View.OnTouchListener stripCatalogPointerTouchListener;
+    private MaterialButton stripDetailResetButton;
+    private MaterialButton stripDetailBackButton;
+    @Nullable
+    private FrameLayout hubSlotEditorOverlay;
+    private TextView stripDetailTitle;
+    private TextView stripDetailDescription;
+    private Rows23StripProfileManager stripProfileManager;
+    private StripProfilesRecyclerAdapter stripProfilesRecyclerAdapter;
+    private final List<Rows23StripProfile> stripProfilesList = new ArrayList<>();
+    private Rows23StripProfile selectedStripDetailProfile;
+    /** When strip profile detail is fullscreen, mirrors strip Back for system back. */
+    private OnBackPressedCallback stripDetailBackCallback;
+    /** Avoid reacting when {@link #showProfileList()} resets the main hub tab. */
+    private boolean suppressMainHubTabSelection;
 
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
     private Button backButton;
+    private Button resetDefaultProfileButton;
     private Button addShortcutButton;
     private TextView detailProfileName;
     private TextView detailProfileDescription;
@@ -79,6 +146,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private RecyclerView myShortcutsRecyclerView;
     private MyShortcutsReorderAdapter myShortcutsReorderAdapter;
     private ItemTouchHelper myShortcutsReorderTouchHelper;
+    private ItemTouchHelper browseCategoryReorderTouchHelper;
     private TextView emptyMyShortcuts;
 
     private static final String TAB_MY = "my";
@@ -96,6 +164,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private ShortcutProfile activeProfile;
     private ShortcutProfile selectedProfile;  // profile whose shortcuts are shown
 
+    /** Used after storage permission grant to reopen the correct file picker. */
+    private int pendingImportFileRequestCode = REQ_IMPORT_PROFILE_FILE;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -105,6 +176,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         vibrator = (Vibrator) requireContext().getSystemService(Context.VIBRATOR_SERVICE);
         profileManager = new ShortcutProfileManager(requireContext());
         profileManager.setListener(this);
+        stripProfileManager = new Rows23StripProfileManager(requireContext(), profileManager);
 
         if (getActivity() instanceof MainActivity) {
             connectionManager = ((MainActivity) getActivity()).getConnectionManager();
@@ -117,12 +189,38 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         return view;
     }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        stripDetailBackCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                if (tryPopRows23SlotEditor()) {
+                    return;
+                }
+                showStripProfileList();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), stripDetailBackCallback);
+
+        getChildFragmentManager().addOnBackStackChangedListener(() -> {
+            if (hubSlotEditorOverlay != null
+                    && getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay) == null) {
+                hubSlotEditorOverlay.setVisibility(View.GONE);
+            }
+        });
+    }
+
     private final MainActivity.OnTargetOsChangeListener osChangeListener = os -> {
         if (browsePickAdapter != null) {
             browsePickAdapter.notifyDataSetChanged();
         }
         if (myShortcutsReorderAdapter != null) {
             myShortcutsReorderAdapter.notifyDataSetChanged();
+        }
+        if (selectedStripDetailProfile != null && panelStripProfileDetail != null
+                && panelStripProfileDetail.getVisibility() == View.VISIBLE) {
+            refreshStripCatalogForSelectedStrip();
         }
     };
 
@@ -154,11 +252,26 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         activeProfileText = view.findViewById(R.id.active_profile_text);
         createProfileButton = view.findViewById(R.id.create_profile_button);
         importButton = view.findViewById(R.id.import_button);
-        exportButton = view.findViewById(R.id.export_button);
+        hubMainTabs = view.findViewById(R.id.hub_main_tabs);
+        hubTabContentProfiles = view.findViewById(R.id.hub_tab_content_profiles);
+        hubTabContentStrip = view.findViewById(R.id.hub_tab_content_strip);
+        hubTabContentPage3 = view.findViewById(R.id.hub_tab_content_page3);
+        panelStripProfileList = view.findViewById(R.id.panel_strip_profile_list);
+        panelStripProfileDetail = view.findViewById(R.id.panel_strip_profile_detail);
+        createStripProfileButton = view.findViewById(R.id.create_strip_profile_button);
+        importStripProfileButton = view.findViewById(R.id.import_strip_profile_button);
+        stripProfilesRecyclerView = view.findViewById(R.id.strip_profiles_recycler);
+        hubStripCatalogRecycler = view.findViewById(R.id.hub_strip_catalog_recycler);
+        stripDetailBackButton = view.findViewById(R.id.strip_detail_back_button);
+        stripDetailTitle = view.findViewById(R.id.strip_detail_title);
+        stripDetailDescription = view.findViewById(R.id.strip_detail_description);
+        stripDetailResetButton = view.findViewById(R.id.strip_detail_reset_button);
+        hubSlotEditorOverlay = view.findViewById(R.id.hub_slot_editor_overlay);
 
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
         backButton = view.findViewById(R.id.back_button);
+        resetDefaultProfileButton = view.findViewById(R.id.reset_default_profile_button);
         addShortcutButton = view.findViewById(R.id.add_shortcut_button);
         detailProfileName = view.findViewById(R.id.detail_profile_name);
         detailProfileDescription = view.findViewById(R.id.detail_profile_description);
@@ -172,10 +285,15 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         profilesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         profilesRecyclerView.setAdapter(profilesRecyclerAdapter);
 
+        stripProfilesRecyclerAdapter = new StripProfilesRecyclerAdapter();
+        stripProfilesRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        stripProfilesRecyclerView.setAdapter(stripProfilesRecyclerAdapter);
+
         browsePickAdapter = new ShortcutSectionPickAdapter(requireContext(), getTargetOs(), new ArrayList<>());
         browsePickAdapter.setRowInteraction(new ShortcutSectionPickAdapter.RowInteraction() {
             @Override
-            public void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut) {
+            public void onRowClick(@NonNull ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent) {
+                pulseShortcutRowFeedback(rowContent);
                 executeShortcut(shortcut);
             }
 
@@ -184,6 +302,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 showShortcutActionsMenu(shortcut);
             }
         });
+        browsePickAdapter.setOnEditShortcutClickListener(this::openEditShortcutFromBrowse);
         browsePickAdapter.setFavoriteMembershipChecker(shortcut -> {
             if (shortcut == null || shortcut.id == null) {
                 return false;
@@ -230,24 +349,39 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void onBrowsePickRemoveFromFavorites(@NonNull ShortcutProfileManager.Shortcut shortcut) {
-        if (selectedProfile == null) {
+        removeShortcutFromMyShortcuts(shortcut);
+    }
+
+    private void removeShortcutFromMyShortcuts(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
             return;
         }
-        myShortcutsList.removeIf(s -> s.id != null && s.id.equals(shortcut.id));
+        boolean removed = myShortcutsList.removeIf(s -> s.id != null && s.id.equals(shortcut.id));
+        if (!removed) {
+            return;
+        }
         profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
         Toast.makeText(requireContext(), R.string.my_shortcuts_removed_from_my, Toast.LENGTH_SHORT).show();
-        browsePickAdapter.notifyDataSetChanged();
+        if (browsePickAdapter != null) {
+            browsePickAdapter.notifyDataSetChanged();
+        }
+        refreshShortcutsGrid();
     }
 
     private void loadProfiles() {
         profilesList.clear();
-        profilesList.addAll(profileManager.getAllProfiles());
+        profilesList.addAll(profileManager.getProfilesForUiPicking());
         
         activeProfile = profileManager.getActiveProfile();
         profilesRecyclerAdapter.setActiveProfileId(activeProfile != null ? activeProfile.id : null);
         profilesRecyclerAdapter.notifyDataSetChanged();
         updateActiveProfileDisplay();
         updateEmptyState();
+        loadStripProfiles();
+        if (selectedStripDetailProfile != null && panelStripProfileDetail != null
+                && panelStripProfileDetail.getVisibility() == View.VISIBLE) {
+            refreshStripCatalogForSelectedStrip();
+        }
         if (selectedProfile != null && panelShortcutsDetail != null
                 && panelShortcutsDetail.getVisibility() == View.VISIBLE) {
             myShortcutsList = profileManager.getMyShortcuts(selectedProfile.id);
@@ -269,17 +403,40 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             showImportDialog();
         });
 
-        // Export button
-        exportButton.setOnClickListener(v -> {
-            if (activeProfile != null) {
-                exportProfileToFile(activeProfile);
-            } else {
-                Toast.makeText(getContext(), R.string.shortcut_hub_toast_no_active_profile, Toast.LENGTH_SHORT).show();
+        createStripProfileButton.setOnClickListener(v -> showCreateStripProfileDialog());
+        importStripProfileButton.setOnClickListener(v -> showStripImportDialog());
+        stripDetailBackButton.setOnClickListener(v -> {
+            if (!tryPopRows23SlotEditor()) {
+                showStripProfileList();
             }
         });
+        stripDetailResetButton.setOnClickListener(v -> showResetStripProfileDetailDialog());
+
+        if (hubMainTabs != null) {
+            hubMainTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+                @Override
+                public void onTabSelected(TabLayout.Tab tab) {
+                    if (suppressMainHubTabSelection) {
+                        return;
+                    }
+                    applyMainHubTabVisibility(tab.getPosition());
+                }
+
+                @Override
+                public void onTabUnselected(TabLayout.Tab tab) {
+                }
+
+                @Override
+                public void onTabReselected(TabLayout.Tab tab) {
+                }
+            });
+            applyMainHubTabVisibility(hubMainTabs.getSelectedTabPosition());
+        }
 
         // Back button - return to profile list
         backButton.setOnClickListener(v -> showProfileList());
+
+        resetDefaultProfileButton.setOnClickListener(v -> showResetDefaultProfileDialog());
 
         // Add shortcut button
         addShortcutButton.setOnClickListener(v -> {
@@ -320,6 +477,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void showShortcutsDetail(ShortcutProfile profile) {
+        dismissStripDetailState();
         selectedProfile = profile;
         currentTab = TAB_MY;  // Default to My Shortcuts
         currentCategoryId = null;
@@ -327,7 +485,10 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         detailProfileName.setText(ProfileUiStrings.displayName(requireContext(), profile));
         detailProfileDescription.setText(ProfileUiStrings.displayDescription(requireContext(), profile));
 
-        // Load persisted My Shortcuts for this profile
+        resetDefaultProfileButton.setVisibility("default".equals(profile.id) ? View.VISIBLE : View.GONE);
+
+        // Load persisted My Shortcuts for this profile (sanitize dedupes / drops orphans)
+        profileManager.sanitizeMyShortcutsForProfile(profile.id);
         myShortcutsList = profileManager.getMyShortcuts(profile.id);
 
         // Build dynamic category tabs
@@ -340,9 +501,369 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void showProfileList() {
+        dismissStripDetailState();
         selectedProfile = null;
         panelShortcutsDetail.setVisibility(View.GONE);
         panelProfilesList.setVisibility(View.VISIBLE);
+        if (hubMainTabs != null) {
+            suppressMainHubTabSelection = true;
+            TabLayout.Tab first = hubMainTabs.getTabAt(0);
+            if (first != null) {
+                first.select();
+            }
+            applyMainHubTabVisibility(0);
+            suppressMainHubTabSelection = false;
+        }
+    }
+
+    private void applyMainHubTabVisibility(int position) {
+        if (hubTabContentProfiles == null || hubTabContentStrip == null) {
+            return;
+        }
+        if (position == 1) {
+            hubTabContentProfiles.setVisibility(View.GONE);
+            hubTabContentStrip.setVisibility(View.VISIBLE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.GONE);
+            }
+            loadStripProfiles();
+            if (selectedStripDetailProfile != null && panelStripProfileDetail.getVisibility() == View.VISIBLE) {
+                refreshStripCatalogForSelectedStrip();
+            }
+        } else if (position == 2) {
+            hubTabContentProfiles.setVisibility(View.GONE);
+            hubTabContentStrip.setVisibility(View.GONE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.VISIBLE);
+            }
+        } else {
+            hubTabContentProfiles.setVisibility(View.VISIBLE);
+            hubTabContentStrip.setVisibility(View.GONE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void loadStripProfiles() {
+        if (stripProfileManager == null) {
+            return;
+        }
+        stripProfilesList.clear();
+        stripProfilesList.addAll(stripProfileManager.getProfiles());
+        if (stripProfilesRecyclerAdapter != null) {
+            stripProfilesRecyclerAdapter.setActiveStripId(stripProfileManager.getActiveProfileId());
+            stripProfilesRecyclerAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void showStripProfileList() {
+        dismissStripDetailState();
+        if (panelProfilesList != null) {
+            panelProfilesList.setVisibility(View.VISIBLE);
+        }
+        if (panelShortcutsDetail != null) {
+            panelShortcutsDetail.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Clears strip detail selection and in-tab list/detail views; does not show or hide the hub shell
+     * ({@link #panelProfilesList}) — use {@link #showStripProfileList()} to restore the hub after fullscreen detail.
+     */
+    private void dismissStripDetailState() {
+        selectedStripDetailProfile = null;
+        dismissRows23SlotEditorOverlay();
+        if (panelStripProfileDetail != null) {
+            panelStripProfileDetail.setVisibility(View.GONE);
+        }
+        if (panelStripProfileList != null) {
+            panelStripProfileList.setVisibility(View.VISIBLE);
+        }
+        stripCatalogGridAdapter = null;
+        if (stripDetailBackCallback != null) {
+            stripDetailBackCallback.setEnabled(false);
+        }
+    }
+
+    private void showStripProfileDetail(@NonNull Rows23StripProfile profile) {
+        selectedStripDetailProfile = profile;
+        if (panelStripProfileList != null) {
+            panelStripProfileList.setVisibility(View.GONE);
+        }
+        if (panelProfilesList != null) {
+            panelProfilesList.setVisibility(View.GONE);
+        }
+        if (panelShortcutsDetail != null) {
+            panelShortcutsDetail.setVisibility(View.GONE);
+        }
+        if (panelStripProfileDetail != null) {
+            panelStripProfileDetail.setVisibility(View.VISIBLE);
+        }
+        refreshStripCatalogForSelectedStrip();
+        if (stripDetailBackCallback != null) {
+            stripDetailBackCallback.setEnabled(true);
+        }
+    }
+
+    private void updateStripDetailHeader() {
+        if (stripDetailTitle == null || selectedStripDetailProfile == null) {
+            return;
+        }
+        Rows23StripProfile profile = stripProfileManager != null
+                ? stripProfileManager.getProfileById(selectedStripDetailProfile.id)
+                : null;
+        if (profile == null) {
+            profile = selectedStripDetailProfile;
+        }
+        stripDetailTitle.setText(profile.name != null ? profile.name : profile.id);
+        if (stripDetailDescription != null) {
+            int n = profile.slotMap != null ? profile.slotMap.size() : 0;
+            if (n == 0) {
+                stripDetailDescription.setText(R.string.shortcut_hub_strip_profile_factory_layout);
+            } else {
+                stripDetailDescription.setText(
+                        getString(R.string.shortcut_hub_strip_profile_slot_count, n));
+            }
+        }
+    }
+
+    private void refreshStripCatalogForSelectedStrip() {
+        updateStripDetailHeader();
+        if (hubStripCatalogRecycler == null || profileManager == null || selectedStripDetailProfile == null) {
+            return;
+        }
+        if (stripCatalogSlotTouchHelper != null) {
+            stripCatalogSlotTouchHelper.attachToRecyclerView(null);
+            stripCatalogSlotTouchHelper = null;
+        }
+        hubStripCatalogRecycler.setOnTouchListener(null);
+        stripCatalogPointerTouchListener = null;
+        stripCatalogPointerRvX = Float.NaN;
+        stripCatalogPointerRvY = Float.NaN;
+        List<StripCatalogGridItem> gridItems =
+                FixedStripLayoutCatalog.buildGridItems(requireContext(), profileManager, getTargetOs());
+        final List<StripCatalogGridItem> gridItemsForSpan = gridItems;
+        GridLayoutManager glm = new GridLayoutManager(requireContext(), 2);
+        glm.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+            @Override
+            public int getSpanSize(int position) {
+                if (position < 0 || position >= gridItemsForSpan.size()) {
+                    return 2;
+                }
+                return gridItemsForSpan.get(position).viewType == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL
+                        ? 1 : 2;
+            }
+        });
+        hubStripCatalogRecycler.setLayoutManager(glm);
+        stripCatalogGridAdapter = new StripCatalogGridAdapter(
+                requireContext(), profileManager, stripProfileManager, selectedStripDetailProfile.id,
+                getTargetOs());
+        stripCatalogGridAdapter.setItems(gridItems);
+        stripCatalogGridAdapter.setOnStripCatalogCellClickListener(this::onStripCatalogSlotCellClicked);
+        hubStripCatalogRecycler.setAdapter(stripCatalogGridAdapter);
+        if (stripProfileManager != null && selectedStripDetailProfile != null) {
+            stripCatalogSlotTouchHelper = new ItemTouchHelper(
+                    new StripCatalogSlotSwapCallback(stripProfileManager, selectedStripDetailProfile.id));
+            stripCatalogSlotTouchHelper.attachToRecyclerView(hubStripCatalogRecycler);
+            stripCatalogGridAdapter.setStripSlotItemTouchHelper(stripCatalogSlotTouchHelper);
+            // ItemTouchHelper often owns the gesture stream; OnItemTouchListener may miss MOVE.
+            // OnTouchListener on the RecyclerView runs first for events dispatched here and sees drags.
+            stripCatalogPointerTouchListener = (v, event) -> {
+                stripCatalogPointerRvX = event.getX();
+                stripCatalogPointerRvY = event.getY();
+                return false;
+            };
+            hubStripCatalogRecycler.setOnTouchListener(stripCatalogPointerTouchListener);
+        } else {
+            stripCatalogGridAdapter.setStripSlotItemTouchHelper(null);
+        }
+    }
+
+    private void showCreateStripProfileDialog() {
+        EditText input = new EditText(requireContext());
+        input.setHint(R.string.shortcut_hub_strip_enter_name);
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_create_strip_profile)
+                .setView(input)
+                .setPositiveButton(R.string.shortcut_hub_create_profile, (d, which) -> {
+                    String name = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (name.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.shortcut_hub_toast_enter_profile_name, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    stripProfileManager.createProfile(name);
+                    loadStripProfiles();
+                    Toast.makeText(requireContext(), getString(R.string.shortcut_hub_toast_created_profile, name), Toast.LENGTH_SHORT).show();
+                    notifyKeyboardStripRefresh();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void onStripCatalogSlotCellClicked(
+            @NonNull StripCatalogGridItem cell,
+            @Nullable String shortcutId
+    ) {
+        if (selectedStripDetailProfile == null || cell.slotKey == null) {
+            return;
+        }
+        showRows23SlotEditor(cell, shortcutId);
+    }
+
+    /**
+     * Opens the full-screen Rows 2–3 strip slot editor (single HID key, name, icon, persistence key).
+     */
+    private void showRows23SlotEditor(@NonNull StripCatalogGridItem cell, @Nullable String shortcutId) {
+        if (selectedStripDetailProfile == null || hubSlotEditorOverlay == null) {
+            return;
+        }
+        String phy = cell.physicalLabel != null ? cell.physicalLabel : "";
+        String ev = cell.keyEventLabel != null ? cell.keyEventLabel : "";
+        Rows23SlotEditorFragment frag = Rows23SlotEditorFragment.newInstance(
+                selectedStripDetailProfile.id,
+                cell.slotKey,
+                shortcutId,
+                phy,
+                ev,
+                getTargetOs());
+        hubSlotEditorOverlay.setVisibility(View.VISIBLE);
+        getChildFragmentManager().beginTransaction()
+                .replace(R.id.hub_slot_editor_overlay, frag)
+                .addToBackStack("rows23_slot_editor")
+                .commit();
+    }
+
+    private boolean tryPopRows23SlotEditor() {
+        if (hubSlotEditorOverlay == null || hubSlotEditorOverlay.getVisibility() != View.VISIBLE) {
+            return false;
+        }
+        if (getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay) != null) {
+            getChildFragmentManager().popBackStack();
+            return true;
+        }
+        hubSlotEditorOverlay.setVisibility(View.GONE);
+        return false;
+    }
+
+    private void dismissRows23SlotEditorOverlay() {
+        Fragment f = getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay);
+        if (f != null) {
+            getChildFragmentManager().beginTransaction().remove(f).commitAllowingStateLoss();
+        }
+        if (hubSlotEditorOverlay != null) {
+            hubSlotEditorOverlay.setVisibility(View.GONE);
+        }
+    }
+
+    /** Called by {@link Rows23SlotEditorFragment} after save or reset. */
+    public void onRows23SlotEditorFinished() {
+        afterStripProfileStorageChanged();
+    }
+
+    private void afterStripProfileStorageChanged() {
+        if (stripProfileManager != null) {
+            stripProfileManager.reloadFromStorage();
+        }
+        loadStripProfiles();
+        if (selectedStripDetailProfile != null) {
+            Rows23StripProfile updated = stripProfileManager.getProfileById(selectedStripDetailProfile.id);
+            if (updated != null) {
+                selectedStripDetailProfile = updated;
+            }
+            refreshStripCatalogForSelectedStrip();
+        }
+        notifyKeyboardStripRefresh();
+    }
+
+    private void showResetStripProfileDetailDialog() {
+        if (selectedStripDetailProfile == null || stripProfileManager == null) {
+            return;
+        }
+        Rows23StripProfile prof = selectedStripDetailProfile;
+        String displayName = (prof.name != null && !prof.name.trim().isEmpty())
+                ? prof.name.trim()
+                : (prof.id != null ? prof.id : "");
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_strip_reset_profile_title)
+                .setMessage(getString(R.string.shortcut_hub_strip_reset_profile_message, displayName))
+                .setPositiveButton(R.string.shortcut_hub_strip_reset, (d, w) -> {
+                    dismissRows23SlotEditorOverlay();
+                    stripProfileManager.resetProfileToFactoryLayout(prof.id);
+                    afterStripProfileStorageChanged();
+                    Toast.makeText(
+                            requireContext(),
+                            R.string.shortcut_hub_strip_reset_profile_toast,
+                            Toast.LENGTH_SHORT
+                    ).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void shareStripProfileJson(@NonNull Rows23StripProfile profile) {
+        String json = stripProfileManager.exportProfileToJson(profile.id);
+        if (json == null) {
+            Toast.makeText(requireContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            // Must match <cache-path name="share" path="share/" /> in res/xml/file_paths.xml
+            File shareDir = new File(requireContext().getCacheDir(), "share");
+            if (!shareDir.isDirectory() && !shareDir.mkdirs()) {
+                Toast.makeText(requireContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String safeId = profile.id != null
+                    ? profile.id.replaceAll("[^a-zA-Z0-9]", "_")
+                    : "strip";
+            File outFile = new File(shareDir, "keymod_rows23_strip_" + safeId + "_" + System.currentTimeMillis() + ".json");
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
+                fos.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getPackageName() + ".fileprovider", outFile);
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("application/json");
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            share.putExtra(Intent.EXTRA_SUBJECT, profile.name != null ? profile.name : profile.id);
+            share.setClipData(ClipData.newUri(requireContext().getContentResolver(),
+                    getString(R.string.app_name), uri));
+            startActivity(Intent.createChooser(share, getString(R.string.shortcut_hub_share_strip_profile_chooser)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(requireContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "share strip: " + e.getMessage());
+            Toast.makeText(requireContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @NonNull
+    private String getStripImportTargetProfileId() {
+        if (selectedStripDetailProfile != null && panelStripProfileDetail != null
+                && panelStripProfileDetail.getVisibility() == View.VISIBLE) {
+            return selectedStripDetailProfile.id;
+        }
+        return stripProfileManager.getActiveProfileId();
+    }
+
+    private void importRows23StripProfileFromJson(@NonNull String json) {
+        String err = stripProfileManager.importDocumentIntoProfile(getStripImportTargetProfileId(), json);
+        if (err == null) {
+            loadStripProfiles();
+            if (selectedStripDetailProfile != null) {
+                Rows23StripProfile u = stripProfileManager.getProfileById(selectedStripDetailProfile.id);
+                if (u != null) {
+                    selectedStripDetailProfile = u;
+                    refreshStripCatalogForSelectedStrip();
+                }
+            }
+            Toast.makeText(getContext(), R.string.shortcut_hub_strip_import_ok, Toast.LENGTH_SHORT).show();
+            notifyKeyboardStripRefresh();
+        } else {
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_strip_import_failed, err), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void rebuildCategoryTabs(ShortcutProfileManager.ShortcutProfile profile) {
@@ -399,12 +920,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         suppressHubTabSelection = false;
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * requireContext().getResources().getDisplayMetrics().density);
-    }
-
     private void refreshShortcutsGrid() {
         if (selectedProfile == null) return;
+
+        myShortcutsList.clear();
+        myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
 
         boolean hasCategories = selectedProfile.categories != null && !selectedProfile.categories.isEmpty();
 
@@ -413,6 +933,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Priority 1: Show category shortcuts (not when Favorites tab is active)
         if (currentCategoryId != null && hasCategories && !TAB_MY.equals(currentTab)) {
             detachMyShortcutsReorderTouchHelper();
+            detachBrowseCategoryReorderTouchHelper();
             myShortcutsRecyclerView.setVisibility(View.GONE);
             for (ShortcutProfileManager.ShortcutCategory cat : selectedProfile.categories) {
                 if (cat.id.equals(currentCategoryId)) {
@@ -425,12 +946,55 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             sortShortcutsForDisplay(toShow);
             browsePickAdapter.setItems(toShow);
             browsePickAdapter.notifyDataSetChanged();
+
+            ItemTouchHelper.Callback categoryCallback = new ItemTouchHelper.SimpleCallback(
+                    ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                @Override
+                public boolean onMove(@NonNull RecyclerView recyclerView,
+                        @NonNull RecyclerView.ViewHolder viewHolder,
+                        @NonNull RecyclerView.ViewHolder target) {
+                    ShortcutSectionPickAdapter adapter = (ShortcutSectionPickAdapter) recyclerView.getAdapter();
+                    if (adapter == null || selectedProfile == null || currentCategoryId == null) {
+                        return false;
+                    }
+                    int from = viewHolder.getBindingAdapterPosition();
+                    int to = target.getBindingAdapterPosition();
+                    if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
+                        return false;
+                    }
+                    adapter.moveItem(from, to);
+                    profileManager.reorderCategoryShortcuts(
+                            selectedProfile.id,
+                            currentCategoryId,
+                            new ArrayList<>(adapter.getItems()),
+                            false);
+                    ShortcutProfile refreshed = profileManager.getProfileById(selectedProfile.id);
+                    if (refreshed != null) {
+                        selectedProfile = refreshed;
+                    }
+                    if (vibrator != null && vibrator.hasVibrator()) {
+                        vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+                    }
+                    return true;
+                }
+
+                @Override
+                public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                }
+
+                @Override
+                public boolean isLongPressDragEnabled() {
+                    return false;
+                }
+            };
+            browseCategoryReorderTouchHelper = new ItemTouchHelper(categoryCallback);
+            browseCategoryReorderTouchHelper.attachToRecyclerView(browseShortcutsRecyclerView);
+            browsePickAdapter.setDragHelper(browseCategoryReorderTouchHelper);
             return;
         }
         // Priority 2: Show My Shortcuts favorites (drag-reorder list; top strip uses same order)
         if (TAB_MY.equals(currentTab)) {
-            myShortcutsList.clear();
-            myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
+            detachBrowseCategoryReorderTouchHelper();
             sortShortcutsForDisplay(myShortcutsList);
             toShow = myShortcutsList;
             if (toShow.isEmpty()) {
@@ -448,6 +1012,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
         // Priority 3: Show all flat shortcuts (for profiles without categories)
         detachMyShortcutsReorderTouchHelper();
+        detachBrowseCategoryReorderTouchHelper();
         myShortcutsRecyclerView.setVisibility(View.GONE);
         if (!hasCategories) {
             toShow = selectedProfile.shortcuts != null ? selectedProfile.shortcuts : new ArrayList<>();
@@ -467,6 +1032,71 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
     }
 
+    private void detachBrowseCategoryReorderTouchHelper() {
+        if (browseCategoryReorderTouchHelper != null) {
+            browseCategoryReorderTouchHelper.attachToRecyclerView(null);
+            browseCategoryReorderTouchHelper = null;
+        }
+        if (browsePickAdapter != null) {
+            browsePickAdapter.setDragHelper(null);
+        }
+    }
+
+    private void pulseShortcutRowFeedback(@NonNull View rowContent) {
+        rowContent.animate().cancel();
+        Object prevAnim = rowContent.getTag(R.id.tag_shortcut_hub_row_flash_animator);
+        if (prevAnim instanceof ValueAnimator) {
+            ((ValueAnimator) prevAnim).cancel();
+        }
+
+        rowContent.setScaleX(1f);
+        rowContent.setScaleY(1f);
+        rowContent.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(50)
+                .withEndAction(() -> rowContent.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(120)
+                        .start());
+
+        int primary = MaterialColors.getColor(
+                rowContent,
+                com.google.android.material.R.attr.colorPrimary,
+                0xFFFF9800);
+        int transparent = ColorUtils.setAlphaComponent(primary, 0);
+        int peak = ColorUtils.setAlphaComponent(primary, 96);
+
+        Drawable previousForeground = rowContent.getForeground();
+        GradientDrawable highlight = new GradientDrawable();
+        highlight.setShape(GradientDrawable.RECTANGLE);
+        float cornerPx = 8f * rowContent.getResources().getDisplayMetrics().density;
+        highlight.setCornerRadius(cornerPx);
+        highlight.setColor(transparent);
+        rowContent.setForeground(highlight);
+
+        ValueAnimator flash = ValueAnimator.ofArgb(transparent, peak, transparent);
+        flash.setDuration(220);
+        flash.setInterpolator(new DecelerateInterpolator());
+        flash.addUpdateListener(a -> highlight.setColor((Integer) a.getAnimatedValue()));
+        flash.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, null);
+                rowContent.setForeground(previousForeground);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, null);
+                rowContent.setForeground(previousForeground);
+            }
+        });
+        rowContent.setTag(R.id.tag_shortcut_hub_row_flash_animator, flash);
+        flash.start();
+    }
+
     private void bindMyShortcutsReorderRecycler() {
         if (selectedProfile == null || myShortcutsRecyclerView == null) {
             return;
@@ -482,7 +1112,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsRecyclerView.setAdapter(myShortcutsReorderAdapter);
             myShortcutsReorderAdapter.setRowInteraction(new MyShortcutsReorderAdapter.RowInteraction() {
                 @Override
-                public void onRowClick(ShortcutProfileManager.Shortcut shortcut) {
+                public void onRowClick(ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent) {
+                    pulseShortcutRowFeedback(rowContent);
                     executeShortcut(shortcut);
                 }
 
@@ -494,6 +1125,14 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         } else {
             myShortcutsReorderAdapter.replaceItems(ordered);
         }
+
+        myShortcutsReorderAdapter.setOnEditShortcutClickListener(this::openEditShortcutFromBrowse);
+        myShortcutsReorderAdapter.setRemoveFavoriteClickListener((shortcut, position) -> {
+            if (shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
+                return;
+            }
+            removeShortcutFromMyShortcuts(shortcut);
+        });
 
         detachMyShortcutsReorderTouchHelper();
 
@@ -553,9 +1192,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void addToMyFavorites(ShortcutProfileManager.Shortcut shortcut) {
-        if (selectedProfile == null) return;
+        if (selectedProfile == null || shortcut == null || shortcut.id == null) {
+            return;
+        }
         for (ShortcutProfileManager.Shortcut s : myShortcutsList) {
-            if (s.id.equals(shortcut.id)) {
+            if (s != null && s.id != null && s.id.equals(shortcut.id)) {
                 new AlertDialog.Builder(requireContext())
                         .setTitle(R.string.shortcut_hub_already_in_favorites_title)
                         .setMessage("'" + shortcut.name + "' is already in Favorites.")
@@ -568,8 +1209,12 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .setTitle(R.string.shortcut_hub_add_to_favorites_title)
                 .setMessage("Add '" + shortcut.name + "' (" + shortcut.label + ") to Favorites?")
                 .setPositiveButton("Add", (d, w) -> {
-                    myShortcutsList.add(shortcut);
-                    profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
+                    if (!profileManager.appendCloneIfAbsent(myShortcutsList, shortcut)) {
+                        Toast.makeText(requireContext(), R.string.my_shortcuts_already_in_my, Toast.LENGTH_SHORT).show();
+                        refreshShortcutsGrid();
+                        return;
+                    }
+                    profileManager.updateMyShortcuts(selectedProfile.id, new ArrayList<>(myShortcutsList));
                     if (vibrator != null && vibrator.hasVibrator()) {
                         vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
                     }
@@ -586,20 +1231,20 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         new AlertDialog.Builder(requireContext())
                 .setTitle("Remove Favorite")
                 .setMessage(getString(R.string.shortcut_hub_remove_from_favorites_message, shortcut.name))
-                .setPositiveButton("Remove", (d, w) -> {
-                    myShortcutsList.removeIf(s -> s.id.equals(shortcut.id));
-                    profileManager.updateMyShortcuts(selectedProfile.id, myShortcutsList);
-                    refreshShortcutsGrid();
-                })
+                .setPositiveButton("Remove", (d, w) -> removeShortcutFromMyShortcuts(shortcut))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     private void showShortcutActionsMenu(ShortcutProfileManager.Shortcut shortcut) {
-        final boolean isFavorite = myShortcutsList.stream()
-                .anyMatch(s -> s.id.equals(shortcut.id));
+        if (shortcut == null || selectedProfile == null) {
+            return;
+        }
+        final boolean isFavorite = shortcut.id != null
+                && myShortcutsList.stream().anyMatch(s -> s != null && s.id != null && s.id.equals(shortcut.id));
 
         java.util.ArrayList<String> options = new java.util.ArrayList<>();
+        options.add(getString(R.string.shortcut_hub_run_shortcut));
         options.add("Edit");
         options.add("Delete");
         if (isFavorite) {
@@ -613,12 +1258,18 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .setItems(options.toArray(new String[0]), (dialog, which) -> {
                     switch (which) {
                         case 0:
-                            showEditShortcutDialog(shortcut);
+                            executeShortcut(shortcut);
                             break;
-                        case 1:
+                        case 1: {
+                            ShortcutProfileManager.Shortcut t = profileManager.findShortcutInProfile(
+                                    selectedProfile, shortcut.id);
+                            showEditShortcutDialog(t != null ? t : shortcut);
+                            break;
+                        }
+                        case 2:
                             confirmDeleteShortcut(shortcut);
                             break;
-                        case 2:
+                        case 3:
                             if (isFavorite) {
                                 confirmRemoveFromFavorites(shortcut);
                             } else {
@@ -630,112 +1281,45 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .show();
     }
 
-    private void showEditShortcutDialog(ShortcutProfileManager.Shortcut shortcut) {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_add_shortcut, null, false);
-
-        EditText nameInput = dialogView.findViewById(R.id.shortcut_name_input);
-        EditText dataInput = dialogView.findViewById(R.id.shortcut_data_input);
-        EditText iconInput = dialogView.findViewById(R.id.shortcut_icon_input);
-        EditText orderInput = dialogView.findViewById(R.id.shortcut_order_input);
-        LinearLayout chipsRow = dialogView.findViewById(R.id.key_chips_row);
-        TextView previewText = dialogView.findViewById(R.id.shortcut_preview);
-
-        nameInput.setText(shortcut.name);
-        String dataToken = KeyParser.toToken(shortcut.keyCode, shortcut.modifiers);
-        dataInput.setText(dataToken);
-        iconInput.setText(shortcut.icon != null ? shortcut.icon : "");
-        if (shortcut.displayOrder > 0) {
-            orderInput.setText(String.valueOf(shortcut.displayOrder));
+    private void openEditShortcutFromBrowse(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null || shortcut.id == null) {
+            return;
         }
+        ShortcutProfileManager.Shortcut canonical = profileManager.findShortcutInProfile(
+                selectedProfile, shortcut.id);
+        showEditShortcutDialog(canonical != null ? canonical : shortcut);
+    }
 
-        String[][] tokens = {
-            {"⎇ Alt", "<ALT>"}, {"^ Ctrl", "<CTRL>"}, {"⇧ Shift", "<SHIFT>"}, {"⌘ Cmd", "<CMD>"},
-            {"</ALT>", "</ALT>"}, {"</CTRL>", "</CTRL>"}, {"</SHIFT>", "</SHIFT>"}, {"</CMD>", "</CMD>"},
-            {"⎋ Esc", "<ESC>"}, {"⌫ Back", "<BACK>"}, {"⏎ Enter", "<ENTER>"}, {"␣ Space", "<SPACE>"},
-            {"←", "<LEFT>"}, {"→", "<RIGHT>"}, {"↑", "<UP>"}, {"↓", "<DOWN>"},
-            {"⇱ Home", "<HOME>"}, {"⇲ End", "<END>"}, {"⇥ Tab", "<TAB>"}, {"⌦ Del", "<DEL>"},
-            {"F1", "<F1>"}, {"F2", "<F2>"}, {"F3", "<F3>"}, {"F4", "<F4>"},
-            {"F5", "<F5>"}, {"F6", "<F6>"}, {"F7", "<F7>"}, {"F8", "<F8>"},
-            {"F9", "<F9>"}, {"F10", "<F10>"}, {"F11", "<F11>"}, {"F12", "<F12>"}
-        };
-
-        for (String[] entry : tokens) {
-            Button chip = new Button(requireContext());
-            chip.setText(entry[0]);
-            chip.setAllCaps(false);
-            chip.setTextSize(11);
-            chip.setMinHeight(0);
-            chip.setMinimumHeight(0);
-            chip.setMinWidth(0);
-            chip.setMinimumWidth(0);
-            int pad = dpToPx(8);
-            chip.setPadding(pad, dpToPx(2), pad, dpToPx(2));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 0, dpToPx(6), 0);
-            chip.setLayoutParams(lp);
-            final String token = entry[1];
-            chip.setOnClickListener(v -> {
-                int start = Math.max(dataInput.getSelectionStart(), 0);
-                int end = Math.max(dataInput.getSelectionEnd(), 0);
-                dataInput.getText().replace(Math.min(start, end), Math.max(start, end), token, 0, token.length());
-            });
-            chipsRow.addView(chip);
-        }
-
-        dataInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                String d = s.toString().trim();
-                if (d.isEmpty()) {
-                    previewText.setText("Preview: ...");
-                    return;
-                }
-                KeyParser.ParsedKey parsed = KeyParser.parse(d);
-                if (parsed.keyCode >= 0) {
-                    previewText.setText("Preview: " + KeyParser.toLabelForTargetOs(
-                            parsed.keyCode, parsed.modifiers, getTargetOs()));
-                } else {
-                    previewText.setText("Preview: no valid key detected");
-                }
-            }
-        });
-        previewText.setText("Preview: " + shortcut.label);
-
+    private void showResetDefaultProfileDialog() {
         new AlertDialog.Builder(requireContext())
-                .setTitle("Edit Shortcut")
-                .setView(dialogView)
-                .setPositiveButton("Save", (d, w) -> {
-                    String name = nameInput.getText().toString().trim();
-                    String inputData = dataInput.getText().toString().trim();
-                    if (name.isEmpty() || inputData.isEmpty()) {
-                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_all_fields_required, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    KeyParser.ParsedKey parsed = KeyParser.parse(inputData);
-                    if (parsed.keyCode < 0) {
-                        Toast.makeText(getContext(), R.string.create_shortcut_invalid, Toast.LENGTH_LONG).show();
-                        return;
-                    }
-
-                    String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, getTargetOs());
-                    shortcut.name = name;
-                    shortcut.label = label;
-                    shortcut.modifiers = parsed.modifiers;
-                    shortcut.keyCode = parsed.keyCode;
-                    shortcut.icon = iconInput.getText().toString().trim();
-                    shortcut.displayOrder = parseDisplayOrder(orderInput.getText().toString().trim(), shortcut.displayOrder);
-
-                    profileManager.updateProfile(selectedProfile);
+                .setTitle(R.string.shortcut_hub_reset_default_title)
+                .setMessage(R.string.shortcut_hub_reset_default_message)
+                .setPositiveButton(R.string.shortcut_hub_reset_default, (d, w) -> {
+                    profileManager.resetDefaultProfileAndFavoritesToFactory();
                     loadProfiles();
-                    refreshSelectedProfileAndGrid();
-                    Toast.makeText(getContext(), getString(R.string.create_shortcut_saved, name), Toast.LENGTH_SHORT).show();
+                    notifyKeyboardStripRefresh();
+                    Toast.makeText(requireContext(), R.string.shortcut_hub_reset_default_toast, Toast.LENGTH_LONG).show();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    private void showEditShortcutDialog(ShortcutProfileManager.Shortcut shortcut) {
+        if (selectedProfile == null || shortcut == null) {
+            return;
+        }
+        ShortcutProfileManager.Shortcut resolved = profileManager.findShortcutInProfile(
+                selectedProfile, shortcut.id);
+        final ShortcutProfileManager.Shortcut editTarget = resolved != null ? resolved : shortcut;
+        if (!(requireActivity() instanceof AppCompatActivity)) {
+            Toast.makeText(requireContext(), R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AppCompatActivity act = (AppCompatActivity) requireActivity();
+        CreateShortcutBottomSheet.showEdit(act, profileManager, selectedProfile.id, getTargetOs(), editTarget, () -> {
+            loadProfiles();
+            refreshSelectedProfileAndGrid();
+        });
     }
 
     private void confirmDeleteShortcut(ShortcutProfileManager.Shortcut shortcut) {
@@ -792,6 +1376,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             return;
         }
 
+        if (shortcut.unicodeCodePoint != 0) {
+            executeUnicodeShortcut(shortcut);
+            return;
+        }
+
         connectionManager.sendKeyEvent(normalizeModifiersForTargetOs(shortcut.modifiers), shortcut.keyCode);
         // Small delay then release key
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
@@ -807,6 +1396,40 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         Log.d(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
                 + " modifiers=" + shortcut.modifiers + " key=" + shortcut.keyCode);
+    }
+
+    /**
+     * Hub picker tap on a Rows 2–3 strip shortcut whose
+     * {@link ShortcutProfileManager.Shortcut#unicodeCodePoint} is set: send the BMP code point via
+     * the OS-specific Unicode Hex Input alt-code path on a worker thread (mirrors
+     * {@code CustomKeyboardView.sendStripUnicodeShortcut}). Requires Unicode Hex Input enabled on
+     * the host (Mac layout / Windows EnableHexNumpad / Linux IBus).
+     */
+    private void executeUnicodeShortcut(ShortcutProfileManager.Shortcut shortcut) {
+        final ConnectionManager cm = connectionManager;
+        if (cm == null) {
+            return;
+        }
+        final int codePoint = shortcut.unicodeCodePoint;
+        if (codePoint == 0) {
+            return;
+        }
+        final String targetOs = getTargetOs();
+        final String ch = new String(Character.toChars(codePoint));
+        new Thread(() -> {
+            try {
+                HidTextKeystrokeSender.send(ch, cm, targetOs, true, null);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, "ShortcutHubUnicodeSend").start();
+
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
+        }
+
+        Log.d(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"
+                + Integer.toHexString(codePoint).toUpperCase() + " (" + ch + ")");
     }
 
     private int normalizeModifiersForTargetOs(int modifiers) {
@@ -915,18 +1538,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         loadProfiles();
     }
 
-    private int parseDisplayOrder(String raw, int fallback) {
-        if (TextUtils.isEmpty(raw)) {
-            return fallback > 0 ? fallback : 0;
-        }
-        try {
-            int value = Integer.parseInt(raw);
-            return Math.max(value, 0);
-        } catch (NumberFormatException ignored) {
-            return fallback > 0 ? fallback : 0;
-        }
-    }
-
     private void viewShortcuts(ShortcutProfile profile) {
         StringBuilder sb = new StringBuilder();
         sb.append(ProfileUiStrings.displayName(requireContext(), profile)).append("\n\n");
@@ -951,6 +1562,46 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private void exportProfile(ShortcutProfile profile) {
         exportProfileToFile(profile);
+    }
+
+    private void shareProfileJson(ShortcutProfile profile) {
+        if (profile == null || profile.id == null) {
+            return;
+        }
+        String json = profileManager.exportProfile(profile.id);
+        if (json == null) {
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            String safeName = profile.name != null
+                    ? profile.name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase()
+                    : "profile";
+            File shareDir = new File(requireContext().getCacheDir(), "share");
+            if (!shareDir.isDirectory() && !shareDir.mkdirs()) {
+                Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String filename = "keymod_profile_" + safeName + "_" + System.currentTimeMillis() + ".json";
+            File outFile = new File(shareDir, filename);
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
+                fos.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getPackageName() + ".fileprovider", outFile);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setClipData(ClipData.newUri(requireContext().getContentResolver(),
+                    getString(R.string.app_name), uri));
+            startActivity(Intent.createChooser(intent, getString(R.string.shortcut_hub_share_profile_chooser)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "Share profile failed: " + e.getMessage());
+            Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void exportProfileToFile(ShortcutProfile profile) {
@@ -991,7 +1642,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         
         // Option 2: Browse files
         builder.setNegativeButton("📁 Browse Files", (dialog, which) -> {
-            openFilePicker();
+            openFilePicker(REQ_IMPORT_PROFILE_FILE);
         });
         
         builder.setNeutralButton("Cancel", null);
@@ -1019,7 +1670,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             .show();
     }
 
-    private void openFilePicker() {
+    private void openFilePicker(int requestCode) {
+        pendingImportFileRequestCode = requestCode;
         // Request storage permission first
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), 
                 android.Manifest.permission.READ_EXTERNAL_STORAGE) 
@@ -1030,7 +1682,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/json");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, 200);
+            startActivityForResult(intent, requestCode);
         }
     }
 
@@ -1039,6 +1691,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         if (profile != null) {
             loadProfiles();
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_imported_profile, profile.name), Toast.LENGTH_SHORT).show();
+            notifyKeyboardStripRefresh();
         } else {
             Toast.makeText(getContext(), R.string.shortcut_hub_toast_import_invalid_json, Toast.LENGTH_SHORT).show();
         }
@@ -1050,7 +1703,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                openFilePicker();
+                openFilePicker(pendingImportFileRequestCode);
             } else {
                 Toast.makeText(getContext(), R.string.shortcut_hub_toast_permission_denied, Toast.LENGTH_SHORT).show();
             }
@@ -1060,15 +1713,21 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 200 && resultCode == android.app.Activity.RESULT_OK && data != null) {
-            android.net.Uri uri = data.getData();
-            if (uri != null) {
-                importProfileFromUri(uri);
-            }
+        if (resultCode != android.app.Activity.RESULT_OK || data == null) {
+            return;
+        }
+        android.net.Uri uri = data.getData();
+        if (uri == null) {
+            return;
+        }
+        if (requestCode == REQ_IMPORT_PROFILE_FILE) {
+            importJsonFromUri(uri, false);
+        } else if (requestCode == REQ_IMPORT_STRIP_FILE) {
+            importJsonFromUri(uri, true);
         }
     }
 
-    private void importProfileFromUri(android.net.Uri uri) {
+    private void importJsonFromUri(android.net.Uri uri, boolean stripOnly) {
         try {
             java.io.InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
             if (inputStream != null) {
@@ -1077,13 +1736,61 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 String json = scanner.hasNext() ? scanner.next() : "";
                 scanner.close();
                 inputStream.close();
-                
-                importProfileFromJson(json);
+                if (stripOnly) {
+                    if (Rows23StripProfileDocument.looksLikeDocument(json)) {
+                        importRows23StripProfileFromJson(json);
+                    } else {
+                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_import_invalid_json, Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    importProfileFromJson(json);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Import from URI failed: " + e.getMessage());
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_import_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void importProfileFromUri(android.net.Uri uri) {
+        importJsonFromUri(uri, false);
+    }
+
+    private void notifyKeyboardStripRefresh() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshOpenKeyboardShortcutStripFromPrefs();
+        }
+    }
+
+    private void showStripImportDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_import_strip_profile)
+                .setMessage("Select import method:")
+                .setPositiveButton("📋 Paste JSON", (dialog, which) -> showPasteStripJsonDialog())
+                .setNegativeButton("📁 Browse Files", (dialog, which) -> openFilePicker(REQ_IMPORT_STRIP_FILE))
+                .setNeutralButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showPasteStripJsonDialog() {
+        EditText input = new EditText(getContext());
+        input.setHint(R.string.shortcut_hub_strip_paste_json_hint);
+        input.setMinLines(5);
+        input.setGravity(android.view.Gravity.TOP);
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_import_strip_profile)
+                .setView(input)
+                .setPositiveButton(R.string.shortcut_hub_import, (dialog, which) -> {
+                    String json = input.getText().toString().trim();
+                    if (!json.isEmpty()) {
+                        importRows23StripProfileFromJson(json);
+                    } else {
+                        Toast.makeText(getContext(), R.string.shortcut_hub_toast_paste_json_required, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void deleteProfile(ShortcutProfile profile) {
@@ -1144,6 +1851,449 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         loadProfiles();
     }
 
+    private static boolean stripSlotAssignmentNonEmpty(
+            @Nullable Map<String, String> slotMap,
+            @NonNull String slotKey
+    ) {
+        if (slotMap == null) {
+            return false;
+        }
+        String v = slotMap.get(slotKey);
+        if (v != null && !v.trim().isEmpty()) {
+            return true;
+        }
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
+        if (!canon.equals(slotKey)) {
+            v = slotMap.get(canon);
+            return v != null && !v.trim().isEmpty();
+        }
+        return false;
+    }
+
+    /**
+     * Drag-drop between two catalog cells swaps only those two strip {@code slotMap} entries
+     * (e.g. Fn F7 slot with Base 8 slot), not whole columns. Printed factory caps stay fixed; assigned
+     * shortcuts move between the two keys.
+     */
+    private final class StripCatalogSlotSwapCallback extends ItemTouchHelper.SimpleCallback {
+
+        private final Rows23StripProfileManager manager;
+        private final String profileId;
+        private int dragSourcePos = RecyclerView.NO_POSITION;
+        private int hoverTargetPos = RecyclerView.NO_POSITION;
+
+        StripCatalogSlotSwapCallback(
+                @NonNull Rows23StripProfileManager manager,
+                @NonNull String profileId
+        ) {
+            super(ItemTouchHelper.UP | ItemTouchHelper.DOWN | ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT, 0);
+            this.manager = manager;
+            this.profileId = profileId;
+        }
+
+        @Nullable
+        private StripCatalogGridAdapter adapter(@NonNull RecyclerView rv) {
+            RecyclerView.Adapter<?> a = rv.getAdapter();
+            return a instanceof StripCatalogGridAdapter ? (StripCatalogGridAdapter) a : null;
+        }
+
+        @Override
+        public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                dragSourcePos = viewHolder.getBindingAdapterPosition();
+                hoverTargetPos = RecyclerView.NO_POSITION;
+            }
+            // Do not clear dragSourcePos / hoverTargetPos on ACTION_STATE_IDLE: ItemTouchHelper may call
+            // onSelectedChanged(IDLE) before clearView(), which would make tryCommitSwap() a no-op.
+            super.onSelectedChanged(viewHolder, actionState);
+        }
+
+        @Override
+        public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+            // Read swap keys before resetting positions. Do not call afterStripProfileStorageChanged() (which
+            // rebuilds this RecyclerView and detaches ItemTouchHelper) until after super.clearView(): doing
+            // that synchronously here was leaving ItemTouchHelper mid-teardown and caused crashes.
+            StripCatalogGridAdapter adForSnap = adapter(recyclerView);
+            int fpSnap = dragSourcePos;
+            if (adForSnap != null
+                    && fpSnap != RecyclerView.NO_POSITION
+                    && fpSnap < adForSnap.getItemCount()
+                    && adForSnap.getItemViewType(fpSnap) == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL) {
+                float px = ShortcutHubFragment.this.stripCatalogPointerRvX;
+                float py = ShortcutHubFragment.this.stripCatalogPointerRvY;
+                if (Float.isNaN(px) || Float.isNaN(py)) {
+                    View iv = viewHolder.itemView;
+                    px = iv.getX() + iv.getWidth() / 2f;
+                    py = iv.getY() + iv.getHeight() / 2f;
+                }
+                if (!snapHoverToFinger(recyclerView, adForSnap, viewHolder.itemView, fpSnap, px, py)
+                        && !Float.isNaN(px) && !Float.isNaN(py)) {
+                    float step = ViewConfiguration.get(recyclerView.getContext()).getScaledTouchSlop() * 2.5f;
+                    for (int k = 0; k < 8; k++) {
+                        double ang = (Math.PI / 4d) * k;
+                        if (snapHoverToFinger(recyclerView, adForSnap, viewHolder.itemView, fpSnap,
+                                px + (float) (Math.cos(ang) * step),
+                                py + (float) (Math.sin(ang) * step))) {
+                            break;
+                        }
+                    }
+                }
+            }
+            int fp = dragSourcePos;
+            int tp = hoverTargetPos;
+            StripCatalogGridAdapter ad = adapter(recyclerView);
+            boolean startedFromSlot = ad != null
+                    && fp != RecyclerView.NO_POSITION
+                    && fp < ad.getItemCount()
+                    && ad.getItemViewType(fp) == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL;
+            StripCatalogGridItem ca = null;
+            StripCatalogGridItem cb = null;
+            boolean willSwap = false;
+            if (startedFromSlot
+                    && ad != null
+                    && tp != RecyclerView.NO_POSITION
+                    && fp != tp
+                    && tp < ad.getItemCount()
+                    && ad.getItemViewType(tp) == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL) {
+                ca = ad.getSlotCellAt(fp);
+                cb = ad.getSlotCellAt(tp);
+                if (ca != null && cb != null && ca.slotKey != null && cb.slotKey != null
+                        && !ca.slotKey.equals(cb.slotKey)) {
+                    willSwap = true;
+                }
+            }
+            dragSourcePos = RecyclerView.NO_POSITION;
+            hoverTargetPos = RecyclerView.NO_POSITION;
+            super.clearView(recyclerView, viewHolder);
+            Rows23StripProfile prof = manager.getProfileById(profileId);
+            Map<String, String> slotMap = prof != null && prof.slotMap != null
+                    ? prof.slotMap
+                    : Collections.emptyMap();
+            if (willSwap && ca != null && cb != null) {
+                boolean hadAny = stripSlotAssignmentNonEmpty(slotMap, ca.slotKey)
+                        || stripSlotAssignmentNonEmpty(slotMap, cb.slotKey);
+                manager.swapSlotAssignments(profileId, ca.slotKey, cb.slotKey);
+                if (isAdded()) {
+                    int msg = hadAny
+                            ? R.string.shortcut_hub_strip_catalog_swap_success
+                            : R.string.shortcut_hub_strip_catalog_swap_empty;
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
+                }
+                recyclerView.post(() -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    afterStripProfileStorageChanged();
+                });
+            } else if (startedFromSlot && tp == RecyclerView.NO_POSITION && isAdded()) {
+                Toast.makeText(
+                        requireContext(),
+                        R.string.shortcut_hub_strip_catalog_swap_need_target,
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        }
+
+        @Override
+        public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+            StripCatalogGridAdapter ad = adapter(recyclerView);
+            if (ad == null) {
+                return makeMovementFlags(0, 0);
+            }
+            int pos = viewHolder.getBindingAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION
+                    || ad.getItemViewType(pos) != StripCatalogGridItem.VIEW_TYPE_SLOT_CELL) {
+                return makeMovementFlags(0, 0);
+            }
+            return makeMovementFlags(
+                    ItemTouchHelper.UP | ItemTouchHelper.DOWN | ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT, 0);
+        }
+
+        @Override
+        public boolean isLongPressDragEnabled() {
+            return false;
+        }
+
+        /**
+         * Default 0.5f delays swap-target detection until the finger has moved half a cell; that
+         * often prevents {@link #onMove} from ever running. Use a low threshold so
+         * {@link #moveIfNecessary} runs, and we also resolve the hover slot in {@link #onChildDraw}.
+         */
+        @Override
+        public float getMoveThreshold(@NonNull RecyclerView.ViewHolder viewHolder) {
+            return 0.08f;
+        }
+
+        /**
+         * Each draw frame, resolve which catalog cell sits under the drag (ahead of motion), so
+         * {@link #clearView} has a valid {@link #hoverTargetPos} even when {@link #onMove} does not run.
+         */
+        @Override
+        public void onChildDraw(
+                @NonNull Canvas c,
+                @NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder viewHolder,
+                float dX,
+                float dY,
+                int actionState,
+                boolean isCurrentlyActive
+        ) {
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            updateHoverTargetFromDragVisual(recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+        }
+
+        private void updateHoverTargetFromDragVisual(
+                @NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder dragged,
+                float dX,
+                float dY,
+                int actionState,
+                boolean isCurrentlyActive
+        ) {
+            if (actionState != ItemTouchHelper.ACTION_STATE_DRAG || !isCurrentlyActive) {
+                return;
+            }
+            StripCatalogGridAdapter ad = adapter(recyclerView);
+            if (ad == null) {
+                return;
+            }
+            int sp = dragSourcePos;
+            if (sp == RecyclerView.NO_POSITION) {
+                sp = dragged.getBindingAdapterPosition();
+            }
+            if (sp == RecyclerView.NO_POSITION || sp < 0 || sp >= ad.getItemCount()) {
+                return;
+            }
+            View v = dragged.itemView;
+            float px = ShortcutHubFragment.this.stripCatalogPointerRvX;
+            float py = ShortcutHubFragment.this.stripCatalogPointerRvY;
+            if (Float.isNaN(px) || Float.isNaN(py)) {
+                float mag = (float) Math.hypot(dX, dY);
+                if (mag > 0.5f) {
+                    float nx = dX / mag;
+                    float ny = dY / mag;
+                    px = v.getX() + v.getWidth() / 2f + nx * (v.getWidth() * 0.55f);
+                    py = v.getY() + v.getHeight() / 2f + ny * (v.getHeight() * 0.55f);
+                } else {
+                    px = v.getX() + v.getWidth() * 0.85f;
+                    py = v.getY() + v.getHeight() / 2f;
+                }
+            }
+            if (!snapHoverToFinger(recyclerView, ad, v, sp, px, py)) {
+                float step = ViewConfiguration.get(recyclerView.getContext()).getScaledTouchSlop() * 2.5f;
+                for (int k = 0; k < 8; k++) {
+                    double ang = (Math.PI / 4d) * k;
+                    if (snapHoverToFinger(recyclerView, ad, v, sp,
+                            px + (float) (Math.cos(ang) * step),
+                            py + (float) (Math.sin(ang) * step))) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        /**
+         * {@link RecyclerView#findChildViewUnder} returns the dragged row while it is elevated, so we
+         * test the finger against each visible row's decorated bounds instead (skipping the source row).
+         *
+         * @return true if a valid drop target was found
+         */
+        private boolean snapHoverToFinger(
+                @NonNull RecyclerView recyclerView,
+                @NonNull StripCatalogGridAdapter ad,
+                @NonNull View draggedItemView,
+                int sourceAdapterPos,
+                float px,
+                float py
+        ) {
+            hoverTargetPos = RecyclerView.NO_POSITION;
+            RecyclerView.LayoutManager lm = recyclerView.getLayoutManager();
+            if (lm == null) {
+                return false;
+            }
+            StripCatalogGridItem src = ad.getSlotCellAt(sourceAdapterPos);
+            if (src == null || src.slotKey == null) {
+                return false;
+            }
+            float slop = ViewConfiguration.get(recyclerView.getContext()).getScaledTouchSlop();
+            int bestPos = RecyclerView.NO_POSITION;
+            float bestDistSq = Float.MAX_VALUE;
+            for (int i = 0; i < lm.getChildCount(); i++) {
+                View child = lm.getChildAt(i);
+                if (child == draggedItemView) {
+                    continue;
+                }
+                RecyclerView.ViewHolder vh = recyclerView.getChildViewHolder(child);
+                int tp = vh.getBindingAdapterPosition();
+                if (tp == RecyclerView.NO_POSITION || tp < 0 || tp >= ad.getItemCount()) {
+                    continue;
+                }
+                if (ad.getItemViewType(tp) != StripCatalogGridItem.VIEW_TYPE_SLOT_CELL) {
+                    continue;
+                }
+                Rect r = new Rect();
+                lm.getDecoratedBoundsWithMargins(child, r);
+                r.offset((int) child.getTranslationX(), (int) child.getTranslationY());
+                RectF rf = new RectF(r);
+                rf.inset(-slop, -slop);
+                if (!rf.contains(px, py)) {
+                    continue;
+                }
+                StripCatalogGridItem dst = ad.getSlotCellAt(tp);
+                if (dst == null || dst.slotKey == null || dst.slotKey.equals(src.slotKey)) {
+                    continue;
+                }
+                float cx = rf.centerX();
+                float cy = rf.centerY();
+                float d = (px - cx) * (px - cx) + (py - cy) * (py - cy);
+                if (d < bestDistSq) {
+                    bestDistSq = d;
+                    bestPos = tp;
+                }
+            }
+            if (bestPos != RecyclerView.NO_POSITION) {
+                hoverTargetPos = bestPos;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean canDropOver(
+                @NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder current,
+                @NonNull RecyclerView.ViewHolder target
+        ) {
+            StripCatalogGridAdapter ad = adapter(recyclerView);
+            if (ad == null) {
+                return false;
+            }
+            int fp = current.getBindingAdapterPosition();
+            int tp = target.getBindingAdapterPosition();
+            if (fp == RecyclerView.NO_POSITION || tp == RecyclerView.NO_POSITION) {
+                return false;
+            }
+            return ad.getItemViewType(fp) == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL
+                    && ad.getItemViewType(tp) == StripCatalogGridItem.VIEW_TYPE_SLOT_CELL;
+        }
+
+        @Override
+        public boolean onMove(
+                @NonNull RecyclerView recyclerView,
+                @NonNull RecyclerView.ViewHolder viewHolder,
+                @NonNull RecyclerView.ViewHolder target
+        ) {
+            // Drop target is tracked in onChildDraw (runs every frame); adapter data does not reorder.
+            return false;
+        }
+
+        @Override
+        public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+        }
+    }
+
+    private final class StripProfilesRecyclerAdapter extends RecyclerView.Adapter<StripProfilesRecyclerAdapter.VH> {
+
+        private String activeStripId;
+
+        void setActiveStripId(String id) {
+            this.activeStripId = id;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_shortcut_hub_profile_row, parent, false);
+            return new VH(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH holder, int position) {
+            Rows23StripProfile p = stripProfilesList.get(position);
+            holder.name.setText(p.name != null ? p.name : p.id);
+            int n = p.slotMap != null ? p.slotMap.size() : 0;
+            if (n == 0) {
+                holder.desc.setText(R.string.shortcut_hub_strip_profile_factory_layout);
+            } else {
+                holder.desc.setText(getString(R.string.shortcut_hub_strip_profile_slot_count, n));
+            }
+            boolean isActive = p.id != null && p.id.equals(activeStripId);
+            holder.activeIndicator.setVisibility(isActive ? View.VISIBLE : View.GONE);
+            holder.activeBadge.setVisibility(isActive ? View.VISIBLE : View.GONE);
+            holder.count.setVisibility(View.GONE);
+
+            holder.profileShareButton.setOnClickListener(v -> shareStripProfileJson(p));
+
+            holder.itemView.setOnClickListener(v -> showStripProfileDetail(p));
+            holder.itemView.setOnLongClickListener(v -> {
+                showStripProfileOptionsDialog(p);
+                return true;
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return stripProfilesList.size();
+        }
+
+        final class VH extends RecyclerView.ViewHolder {
+            final View activeIndicator;
+            final TextView name;
+            final TextView desc;
+            final TextView activeBadge;
+            final TextView count;
+            final ImageView profileShareButton;
+
+            VH(@NonNull View itemView) {
+                super(itemView);
+                activeIndicator = itemView.findViewById(R.id.profile_active_indicator);
+                name = itemView.findViewById(R.id.profile_name);
+                desc = itemView.findViewById(R.id.profile_description);
+                activeBadge = itemView.findViewById(R.id.profile_active_badge);
+                count = itemView.findViewById(R.id.profile_count);
+                profileShareButton = itemView.findViewById(R.id.profile_share_button);
+            }
+        }
+    }
+
+    private void showStripProfileOptionsDialog(@NonNull Rows23StripProfile profile) {
+        List<CharSequence> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        labels.add(getString(R.string.shortcut_hub_strip_set_active));
+        actions.add(() -> {
+            stripProfileManager.setActiveProfileId(profile.id);
+            loadStripProfiles();
+            notifyKeyboardStripRefresh();
+        });
+        if (!Rows23StripProfileConstants.isBuiltInProfileId(profile.id)) {
+            labels.add(getString(R.string.macros_action_delete));
+            actions.add(() -> new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.shortcut_hub_strip_delete_profile_title)
+                    .setMessage(profile.name != null ? profile.name : profile.id)
+                    .setPositiveButton(R.string.macros_action_delete, (d, w) -> {
+                        stripProfileManager.deleteProfile(profile.id);
+                        if (selectedStripDetailProfile != null
+                                && profile.id.equals(selectedStripDetailProfile.id)) {
+                            showStripProfileList();
+                        }
+                        loadStripProfiles();
+                        notifyKeyboardStripRefresh();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show());
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle(profile.name != null ? profile.name : profile.id)
+                .setItems(labels.toArray(new CharSequence[0]), (d, which) -> {
+                    if (which >= 0 && which < actions.size()) {
+                        actions.get(which).run();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private final class ProfilesRecyclerAdapter extends RecyclerView.Adapter<ProfilesRecyclerAdapter.VH> {
 
         private String activeProfileId;
@@ -1170,6 +2320,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             holder.activeBadge.setVisibility(isActive ? View.VISIBLE : View.GONE);
             holder.count.setText(getString(R.string.shortcut_hub_profile_shortcut_count, profile.getShortcutCount()));
 
+            holder.profileShareButton.setOnClickListener(v -> shareProfileJson(profile));
+
             holder.itemView.setOnClickListener(v -> showShortcutsDetail(profile));
             holder.itemView.setOnLongClickListener(v -> {
                 showProfileOptionsDialog(profile);
@@ -1188,6 +2340,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             final TextView desc;
             final TextView activeBadge;
             final TextView count;
+            final ImageView profileShareButton;
 
             VH(@NonNull View itemView) {
                 super(itemView);
@@ -1196,6 +2349,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 desc = itemView.findViewById(R.id.profile_description);
                 activeBadge = itemView.findViewById(R.id.profile_active_badge);
                 count = itemView.findViewById(R.id.profile_count);
+                profileShareButton = itemView.findViewById(R.id.profile_share_button);
             }
         }
     }

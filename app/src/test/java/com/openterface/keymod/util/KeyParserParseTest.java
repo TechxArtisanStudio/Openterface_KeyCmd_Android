@@ -44,4 +44,28 @@ public class KeyParserParseTest {
         int mods = 0x08;
         assertEquals("Super+C", KeyParser.toLabelForTargetOs(6, mods, "linux"));
     }
+
+    @Test
+    public void toLabel_hidGraveTilde_usage53_notKey53() {
+        assertEquals("`", KeyParser.toLabelForTargetOs(53, 0, "macos"));
+        assertEquals("~", KeyParser.toLabelForTargetOs(53, 0x02, "windows"));
+    }
+
+    @Test
+    public void toLabel_hidGraveTilde_withCtrl_keepsBaseGlyph() {
+        assertEquals("Ctrl+`", KeyParser.toLabelForTargetOs(53, 0x01, "macos"));
+        assertEquals("Ctrl+Shift+`", KeyParser.toLabelForTargetOs(53, 0x01 | 0x02, "macos"));
+    }
+
+    @Test
+    public void toLabel_shiftNineZero_areParentheses() {
+        assertEquals("(", KeyParser.toLabelForTargetOs(0x26, 0x02, "macos"));
+        assertEquals(")", KeyParser.toLabelForTargetOs(0x27, 0x02, "windows"));
+    }
+
+    @Test
+    public void toLabel_nineZero_unshifted() {
+        assertEquals("9", KeyParser.toLabelForTargetOs(0x26, 0, "macos"));
+        assertEquals("0", KeyParser.toLabelForTargetOs(0x27, 0, "macos"));
+    }
 }

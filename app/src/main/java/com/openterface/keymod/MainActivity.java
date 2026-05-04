@@ -1173,6 +1173,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         transaction.commit();
     }
 
+    /** Call after Shortcut Hub imports a profile or strip preset so the keyboard strip reloads from prefs. */
+    public void refreshOpenKeyboardShortcutStripFromPrefs() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshKeyboardShortcutStripFromExternalHub();
+        }
+    }
+
     private void showVoiceInputFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();

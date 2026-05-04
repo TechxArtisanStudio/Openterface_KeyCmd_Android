@@ -57,6 +57,7 @@ public final class ShortcutFavoriteRowViews {
         TextView iconEmoji = row.findViewById(R.id.favorite_row_icon_emoji);
         TextView nameTv = row.findViewById(R.id.favorite_row_name);
         TextView chordTv = row.findViewById(R.id.favorite_row_chord);
+        nameTv.setVisibility(View.VISIBLE);
 
         String chord = "";
         if (shortcut.label != null && !shortcut.label.trim().isEmpty()) {
@@ -72,6 +73,7 @@ public final class ShortcutFavoriteRowViews {
             iconDrawable.setColorFilter(listRowIconTint(ctx), PorterDuff.Mode.SRC_IN);
             iconDrawable.setVisibility(View.VISIBLE);
             iconEmoji.setVisibility(View.GONE);
+            iconEmoji.setText("");
         } else {
             iconDrawable.setImageDrawable(null);
             iconDrawable.clearColorFilter();

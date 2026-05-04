@@ -175,6 +175,21 @@ public class CompositeFragment extends Fragment {
         }
     };
 
+    /**
+     * Reload Shortcut Hub prefs (profiles, My Shortcuts, strip display mode, hub slots) into the keyboard.
+     */
+    public void refreshKeyboardShortcutStripFromExternalHub() {
+        if (keyboardView != null) {
+            keyboardView.refreshAfterShortcutHubPrefsChange();
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.refreshAfterShortcutHubPrefsChange();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.refreshAfterShortcutHubPrefsChange();
+        }
+    }
+
     public static CompositeFragment newInstance(UsbSerialPort port) {
         CompositeFragment fragment = new CompositeFragment();
         fragment.port = port;

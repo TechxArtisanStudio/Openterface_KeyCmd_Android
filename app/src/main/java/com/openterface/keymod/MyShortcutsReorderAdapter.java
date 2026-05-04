@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.openterface.keymod.util.ShortcutFavoriteRowViews;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,9 +22,13 @@ import java.util.List;
 public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsReorderAdapter.VH> {
 
     public interface RowInteraction {
-        void onRowClick(ShortcutProfileManager.Shortcut shortcut);
+        void onRowClick(ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent);
 
         void onRowLongClick(ShortcutProfileManager.Shortcut shortcut);
+    }
+
+    public interface OnEditShortcutClickListener {
+        void onEditClick(@NonNull ShortcutProfileManager.Shortcut shortcut);
     }
 
     private final String targetOs;
@@ -33,6 +36,8 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     private ItemTouchHelper dragHelper;
     private RowInteraction rowInteraction;
     private OnRemoveFavoriteClickListener removeFavoriteClickListener;
+    @Nullable
+    private OnEditShortcutClickListener editShortcutClickListener;
 
     public interface OnRemoveFavoriteClickListener {
         void onRemoveFavoriteClick(@NonNull ShortcutProfileManager.Shortcut shortcut, int position);
@@ -54,6 +59,10 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
 
     public void setRemoveFavoriteClickListener(@Nullable OnRemoveFavoriteClickListener listener) {
         this.removeFavoriteClickListener = listener;
+    }
+
+    public void setOnEditShortcutClickListener(@Nullable OnEditShortcutClickListener listener) {
+        this.editShortcutClickListener = listener;
     }
 
     public List<ShortcutProfileManager.Shortcut> getItems() {
@@ -102,7 +111,7 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
         }
         holder.content.setOnClickListener(v -> {
             if (rowInteraction != null) {
-                rowInteraction.onRowClick(shortcut);
+                rowInteraction.onRowClick(shortcut, holder.content);
             }
         });
         holder.content.setOnLongClickListener(v -> {
@@ -112,6 +121,13 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             }
             return false;
         });
+        if (editShortcutClickListener != null) {
+            holder.editShortcut.setVisibility(View.VISIBLE);
+            holder.editShortcut.setOnClickListener(v -> editShortcutClickListener.onEditClick(shortcut));
+        } else {
+            holder.editShortcut.setVisibility(View.GONE);
+            holder.editShortcut.setOnClickListener(null);
+        }
         if (removeFavoriteClickListener != null) {
             holder.removeFavorite.setVisibility(View.VISIBLE);
             holder.removeFavorite.setOnClickListener(v ->
@@ -130,12 +146,14 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     static final class VH extends RecyclerView.ViewHolder {
         final ImageView dragHandle;
         final View content;
-        final View removeFavorite;
+        final ImageView editShortcut;
+        final ImageView removeFavorite;
 
         VH(@NonNull View itemView) {
             super(itemView);
             dragHandle = itemView.findViewById(R.id.reorder_drag_handle);
             content = itemView.findViewById(R.id.reorder_row_content);
+            editShortcut = itemView.findViewById(R.id.reorder_edit_shortcut);
             removeFavorite = itemView.findViewById(R.id.reorder_remove_favorite);
         }
     }

@@ -79,4 +79,15 @@
         android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 
+    <ImageView
+        android:id="@+id/profile_share_button"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/shortcut_hub_cd_share_profile"
+        android:focusable="true"
+        android:padding="12dp"
+        android:src="@drawable/share_24" />
+
 </LinearLayout>

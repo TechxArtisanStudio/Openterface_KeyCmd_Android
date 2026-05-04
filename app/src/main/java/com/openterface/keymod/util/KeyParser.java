@@ -170,6 +170,23 @@ public class KeyParser {
      */
     public static String toLabelForTargetOs(int keyCode, int modifiers, String targetOs) {
         String os = targetOs != null && !targetOs.trim().isEmpty() ? targetOs.trim() : "macos";
+        // HID usage 0x35 (decimal 53): grave / tilde — same physical key; avoid generic "Key 53".
+        if (keyCode == 53) {
+            int m = modifiers & 0xFF;
+            if (m == 0) {
+                return "`";
+            }
+            if (m == 0x02) {
+                return "~";
+            }
+        }
+        // HID 0x26 / 0x27: 9 / 0 keys; Shift+ → "(" / ")" on US layout.
+        if (keyCode == 0x26 && modifiers == 0x02) {
+            return "(";
+        }
+        if (keyCode == 0x27 && modifiers == 0x02) {
+            return ")";
+        }
         StringBuilder sb = new StringBuilder();
         if ((modifiers & 0x08) != 0) {
             if ("macos".equals(os)) {
@@ -216,6 +233,63 @@ public class KeyParser {
                 case 80: sb.append("Left"); break;
                 case 81: sb.append("Down"); break;
                 case 82: sb.append("Up"); break;
+                case 58: sb.append("F1"); break;
+                case 59: sb.append("F2"); break;
+                case 60: sb.append("F3"); break;
+                case 61: sb.append("F4"); break;
+                case 62: sb.append("F5"); break;
+                case 63: sb.append("F6"); break;
+                case 64: sb.append("F7"); break;
+                case 65: sb.append("F8"); break;
+                case 66: sb.append("F9"); break;
+                case 67: sb.append("F10"); break;
+                case 68: sb.append("F11"); break;
+                case 69: sb.append("F12"); break;
+                case 46: sb.append("="); break; // HID 0x2E
+                case 53: // HID 0x35 grave/tilde (US); Shift-only handled above
+                    if ((modifiers & 0x02) != 0 && (modifiers & ~0x02) != 0) {
+                        sb.append("`");
+                    } else {
+                        sb.append((modifiers & 0x02) != 0 ? "~" : "`");
+                    }
+                    break;
+                case 0x26:
+                    sb.append((modifiers & 0x02) != 0 ? "(" : "9");
+                    break;
+                case 0x27:
+                    sb.append((modifiers & 0x02) != 0 ? ")" : "0");
+                    break;
+                // Modifier keys sent as plain HID usages (Rows 2–3 strip, etc.)
+                case 224:
+                    sb.append("macos".equals(os) ? "Control" : "Ctrl");
+                    break;
+                case 225: sb.append("Shift"); break;
+                case 226:
+                    sb.append("macos".equals(os) ? "Option" : "Alt");
+                    break;
+                case 227:
+                    if ("macos".equals(os)) {
+                        sb.append("Command");
+                    } else if ("linux".equals(os)) {
+                        sb.append("Super");
+                    } else {
+                        sb.append("Win");
+                    }
+                    break;
+                case 228: sb.append("Right Ctrl"); break;
+                case 229: sb.append("Right Shift"); break;
+                case 230:
+                    sb.append("macos".equals(os) ? "Right Opt" : "Right Alt");
+                    break;
+                case 231:
+                    if ("macos".equals(os)) {
+                        sb.append("Right Cmd");
+                    } else if ("linux".equals(os)) {
+                        sb.append("Right Super");
+                    } else {
+                        sb.append("Right Win");
+                    }
+                    break;
                 default: sb.append("Key ").append(keyCode); break;
             }
         }
@@ -241,6 +315,18 @@ public class KeyParser {
             return label.replace("Alt+", "Opt+");
         }
         return label;
+    }
+
+    /**
+     * True when a stored shortcut label is the generic {@code Key <id>} fallback from
+     * {@link #toLabelForTargetOs(int, int, String)} before that usage was mapped (e.g. {@code Key 224}
+     * for Left Ctrl). Prefer re-deriving the chord from {@code keyCode} in that case.
+     */
+    public static boolean isUnparsedKeyTokenLabel(String label) {
+        if (label == null) {
+            return false;
+        }
+        return label.trim().matches("(?i)Key\\s+\\d+");
     }
 
     /**

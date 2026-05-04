@@ -4,6 +4,9 @@ set -euo pipefail
 
 # Reinstall and restart KeyMod on an Android device/emulator.
 # Defaults are tuned for this project on this Mac setup.
+#
+# For README screenshots across locales (emulator + adb), see the testing repo:
+#   ../Openterface_KeyMod_Android_testing/scripts/capture_readme_i18n_screenshots.sh
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLEW="$ROOT_DIR/gradlew"

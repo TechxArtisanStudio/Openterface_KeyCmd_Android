@@ -10,9 +10,17 @@
     android:paddingTop="2dp"
     android:paddingBottom="2dp">
 
-    <Space
+    <ImageView
+        android:id="@+id/pick_row_drag_handle"
         android:layout_width="48dp"
-        android:layout_height="48dp" />
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/my_shortcuts_reorder_drag_handle_cd"
+        android:focusable="false"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_drag_handle_24"
+        android:tint="@color/text_secondary" />
 
     <include
         android:id="@+id/pick_row_favorite_content"
@@ -20,6 +28,20 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1" />
+
+    <ImageView
+        android:id="@+id/pick_row_edit"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="@string/shortcut_hub_cd_edit_shortcut"
+        android:focusable="true"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/edit_24"
+        android:tint="@color/text_secondary"
+        android:visibility="gone" />
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/pick_row_bookmark"
