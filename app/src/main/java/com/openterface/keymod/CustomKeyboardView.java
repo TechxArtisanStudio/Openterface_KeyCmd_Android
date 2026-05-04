@@ -68,6 +68,7 @@ import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.target.CH9329MSKBMap;
@@ -108,7 +109,8 @@ public class CustomKeyboardView extends LinearLayout {
     /** Fixed top rows only (page 0–2 strip): same size as Combo Text mode; bold preserved in Text mode to limit wrap. */
     private static final float TOP_FIXED_ROWS_TEXT_SP = 12f;
     private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 12f;
-    private static final float TOP_FIXED_ROWS_CUSTOM_GLYPH_SP = 21f;
+    /** Emoji / single-glyph icons on fixed rows 2–3: keep below cap height (was 21sp, dominated the key). */
+    private static final float TOP_FIXED_ROWS_CUSTOM_GLYPH_SP = 13f;
     /** Profile hub slots: autosize within [min,max] sp so two-line names fit above the bottom strip. */
     private static final int TOP_PROFILE_HUB_SLOT_TEXT_MIN_SP = 9;
     private static final int TOP_PROFILE_HUB_SLOT_TEXT_MAX_SP = 11;
@@ -427,6 +429,8 @@ public class CustomKeyboardView extends LinearLayout {
         int stripSlotPage = -1;
         int stripSlotRow = -1;
         int stripSlotCol = -1;
+        /** Factory HID scan before Rows 2–3 overrides rewrite {@link #code}; used for page-0 digit overlay lookup. */
+        int stripSlotFactoryCode;
 
         Key(String label, String symbolLabel, String alternates, String cornerHint, int code, String codeStr, float widthPercent, int iconResId,
             float horizontalGap, boolean isRepeatable, boolean requiresShift, int shortcutModifiers, boolean isTopPanelKey) {
@@ -3532,7 +3536,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("F5", "", 0x3E, "3E", 1f, 0, 0f, false, false, -1, true), 0, 3, 4));
         keys.add(fixedStripSlotKey(new Key("F6", "", 0x3F, "3F", 1f, 0, 0f, false, false, -1, true), 0, 3, 5));
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
-        applyBaseStripSlotOverrides(keys);
+        applyStripSlotOverrides(keys);
         return keys;
     }
 
@@ -3556,7 +3560,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("DOWN", "", 0x51, "51", 1f, R.drawable.keyboard_arrow_down_24, 0f, false, false, -1, true), 1, 3, 4));
         keys.add(fixedStripSlotKey(new Key("RIGHT", "", 0x4F, "4F", 1f, R.drawable.keyboard_arrow_right_24, 0f, false, false, -1, true), 1, 3, 5));
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
-        applyBaseStripSlotOverrides(keys);
+        applyStripSlotOverrides(keys);
         return keys;
     }
 
@@ -3596,7 +3600,7 @@ public class CustomKeyboardView extends LinearLayout {
             keys.add(fixedStripSlotKey(buildPage2PunctKey("_", 0x2D, true), 2, 3, 5));
         }
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
-        applyBaseStripSlotOverrides(keys);
+        applyStripSlotOverrides(keys);
         return keys;
     }
 
@@ -3653,11 +3657,37 @@ public class CustomKeyboardView extends LinearLayout {
             key.stripSlotPage = pageIndex;
             key.stripSlotRow = stripRow;
             key.stripSlotCol = col;
+            key.stripSlotFactoryCode = key.code;
         }
         return key;
     }
 
-    private void applyBaseStripSlotOverrides(@NonNull java.util.List<Key> keys) {
+    /**
+     * Physical factory HID scan for a strip slot (before Rows 2–3 overrides rewrite {@link Key#code}).
+     * Used for page-0 digit/F overlay typing and latch rules.
+     */
+    private static int resolvedStripSlotFactoryScanCode(@Nullable Key key) {
+        if (key == null) {
+            return 0;
+        }
+        if (key.stripSlotPage < 0) {
+            return key.code;
+        }
+        if (key.stripSlotFactoryCode != 0) {
+            return key.stripSlotFactoryCode;
+        }
+        FixedStripLayoutCatalog.FactoryHid fh = FixedStripLayoutCatalog.resolveFactoryHidForSlot(
+                new FixedStripLayoutCatalog.ParsedSlotKey(
+                        key.stripSlotPage, key.stripSlotRow, key.stripSlotCol, false));
+        return fh != null ? fh.keyCode : key.code;
+    }
+
+    /**
+     * Page 0 row 2/3 F-keys: {@link Key#label}/{@link Key#code} are the latch-on (Fn) layer; digit overlay is
+     * latch-off (Base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code *_fn}
+     * for page-0 F-row keys and {@code *_base} elsewhere when applying overrides to the key itself.
+     */
+    private void applyStripSlotOverrides(@NonNull java.util.List<Key> keys) {
         Context ctx = getContext();
         if (ctx == null) {
             return;
@@ -3667,8 +3697,10 @@ public class CustomKeyboardView extends LinearLayout {
             if (k == null || k.stripSlotPage < 0) {
                 continue;
             }
-            String baseKey = StripSlotMapStore.slotKey(k.stripSlotPage, k.stripSlotRow, k.stripSlotCol, false);
-            ShortcutProfileManager.Shortcut sc = mgr.resolveActiveSlotShortcut(baseKey);
+            boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(k);
+            String slotKey = StripSlotMapStore.slotKey(
+                    k.stripSlotPage, k.stripSlotRow, k.stripSlotCol, latchOnLayer);
+            ShortcutProfileManager.Shortcut sc = mgr.resolveActiveSlotShortcut(slotKey);
             if (sc != null) {
                 applyRows23ShortcutToFixedKey(k, sc);
             }
@@ -3676,7 +3708,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void applyRows23ShortcutToFixedKey(@NonNull Key key, @NonNull ShortcutProfileManager.Shortcut shortcut) {
-        String label = compactShortcutName(shortcut);
+        String label = compactStripCapLabel(shortcut);
         String symbol = compactShortcutSymbol(shortcut);
         int iconResId = resolveShortcutIconRes(shortcut.icon);
         int normalizedModifiers = normalizeShortcutModifiersForTargetOs(shortcut.modifiers);
@@ -3691,8 +3723,12 @@ public class CustomKeyboardView extends LinearLayout {
         }
     }
 
+    /**
+     * Rows 2–3 profile override for the fixed strip's <em>overlay</em> (latch-off digit layer on page 0 F-row;
+     * latch-on overlay on page 1). Uses the opposite persistence suffix from {@link #applyStripSlotOverrides}.
+     */
     @Nullable
-    private FnMapping rows23StripFnOverrideMapping(@NonNull Key key) {
+    private FnMapping rows23StripOverlayOverrideMapping(@NonNull Key key) {
         if (key.stripSlotPage < 0) {
             return null;
         }
@@ -3701,15 +3737,41 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
-        String fnKey = StripSlotMapStore.slotKey(key.stripSlotPage, key.stripSlotRow, key.stripSlotCol, true);
-        ShortcutProfileManager.Shortcut s = mgr.resolveActiveSlotShortcut(fnKey);
+        boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(key);
+        String overlayKey = StripSlotMapStore.slotKey(
+                key.stripSlotPage, key.stripSlotRow, key.stripSlotCol, !latchOnLayer);
+        ShortcutProfileManager.Shortcut s = mgr.resolveActiveSlotShortcut(overlayKey);
         if (s == null) {
             return null;
         }
-        String label = compactShortcutName(s);
+        String label = compactStripCapLabel(s);
         int norm = normalizeShortcutModifiersForTargetOs(s.modifiers);
         int iconResId = resolveShortcutIconRes(s.icon);
         return new FnMapping(label, s.keyCode, norm, iconResId);
+    }
+
+    /** Strip cap text for a Rows 2–3 shortcut: prefer chord from key/label over a stale display name. */
+    @NonNull
+    private String compactStripCapLabel(@NonNull ShortcutProfileManager.Shortcut shortcut) {
+        if (getContext() == null) {
+            return "";
+        }
+        String os = getTargetOs();
+        String s = "";
+        if (shortcut.label != null && !shortcut.label.trim().isEmpty()) {
+            String fromLabel = KeyParser.displayLabel(shortcut.label.trim(), os).trim();
+            if (!KeyParser.isUnparsedKeyTokenLabel(fromLabel)) {
+                s = fromLabel;
+            }
+        }
+        if (s.isEmpty() && shortcut.keyCode >= 0) {
+            int mods = normalizeShortcutModifiersForTargetOs(shortcut.modifiers);
+            s = KeyParser.toLabelForTargetOs(shortcut.keyCode, mods, os).trim();
+        }
+        if (s.isEmpty()) {
+            s = ShortcutUiStrings.shortcutDisplayName(getContext(), shortcut).trim();
+        }
+        return s.length() > 8 ? s.substring(0, 8) : s;
     }
 
     private int resolveShortcutIconRes(String iconName) {
@@ -5625,12 +5687,16 @@ public class CustomKeyboardView extends LinearLayout {
         return key != null && key.isTopPanelKey && !key.allowTopPanelPagingGesture;
     }
 
-    /** F1–F12 and equals on fixed strip page 0 (digit overlay when local Fn latch is off). */
+    /**
+     * F1–F12 and equals on fixed strip page 0 (digit overlay when local Fn latch is off).
+     * Uses {@link Key#stripSlotFactoryCode} when set so Rows 2–3 overrides that rewrite {@link Key#code}
+     * still participate in page-0 latch / overlay logic.
+     */
     private boolean isFixedTopRowsFnDigitStripKey(Key key) {
         if (key == null) {
             return false;
         }
-        int c = key.code;
+        int c = resolvedStripSlotFactoryScanCode(key);
         return (c >= 0x3A && c <= 0x45) || c == 0x2E;
     }
 
@@ -5698,10 +5764,15 @@ public class CustomKeyboardView extends LinearLayout {
      * Use {@link #resolveFixedTopLocalFnMapping(Key)} for HID / behavior (visible strip page).
      */
     private FnMapping resolveFixedTopLocalFnMapping(Key key) {
-        return resolveFixedTopLocalFnMapping(key, fixedTopRowsPageIndex);
+        int page = fixedTopRowsPageIndex;
+        if (key != null && key.stripSlotPage >= 0) {
+            page = key.stripSlotPage;
+        }
+        return resolveFixedTopLocalFnMapping(key, page);
     }
 
     private FnMapping resolveFixedTopLocalFnMapping(Key key, int panelPageIndex) {
+        int effectivePage = (key != null && key.stripSlotPage >= 0) ? key.stripSlotPage : panelPageIndex;
         FnMapping overlay = resolveFixedTopOverlayMapping(key);
         if (overlay == null) {
             return null;
@@ -5711,12 +5782,12 @@ public class CustomKeyboardView extends LinearLayout {
             return null;
         }
         if (isFixedTopRowsFnDigitStripKey(key)) {
-            if (panelPageIndex == 0) {
+            if (effectivePage == 0) {
                 return !fixedTopLocalFnLocked ? overlay : null;
             }
             return null;
         }
-        if (panelPageIndex == 1 && isFixedTopRowsPage1FnOverlayKey(key)) {
+        if (effectivePage == 1 && isFixedTopRowsPage1FnOverlayKey(key)) {
             return fixedTopLocalFnLocked ? overlay : null;
         }
         return null;
@@ -5730,11 +5801,12 @@ public class CustomKeyboardView extends LinearLayout {
                 || isTopModeSlotKey(key)) {
             return null;
         }
-        FnMapping stripFn = rows23StripFnOverrideMapping(key);
+        FnMapping stripFn = rows23StripOverlayOverrideMapping(key);
         if (stripFn != null) {
             return stripFn;
         }
-        switch (key.code) {
+        int factoryScan = resolvedStripSlotFactoryScanCode(key);
+        switch (factoryScan) {
             // Page 0: F1–F12 digit/symbol overlay (latch gating in {@link #resolveFixedTopLocalFnMapping}).
             case 0x41: return new FnMapping("8", 0x25, 0);
             case 0x42: return new FnMapping("9", 0x26, 0);
@@ -5826,9 +5898,10 @@ public class CustomKeyboardView extends LinearLayout {
         if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k)) {
             return null;
         }
+        int effectivePage = (k.stripSlotPage >= 0) ? k.stripSlotPage : panelPageIndex;
         // Fixed strip page 1 (ESC/nav): no top-right local-Fn corner hints on its two rows (strip row 2
         // and row 3) — avoids redundant overlay labels (e.g. SCR LK / PRT SC / CAPS on modifiers).
-        if (panelPageIndex == 1) {
+        if (effectivePage == 1) {
             return null;
         }
         FnMapping overlay = resolveFixedTopOverlayMapping(k);
@@ -5838,7 +5911,8 @@ public class CustomKeyboardView extends LinearLayout {
         if (k.code == 0x29 && activeOverlay == null) {
             return null;
         }
-        if (activeOverlay != null && suppressFixedTopFnBaseCornerHintWhenLocalFnOn(k.code)) {
+        if (activeOverlay != null && suppressFixedTopFnBaseCornerHintWhenLocalFnOn(
+                resolvedStripSlotFactoryScanCode(k))) {
             return null;
         }
         String raw = activeOverlay != null

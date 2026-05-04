@@ -358,8 +358,7 @@ public class Rows23SlotEditorFragment extends Fragment {
     }
 
     private void updateSaveEnabled() {
-        String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
-        saveButton.setEnabled(!name.isEmpty() && selectedKeyCode >= 0);
+        saveButton.setEnabled(selectedKeyCode >= 0);
     }
 
     private void onReset() {
@@ -378,18 +377,27 @@ public class Rows23SlotEditorFragment extends Fragment {
     }
 
     private void onSave() {
-        String name = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
-        if (name.isEmpty()) {
-            Toast.makeText(requireContext(), R.string.rows23_slot_editor_error_name, Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (selectedKeyCode < 0) {
             Toast.makeText(requireContext(), R.string.rows23_slot_editor_error_key, Toast.LENGTH_SHORT).show();
             return;
         }
+        String userName = nameInput.getText() != null ? nameInput.getText().toString().trim() : "";
+        String factoryName = factoryCap != null ? factoryCap.trim() : "";
+        String persistedName = "";
+        if (!userName.isEmpty() && !userName.equalsIgnoreCase(factoryName)) {
+            persistedName = userName;
+        }
         int mods = HidKeyCatalog.normalizeStripModifiers(selectedModifiers);
         String label = KeyParser.toLabelForTargetOs(selectedKeyCode, mods, targetOs);
         label = KeyParser.displayLabel(label, targetOs);
+        if (persistedName.isEmpty()) {
+            HidKeyCatalog.Choice match = HidKeyCatalog.findMatchingChoice(selectedKeyCode, mods);
+            String auto = HidKeyCatalog.formatChoiceLabel(requireContext(), selectedKeyCode, mods, targetOs,
+                    match != null ? match.labelOverride : null).trim();
+            if (!auto.isEmpty() && !auto.equalsIgnoreCase(factoryName)) {
+                persistedName = auto;
+            }
+        }
 
         if (shortcutId != null) {
             ShortcutProfileManager.Shortcut sc = stripProfileManager.findShortcut(profileId, shortcutId);
@@ -397,7 +405,7 @@ public class Rows23SlotEditorFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.create_shortcut_save_failed, Toast.LENGTH_SHORT).show();
                 return;
             }
-            sc.name = name;
+            sc.name = persistedName;
             sc.label = label;
             sc.keyCode = selectedKeyCode;
             sc.modifiers = mods;
@@ -406,7 +414,7 @@ public class Rows23SlotEditorFragment extends Fragment {
         } else {
             ShortcutProfileManager.Shortcut created = new ShortcutProfileManager.Shortcut();
             created.id = "strip_ov_" + System.currentTimeMillis();
-            created.name = name;
+            created.name = persistedName;
             created.label = label;
             created.keyCode = selectedKeyCode;
             created.modifiers = mods;
@@ -415,7 +423,8 @@ public class Rows23SlotEditorFragment extends Fragment {
             stripProfileManager.upsertShortcut(profileId, created);
             stripProfileManager.putSlot(profileId, slotKey, created.id);
         }
-        Toast.makeText(requireContext(), getString(R.string.rows23_slot_editor_saved, name), Toast.LENGTH_SHORT).show();
+        String toastName = !persistedName.isEmpty() ? persistedName : label;
+        Toast.makeText(requireContext(), getString(R.string.rows23_slot_editor_saved, toastName), Toast.LENGTH_SHORT).show();
         notifyHostChanged();
         dismissSelf();
     }

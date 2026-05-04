@@ -180,12 +180,29 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
         Shortcut sc = resolveShortcutForSlotKey(slotKey);
         if (sc != null) {
             ShortcutFavoriteRowViews.bindFavoriteStripRow(rowCtx, h.favoriteRow, sc, targetOs);
+            TextView nameTv = h.favoriteRow.findViewById(R.id.favorite_row_name);
             TextView chordTv = h.favoriteRow.findViewById(R.id.favorite_row_chord);
-            String chord = chordTv.getText() != null ? chordTv.getText().toString().trim() : "";
-            if (chord.isEmpty()) {
-                chordTv.setText(KeyParser.toLabelForTargetOs(sc.keyCode, sc.modifiers, targetOs));
+            String chord = KeyParser.toLabelForTargetOs(sc.keyCode, sc.modifiers, targetOs);
+            if (sc.label != null && !sc.label.trim().isEmpty()) {
+                String fromLabel = KeyParser.displayLabel(sc.label.trim(), targetOs);
+                if (!KeyParser.isUnparsedKeyTokenLabel(fromLabel)) {
+                    chord = fromLabel;
+                }
             }
-            chordTv.setTypeface(Typeface.MONOSPACE);
+            String factoryCap = item.physicalLabel != null ? item.physicalLabel.trim() : "";
+            String userName = sc.name != null ? sc.name.trim() : "";
+            boolean userNameMeaningful = !userName.isEmpty()
+                    && !userName.equalsIgnoreCase(factoryCap)
+                    && !userName.equalsIgnoreCase(chord);
+            nameTv.setVisibility(View.VISIBLE);
+            nameTv.setText(userNameMeaningful ? userName : chord);
+            // Do not show factory cap (e.g. F7–F9) as secondary: it is the unlatched catalog hint, not the
+            // customized Fn-layer assignment, and reads as wrong after an override. Secondary only when
+            // the user set a custom title (then show chord on the right).
+            String secondary = userNameMeaningful ? chord : "";
+            chordTv.setText(secondary);
+            chordTv.setVisibility(secondary.isEmpty() ? View.GONE : View.VISIBLE);
+            chordTv.setTypeface(userNameMeaningful ? Typeface.MONOSPACE : Typeface.DEFAULT);
             tuneFavoriteRowForGridCell(h.favoriteRow);
         } else {
             bindPhysicalKeyFavoriteRow(rowCtx, h.favoriteRow, item, targetOs);
