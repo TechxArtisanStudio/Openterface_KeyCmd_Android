@@ -8,6 +8,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ### Highlights
 
+- **Gamepad**: optional **third key stick** (`stick_key_extra`, arrow keys by default, same key-mapping dialog as the left stick); **touchpad** defaults to a **square** footprint with a long-press **size** dialog; **new touchpads** bundle three **mouse button** modules (left / middle / right); **right-stick mouse** uses a slightly tighter dead zone, a gentler response curve, and optional layout field **`rightStickMouseGain`** (also mirrored to preferences when a preset applies).
 - **Gamepad**: the separate **1 Button / 2 Buttons** toggle is removed; **one-button** and **two-button** layouts are **built-in presets** (`preset_default` and `preset_two_buttons`). Use **short tap** on **Preset** to cycle the active layout, **long-press** for the full preset list (import, add module, export). Upgrades from the legacy two-button preference activate the two-button preset automatically once.
 - **Gamepad UI**: Material toolbar for **Edit** / **Preset** / **Done**, active **preset name** beside Preset, **cardinal key highlights** fixed for dynamic stick bounds (`stick_left` / `stick_right`), light **haptic tick** when a stick cardinal newly engages and **haptics only for `button_*` face keys** (not mouse clicks), **empty-area long-press** for background and **add module** only while **Editing**, with the same add actions as the preset menu.
 - **Shortcut Hub** rework: clearer navigation between Row 1 app shortcuts and Rows 2–3 fixed-strip behavior, a visual strip catalog, and stronger profile and preset workflows.
@@ -52,6 +53,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 ### Upgrade notes
 
 - **Gamepad**: after update, use **Preset** (tap to cycle, long-press for the list). The old **1 Button / 2 Buttons** control is gone; your previous two-button preference selects the **Two buttons** built-in preset on first launch after upgrade.
+- **Gamepad QA** (manual): add a touchpad and confirm bundled mouse buttons fire correct clicks; resize touchpad and reload preset; add **Arrow stick**, remap keys, confirm combined keyboard report with left/right key sticks; exercise **right-stick mouse** feel and, if set in shared JSON, **`rightStickMouseGain`** in `[0.25, 4]`.
 - If you use **shared strip maps** or automation, prefer **canonical slot ids** (`b-p{page}r{row}c{col}` / `f-…`) over any legacy key forms.
 - After upgrading, open **Shortcut Hub** once if strip or profile labels look stale; the app refreshes prefs-driven UI on relevant changes.
 

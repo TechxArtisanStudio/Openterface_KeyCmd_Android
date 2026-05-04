@@ -30,6 +30,11 @@ public final class GamepadLayoutPresetApplier {
         GamepadLayoutPresetDocument.LayoutGlobals L = doc.layout;
 
         ed.putFloat(GamepadPreferenceKeys.MOUSE_SENSITIVITY, L.mouseSensitivity);
+        if (L.rightStickMouseGain != null) {
+            ed.putFloat(GamepadPreferenceKeys.RIGHT_STICK_MOUSE_GAIN, L.rightStickMouseGain);
+        } else {
+            ed.remove(GamepadPreferenceKeys.RIGHT_STICK_MOUSE_GAIN);
+        }
         ed.putBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, L.showTwoButtons);
         if (L.backgroundImageFile != null) {
             File bg = new File(context.getFilesDir(), L.backgroundImageFile);

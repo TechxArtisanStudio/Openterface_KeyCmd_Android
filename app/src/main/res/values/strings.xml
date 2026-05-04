@@ -702,6 +702,13 @@ by TechxArtisan</string>
     <string name="gamepad_add_right_stick">Right stick (mouse)</string>
     <string name="gamepad_add_extra_button">Extra button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
+    <string name="gamepad_add_arrow_stick">Arrow stick (extra)</string>
+    <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
+    <string name="gamepad_touchpad_size_title">Touchpad size</string>
+    <string name="gamepad_touchpad_width_pct">Width (%)</string>
+    <string name="gamepad_touchpad_height_pct">Height (%)</string>
+    <string name="gamepad_component_mouse_button">Mouse button</string>
+    <string name="gamepad_component_arrow_stick">Arrow stick</string>
     <string name="gamepad_component_left_stick">Left stick</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>

@@ -371,6 +371,9 @@ public class GamepadView extends View {
     }
 
     private FaceStyle faceStyleForModuleId(String moduleId) {
+        if (moduleId != null && moduleId.startsWith("mouse_btn_")) {
+            return FACE_NEUTRAL;
+        }
         int h = Math.abs(moduleId.hashCode());
         FaceStyle[] cycle = new FaceStyle[]{FACE_A, FACE_B, FACE_X, FACE_Y};
         return cycle[h % cycle.length];
@@ -479,8 +482,14 @@ public class GamepadView extends View {
                     dnL = componentDisplayLabels.getOrDefault("stick_r_down", "K");
                     lfL = componentDisplayLabels.getOrDefault("stick_r_left", "J");
                     rtL = componentDisplayLabels.getOrDefault("stick_r_right", "L");
+                } else if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
+                    upL = componentDisplayLabels.getOrDefault("stick_e_up", "\u2191");
+                    dnL = componentDisplayLabels.getOrDefault("stick_e_down", "\u2193");
+                    lfL = componentDisplayLabels.getOrDefault("stick_e_left", "\u2190");
+                    rtL = componentDisplayLabels.getOrDefault("stick_e_right", "\u2192");
                 }
-                String shortLabel = "stick_left".equals(m.id) ? "L" : "R";
+                String shortLabel = "stick_left".equals(m.id) ? "L"
+                        : (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id) ? "E" : "R");
                 drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
                         GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
                         GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? dnL : null,
@@ -496,6 +505,12 @@ public class GamepadView extends View {
                 float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
                 float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
                 drawTouchpadModule(canvas, m.id, x, y, ww, hh);
+                dynamicHitTestOrder.add(m.id);
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
+                float density = getResources().getDisplayMetrics().density;
+                float rpx = 40f * m.scale * density;
+                String disp = m.displayLabel != null && !m.displayLabel.isEmpty() ? m.displayLabel : "?";
+                drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp);
                 dynamicHitTestOrder.add(m.id);
             }
         }
@@ -1429,7 +1444,7 @@ public class GamepadView extends View {
                             ddy = ddy * rad / dist;
                         }
                         dynamicStickOffset.put(sid, new float[]{ddx, ddy});
-                        String label = "stick_left".equals(sid) ? "l" : "r";
+                        String label = dynamicAnalogStickCallbackId(sid);
                         analogStickListener.onAnalogStickMoved(label, ddx / rad, ddy / rad);
                     }
                     invalidate();
@@ -1461,12 +1476,13 @@ public class GamepadView extends View {
                     RectF b = componentBounds.get(sid);
                     float rad = b != null ? b.width() / 2f : 1f;
                     float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
-                    if (moved < rad * 0.15f && buttonPressListener != null) {
+                    if (moved < rad * 0.15f && buttonPressListener != null
+                            && ("stick_left".equals(sid) || "stick_right".equals(sid))) {
                         String clickId = "stick_left".equals(sid) ? "stick_l_click" : "stick_r_click";
                         int code = "stick_left".equals(sid) ? 1001 : 1002;
                         buttonPressListener.onButtonPress(clickId, code);
                     }
-                    String label = "stick_left".equals(sid) ? "l" : "r";
+                    String label = dynamicAnalogStickCallbackId(sid);
                     if (analogStickListener != null) {
                         analogStickListener.onAnalogStickMoved(label, 0, 0);
                     }
@@ -1509,12 +1525,13 @@ public class GamepadView extends View {
                     RectF b = componentBounds.get(releasedStick);
                     float rad = b != null ? b.width() / 2f : 1f;
                     float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
-                    if (moved < rad * 0.15f && buttonPressListener != null) {
+                    if (moved < rad * 0.15f && buttonPressListener != null
+                            && ("stick_left".equals(releasedStick) || "stick_right".equals(releasedStick))) {
                         String clickId = "stick_left".equals(releasedStick) ? "stick_l_click" : "stick_r_click";
                         int code = "stick_left".equals(releasedStick) ? 1001 : 1002;
                         buttonPressListener.onButtonPress(clickId, code);
                     }
-                    String label = "stick_left".equals(releasedStick) ? "l" : "r";
+                    String label = dynamicAnalogStickCallbackId(releasedStick);
                     if (analogStickListener != null) {
                         analogStickListener.onAnalogStickMoved(label, 0, 0);
                     }
@@ -1529,6 +1546,17 @@ public class GamepadView extends View {
             default:
                 return true;
         }
+    }
+
+    /** Callback id for {@link AnalogStickListener}: legacy {@code l}/{@code r}, else module id (e.g. stick_key_extra). */
+    private static String dynamicAnalogStickCallbackId(String sid) {
+        if ("stick_left".equals(sid)) {
+            return "l";
+        }
+        if ("stick_right".equals(sid)) {
+            return "r";
+        }
+        return sid;
     }
 
     private String getComponentAt(float x, float y) {
@@ -1560,6 +1588,9 @@ public class GamepadView extends View {
     }
 
     private int getKeyCodeForComponent(String componentId) {
+        if (componentId != null && componentId.startsWith("mouse_btn_")) {
+            return 0;
+        }
         // Map component IDs to USB HID usage IDs (USB HID Keyboard/Keypad Usage Page)
         switch (componentId) {
             // D-Pad - Arrow keys (HID: Up=0x52, Down=0x51, Left=0x50, Right=0x4F)
@@ -1794,9 +1825,11 @@ public class GamepadView extends View {
         if ("l".equals(s)) {
             out.add("stick_l");
             out.add("stick_left");
-        } else if ("r".equals(s)) {
+        } else         if ("r".equals(s)) {
             out.add("stick_r");
             out.add("stick_right");
+        } else if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(s)) {
+            out.add(GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID);
         } else {
             out.add("stick_" + s);
         }

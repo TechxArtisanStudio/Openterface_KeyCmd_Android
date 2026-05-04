@@ -12,6 +12,18 @@ public final class GamepadLayoutPresetConstants {
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
+    /** Physical mouse buttons (HID mouse report), not keyboard keys. */
+    public static final String MODULE_TYPE_MOUSE_BUTTON = "MOUSE_BUTTON";
+
+    /** Optional third stick: same STICK_KEY behavior as left stick, distinct module id. */
+    public static final String STICK_KEY_EXTRA_ID = "stick_key_extra";
+
+    public static final String MOUSE_BTN_LEFT_ID = "mouse_btn_l";
+    public static final String MOUSE_BTN_MIDDLE_ID = "mouse_btn_m";
+    public static final String MOUSE_BTN_RIGHT_ID = "mouse_btn_r";
+
+    public static final int MAX_STICK_MODULES = 3;
+    public static final int MAX_MOUSE_BUTTON_MODULES = 3;
 
     public static final String DEFAULT_PRESET_ID = "preset_default";
 

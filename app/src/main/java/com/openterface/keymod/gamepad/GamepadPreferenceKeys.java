@@ -33,4 +33,7 @@ public final class GamepadPreferenceKeys {
 
     /** Default {@link androidx.preference.PreferenceManager} key for mouse speed (shared with app). */
     public static final String MOUSE_SENSITIVITY = "mouse_sensitivity";
+
+    /** Optional multiplier for right-stick mouse (preset layout). */
+    public static final String RIGHT_STICK_MOUSE_GAIN = "gamepad_right_stick_mouse_gain";
 }

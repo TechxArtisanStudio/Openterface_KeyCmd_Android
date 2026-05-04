@@ -31,6 +31,8 @@ public class GamepadLayoutPresetDocument {
 
     public static class LayoutGlobals {
         public float mouseSensitivity = 1.0f;
+        /** Optional extra multiplier for right-stick mouse mode (null = use app default tuning). */
+        @Nullable public Float rightStickMouseGain;
         public boolean showTwoButtons;
         @Nullable public String backgroundImageFile;
         public float backgroundScale = 1.0f;
@@ -57,6 +59,8 @@ public class GamepadLayoutPresetDocument {
         /** BUTTON: primary HID key and modifier bitmask (same encoding as GamepadFragment). */
         @Nullable public Integer hidKey;
         @Nullable public Integer modifierMask;
+        /** MOUSE_BUTTON: 1 = left, 2 = middle, 3 = right (same convention as {@code sendMouseClick}). */
+        @Nullable public Integer mouseButton;
     }
 
     public static boolean looksLikeDocument(String json) {
@@ -100,6 +104,12 @@ public class GamepadLayoutPresetDocument {
         if (d.layout == null) {
             throw new IllegalArgumentException("Missing layout");
         }
+        if (d.layout.rightStickMouseGain != null) {
+            float rg = d.layout.rightStickMouseGain;
+            if (rg < 0.25f || rg > 4.0f) {
+                throw new IllegalArgumentException("layout.rightStickMouseGain must be in [0.25, 4]");
+            }
+        }
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
@@ -134,6 +144,7 @@ public class GamepadLayoutPresetDocument {
         int stickCount = 0;
         int touchpadCount = 0;
         int buttonCount = 0;
+        int mouseButtonCount = 0;
         boolean hasStickLeft = false;
         for (GamepadModule m : d.modules) {
             if (m == null || m.id == null || m.type == null) {
@@ -148,8 +159,13 @@ public class GamepadLayoutPresetDocument {
             if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                     || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
                 stickCount++;
-                if (!"stick_left".equals(m.id) && !"stick_right".equals(m.id)) {
-                    throw new IllegalArgumentException("Stick module id must be stick_left or stick_right: " + m.id);
+                if (!"stick_left".equals(m.id) && !"stick_right".equals(m.id)
+                        && !GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
+                    throw new IllegalArgumentException("Unknown stick module id: " + m.id);
+                }
+                if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)) {
+                    throw new IllegalArgumentException("stick_key_extra must be STICK_KEY");
                 }
                 if ("stick_left".equals(m.id)) {
                     hasStickLeft = true;
@@ -176,6 +192,21 @@ public class GamepadLayoutPresetDocument {
                         || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
                     throw new IllegalArgumentException("Module " + m.id + ": TOUCHPAD needs widthNorm/heightNorm in (0,1]");
                 }
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
+                mouseButtonCount++;
+                if (!GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id)
+                        && !GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id)
+                        && !GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id)) {
+                    throw new IllegalArgumentException("Invalid MOUSE_BUTTON id: " + m.id);
+                }
+                if (m.mouseButton == null || m.mouseButton < 1 || m.mouseButton > 3) {
+                    throw new IllegalArgumentException("Module " + m.id + ": MOUSE_BUTTON needs mouseButton 1–3");
+                }
+                if ((GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id) && m.mouseButton != 1)
+                        || (GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id) && m.mouseButton != 2)
+                        || (GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id) && m.mouseButton != 3)) {
+                    throw new IllegalArgumentException("Module " + m.id + ": id does not match mouseButton value");
+                }
             } else {
                 throw new IllegalArgumentException("Unknown module type: " + m.type);
             }
@@ -183,8 +214,9 @@ public class GamepadLayoutPresetDocument {
         if (!hasStickLeft) {
             throw new IllegalArgumentException("Missing stick_left");
         }
-        if (stickCount > 2) {
-            throw new IllegalArgumentException("At most two stick modules allowed");
+        if (stickCount > GamepadLayoutPresetConstants.MAX_STICK_MODULES) {
+            throw new IllegalArgumentException("At most " + GamepadLayoutPresetConstants.MAX_STICK_MODULES
+                    + " stick modules allowed");
         }
         if (touchpadCount > 1) {
             throw new IllegalArgumentException("At most one touchpad module allowed");
@@ -192,6 +224,10 @@ public class GamepadLayoutPresetDocument {
         if (buttonCount > GamepadLayoutPresetConstants.MAX_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many BUTTON modules (max "
                     + GamepadLayoutPresetConstants.MAX_BUTTON_MODULES + ")");
+        }
+        if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
+            throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "
+                    + GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES + ")");
         }
     }
 
