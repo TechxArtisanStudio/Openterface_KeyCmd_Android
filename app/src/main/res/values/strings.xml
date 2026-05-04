@@ -524,6 +524,11 @@ by TechxArtisan</string>
     <string name="shortcut_hub_create_strip_profile">Create</string>
     <string name="shortcut_hub_import_strip_profile">Import</string>
     <string name="shortcut_hub_strip_share">Share</string>
+    <string name="shortcut_hub_strip_reset">Reset</string>
+    <string name="shortcut_hub_cd_reset_strip_profile">Reset Rows 2–3 strip profile to factory layout</string>
+    <string name="shortcut_hub_strip_reset_profile_title">Reset strip profile?</string>
+    <string name="shortcut_hub_strip_reset_profile_message">All custom keys and slot assignments for \"%s\" will be removed. The strip will match the factory layout again. This cannot be undone.</string>
+    <string name="shortcut_hub_strip_reset_profile_toast">Strip profile reset to factory layout</string>
     <string name="shortcut_hub_empty_strip_profiles">No strip profiles.</string>
     <string name="shortcut_hub_strip_profile_slot_count">%1$d slot overrides</string>
     <string name="shortcut_hub_strip_profile_factory_layout">Factory strip layout</string>

@@ -48,6 +48,15 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/strip_catalog_cell_slot_id"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:fontFamily="monospace"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="10sp" />
+
+                <TextView
                     android:id="@+id/strip_catalog_cell_status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

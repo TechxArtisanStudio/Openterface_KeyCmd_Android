@@ -116,7 +116,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private float stripCatalogPointerRvY = Float.NaN;
     @Nullable
     private View.OnTouchListener stripCatalogPointerTouchListener;
-    private MaterialButton stripDetailShareButton;
+    private MaterialButton stripDetailResetButton;
     private MaterialButton stripDetailBackButton;
     @Nullable
     private FrameLayout hubSlotEditorOverlay;
@@ -261,7 +261,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         stripDetailBackButton = view.findViewById(R.id.strip_detail_back_button);
         stripDetailTitle = view.findViewById(R.id.strip_detail_title);
         stripDetailDescription = view.findViewById(R.id.strip_detail_description);
-        stripDetailShareButton = view.findViewById(R.id.strip_detail_share_button);
+        stripDetailResetButton = view.findViewById(R.id.strip_detail_reset_button);
         hubSlotEditorOverlay = view.findViewById(R.id.hub_slot_editor_overlay);
 
         // Shortcuts detail panel
@@ -406,11 +406,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 showStripProfileList();
             }
         });
-        stripDetailShareButton.setOnClickListener(v -> {
-            if (selectedStripDetailProfile != null) {
-                shareStripProfileJson(selectedStripDetailProfile);
-            }
-        });
+        stripDetailResetButton.setOnClickListener(v -> showResetStripProfileDetailDialog());
 
         if (hubMainTabs != null) {
             hubMainTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -750,6 +746,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     }
 
     private void afterStripProfileStorageChanged() {
+        if (stripProfileManager != null) {
+            stripProfileManager.reloadFromStorage();
+        }
         loadStripProfiles();
         if (selectedStripDetailProfile != null) {
             Rows23StripProfile updated = stripProfileManager.getProfileById(selectedStripDetailProfile.id);
@@ -759,6 +758,31 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             refreshStripCatalogForSelectedStrip();
         }
         notifyKeyboardStripRefresh();
+    }
+
+    private void showResetStripProfileDetailDialog() {
+        if (selectedStripDetailProfile == null || stripProfileManager == null) {
+            return;
+        }
+        Rows23StripProfile prof = selectedStripDetailProfile;
+        String displayName = (prof.name != null && !prof.name.trim().isEmpty())
+                ? prof.name.trim()
+                : (prof.id != null ? prof.id : "");
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.shortcut_hub_strip_reset_profile_title)
+                .setMessage(getString(R.string.shortcut_hub_strip_reset_profile_message, displayName))
+                .setPositiveButton(R.string.shortcut_hub_strip_reset, (d, w) -> {
+                    dismissRows23SlotEditorOverlay();
+                    stripProfileManager.resetProfileToFactoryLayout(prof.id);
+                    afterStripProfileStorageChanged();
+                    Toast.makeText(
+                            requireContext(),
+                            R.string.shortcut_hub_strip_reset_profile_toast,
+                            Toast.LENGTH_SHORT
+                    ).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void shareStripProfileJson(@NonNull Rows23StripProfile profile) {

@@ -379,13 +379,13 @@
                     android:layout_weight="1" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/strip_detail_share_button"
+                    android:id="@+id/strip_detail_reset_button"
                     style="@style/Widget.KeyMod.HubHeaderButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:contentDescription="@string/shortcut_hub_cd_share_strip_profile"
+                    android:contentDescription="@string/shortcut_hub_cd_reset_strip_profile"
                     android:minWidth="72dp"
-                    android:text="@string/shortcut_hub_strip_share" />
+                    android:text="@string/shortcut_hub_strip_reset" />
             </LinearLayout>
 
             <LinearLayout

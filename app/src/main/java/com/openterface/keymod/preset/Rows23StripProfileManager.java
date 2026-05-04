@@ -68,6 +68,15 @@ public class Rows23StripProfileManager {
         normalizeLoaded();
     }
 
+    /**
+     * Discard in-memory state and re-read profiles from {@link SharedPreferences}.
+     * Useful when another instance of this manager (e.g. the slot editor fragment) has
+     * just persisted writes and this instance needs to pick them up before a UI refresh.
+     */
+    public void reloadFromStorage() {
+        load();
+    }
+
     private void normalizeLoaded() {
         if (profiles.isEmpty()) {
             return;
@@ -348,6 +357,20 @@ public class Rows23StripProfileManager {
         if (removed) {
             save();
         }
+    }
+
+    /**
+     * Clears all Rows 2–3 slot overrides and shortcut definitions for this profile so the strip
+     * uses the factory caps and HID layout again (same as a fresh profile with no customizations).
+     */
+    public void resetProfileToFactoryLayout(@NonNull String profileId) {
+        Rows23StripProfile p = getProfileById(profileId);
+        if (p == null) {
+            return;
+        }
+        p.slotMap = new HashMap<>();
+        p.shortcuts = new ArrayList<>();
+        save();
     }
 
     /**

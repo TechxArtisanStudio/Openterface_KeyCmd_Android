@@ -143,6 +143,14 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
     private void bindCell(@NonNull CellVH h, @NonNull StripCatalogGridItem item, @NonNull RecyclerView.ViewHolder holder) {
         Context rowCtx = holder.itemView.getContext();
         h.layer.setText(item.layerLabel != null ? item.layerLabel : "");
+        if (item.pageIndex >= 0 && item.stripRow >= 0 && item.col >= 0) {
+            String prefix = item.fnLayer ? "f" : "b";
+            h.slotId.setVisibility(View.VISIBLE);
+            h.slotId.setText(prefix + "_p" + item.pageIndex + "r" + item.stripRow + "c" + item.col);
+        } else {
+            h.slotId.setVisibility(View.GONE);
+            h.slotId.setText("");
+        }
         h.physical.setVisibility(View.GONE);
 
         if (TextUtils.isEmpty(item.latchHintLine)) {
@@ -199,6 +207,7 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
         };
         h.favoriteRow.setOnClickListener(open);
         h.layer.setOnClickListener(open);
+        h.slotId.setOnClickListener(open);
         h.latchHint.setOnClickListener(open);
         h.status.setOnClickListener(open);
         holder.itemView.setOnClickListener(open);
@@ -347,6 +356,7 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
     static final class CellVH extends RecyclerView.ViewHolder {
         final ImageView dragHandle;
         final TextView layer;
+        final TextView slotId;
         final TextView physical;
         final TextView latchHint;
         final View favoriteRow;
@@ -356,6 +366,7 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
             super(itemView);
             dragHandle = itemView.findViewById(R.id.strip_catalog_cell_drag_handle);
             layer = itemView.findViewById(R.id.strip_catalog_cell_layer);
+            slotId = itemView.findViewById(R.id.strip_catalog_cell_slot_id);
             physical = itemView.findViewById(R.id.strip_catalog_cell_physical);
             latchHint = itemView.findViewById(R.id.strip_catalog_cell_latch_hint);
             favoriteRow = itemView.findViewById(R.id.strip_catalog_cell_favorite_row);
