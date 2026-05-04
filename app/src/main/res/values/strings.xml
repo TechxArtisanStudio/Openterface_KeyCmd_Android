@@ -806,6 +806,65 @@ by TechxArtisan</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
 
+    <!-- Rows 2–3 strip slot editor (single HID key) -->
+    <string name="rows23_slot_editor_title_new">New key</string>
+    <string name="rows23_slot_editor_title_edit">Edit key</string>
+    <string name="rows23_slot_editor_persistence_label">Persistence key</string>
+    <string name="rows23_slot_editor_factory_cap">Factory cap</string>
+    <string name="rows23_slot_editor_factory_event">Factory event</string>
+    <string name="rows23_slot_editor_slot_summary">Page %1$d · Row %2$d · Col %3$d · %4$s</string>
+    <string name="rows23_slot_editor_name_hint">Name</string>
+    <string name="rows23_slot_editor_icon_section">Icon</string>
+    <string name="rows23_slot_editor_icon_tab_emoji">Emoji</string>
+    <string name="rows23_slot_editor_icon_tab_vector">Icons</string>
+    <string name="rows23_slot_editor_icon_tab_none">None</string>
+    <string name="rows23_slot_editor_key_section">Key event</string>
+    <string name="rows23_slot_editor_key_preview">Selected: %1$s</string>
+    <string name="rows23_slot_editor_reset">Reset to factory</string>
+    <string name="rows23_slot_editor_save">Save</string>
+    <string name="rows23_slot_editor_cancel">Cancel</string>
+    <string name="rows23_slot_editor_saved">Saved: %1$s</string>
+    <string name="rows23_slot_editor_reset_done">Slot reset to factory</string>
+    <string name="rows23_slot_editor_error_name">Enter a name</string>
+    <string name="rows23_slot_editor_error_key">Pick a key event</string>
+    <string name="rows23_hid_group_letters">Letters</string>
+    <string name="rows23_hid_group_digits">Digits</string>
+    <string name="rows23_hid_group_punctuation">Punctuation</string>
+    <string name="rows23_hid_group_function">Function keys</string>
+    <string name="rows23_hid_group_navigation">Navigation and editing</string>
+    <string name="rows23_hid_group_numpad">Numpad</string>
+    <string name="rows23_hid_group_modifiers_as_key">Modifier keys (as key)</string>
+    <string name="rows23_hid_group_locks">Lock keys</string>
+    <string name="rows23_hid_group_document">Document and power</string>
+    <string name="rows23_hid_group_strip_special">Strip / device</string>
+    <string name="rows23_hid_lctrl">Left Ctrl</string>
+    <string name="rows23_hid_lshift">Left Shift</string>
+    <string name="rows23_hid_lalt">Left Alt</string>
+    <string name="rows23_hid_lgui">Left Win / Cmd</string>
+    <string name="rows23_hid_rctrl">Right Ctrl</string>
+    <string name="rows23_hid_rshift">Right Shift</string>
+    <string name="rows23_hid_ralt">Right Alt</string>
+    <string name="rows23_hid_rgui">Right Win / Cmd</string>
+    <string name="rows23_hid_local_fn">Local Fn</string>
+    <string name="rows23_hid_ph1">PH1</string>
+    <string name="rows23_hid_power">Power</string>
+    <string name="rows23_hid_execute">Execute</string>
+    <string name="rows23_hid_help">Help</string>
+    <string name="rows23_hid_menu">Menu</string>
+    <string name="rows23_hid_select">Select</string>
+    <string name="rows23_hid_stop">Stop</string>
+    <string name="rows23_hid_again">Again</string>
+    <string name="rows23_hid_undo">Undo (HID)</string>
+    <string name="rows23_hid_cut">Cut (HID)</string>
+    <string name="rows23_hid_copy">Copy (HID)</string>
+    <string name="rows23_hid_paste">Paste (HID)</string>
+    <string name="rows23_hid_find">Find</string>
+    <string name="rows23_hid_numpad_digit">Num %1$d</string>
+    <string name="rows23_hid_numpad_0">Num 0</string>
+    <string name="rows23_hid_numpad_dot">Num .</string>
+    <string name="rows23_hid_numpad_equals">Num =</string>
+    <string name="rows23_hid_unknown">HID %1$d</string>
+
     <!-- Keyboard + mouse mode touchpad overlay (plain fallback for layout preview; runtime uses spans) -->
     <string name="touch_pad_title">TouchPad</string>
     <string name="touch_pad_status_buttons_up">Buttons: up (no drag)</string>

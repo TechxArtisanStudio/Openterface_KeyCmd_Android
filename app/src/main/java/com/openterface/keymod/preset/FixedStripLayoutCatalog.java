@@ -12,6 +12,8 @@ import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Read-only description of fixed strip rows 2–3 for pages 0–2, aligned with
@@ -498,5 +500,107 @@ public final class FixedStripLayoutCatalog {
             return n.length() > 12 ? n.substring(0, 12) + "\u2026" : n;
         }
         return "Hub " + slot1Based;
+    }
+
+    /** Parsed {@code p0_r2_c3_base}-style strip slot key (rows 2–3 only). */
+    public static final class ParsedSlotKey {
+        public final int pageIndex;
+        public final int stripRow;
+        public final int col;
+        /** {@code true} = Fn column in the Hub grid (suffix {@code _fn}). */
+        public final boolean fnLayer;
+
+        public ParsedSlotKey(int pageIndex, int stripRow, int col, boolean fnLayer) {
+            this.pageIndex = pageIndex;
+            this.stripRow = stripRow;
+            this.col = col;
+            this.fnLayer = fnLayer;
+        }
+    }
+
+    /** Factory HID for a physical strip slot (matches {@link #buildGridItems} page 0–2, Fn-off caps). */
+    public static final class FactoryHid {
+        public final int keyCode;
+        /** {@code 0} or {@code 0x02} (Shift) only. */
+        public final int modifiers;
+
+        public FactoryHid(int keyCode, int modifiers) {
+            this.keyCode = keyCode;
+            this.modifiers = modifiers;
+        }
+    }
+
+    private static final Pattern SLOT_KEY_PATTERN =
+            Pattern.compile("^p(\\d+)_r(2|3)_c(\\d+)_(base|fn)$");
+
+    private static final int[] P0_R2_CODES = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x2E};
+    private static final boolean[] P0_R2_SHIFT = {false, false, false, false, false, false, false};
+    private static final int[] P0_R3_CODES = {0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0xF00C};
+    private static final boolean[] P0_R3_SHIFT = {false, false, false, false, false, false, false};
+
+    private static final int[] P1_R2_CODES = {0xE0, 0xE2, 0xE3, 0x2B, 0x52, 0x28, 0xF00A};
+    private static final boolean[] P1_R2_SHIFT = {false, false, false, false, false, false, false};
+    private static final int[] P1_R3_CODES = {0x29, 0xE1, 0x4C, 0x50, 0x51, 0x4F, 0xF00C};
+    private static final boolean[] P1_R3_SHIFT = {false, false, false, false, false, false, false};
+
+    private static final int[] P2_R2_CODES = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
+    private static final boolean[] P2_R2_SHIFT = {true, true, false, false, true, true, true};
+    private static final int[] P2_R3_CODES = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
+    private static final boolean[] P2_R3_SHIFT = {false, false, false, true, false, true, false};
+
+    @Nullable
+    public static ParsedSlotKey parseSlotKey(@NonNull String slotKey) {
+        Matcher m = SLOT_KEY_PATTERN.matcher(slotKey.trim());
+        if (!m.matches()) {
+            return null;
+        }
+        int page = Integer.parseInt(m.group(1));
+        int row = Integer.parseInt(m.group(2));
+        int col = Integer.parseInt(m.group(3));
+        boolean fn = "fn".equals(m.group(4));
+        if (col < 0 || col >= KeyboardStripPresetConstants.TOP_PANEL_COLUMNS) {
+            return null;
+        }
+        return new ParsedSlotKey(page, row, col, fn);
+    }
+
+    /**
+     * HID + optional Shift for the factory mapping of a strip slot (same physical key for Base/Fn grid
+     * columns; Fn-off Page 2 codes for page index 2).
+     */
+    @Nullable
+    public static FactoryHid resolveFactoryHidForSlot(@NonNull ParsedSlotKey slot) {
+        int c = slot.col;
+        if (c < 0 || c >= KeyboardStripPresetConstants.TOP_PANEL_COLUMNS) {
+            return null;
+        }
+        switch (slot.pageIndex) {
+            case 0:
+                if (slot.stripRow == 2) {
+                    return new FactoryHid(P0_R2_CODES[c], P0_R2_SHIFT[c] ? 0x02 : 0);
+                }
+                if (slot.stripRow == 3) {
+                    return new FactoryHid(P0_R3_CODES[c], P0_R3_SHIFT[c] ? 0x02 : 0);
+                }
+                return null;
+            case 1:
+                if (slot.stripRow == 2) {
+                    return new FactoryHid(P1_R2_CODES[c], P1_R2_SHIFT[c] ? 0x02 : 0);
+                }
+                if (slot.stripRow == 3) {
+                    return new FactoryHid(P1_R3_CODES[c], P1_R3_SHIFT[c] ? 0x02 : 0);
+                }
+                return null;
+            case 2:
+                if (slot.stripRow == 2) {
+                    return new FactoryHid(P2_R2_CODES[c], P2_R2_SHIFT[c] ? 0x02 : 0);
+                }
+                if (slot.stripRow == 3) {
+                    return new FactoryHid(P2_R3_CODES[c], P2_R3_SHIFT[c] ? 0x02 : 0);
+                }
+                return null;
+            default:
+                return null;
+        }
     }
 }

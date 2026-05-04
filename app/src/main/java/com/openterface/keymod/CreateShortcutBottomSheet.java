@@ -26,7 +26,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
-import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.MyShortcutsReorderHelpReadModeDialog;
 
@@ -308,9 +307,6 @@ public final class CreateShortcutBottomSheet {
             @Nullable CreateMode createMode,
             @Nullable String categoryId,
             @Nullable ShortcutProfileManager.Shortcut editShortcut,
-            @Nullable Rows23StripProfileManager rows23StripMgr,
-            @Nullable String rows23StripProfileId,
-            @Nullable String rows23AssignSlotKey,
             @Nullable Runnable onSaved
     ) {
         final boolean isEdit = editShortcut != null;
@@ -318,15 +314,8 @@ public final class CreateShortcutBottomSheet {
             return;
         }
 
-        final boolean rows23Mode = rows23StripMgr != null && rows23StripProfileId != null;
-        ShortcutProfileManager.ShortcutProfile profile = rows23Mode
-                ? null
-                : profileManager.getProfileById(profileId);
-        if (!rows23Mode && profile == null) {
-            Toast.makeText(activity, R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (rows23Mode && rows23StripMgr.getProfileById(rows23StripProfileId) == null) {
+        ShortcutProfileManager.ShortcutProfile profile = profileManager.getProfileById(profileId);
+        if (profile == null) {
             Toast.makeText(activity, R.string.create_shortcut_no_profile, Toast.LENGTH_SHORT).show();
             return;
         }
@@ -496,11 +485,8 @@ public final class CreateShortcutBottomSheet {
                     return;
                 }
                 String excludeId = editShortcut.id != null && !editShortcut.id.isEmpty() ? editShortcut.id : null;
-                boolean dupChord = rows23Mode
-                        ? rows23StripMgr.profileHasChordExcluding(
-                                rows23StripProfileId, parsed.keyCode, parsed.modifiers, targetOs, excludeId)
-                        : profileManager.profileHasChordExcluding(
-                                profileId, parsed.keyCode, parsed.modifiers, targetOs, excludeId);
+                boolean dupChord = profileManager.profileHasChordExcluding(
+                        profileId, parsed.keyCode, parsed.modifiers, targetOs, excludeId);
                 if (dupChord) {
                     Toast.makeText(activity, R.string.create_shortcut_duplicate, Toast.LENGTH_LONG).show();
                     return;
@@ -517,63 +503,36 @@ public final class CreateShortcutBottomSheet {
                     String orderRaw = orderInput.getText() != null ? orderInput.getText().toString().trim() : "";
                     editShortcut.displayOrder = parseDisplayOrderInternal(orderRaw, editShortcut.displayOrder);
                 }
-                if (rows23Mode) {
-                    rows23StripMgr.upsertShortcut(rows23StripProfileId, editShortcut);
-                } else {
-                    profileManager.updateProfile(profile);
-                    if (editShortcut.id != null) {
-                        profileManager.refreshMyShortcutClonesFromProfile(profileId, editShortcut.id);
-                    }
+                profileManager.updateProfile(profile);
+                if (editShortcut.id != null) {
+                    profileManager.refreshMyShortcutClonesFromProfile(profileId, editShortcut.id);
                 }
                 Toast.makeText(
                         activity,
                         activity.getString(R.string.create_shortcut_saved, name),
                         Toast.LENGTH_SHORT).show();
             } else {
-                boolean dupNew = rows23Mode
-                        ? rows23StripMgr.profileHasChordExcluding(
-                                rows23StripProfileId, parsed.keyCode, parsed.modifiers, targetOs, null)
-                        : profileManager.profileHasChord(profileId, parsed.keyCode, parsed.modifiers, targetOs);
+                boolean dupNew = profileManager.profileHasChord(profileId, parsed.keyCode, parsed.modifiers, targetOs);
                 if (dupNew) {
                     Toast.makeText(activity, R.string.create_shortcut_duplicate, Toast.LENGTH_LONG).show();
                     return;
                 }
-                if (rows23Mode) {
-                    ShortcutProfileManager.Shortcut created = new ShortcutProfileManager.Shortcut();
-                    created.id = "strip_ov_" + System.currentTimeMillis();
-                    String label = KeyParser.toLabelForTargetOs(parsed.keyCode, parsed.modifiers, targetOs);
-                    created.label = label;
-                    created.name = label;
-                    created.modifiers = parsed.modifiers;
-                    created.keyCode = parsed.keyCode;
-                    created.icon = "";
-                    created.displayOrder = 0;
-                    rows23StripMgr.upsertShortcut(rows23StripProfileId, created);
-                    if (rows23AssignSlotKey != null && !rows23AssignSlotKey.isEmpty()) {
-                        rows23StripMgr.putSlot(rows23StripProfileId, rows23AssignSlotKey, created.id);
-                    }
-                    Toast.makeText(
-                            activity,
-                            activity.getString(R.string.create_shortcut_saved, created.label),
-                            Toast.LENGTH_SHORT).show();
+                ShortcutProfileManager.Shortcut created;
+                if (createMode == CreateMode.CATEGORY_ONLY) {
+                    created = profileManager.addQuickShortcutToCategoryOnly(
+                            profileId, categoryId, parsed.keyCode, parsed.modifiers, targetOs);
                 } else {
-                    ShortcutProfileManager.Shortcut created;
-                    if (createMode == CreateMode.CATEGORY_ONLY) {
-                        created = profileManager.addQuickShortcutToCategoryOnly(
-                                profileId, categoryId, parsed.keyCode, parsed.modifiers, targetOs);
-                    } else {
-                        created = profileManager.addQuickShortcutToGeneralAndFavorites(
-                                profileId, parsed.keyCode, parsed.modifiers, targetOs);
-                    }
-                    if (created == null) {
-                        Toast.makeText(activity, R.string.create_shortcut_save_failed, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    Toast.makeText(
-                            activity,
-                            activity.getString(R.string.create_shortcut_saved, created.label),
-                            Toast.LENGTH_SHORT).show();
+                    created = profileManager.addQuickShortcutToGeneralAndFavorites(
+                            profileId, parsed.keyCode, parsed.modifiers, targetOs);
                 }
+                if (created == null) {
+                    Toast.makeText(activity, R.string.create_shortcut_save_failed, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(
+                        activity,
+                        activity.getString(R.string.create_shortcut_saved, created.label),
+                        Toast.LENGTH_SHORT).show();
             }
             dialog.dismiss();
             if (onSaved != null) {
@@ -594,8 +553,7 @@ public final class CreateShortcutBottomSheet {
             @Nullable String categoryId,
             @Nullable Runnable onSaved
     ) {
-        installShortcutSheet(activity, profileManager, profileId, targetOs, mode, categoryId, null,
-                null, null, null, onSaved);
+        installShortcutSheet(activity, profileManager, profileId, targetOs, mode, categoryId, null, onSaved);
     }
 
     /**
@@ -609,41 +567,7 @@ public final class CreateShortcutBottomSheet {
             @NonNull ShortcutProfileManager.Shortcut editShortcut,
             @Nullable Runnable onSaved
     ) {
-        installShortcutSheet(activity, profileManager, profileId, targetOs, null, null, editShortcut,
-                null, null, null, onSaved);
-    }
-
-    /**
-     * Edit a shortcut stored in a Rows 2–3 strip profile (slot definitions).
-     */
-    public static void showEditRows23Strip(
-            @NonNull AppCompatActivity activity,
-            @NonNull ShortcutProfileManager profileManager,
-            @NonNull Rows23StripProfileManager stripMgr,
-            @NonNull String stripProfileId,
-            @NonNull String targetOs,
-            @NonNull ShortcutProfileManager.Shortcut editShortcut,
-            @Nullable Runnable onSaved
-    ) {
-        installShortcutSheet(activity, profileManager, stripProfileId, targetOs, null, null, editShortcut,
-                stripMgr, stripProfileId, null, onSaved);
-    }
-
-    /**
-     * Create a new shortcut and assign it to a strip slot ({@code p0_r2_c0_base} style key).
-     */
-    public static void showNewRows23StripSlot(
-            @NonNull AppCompatActivity activity,
-            @NonNull ShortcutProfileManager profileManager,
-            @NonNull Rows23StripProfileManager stripMgr,
-            @NonNull String stripProfileId,
-            @NonNull String slotKey,
-            @NonNull String targetOs,
-            @Nullable Runnable onSaved
-    ) {
-        installShortcutSheet(activity, profileManager, stripProfileId, targetOs,
-                CreateMode.GENERAL_AND_FAVORITES, null, null,
-                stripMgr, stripProfileId, slotKey, onSaved);
+        installShortcutSheet(activity, profileManager, profileId, targetOs, null, null, editShortcut, onSaved);
     }
 
     public static void show(

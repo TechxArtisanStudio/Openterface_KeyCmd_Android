@@ -36,7 +36,7 @@ import java.util.Map;
 public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     public interface OnStripCatalogCellClickListener {
-        void onStripCatalogCellClick(@NonNull String slotKey, @Nullable String shortcutId);
+        void onStripCatalogCellClick(@NonNull StripCatalogGridItem slotCell, @Nullable String shortcutId);
     }
 
     @Nullable
@@ -194,7 +194,7 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
         String sidFinal = sid;
         View.OnClickListener open = v -> {
             if (cellClickListener != null && item.slotKey != null) {
-                cellClickListener.onStripCatalogCellClick(item.slotKey, sidFinal);
+                cellClickListener.onStripCatalogCellClick(item, sidFinal);
             }
         };
         h.favoriteRow.setOnClickListener(open);

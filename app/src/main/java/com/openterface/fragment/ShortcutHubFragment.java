@@ -26,6 +26,7 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -117,6 +118,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private View.OnTouchListener stripCatalogPointerTouchListener;
     private MaterialButton stripDetailShareButton;
     private MaterialButton stripDetailBackButton;
+    @Nullable
+    private FrameLayout hubSlotEditorOverlay;
     private TextView stripDetailTitle;
     private TextView stripDetailDescription;
     private Rows23StripProfileManager stripProfileManager;
@@ -189,10 +192,20 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         stripDetailBackCallback = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
+                if (tryPopRows23SlotEditor()) {
+                    return;
+                }
                 showStripProfileList();
             }
         };
         requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), stripDetailBackCallback);
+
+        getChildFragmentManager().addOnBackStackChangedListener(() -> {
+            if (hubSlotEditorOverlay != null
+                    && getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay) == null) {
+                hubSlotEditorOverlay.setVisibility(View.GONE);
+            }
+        });
     }
 
     private final MainActivity.OnTargetOsChangeListener osChangeListener = os -> {
@@ -249,6 +262,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         stripDetailTitle = view.findViewById(R.id.strip_detail_title);
         stripDetailDescription = view.findViewById(R.id.strip_detail_description);
         stripDetailShareButton = view.findViewById(R.id.strip_detail_share_button);
+        hubSlotEditorOverlay = view.findViewById(R.id.hub_slot_editor_overlay);
 
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
@@ -387,7 +401,11 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         createStripProfileButton.setOnClickListener(v -> showCreateStripProfileDialog());
         importStripProfileButton.setOnClickListener(v -> showStripImportDialog());
-        stripDetailBackButton.setOnClickListener(v -> showStripProfileList());
+        stripDetailBackButton.setOnClickListener(v -> {
+            if (!tryPopRows23SlotEditor()) {
+                showStripProfileList();
+            }
+        });
         stripDetailShareButton.setOnClickListener(v -> {
             if (selectedStripDetailProfile != null) {
                 shareStripProfileJson(selectedStripDetailProfile);
@@ -543,6 +561,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
      */
     private void dismissStripDetailState() {
         selectedStripDetailProfile = null;
+        dismissRows23SlotEditorOverlay();
         if (panelStripProfileDetail != null) {
             panelStripProfileDetail.setVisibility(View.GONE);
         }
@@ -629,7 +648,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 requireContext(), profileManager, stripProfileManager, selectedStripDetailProfile.id,
                 getTargetOs());
         stripCatalogGridAdapter.setItems(gridItems);
-        stripCatalogGridAdapter.setOnStripCatalogCellClickListener(this::onStripCatalogCellClicked);
+        stripCatalogGridAdapter.setOnStripCatalogCellClickListener(this::onStripCatalogSlotCellClicked);
         hubStripCatalogRecycler.setAdapter(stripCatalogGridAdapter);
         if (stripProfileManager != null && selectedStripDetailProfile != null) {
             stripCatalogSlotTouchHelper = new ItemTouchHelper(
@@ -670,35 +689,64 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 .show();
     }
 
-    private void onStripCatalogCellClicked(@NonNull String slotKey, @Nullable String shortcutId) {
-        if (selectedStripDetailProfile == null) {
+    private void onStripCatalogSlotCellClicked(
+            @NonNull StripCatalogGridItem cell,
+            @Nullable String shortcutId
+    ) {
+        if (selectedStripDetailProfile == null || cell.slotKey == null) {
             return;
         }
-        editOrCreateStripSlot(slotKey, shortcutId);
+        showRows23SlotEditor(cell, shortcutId);
     }
 
     /**
-     * Opens the Rows 2–3 strip slot editor. That flow (see {@link CreateShortcutBottomSheet} rows-23 strip
-     * modes) is for assigning a fixed strip / HID key role to the slot, not the same as Row 1 “new shortcut”
-     * combo authoring for the shortcut profile.
+     * Opens the full-screen Rows 2–3 strip slot editor (single HID key, name, icon, persistence key).
      */
-    private void editOrCreateStripSlot(@NonNull String slotKey, @Nullable String shortcutId) {
-        if (!(requireActivity() instanceof AppCompatActivity) || selectedStripDetailProfile == null) {
+    private void showRows23SlotEditor(@NonNull StripCatalogGridItem cell, @Nullable String shortcutId) {
+        if (selectedStripDetailProfile == null || hubSlotEditorOverlay == null) {
             return;
         }
-        AppCompatActivity act = (AppCompatActivity) requireActivity();
-        String pid = selectedStripDetailProfile.id;
-        Runnable refresh = this::afterStripProfileStorageChanged;
-        if (shortcutId != null && !shortcutId.isEmpty()) {
-            Shortcut sc = stripProfileManager.findShortcut(pid, shortcutId);
-            if (sc != null) {
-                CreateShortcutBottomSheet.showEditRows23Strip(
-                        act, profileManager, stripProfileManager, pid, getTargetOs(), sc, refresh);
-                return;
-            }
+        String phy = cell.physicalLabel != null ? cell.physicalLabel : "";
+        String ev = cell.keyEventLabel != null ? cell.keyEventLabel : "";
+        Rows23SlotEditorFragment frag = Rows23SlotEditorFragment.newInstance(
+                selectedStripDetailProfile.id,
+                cell.slotKey,
+                shortcutId,
+                phy,
+                ev,
+                getTargetOs());
+        hubSlotEditorOverlay.setVisibility(View.VISIBLE);
+        getChildFragmentManager().beginTransaction()
+                .replace(R.id.hub_slot_editor_overlay, frag)
+                .addToBackStack("rows23_slot_editor")
+                .commit();
+    }
+
+    private boolean tryPopRows23SlotEditor() {
+        if (hubSlotEditorOverlay == null || hubSlotEditorOverlay.getVisibility() != View.VISIBLE) {
+            return false;
         }
-        CreateShortcutBottomSheet.showNewRows23StripSlot(
-                act, profileManager, stripProfileManager, pid, slotKey, getTargetOs(), refresh);
+        if (getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay) != null) {
+            getChildFragmentManager().popBackStack();
+            return true;
+        }
+        hubSlotEditorOverlay.setVisibility(View.GONE);
+        return false;
+    }
+
+    private void dismissRows23SlotEditorOverlay() {
+        Fragment f = getChildFragmentManager().findFragmentById(R.id.hub_slot_editor_overlay);
+        if (f != null) {
+            getChildFragmentManager().beginTransaction().remove(f).commitAllowingStateLoss();
+        }
+        if (hubSlotEditorOverlay != null) {
+            hubSlotEditorOverlay.setVisibility(View.GONE);
+        }
+    }
+
+    /** Called by {@link Rows23SlotEditorFragment} after save or reset. */
+    public void onRows23SlotEditorFinished() {
+        afterStripProfileStorageChanged();
     }
 
     private void afterStripProfileStorageChanged() {

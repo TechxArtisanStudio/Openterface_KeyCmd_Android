@@ -326,6 +326,31 @@ public class Rows23StripProfileManager {
     }
 
     /**
+     * Removes a shortcut definition from the profile if no slot still references it (after
+     * {@link #removeSlot} or similar).
+     */
+    public void removeShortcutIfUnreferenced(@NonNull String profileId, @Nullable String shortcutId) {
+        if (shortcutId == null || shortcutId.trim().isEmpty()) {
+            return;
+        }
+        Rows23StripProfile p = getProfileById(profileId);
+        if (p == null || p.shortcuts == null) {
+            return;
+        }
+        if (p.slotMap != null) {
+            for (String sid : p.slotMap.values()) {
+                if (shortcutId.equals(sid)) {
+                    return;
+                }
+            }
+        }
+        boolean removed = p.shortcuts.removeIf(s -> s != null && shortcutId.equals(s.id));
+        if (removed) {
+            save();
+        }
+    }
+
+    /**
      * Swaps shortcut assignments for exactly two slot keys (each may be {@code *_base} or {@code *_fn}).
      * No-op if keys are equal.
      */

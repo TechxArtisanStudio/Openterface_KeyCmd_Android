@@ -431,4 +431,14 @@
             android:scrollbars="vertical" />
     </LinearLayout>
 
+    <FrameLayout
+        android:id="@+id/hub_slot_editor_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/background_light"
+        android:clickable="true"
+        android:elevation="24dp"
+        android:focusable="true"
+        android:visibility="gone" />
+
 </FrameLayout>
