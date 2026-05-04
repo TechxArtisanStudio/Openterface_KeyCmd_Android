@@ -124,4 +124,10 @@
     <color name="key_bg_pressed">#FFFFE0B2</color>
     <color name="key_border">#FF9A9AA0</color>
     <color name="key_text">#FF1F1F24</color>
+
+    <!-- Gamepad retro face (SNES/GBA pastel); procedural drawing in GamepadView uses matching literals. -->
+    <color name="gamepad_face_a_body">#FFA7E3B5</color>
+    <color name="gamepad_face_b_body">#FFF7B2B7</color>
+    <color name="gamepad_face_x_body">#FFA9CCEB</color>
+    <color name="gamepad_face_y_body">#FFF7E89F</color>
 </resources>

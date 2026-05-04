@@ -3665,7 +3665,7 @@ public class CustomKeyboardView extends LinearLayout {
             keys.add(fixedStripSlotKey(buildPage2PunctKey("\"", 0x34, true), 2, 2, 3));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("%", 0x22, true), 2, 2, 4));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("^", 0x23, true), 2, 2, 5));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("|", 0x64, false), 2, 2, 6));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("|", 0x31, true), 2, 2, 6));
         } else {
             // Fn off: base caps ( / ) on 9/0 keys + Shift (strip b-p2r2c1 / b-p2r2c2).
             keys.add(fixedStripSlotKey(buildPage2PunctKey("(", 0x26, true), 2, 2, 0));
@@ -3686,7 +3686,7 @@ public class CustomKeyboardView extends LinearLayout {
         } else {
             keys.add(fixedStripSlotKey(buildPage2PunctKey("/", 0x38, false), 2, 3, 0));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("\\", 0x31, false), 2, 3, 1));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("|", 0x64, false), 2, 3, 2));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("|", 0x31, true), 2, 3, 2));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("?", 0x38, true), 2, 3, 3));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("-", 0x2D, false), 2, 3, 4));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("_", 0x2D, true), 2, 3, 5));
@@ -5987,7 +5987,7 @@ public class CustomKeyboardView extends LinearLayout {
             return new FnMapping("NUM", 0x53, 0);
         }
         if ("#".equals(key.label) && key.code == 0x20) {
-            return new FnMapping("|", 0x64, MOD_SHIFT, 0);
+            return new FnMapping("|", 0x31, MOD_SHIFT, 0);
         }
         if ("BKSP".equals(key.label) && key.code == 0x2A) {
             return null;
@@ -6073,7 +6073,7 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x2D: // -, _
             case 0x2F: // [
             case 0x30: // ]
-            case 0x31: // \
+            case 0x31: // \, | (same HID usage; Shift distinguishes)
             case 0x33: // :
             case 0x34: // ', "
             case 0x35: // `, ~ (Fn-on); also legacy grave slot
@@ -6082,7 +6082,6 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x36: // <, ,
             case 0x37: // >, .
             case 0x38: // /, ?
-            case 0x64: // |
                 return true;
             default:
                 return false;
@@ -6204,8 +6203,11 @@ public class CustomKeyboardView extends LinearLayout {
                 return key.requiresShift
                         ? new FnMapping("&", 0x24, MOD_SHIFT)      // ? -> &
                         : new FnMapping("<", 0x36, MOD_SHIFT);     // / -> <
-            case 0x31: return new FnMapping(">", 0x37, MOD_SHIFT); // \ -> >
-            case 0x64: return new FnMapping("*", 0x25, MOD_SHIFT); // | -> *
+            case 0x31:
+                if (key.stripSlotPage == 2 && key.stripSlotRow == 3 && key.requiresShift) {
+                    return new FnMapping("*", 0x25, MOD_SHIFT); // | -> *
+                }
+                return new FnMapping(">", 0x37, MOD_SHIFT); // \ -> >
             case 0x2D:
                 return key.requiresShift
                         ? new FnMapping(".", 0x37, 0)              // _ -> .
@@ -6243,7 +6245,7 @@ public class CustomKeyboardView extends LinearLayout {
                 return key.requiresShift
                         ? new FnMapping("\\", 0x31, 0)             // > -> \
                         : new FnMapping("_", 0x2D, MOD_SHIFT);     // . -> _
-            case 0x25: return new FnMapping("|", 0x64, 0);         // * -> |
+            case 0x25: return new FnMapping("|", 0x31, MOD_SHIFT); // * -> |
             case 0x24: return new FnMapping("?", 0x38, MOD_SHIFT); // & -> ?
             default:
                 return null;

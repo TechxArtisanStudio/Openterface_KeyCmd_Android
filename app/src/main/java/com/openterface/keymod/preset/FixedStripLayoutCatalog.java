@@ -156,9 +156,7 @@ public final class FixedStripLayoutCatalog {
             case 0x38:
                 return requiresShift ? "&" : "<";
             case 0x31:
-                return ">";
-            case 0x64:
-                return "*";
+                return requiresShift ? "*" : ">";
             case 0x2D:
                 return requiresShift ? "." : ",";
             case 0x26:
@@ -474,8 +472,8 @@ public final class FixedStripLayoutCatalog {
 
         int[] r2OffCodes = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
         boolean[] r2OffShift = {true, true, false, false, true, true, true};
-        int[] r3OffCodes = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
-        boolean[] r3OffShift = {false, false, false, true, false, true, false};
+        int[] r3OffCodes = {0x38, 0x31, 0x31, 0x38, 0x2D, 0x2D, 0xF00C};
+        boolean[] r3OffShift = {false, false, true, true, false, true, false};
 
         appendGridStripRow(context, out, 2, 2, r2Off, r2OffCodes, r2OffShift, r2On, targetOs);
         appendGridStripRow(context, out, 2, 3, r3Off, r3OffCodes, r3OffShift, r3On, targetOs);
@@ -497,7 +495,7 @@ public final class FixedStripLayoutCatalog {
             addSlot(out, 2, 2, 3, "\"", overlayFnHint(0x34, true), 0, latch);
             addSlot(out, 2, 2, 4, "%", overlayFnHint(0x22, true), 0, latch);
             addSlot(out, 2, 2, 5, "^", overlayFnHint(0x23, true), 0, latch);
-            addSlot(out, 2, 2, 6, "|", overlayFnHint(0x64, false), 0, latch);
+            addSlot(out, 2, 2, 6, "|", overlayFnHint(0x31, true), 0, latch);
             out.add(Row.section("Row 3", null, latch));
             addSlot(out, 2, 3, 0, "<", overlayFnHint(0x36, true), 0, latch);
             addSlot(out, 2, 3, 1, ">", overlayFnHint(0x37, true), 0, latch);
@@ -517,7 +515,7 @@ public final class FixedStripLayoutCatalog {
             out.add(Row.section("Row 3", null, latch));
             addSlot(out, 2, 3, 0, "/", overlayFnHint(0x38, false), 0, latch);
             addSlot(out, 2, 3, 1, "\\", overlayFnHint(0x31, false), 0, latch);
-            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x64, false), 0, latch);
+            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x31, true), 0, latch);
             addSlot(out, 2, 3, 3, "?", overlayFnHint(0x38, true), 0, latch);
             addSlot(out, 2, 3, 4, "-", overlayFnHint(0x2D, false), 0, latch);
             addSlot(out, 2, 3, 5, "_", overlayFnHint(0x2D, true), 0, latch);
@@ -593,8 +591,8 @@ public final class FixedStripLayoutCatalog {
     /** Cols 0–1: Shift+9 / Shift+0 → "(" / ")"; remainder matches page 2 punctuation row. */
     private static final int[] P2_R2_CODES = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
     private static final boolean[] P2_R2_SHIFT = {true, true, false, false, true, true, true};
-    private static final int[] P2_R3_CODES = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
-    private static final boolean[] P2_R3_SHIFT = {false, false, false, true, false, true, false};
+    private static final int[] P2_R3_CODES = {0x38, 0x31, 0x31, 0x38, 0x2D, 0x2D, 0xF00C};
+    private static final boolean[] P2_R3_SHIFT = {false, false, true, true, false, true, false};
 
     @Nullable
     public static ParsedSlotKey parseSlotKey(@NonNull String slotKey) {

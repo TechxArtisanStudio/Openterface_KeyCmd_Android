@@ -533,7 +533,7 @@ public class GamepadView extends View {
         canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
-        retroGlossPaint.setColor(Color.parseColor("#33D9D2CC"));
+        retroGlossPaint.setColor(0x33D9D2CC);
         float step = 16f * density;
         for (float px = bounds.left + step * 0.5f; px < bounds.right; px += step) {
             for (float py = bounds.top + step * 0.5f; py < bounds.bottom; py += step) {
@@ -765,10 +765,10 @@ public class GamepadView extends View {
     }
 
     private void drawDpad(Canvas canvas, float cx, float cy, float size) {
+        float density = getResources().getDisplayMetrics().density;
         float half = size / 2;
         float barHalf = half * 0.4f;
 
-        // Touch bounds matching each arm
         componentBounds.put("dpad_up",
                 new RectF(cx - barHalf, cy - half, cx + barHalf, cy));
         componentBounds.put("dpad_down",
@@ -778,50 +778,61 @@ public class GamepadView extends View {
         componentBounds.put("dpad_right",
                 new RectF(cx, cy - barHalf, cx + half, cy + barHalf));
 
-        // Draw each arm separately with its own highlight
-        int normalColor = Color.parseColor("#444444");
-        int pressedColor = Color.parseColor("#FF9800");
+        float corner = Math.min(14f * density, barHalf * 0.45f);
+        RectF vert = new RectF(cx - barHalf, cy - half, cx + barHalf, cy + half);
+        RectF horiz = new RectF(cx - half, cy - barHalf, cx + half, cy + barHalf);
 
-        drawDpadArm(canvas, cx, cy, "up", barHalf, half, normalColor, pressedColor);
-        drawDpadArm(canvas, cx, cy, "down", barHalf, half, normalColor, pressedColor);
-        drawDpadArm(canvas, cx, cy, "left", barHalf, half, normalColor, pressedColor);
-        drawDpadArm(canvas, cx, cy, "right", barHalf, half, normalColor, pressedColor);
+        Shader deep = new LinearGradient(cx, cy - half, cx, cy + half,
+                Color.parseColor("#2A2730"), Color.parseColor("#393441"), Shader.TileMode.CLAMP);
+        retroDpadFillPaint.setStyle(Paint.Style.FILL);
+        retroDpadFillPaint.setShader(deep);
+        retroWorkPath.reset();
+        retroWorkPath.addRoundRect(vert, corner, corner, Path.Direction.CW);
+        canvas.drawPath(retroWorkPath, retroDpadFillPaint);
+        retroWorkPath.reset();
+        retroWorkPath.addRoundRect(horiz, corner, corner, Path.Direction.CW);
+        canvas.drawPath(retroWorkPath, retroDpadFillPaint);
+        retroDpadFillPaint.setShader(null);
 
-        // Draw center circle (no highlight, always normal)
-        Paint centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        centerPaint.setColor(Color.parseColor("#666666"));
-        canvas.drawCircle(cx, cy, half * 0.2f, centerPaint);
+        int pressFill = applyAlphaInt(themeAccentPrimary, 200);
+        retroGlossPaint.setShader(null);
+        retroGlossPaint.setColor(pressFill);
+        if (isDpadDirPressed("up")) {
+            canvas.drawRect(cx - barHalf, cy - half, cx + barHalf, cy, retroGlossPaint);
+        }
+        if (isDpadDirPressed("down")) {
+            canvas.drawRect(cx - barHalf, cy, cx + barHalf, cy + half, retroGlossPaint);
+        }
+        if (isDpadDirPressed("left")) {
+            canvas.drawRect(cx - half, cy - barHalf, cx, cy + barHalf, retroGlossPaint);
+        }
+        if (isDpadDirPressed("right")) {
+            canvas.drawRect(cx, cy - barHalf, cx + half, cy + barHalf, retroGlossPaint);
+        }
 
-        // Direction arrows
+        retroRingPaint.setShader(null);
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(2f * density);
+        retroRingPaint.setColor(0xFF4A4550);
+        retroWorkPath.reset();
+        retroWorkPath.addRoundRect(vert, corner, corner, Path.Direction.CW);
+        retroWorkPath.addRoundRect(horiz, corner, corner, Path.Direction.CW);
+        canvas.drawPath(retroWorkPath, retroRingPaint);
+
+        retroBodyPaint.setShader(null);
+        retroBodyPaint.setColor(Color.parseColor("#4A4550"));
+        canvas.drawCircle(cx, cy, half * 0.2f, retroBodyPaint);
+
         Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        arrowPaint.setColor(Color.WHITE);
+        arrowPaint.setColor(0xFFE8E8E8);
         arrowPaint.setTextSize(size * 0.15f);
         arrowPaint.setTextAlign(Paint.Align.CENTER);
+        arrowPaint.setShadowLayer(2f, 0f, 1f, 0x66000000);
         canvas.drawText("▲", cx, cy - half * 0.7f, arrowPaint);
         canvas.drawText("▼", cx, cy + half * 0.8f, arrowPaint);
         canvas.drawText("◀", cx - half * 0.75f, cy + half * 0.05f, arrowPaint);
         canvas.drawText("▶", cx + half * 0.75f, cy + half * 0.05f, arrowPaint);
-    }
-
-    private void drawDpadArm(Canvas canvas, float cx, float cy, String dir,
-                             float barHalf, float half, int normalColor, int pressedColor) {
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(("dpad_" + dir).equals(pressedComponentId) ? pressedColor : normalColor);
-
-        switch (dir) {
-            case "up":
-                canvas.drawRect(cx - barHalf, cy - half, cx + barHalf, cy, paint);
-                break;
-            case "down":
-                canvas.drawRect(cx - barHalf, cy, cx + barHalf, cy + half, paint);
-                break;
-            case "left":
-                canvas.drawRect(cx - half, cy - barHalf, cx, cy + barHalf, paint);
-                break;
-            case "right":
-                canvas.drawRect(cx, cy - barHalf, cx + half, cy + barHalf, paint);
-                break;
-        }
+        arrowPaint.clearShadowLayer();
     }
 
     private void drawAnalogStick(Canvas canvas, float cx, float cy, float radius, String label) {
@@ -830,78 +841,9 @@ public class GamepadView extends View {
 
     private void drawAnalogStick(Canvas canvas, float cx, float cy, float radius, String label,
                                  String upLabel, String downLabel, String leftLabel, String rightLabel) {
-        float scaledRadius = radius * stickSizeScale;
-        String id = "stick_" + label.toLowerCase();
-        RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
-        componentBounds.put(id, bounds);
-        // L3/R3 click is detected via minimal-movement tap in onTouchEvent — no separate bounds needed
-
-        // Outer circle (housing)
-        Paint outerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        outerPaint.setColor(Color.parseColor("#444444"));
-        canvas.drawCircle(cx, cy, scaledRadius, outerPaint);
-
-        // Outer ring
-        Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ringPaint.setStyle(Paint.Style.STROKE);
-        ringPaint.setStrokeWidth(3);
-        ringPaint.setColor(Color.WHITE);
-        canvas.drawCircle(cx, cy, scaledRadius, ringPaint);
-
-        // Inner circle (stick top) — offset toward where the user's thumb is
-        Paint innerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float innerCx = cx;
-        float innerCy = cy;
-        if (id.equals(activeStickId)) {
-            innerCx += stickOffsetX;
-            innerCy += stickOffsetY;
-        }
-
-        // Highlight if pressed (L3/R3 click)
-        if (id.equals(activeStickId) && (Math.abs(stickOffsetX) < activeStickRadius * 0.15f)
-                && (Math.abs(stickOffsetY) < activeStickRadius * 0.15f)) {
-            innerPaint.setColor(Color.parseColor("#FF9800")); // Orange highlight
-        } else {
-            innerPaint.setColor(Color.parseColor("#666666"));
-        }
-
-        canvas.drawCircle(innerCx, innerCy, scaledRadius * 0.6f, innerPaint);
-
-        // Inner highlight
-        Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        highlightPaint.setColor(Color.parseColor("#888888"));
-        canvas.drawCircle(innerCx, innerCy, scaledRadius * 0.3f, highlightPaint);
-
-        // If directional labels are provided, draw them instead of center label
-        if (upLabel != null) {
-            Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            dirPaint.setTextAlign(Paint.Align.CENTER);
-            dirPaint.setFakeBoldText(true);
-            dirPaint.setTextSize(scaledRadius * 0.22f);
-            dirPaint.setColor(activeStickDirections.contains(id + "_up") ? Color.parseColor("#FF9800") : Color.WHITE);
-            canvas.drawText(upLabel, cx, cy - scaledRadius * 0.65f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(id + "_down") ? Color.parseColor("#FF9800") : Color.WHITE);
-            canvas.drawText(downLabel, cx, cy + scaledRadius * 0.75f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(id + "_left") ? Color.parseColor("#FF9800") : Color.WHITE);
-            canvas.drawText(leftLabel, cx - scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(id + "_right") ? Color.parseColor("#FF9800") : Color.WHITE);
-            canvas.drawText(rightLabel, cx + scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
-        } else {
-            // Label (L or R)
-            Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            labelPaint.setColor(Color.WHITE);
-            labelPaint.setTextSize(radius * 0.5f);
-            labelPaint.setTextAlign(Paint.Align.CENTER);
-            labelPaint.setFakeBoldText(true);
-            canvas.drawText(label, cx, cy + radius * 0.3f, labelPaint);
-
-            // L3/R3 indicator
-            Paint l3Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            l3Paint.setColor(Color.parseColor("#AAAAAA"));
-            l3Paint.setTextSize(radius * 0.25f);
-            l3Paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("CLICK", cx, cy + radius * 0.6f, l3Paint);
-        }
+        String boundsId = "stick_" + label.toLowerCase();
+        drawAnalogStickForModule(canvas, cx, cy, radius, 1f, boundsId, label,
+                upLabel, downLabel, leftLabel, rightLabel);
     }
 
     private void drawButton(Canvas canvas, float cx, float cy, float radius, String label, int color) {
@@ -913,66 +855,46 @@ public class GamepadView extends View {
         String id = "button_" + label.toLowerCase().replace("(", "").replace(")", "");
         RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
         componentBounds.put(id, bounds);
-
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-        // Highlight if pressed
-        if (id.equals(pressedComponentId)) {
-            paint.setColor(darkenColor(color));
-        } else {
-            paint.setColor(color);
-        }
-
-        canvas.drawCircle(cx, cy, scaledRadius, paint);
-
-        // Draw white border
-        Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(3);
-        borderPaint.setColor(Color.WHITE);
-        canvas.drawCircle(cx, cy, scaledRadius, borderPaint);
-
-        // Draw label (use display label if provided)
+        FaceStyle fs = faceStyleForFaceLabel(label, color);
         String textLabel = displayLabel != null ? displayLabel : label;
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.WHITE);
-        // Scale text size based on label length to fit within button
-        float textScale = textLabel.length() > 6 ? 0.4f : textLabel.length() > 4 ? 0.5f : 0.6f;
-        textPaint.setTextSize(scaledRadius * textScale);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setFakeBoldText(true);
-        canvas.drawText(textLabel, cx, cy + scaledRadius * 0.3f, textPaint);
-    }
-
-    private int darkenColor(int color) {
-        float[] hsv = new float[3];
-        Color.colorToHSV(color, hsv);
-        hsv[2] *= 0.7f; // Darken value
-        return Color.HSVToColor(hsv);
+        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel);
     }
 
     private void drawShoulderButton(Canvas canvas, float cx, float cy, float width, float height, String label) {
         String id = label.toLowerCase();
-        RectF bounds = new RectF(cx - width/2, cy - height/2, cx + width/2, cy + height/2);
+        float density = getResources().getDisplayMetrics().density;
+        RectF bounds = new RectF(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f);
         componentBounds.put(id, bounds);
+        float cr = 10f * density;
+        boolean pressed = id.equals(pressedComponentId);
 
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        
-        // Highlight if pressed
-        if (id.equals(pressedComponentId)) {
-            paint.setColor(Color.parseColor("#FF9800")); // Orange highlight
-        } else {
-            paint.setColor(Color.parseColor("#666666"));
-        }
-        
-        canvas.drawRoundRect(new RectF(cx - width/2, cy - height/2, cx + width/2, cy + height/2), 10, 10, paint);
-        
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.WHITE);
-        textPaint.setTextSize(20);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setFakeBoldText(true);
-        canvas.drawText(label, cx, cy + 5, textPaint);
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3f * density, BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setColor(0x44000000);
+        RectF sh = new RectF(bounds);
+        sh.offset(0, 2f * density);
+        canvas.drawRoundRect(sh, cr, cr, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+
+        int top = pressed ? applyAlphaInt(themeAccentPrimary, 220) : Color.parseColor("#7A7880");
+        int bot = pressed ? darkenArgb(themeAccentPrimary, 0.75f) : Color.parseColor("#4E4D55");
+        Shader lg = new LinearGradient(cx, bounds.top, cx, bounds.bottom, top, bot, Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(lg);
+        canvas.drawRoundRect(bounds, cr, cr, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.2f * density));
+        retroRingPaint.setColor(pressed ? themeAccentPrimary : Color.parseColor("#B0B0B8"));
+        canvas.drawRoundRect(bounds, cr, cr, retroRingPaint);
+
+        retroTextPaint.setColor(Color.WHITE);
+        retroTextPaint.setTextSize(Math.min(width, height) * 0.42f);
+        retroTextPaint.setTextAlign(Paint.Align.CENTER);
+        retroTextPaint.setFakeBoldText(true);
+        retroTextPaint.setTypeface(retroLabelTypeface);
+        retroTextPaint.setShadowLayer(1.5f, 0f, 1f, 0x44000000);
+        canvas.drawText(label, cx, cy + height * 0.12f, retroTextPaint);
+        retroTextPaint.clearShadowLayer();
     }
 
     @Override
@@ -1817,29 +1739,19 @@ public class GamepadView extends View {
         String id = "button_" + label.toLowerCase().replace("(", "").replace(")", "");
         RectF bounds = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
         componentBounds.put(id, bounds);
-
-        // Disabled appearance: dimmed gray with reduced alpha
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setAlpha(100);
-        paint.setColor(Color.GRAY);
-        canvas.drawCircle(cx, cy, radius, paint);
-
-        // Dashed white border
-        Paint borderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setStrokeWidth(2);
-        borderPaint.setColor(Color.WHITE);
-        borderPaint.setAlpha(80);
-        canvas.drawCircle(cx, cy, radius, borderPaint);
-
-        // Dimmed label
-        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setColor(Color.WHITE);
-        textPaint.setTextSize(radius * 0.45f);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setAlpha(100);
-        textPaint.setFakeBoldText(true);
-        canvas.drawText(label, cx, cy + radius * 0.2f, textPaint);
+        FaceStyle muted = new FaceStyle(
+                applyAlphaInt(FACE_NEUTRAL.body, 110),
+                applyAlphaInt(FACE_NEUTRAL.rim, 110),
+                applyAlphaInt(FACE_NEUTRAL.label, 140));
+        drawRetroFaceButton(canvas, cx, cy, radius, muted, false, label);
+        float density = getResources().getDisplayMetrics().density;
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(2f * density);
+        retroRingPaint.setPathEffect(new DashPathEffect(new float[]{6f * density, 4f * density}, 0f));
+        retroRingPaint.setColor(0x88FFFFFF);
+        retroRingPaint.setShader(null);
+        canvas.drawCircle(cx, cy, radius * 1.02f, retroRingPaint);
+        retroRingPaint.setPathEffect(null);
     }
 
     public Map<String, GamepadConfigManager.ComponentPosition> getComponentPositions() {
