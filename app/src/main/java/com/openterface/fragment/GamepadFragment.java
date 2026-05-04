@@ -1,19 +1,27 @@
 package com.openterface.fragment;
 
 import android.app.AlertDialog;
+import android.content.ClipData;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -22,8 +30,11 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import android.content.pm.ActivityInfo;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
@@ -32,6 +43,11 @@ import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadLayout;
 import com.openterface.keymod.GamepadView;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
+import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
+import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
 import com.openterface.keymod.GamepadView.DpadStateListener;
 
@@ -41,23 +57,6 @@ import com.openterface.keymod.GamepadView.DpadStateListener;
 public class GamepadFragment extends Fragment {
 
     private static final String TAG = "GamepadFragment";
-
-    // Config preference keys
-    private static final String PREF_STICK_MODE = "gamepad_stick_mode";
-    private static final String PREF_STICK_UP = "gamepad_stick_up";
-    private static final String PREF_STICK_LEFT = "gamepad_stick_left";
-    private static final String PREF_STICK_DOWN = "gamepad_stick_down";
-    private static final String PREF_STICK_RIGHT = "gamepad_stick_right";
-    private static final String PREF_BUTTON_A_KEY = "gamepad_button_a_key";
-    private static final String PREF_BUTTON_B_KEY = "gamepad_button_b_key";
-    private static final String PREF_BUTTON_A_MOD = "gamepad_button_a_mod";
-    private static final String PREF_BUTTON_B_MOD = "gamepad_button_b_mod";
-    private static final String PREF_BUTTON_SIZE = "gamepad_button_size";
-    private static final String PREF_STICK_SIZE = "gamepad_stick_size";
-    private static final String PREF_BG_IMAGE = "gamepad_bg_image";
-    private static final String PREF_BG_SCALE = "gamepad_bg_scale";
-    private static final String PREF_BG_OFFSET_X = "gamepad_bg_offset_x";
-    private static final String PREF_BG_OFFSET_Y = "gamepad_bg_offset_y";
 
     // Stick modes
     private static final String MODE_ANALOG = "analog";
@@ -120,6 +119,44 @@ public class GamepadFragment extends Fragment {
     private boolean buttonBPressed = false;
     private boolean twoButtonMode = false;
 
+    private ToggleButton buttonModeToggleRef;
+    private final CompoundButton.OnCheckedChangeListener twoButtonModeListener =
+            (buttonView, isChecked) -> {
+                twoButtonMode = isChecked;
+                prefs.edit().putBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, isChecked).apply();
+                if (gamepadView != null) {
+                    gamepadView.setShowTwoButtons(isChecked);
+                }
+                persistActivePresetSnapshot();
+                Log.d(TAG, "Button mode: " + (twoButtonMode ? "2 buttons (A+B)" : "1 button (A)"));
+            };
+
+    private GamepadLayoutPresetRepository presetRepository;
+    private ActivityResultLauncher<String[]> importPresetLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        presetRepository = new GamepadLayoutPresetRepository(requireContext());
+        presetRepository.ensureMigratedFromLegacy();
+        importPresetLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                uri -> {
+                    if (uri == null) {
+                        return;
+                    }
+                    String err = presetRepository.importFromUri(uri, true);
+                    if (err == null) {
+                        reloadFromPrefsAndApplyView();
+                        Toast.makeText(requireContext(), R.string.gamepad_presets_import_ok, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(),
+                                getString(R.string.gamepad_presets_import_fail, err),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -140,14 +177,16 @@ public class GamepadFragment extends Fragment {
         loadBackground();
 
         // Button mode toggle
-        ToggleButton buttonModeToggle = view.findViewById(R.id.button_mode_toggle);
-        buttonModeToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            twoButtonMode = isChecked;
-            if (gamepadView != null) {
-                gamepadView.setShowTwoButtons(isChecked);
-            }
-            Log.d(TAG, "Button mode: " + (twoButtonMode ? "2 buttons (A+B)" : "1 button (A)"));
-        });
+        buttonModeToggleRef = view.findViewById(R.id.button_mode_toggle);
+        buttonModeToggleRef.setOnCheckedChangeListener(null);
+        buttonModeToggleRef.setChecked(twoButtonMode);
+        buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
+        if (gamepadView != null) {
+            gamepadView.setShowTwoButtons(twoButtonMode);
+        }
+
+        Button presetsBtn = view.findViewById(R.id.gamepad_presets_btn);
+        presetsBtn.setOnClickListener(v -> showGamepadPresetsMenu());
 
         // Edit mode toggle (controls whether long-press triggers config menu)
         ToggleButton editModeToggle = view.findViewById(R.id.edit_mode_toggle);
@@ -276,8 +315,131 @@ public class GamepadFragment extends Fragment {
         // Save positions when exiting edit mode
         gamepadView.setEditModeExitListener(positions -> {
             gamepadView.savePositions();
+            persistActivePresetSnapshot();
             Log.d(TAG, "Saved component positions");
         });
+    }
+
+    private void persistActivePresetSnapshot() {
+        if (presetRepository != null) {
+            presetRepository.persistActiveSnapshot();
+        }
+    }
+
+    private void reloadFromPrefsAndApplyView() {
+        loadSavedSensitivity();
+        loadStickConfig();
+        loadButtonConfig();
+        if (gamepadView != null) {
+            gamepadView.setLayout(GamepadLayout.SIMPLE);
+            gamepadView.setButtonAKeyCode(buttonAKey);
+            gamepadView.setButtonSizeScale(buttonSizeScale);
+            gamepadView.setStickSizeScale(stickSizeScale);
+            gamepadView.setShowTwoButtons(twoButtonMode);
+            updateGamepadLabels();
+        }
+        if (buttonModeToggleRef != null) {
+            buttonModeToggleRef.setOnCheckedChangeListener(null);
+            buttonModeToggleRef.setChecked(twoButtonMode);
+            buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
+        }
+        applyBackgroundFromPrefsOnly();
+    }
+
+    private void applyBackgroundFromPrefsOnly() {
+        if (gamepadView == null) {
+            return;
+        }
+        currentBgPath = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
+        if (currentBgPath != null) {
+            java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
+            if (file.exists()) {
+                android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath());
+                if (bm != null) {
+                    gamepadView.setBackgroundBitmap(bm);
+                    float scale = prefs.getFloat(GamepadPreferenceKeys.BG_SCALE, 1.0f);
+                    float offsetX = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_X, 0f);
+                    float offsetY = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_Y, 0f);
+                    gamepadView.setBackgroundViewport(scale, offsetX, offsetY);
+                    return;
+                }
+            }
+        }
+        gamepadView.setBackgroundBitmap(null);
+    }
+
+    private void showGamepadPresetsMenu() {
+        List<GamepadLayoutPresetRepository.PresetRef> refs = presetRepository.listPresets();
+        int n = refs.size();
+        String[] items = new String[n + 2];
+        for (int i = 0; i < n; i++) {
+            items[i] = refs.get(i).displayName != null ? refs.get(i).displayName : refs.get(i).id;
+        }
+        items[n] = getString(R.string.gamepad_presets_import);
+        items[n + 1] = getString(R.string.gamepad_presets_export_share);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.gamepad_presets_title)
+                .setItems(items, (d, which) -> {
+                    if (which < n) {
+                        String id = refs.get(which).id;
+                        String err = presetRepository.activateAndApply(id);
+                        if (err == null) {
+                            reloadFromPrefsAndApplyView();
+                            Toast.makeText(requireContext(), R.string.gamepad_presets_activated, Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
+                        }
+                    } else if (which == n) {
+                        importPresetLauncher.launch(new String[]{"application/json"});
+                    } else {
+                        shareCurrentPresetJson();
+                    }
+                })
+                .show();
+    }
+
+    private void shareCurrentPresetJson() {
+        String active = presetRepository.getActivePresetId();
+        String displayName = "layout";
+        for (GamepadLayoutPresetRepository.PresetRef r : presetRepository.listPresets()) {
+            if (active != null && active.equals(r.id)) {
+                displayName = r.displayName != null ? r.displayName : r.id;
+                break;
+            }
+        }
+        try {
+            GamepadLayoutPresetDocument doc = GamepadLayoutPresetSnapshotBuilder.buildFrom(
+                    requireContext(), active != null ? active : GamepadLayoutPresetConstants.DEFAULT_PRESET_ID,
+                    displayName);
+            String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+            File shareDir = new File(requireContext().getCacheDir(), "share");
+            if (!shareDir.isDirectory() && !shareDir.mkdirs()) {
+                Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
+            File outFile = new File(shareDir, "keymod_gamepad_" + safe + "_" + System.currentTimeMillis() + ".json");
+            try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                fos.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+            Uri uri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getPackageName() + ".fileprovider", outFile);
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("application/json");
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            share.putExtra(Intent.EXTRA_SUBJECT, displayName);
+            share.setClipData(ClipData.newUri(requireContext().getContentResolver(),
+                    getString(R.string.app_name), uri));
+            startActivity(Intent.createChooser(share, getString(R.string.gamepad_presets_share_chooser)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "share gamepad preset", e);
+            Toast.makeText(requireContext(), getString(R.string.gamepad_presets_export_failed_detail, e.getMessage()),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     /**
@@ -886,42 +1048,45 @@ public class GamepadFragment extends Fragment {
     // ── Persistence ─────────────────────────────────────────────────
 
     private void loadStickConfig() {
-        stickMode = prefs.getString(PREF_STICK_MODE, MODE_KEY);
-        stickUpKey = prefs.getInt(PREF_STICK_UP, DEFAULT_STICK_UP);
-        stickLeftKey = prefs.getInt(PREF_STICK_LEFT, DEFAULT_STICK_LEFT);
-        stickDownKey = prefs.getInt(PREF_STICK_DOWN, DEFAULT_STICK_DOWN);
-        stickRightKey = prefs.getInt(PREF_STICK_RIGHT, DEFAULT_STICK_RIGHT);
-        stickSizeScale = prefs.getFloat(PREF_STICK_SIZE, 1.0f);
+        stickMode = prefs.getString(GamepadPreferenceKeys.STICK_MODE, MODE_KEY);
+        stickUpKey = prefs.getInt(GamepadPreferenceKeys.STICK_UP, DEFAULT_STICK_UP);
+        stickLeftKey = prefs.getInt(GamepadPreferenceKeys.STICK_LEFT, DEFAULT_STICK_LEFT);
+        stickDownKey = prefs.getInt(GamepadPreferenceKeys.STICK_DOWN, DEFAULT_STICK_DOWN);
+        stickRightKey = prefs.getInt(GamepadPreferenceKeys.STICK_RIGHT, DEFAULT_STICK_RIGHT);
+        stickSizeScale = prefs.getFloat(GamepadPreferenceKeys.STICK_SIZE, 1.0f);
     }
 
     private void saveStickConfig() {
         prefs.edit()
-            .putString(PREF_STICK_MODE, stickMode)
-            .putInt(PREF_STICK_UP, stickUpKey)
-            .putInt(PREF_STICK_LEFT, stickLeftKey)
-            .putInt(PREF_STICK_DOWN, stickDownKey)
-            .putInt(PREF_STICK_RIGHT, stickRightKey)
-            .putFloat(PREF_STICK_SIZE, stickSizeScale)
+            .putString(GamepadPreferenceKeys.STICK_MODE, stickMode)
+            .putInt(GamepadPreferenceKeys.STICK_UP, stickUpKey)
+            .putInt(GamepadPreferenceKeys.STICK_LEFT, stickLeftKey)
+            .putInt(GamepadPreferenceKeys.STICK_DOWN, stickDownKey)
+            .putInt(GamepadPreferenceKeys.STICK_RIGHT, stickRightKey)
+            .putFloat(GamepadPreferenceKeys.STICK_SIZE, stickSizeScale)
             .apply();
+        persistActivePresetSnapshot();
     }
 
     private void loadButtonConfig() {
-        buttonAKey = prefs.getInt(PREF_BUTTON_A_KEY, DEFAULT_BUTTON_A);
-        buttonBKey = prefs.getInt(PREF_BUTTON_B_KEY, DEFAULT_BUTTON_B);
-        buttonAModifiers = prefs.getInt(PREF_BUTTON_A_MOD, 0);
-        buttonBModifiers = prefs.getInt(PREF_BUTTON_B_MOD, 0);
-        buttonSizeScale = prefs.getFloat(PREF_BUTTON_SIZE, 1.0f);
+        buttonAKey = prefs.getInt(GamepadPreferenceKeys.BUTTON_A_KEY, DEFAULT_BUTTON_A);
+        buttonBKey = prefs.getInt(GamepadPreferenceKeys.BUTTON_B_KEY, DEFAULT_BUTTON_B);
+        buttonAModifiers = prefs.getInt(GamepadPreferenceKeys.BUTTON_A_MOD, 0);
+        buttonBModifiers = prefs.getInt(GamepadPreferenceKeys.BUTTON_B_MOD, 0);
+        buttonSizeScale = prefs.getFloat(GamepadPreferenceKeys.BUTTON_SIZE, 1.0f);
+        twoButtonMode = prefs.getBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, false);
     }
 
     private void saveButtonConfig() {
         prefs.edit()
-            .putInt(PREF_BUTTON_A_KEY, buttonAKey)
-            .putInt(PREF_BUTTON_B_KEY, buttonBKey)
-            .putInt(PREF_BUTTON_A_MOD, buttonAModifiers)
-            .putInt(PREF_BUTTON_B_MOD, buttonBModifiers)
-            .putFloat(PREF_BUTTON_SIZE, buttonSizeScale)
+            .putInt(GamepadPreferenceKeys.BUTTON_A_KEY, buttonAKey)
+            .putInt(GamepadPreferenceKeys.BUTTON_B_KEY, buttonBKey)
+            .putInt(GamepadPreferenceKeys.BUTTON_A_MOD, buttonAModifiers)
+            .putInt(GamepadPreferenceKeys.BUTTON_B_MOD, buttonBModifiers)
+            .putFloat(GamepadPreferenceKeys.BUTTON_SIZE, buttonSizeScale)
             .apply();
         updateGamepadLabels();
+        persistActivePresetSnapshot();
     }
 
     // ── Label Sync ──────────────────────────────────────────────────
@@ -1085,7 +1250,7 @@ public class GamepadFragment extends Fragment {
 
     public void setMouseSensitivity(float sensitivity) {
         this.mouseSensitivity = Math.max(0.5f, Math.min(2.0f, sensitivity));
-        prefs.edit().putFloat("mouse_sensitivity", this.mouseSensitivity).apply();
+        prefs.edit().putFloat(GamepadPreferenceKeys.MOUSE_SENSITIVITY, this.mouseSensitivity).apply();
     }
 
     public float getMouseSensitivity() {
@@ -1093,7 +1258,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void loadSavedSensitivity() {
-        mouseSensitivity = prefs.getFloat("mouse_sensitivity", 1.0f);
+        mouseSensitivity = prefs.getFloat(GamepadPreferenceKeys.MOUSE_SENSITIVITY, 1.0f);
     }
 
     @Override
@@ -1136,7 +1301,7 @@ public class GamepadFragment extends Fragment {
     private String currentBgPath = null;
 
     private void loadBackground() {
-        currentBgPath = prefs.getString(PREF_BG_IMAGE, null);
+        currentBgPath = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
         if (currentBgPath != null) {
             java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
             if (file.exists()) {
@@ -1144,9 +1309,9 @@ public class GamepadFragment extends Fragment {
                 if (bm != null && gamepadView != null) {
                     gamepadView.setBackgroundBitmap(bm);
                     // Restore viewport
-                    float scale = prefs.getFloat(PREF_BG_SCALE, 1.0f);
-                    float offsetX = prefs.getFloat(PREF_BG_OFFSET_X, 0f);
-                    float offsetY = prefs.getFloat(PREF_BG_OFFSET_Y, 0f);
+                    float scale = prefs.getFloat(GamepadPreferenceKeys.BG_SCALE, 1.0f);
+                    float offsetX = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_X, 0f);
+                    float offsetY = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_Y, 0f);
                     gamepadView.setBackgroundViewport(scale, offsetX, offsetY);
                 }
             }
@@ -1163,24 +1328,28 @@ public class GamepadFragment extends Fragment {
                         bm.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
                         out.flush();
                         out.close();
-                        prefs.edit().putString(PREF_BG_IMAGE, "gamepad_bg.png").apply();
+                        prefs.edit().putString(GamepadPreferenceKeys.BG_IMAGE, "gamepad_bg.png").apply();
                         currentBgPath = "gamepad_bg.png";
+                        persistActivePresetSnapshot();
                     } catch (java.io.IOException e) {
                         Log.e(TAG, "Failed to save background image", e);
                     }
                 } else {
-                    prefs.edit().remove(PREF_BG_IMAGE).apply();
-                    prefs.edit().remove(PREF_BG_SCALE).apply();
-                    prefs.edit().remove(PREF_BG_OFFSET_X).apply();
-                    prefs.edit().remove(PREF_BG_OFFSET_Y).apply();
+                    prefs.edit()
+                            .remove(GamepadPreferenceKeys.BG_IMAGE)
+                            .remove(GamepadPreferenceKeys.BG_SCALE)
+                            .remove(GamepadPreferenceKeys.BG_OFFSET_X)
+                            .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
+                            .apply();
                     currentBgPath = null;
+                    persistActivePresetSnapshot();
                 }
             });
             gamepadView.setBackgroundViewportCallback(() -> {
                 prefs.edit()
-                    .putFloat(PREF_BG_SCALE, gamepadView.getBackgroundScale())
-                    .putFloat(PREF_BG_OFFSET_X, gamepadView.getBackgroundOffsetX())
-                    .putFloat(PREF_BG_OFFSET_Y, gamepadView.getBackgroundOffsetY())
+                    .putFloat(GamepadPreferenceKeys.BG_SCALE, gamepadView.getBackgroundScale())
+                    .putFloat(GamepadPreferenceKeys.BG_OFFSET_X, gamepadView.getBackgroundOffsetX())
+                    .putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, gamepadView.getBackgroundOffsetY())
                     .apply();
             });
         }
@@ -1208,7 +1377,7 @@ public class GamepadFragment extends Fragment {
                 if (currentBgPath != null) {
                     java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
                     if (file.exists()) file.delete();
-                    prefs.edit().remove(PREF_BG_IMAGE).apply();
+                    prefs.edit().remove(GamepadPreferenceKeys.BG_IMAGE).apply();
                     currentBgPath = null;
                 }
             }

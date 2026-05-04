@@ -50,6 +50,17 @@
             android:minWidth="60dp"
             android:minHeight="28dp"
             android:background="@drawable/toggle_background" />
+
+        <Button
+            android:id="@+id/gamepad_presets_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:minHeight="28dp"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="2dp"
+            android:text="@string/gamepad_presets_button"
+            android:textSize="10sp" />
     </LinearLayout>
 
     <!-- Done button for edit mode (hidden by default) -->

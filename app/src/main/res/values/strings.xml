@@ -680,6 +680,16 @@ by TechxArtisan</string>
     <string name="top_mode_label_gamepad">Gamepad</string>
     <string name="gamepad_toast_edit_layout_hint">Drag components to reposition, tap Done when finished.</string>
     <string name="gamepad_toast_image_load_failed">Failed to load image</string>
+    <string name="gamepad_presets_button">Presets</string>
+    <string name="gamepad_presets_title">Gamepad presets</string>
+    <string name="gamepad_presets_import">Import from file…</string>
+    <string name="gamepad_presets_export_share">Export current (share)…</string>
+    <string name="gamepad_presets_activated">Preset applied</string>
+    <string name="gamepad_presets_import_ok">Preset imported</string>
+    <string name="gamepad_presets_import_fail">Could not import: %1$s</string>
+    <string name="gamepad_presets_share_chooser">Share gamepad preset</string>
+    <string name="gamepad_presets_export_failed">Export failed</string>
+    <string name="gamepad_presets_export_failed_detail">Export failed: %1$s</string>
     <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
     <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>
