@@ -376,7 +376,7 @@ public class GamepadView extends View {
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
                                      boolean pressed, String text) {
         float shadowDy = r * 0.07f;
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(3f, r * 0.14f), BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(3f, r * 0.14f), BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x66000000);
         canvas.drawCircle(cx, cy + shadowDy * 0.5f, r * 0.96f, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
@@ -520,7 +520,7 @@ public class GamepadView extends View {
         RectF bounds = new RectF(cx - ww / 2f, cy - hh / 2f, cx + ww / 2f, cy + hh / 2f);
         componentBounds.put(id, bounds);
 
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x33000000);
         RectF shadowBounds = new RectF(bounds);
         shadowBounds.offset(0, 2f * density);
@@ -868,7 +868,7 @@ public class GamepadView extends View {
         float cr = 10f * density;
         boolean pressed = id.equals(pressedComponentId);
 
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3f * density, BlurMaskFilter.BLUR_NORMAL));
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3f * density, BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x44000000);
         RectF sh = new RectF(bounds);
         sh.offset(0, 2f * density);

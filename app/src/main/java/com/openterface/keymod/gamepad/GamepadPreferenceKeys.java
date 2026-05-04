@@ -22,6 +22,10 @@ public final class GamepadPreferenceKeys {
     public static final String BG_SCALE = "gamepad_bg_scale";
     public static final String BG_OFFSET_X = "gamepad_bg_offset_x";
     public static final String BG_OFFSET_Y = "gamepad_bg_offset_y";
+    /**
+     * Legacy mirror of {@code layout.showTwoButtons}; still written when applying a preset for
+     * compatibility. Active preset + layout document are authoritative; no dedicated UI toggle.
+     */
     public static final String TWO_BUTTON_MODE = "gamepad_two_button_mode";
 
     /** Full {@link GamepadLayoutPresetDocument} JSON (schema v2); authoritative for modules. */

@@ -6,6 +6,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -32,7 +33,8 @@ public class GamepadLayoutPresetRepository {
     private static final String KEY_INDEX = "preset_index_json";
     private static final String KEY_ACTIVE = "active_preset_id";
     private static final String KEY_STORE_VERSION = "store_version";
-    private static final int STORE_VERSION = 1;
+    /** v1: initial preset store; v2: built-in two-button sibling preset + optional active switch from legacy toggle. */
+    private static final int STORE_VERSION = 2;
 
     private final Context context;
     private final SharedPreferences storePrefs;
@@ -52,7 +54,8 @@ public class GamepadLayoutPresetRepository {
     }
 
     public void ensureMigratedFromLegacy() {
-        if (storePrefs.getInt(KEY_STORE_VERSION, 0) >= STORE_VERSION) {
+        int version = storePrefs.getInt(KEY_STORE_VERSION, 0);
+        if (version >= STORE_VERSION) {
             return;
         }
         List<PresetRef> index = readIndex();
@@ -65,15 +68,84 @@ public class GamepadLayoutPresetRepository {
                 saveIndex(index);
                 storePrefs.edit()
                         .putString(KEY_ACTIVE, GamepadLayoutPresetConstants.DEFAULT_PRESET_ID)
-                        .putInt(KEY_STORE_VERSION, STORE_VERSION)
                         .apply();
             } catch (Exception e) {
                 Log.e(TAG, "Migration failed", e);
-                storePrefs.edit().putInt(KEY_STORE_VERSION, STORE_VERSION).apply();
             }
-        } else {
-            storePrefs.edit().putInt(KEY_STORE_VERSION, STORE_VERSION).apply();
         }
+        try {
+            index = readIndex();
+            ensureBuiltInTwoButtonPreset(index);
+            if (PreferenceManager.getDefaultSharedPreferences(context)
+                    .getBoolean(GamepadPreferenceKeys.TWO_BUTTON_MODE, false)) {
+                GamepadLayoutPresetDocument twoDoc = loadDocument(GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID);
+                if (twoDoc != null) {
+                    setActivePresetId(GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID);
+                }
+            }
+            applyActivePresetToDefaultPrefs();
+        } catch (Exception e) {
+            Log.e(TAG, "Built-in two-button preset migration", e);
+        }
+        storePrefs.edit().putInt(KEY_STORE_VERSION, STORE_VERSION).apply();
+    }
+
+    private void applyActivePresetToDefaultPrefs() {
+        String active = getActivePresetId();
+        if (active == null) {
+            return;
+        }
+        GamepadLayoutPresetDocument d = loadDocument(active);
+        if (d == null) {
+            return;
+        }
+        try {
+            GamepadLayoutPresetApplier.apply(context, d);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "apply active after migration", e);
+        }
+    }
+
+    /**
+     * Ensures {@link GamepadLayoutPresetConstants#BUILT_IN_TWO_BUTTON_PRESET_ID} exists on disk and in the index,
+     * cloned from the default preset (or built from legacy prefs if default file is missing).
+     */
+    private void ensureBuiltInTwoButtonPreset(List<PresetRef> index) throws IOException {
+        String twoId = GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID;
+        if (presetFile(twoId).isFile() && indexContainsId(index, twoId)) {
+            return;
+        }
+        GamepadLayoutPresetDocument base = loadDocument(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
+        if (base == null) {
+            base = GamepadLayoutDocumentStore.buildDefaultFromLegacyPrefs(context);
+            GamepadLayoutPresetDocument.validateOrThrow(base);
+        } else {
+            base = gson.fromJson(gson.toJson(base), GamepadLayoutPresetDocument.class);
+        }
+        base.layout.showTwoButtons = true;
+        GamepadLayoutDocEditor.ensureButtonB(base);
+        GamepadLayoutPresetDocument.validateOrThrow(base);
+        writeFile(twoId, base);
+        if (!indexContainsId(index, twoId)) {
+            int insertAt = 0;
+            for (int i = 0; i < index.size(); i++) {
+                if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(index.get(i).id)) {
+                    insertAt = i + 1;
+                    break;
+                }
+            }
+            index.add(insertAt, new PresetRef(twoId, "Two buttons"));
+            saveIndex(index);
+        }
+    }
+
+    private static boolean indexContainsId(List<PresetRef> index, String id) {
+        for (PresetRef r : index) {
+            if (r != null && id.equals(r.id)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Nullable

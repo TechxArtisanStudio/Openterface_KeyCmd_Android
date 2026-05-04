@@ -15,5 +15,12 @@ public final class GamepadLayoutPresetConstants {
 
     public static final String DEFAULT_PRESET_ID = "preset_default";
 
+    /**
+     * Built-in sibling of {@link #DEFAULT_PRESET_ID}: same layout intent but {@code layout.showTwoButtons}
+     * true and a {@code button_b} module. Users switch 1-button vs 2-button by changing active preset
+     * (short tap / preset list), not a separate toggle.
+     */
+    public static final String BUILT_IN_TWO_BUTTON_PRESET_ID = "preset_two_buttons";
+
     public static final int MAX_BUTTON_MODULES = 20;
 }

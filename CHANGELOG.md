@@ -8,6 +8,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ### Highlights
 
+- **Gamepad**: the separate **1 Button / 2 Buttons** toggle is removed; **one-button** and **two-button** layouts are **built-in presets** (`preset_default` and `preset_two_buttons`). Use **short tap** on **Preset** to cycle the active layout, **long-press** for the full preset list (import, add module, export). Upgrades from the legacy two-button preference activate the two-button preset automatically once.
 - **Shortcut Hub** rework: clearer navigation between Row 1 app shortcuts and Rows 2–3 fixed-strip behavior, a visual strip catalog, and stronger profile and preset workflows.
 - **Rows 2–3 strip profiles**: built-in **Symbols** and **Math** themes, canonical slot IDs for imports and tooling, and a dedicated full-screen editor for each strip key.
 - **Keyboard strip page 3**: six quick slots for Row 1 profiles and six for strip profiles (seventh column on row 2 stays empty; row 3 keeps **FN**).
@@ -49,6 +50,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ### Upgrade notes
 
+- **Gamepad**: after update, use **Preset** (tap to cycle, long-press for the list). The old **1 Button / 2 Buttons** control is gone; your previous two-button preference selects the **Two buttons** built-in preset on first launch after upgrade.
 - If you use **shared strip maps** or automation, prefer **canonical slot ids** (`b-p{page}r{row}c{col}` / `f-…`) over any legacy key forms.
 - After upgrading, open **Shortcut Hub** once if strip or profile labels look stale; the app refreshes prefs-driven UI on relevant changes.
 

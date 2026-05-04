@@ -139,52 +139,12 @@ public class GamepadFragment extends Fragment {
     private boolean keyRDownPressed;
     private boolean keyRRightPressed;
 
-    private ToggleButton buttonModeToggleRef;
-    private CompoundButton.OnCheckedChangeListener twoButtonModeListener;
-
     private GamepadLayoutPresetRepository presetRepository;
     private ActivityResultLauncher<String[]> importPresetLauncher;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        twoButtonModeListener = (buttonView, isChecked) -> {
-            if (layoutDoc == null || layoutDoc.layout == null) {
-                return;
-            }
-            twoButtonMode = isChecked;
-            layoutDoc.layout.showTwoButtons = isChecked;
-            if (isChecked) {
-                GamepadLayoutDocEditor.ensureButtonB(layoutDoc);
-            } else {
-                GamepadLayoutDocEditor.removeModule(layoutDoc, "button_b");
-            }
-            try {
-                GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Two-button toggle: invalid layout", e);
-                Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
-                syncFieldsFromLayoutDoc();
-                if (buttonModeToggleRef != null) {
-                    buttonModeToggleRef.setOnCheckedChangeListener(null);
-                    buttonModeToggleRef.setChecked(twoButtonMode);
-                    buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
-                }
-                if (gamepadView != null) {
-                    gamepadView.setShowTwoButtons(twoButtonMode);
-                    syncGamepadViewFromDoc();
-                }
-                return;
-            }
-            syncFieldsFromLayoutDoc();
-            if (gamepadView != null) {
-                gamepadView.setShowTwoButtons(twoButtonMode);
-                syncGamepadViewFromDoc();
-            }
-            persistActivePresetSnapshot();
-            Log.d(TAG, "Button mode: " + (twoButtonMode ? "2 buttons (A+B)" : "1 button (A)"));
-        };
         presetRepository = new GamepadLayoutPresetRepository(requireContext());
         presetRepository.ensureMigratedFromLegacy();
         importPresetLauncher = registerForActivityResult(
@@ -225,17 +185,16 @@ public class GamepadFragment extends Fragment {
 
         loadBackground();
 
-        // Button mode toggle
-        buttonModeToggleRef = view.findViewById(R.id.button_mode_toggle);
-        buttonModeToggleRef.setOnCheckedChangeListener(null);
-        buttonModeToggleRef.setChecked(twoButtonMode);
-        buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
         if (gamepadView != null) {
             gamepadView.setShowTwoButtons(twoButtonMode);
         }
 
         Button presetsBtn = view.findViewById(R.id.gamepad_presets_btn);
-        presetsBtn.setOnClickListener(v -> showGamepadPresetsMenu());
+        presetsBtn.setOnClickListener(v -> cycleToNextPreset());
+        presetsBtn.setOnLongClickListener(v -> {
+            showGamepadPresetsMenu();
+            return true;
+        });
 
         // Edit mode toggle (controls whether long-press triggers config menu)
         ToggleButton editModeToggle = view.findViewById(R.id.edit_mode_toggle);
@@ -526,12 +485,36 @@ public class GamepadFragment extends Fragment {
             gamepadView.setLayout(GamepadLayout.SIMPLE);
             syncGamepadViewFromDoc();
         }
-        if (buttonModeToggleRef != null) {
-            buttonModeToggleRef.setOnCheckedChangeListener(null);
-            buttonModeToggleRef.setChecked(twoButtonMode);
-            buttonModeToggleRef.setOnCheckedChangeListener(twoButtonModeListener);
-        }
         applyBackgroundFromPrefsOnly();
+    }
+
+    /** Short tap on preset control: save current layout to active preset file, then activate the next preset in index order. */
+    private void cycleToNextPreset() {
+        List<GamepadLayoutPresetRepository.PresetRef> refs = presetRepository.listPresets();
+        if (refs.isEmpty()) {
+            return;
+        }
+        String active = presetRepository.getActivePresetId();
+        int idx = 0;
+        for (int i = 0; i < refs.size(); i++) {
+            if (refs.get(i) != null && refs.get(i).id != null && refs.get(i).id.equals(active)) {
+                idx = i;
+                break;
+            }
+        }
+        int next = (idx + 1) % refs.size();
+        String nextId = refs.get(next).id;
+        presetRepository.persistActiveSnapshot();
+        String err = presetRepository.activateAndApply(nextId);
+        if (err != null) {
+            Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
+            return;
+        }
+        reloadFromPrefsAndApplyView();
+        String label = refs.get(next).displayName != null ? refs.get(next).displayName : nextId;
+        Toast.makeText(requireContext(),
+                getString(R.string.gamepad_preset_cycled_toast, label),
+                Toast.LENGTH_SHORT).show();
     }
 
     private void applyBackgroundFromPrefsOnly() {
@@ -589,6 +572,7 @@ public class GamepadFragment extends Fragment {
                 .setItems(items, (d, which) -> {
                     if (which < n) {
                         String id = refs.get(which).id;
+                        presetRepository.persistActiveSnapshot();
                         String err = presetRepository.activateAndApply(id);
                         if (err == null) {
                             reloadFromPrefsAndApplyView();
