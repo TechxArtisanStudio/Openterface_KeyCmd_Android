@@ -289,7 +289,8 @@ public class Rows23StripProfileManager {
 
     /**
      * Replaces persisted "Symbols ★" / "Math ∑" when page 2 row 2 no longer matches factory
-     * (base "(" / ")"; Fn "`" / "~").
+     * (base Shift+9/0 with non-ASCII display glyphs; Fn "`" / "~"), or when an older copy still
+     * stores ASCII "(" in the base label for those slots.
      */
     private boolean upgradeBuiltInStripProfilesIfPage2Row2LayoutStale() {
         boolean changed = false;
@@ -313,14 +314,32 @@ public class Rows23StripProfileManager {
             Shortcut b1 = resolveSlotShortcut(cur, 2, 2, 1, false);
             Shortcut fnGrave = resolveSlotShortcut(cur, 2, 2, 0, true);
             Shortcut fnTilde = resolveSlotShortcut(cur, 2, 2, 1, true);
-            if (isPage2ParenBaseHid(b0, 0) && isPage2ParenBaseHid(b1, 1)
-                    && isPage2GraveOrTildeHid(fnGrave, 0) && isPage2GraveOrTildeHid(fnTilde, 1)) {
+            boolean hidOk = isPage2ParenBaseHid(b0, 0) && isPage2ParenBaseHid(b1, 1)
+                    && isPage2GraveOrTildeHid(fnGrave, 0) && isPage2GraveOrTildeHid(fnTilde, 1);
+            if (hidOk && !needsBuiltInParenDisplayGlyphRefresh(profileId, b0)) {
                 return false;
             }
             profiles.set(i, fresh);
             return true;
         }
         return false;
+    }
+
+    /**
+     * When Symbols/Math switched to non-ASCII display glyphs for page 2 row 2 cols 1–2 (same HID as
+     * "(" / ")"), persisted copies that still store ASCII "(" in {@link Shortcut#label} must be
+     * replaced even though {@link #isPage2ParenBaseHid} already passes.
+     */
+    private static boolean needsBuiltInParenDisplayGlyphRefresh(
+            @NonNull String profileId, @Nullable Shortcut b0) {
+        if (b0 == null || b0.label == null) {
+            return false;
+        }
+        if (!Rows23StripProfileConstants.SYMBOLS_PROFILE_ID.equals(profileId)
+                && !Rows23StripProfileConstants.MATH_PROFILE_ID.equals(profileId)) {
+            return false;
+        }
+        return "(".equals(b0.label.trim());
     }
 
     @Nullable

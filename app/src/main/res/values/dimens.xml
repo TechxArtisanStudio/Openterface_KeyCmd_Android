@@ -54,6 +54,8 @@
     <dimen name="card_corner_radius">12dp</dimen>
     <dimen name="card_elevation">3dp</dimen>
 
-    <!-- Shortcut Hub profile slots (fixed strip page 2): thick bottom accent inside key (~15–20% row) -->
+    <!-- Shortcut Hub Row 1 profile slots (fixed strip page 3 row 2): bottom accent bar height -->
     <dimen name="profile_hub_slot_bottom_accent_height">3dp</dimen>
+    <!-- Rows 2–3 strip profile slots (page 3 row 3): top-right dog-ear isosceles leg length -->
+    <dimen name="strip_profile_hub_dog_ear_leg">12dp</dimen>
 </resources>

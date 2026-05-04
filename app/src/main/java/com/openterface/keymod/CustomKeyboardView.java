@@ -8,9 +8,15 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
 import android.graphics.Outline;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -110,8 +116,15 @@ public class CustomKeyboardView extends LinearLayout {
     /** Fixed top rows only (page 0–2 strip): same size as Combo Text mode; bold preserved in Text mode to limit wrap. */
     private static final float TOP_FIXED_ROWS_TEXT_SP = 12f;
     private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 12f;
-    /** Emoji / single-glyph icons on fixed rows 2–3: keep below cap height (was 21sp, dominated the key). */
-    private static final float TOP_FIXED_ROWS_CUSTOM_GLYPH_SP = 13f;
+    /**
+     * Emoji / single-glyph icons on fixed rows 2–3: autosize so single-char dingbats / math glyphs
+     * (e.g. ∑ ∂ ❄ ✓ ⊿) grow toward the cell's height, while wider compounds shrink to the floor.
+     * Range is set to roughly match {@link #TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP} (favorites strip)
+     * at the high end so glyph-only profiles look comparable to the Default profile's drawable icons.
+     */
+    private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_MIN_SP = 14;
+    private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_MAX_SP = 22;
+    private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_STEP_SP = 1;
     /** Profile hub slots: autosize within [min,max] sp so two-line names fit above the bottom strip. */
     private static final int TOP_PROFILE_HUB_SLOT_TEXT_MIN_SP = 9;
     private static final int TOP_PROFILE_HUB_SLOT_TEXT_MAX_SP = 11;
@@ -3570,6 +3583,8 @@ public class CustomKeyboardView extends LinearLayout {
         key.topStripFavoriteSlotIndex = topStripFavoriteSlotIndex;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
+        } else {
+            key.customIconGlyph = "";
         }
         return key;
     }
@@ -3852,6 +3867,8 @@ public class CustomKeyboardView extends LinearLayout {
         key.shortcutModifiers = normalizedModifiers;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
+        } else {
+            key.customIconGlyph = "";
         }
         // Page 2: overrides may replace a slot whose physical factory scan differed; keep factory scan
         // aligned with the active shortcut so {@link #resolvedStripSlotFactoryScanCode} and overlay logic match.
@@ -3933,11 +3950,41 @@ public class CustomKeyboardView extends LinearLayout {
         return ctx.getResources().getIdentifier(raw, "drawable", ctx.getPackageName());
     }
 
+    /**
+     * True when {@code raw} should be rendered through the {@link Key#customIconGlyph} centered-glyph
+     * path instead of as a drawable resource name. Excludes pure printable-ASCII punctuation so plain
+     * caps such as "(", ")", "*", "?" stay on the standard chord-text path (with strip cap typography),
+     * even when a profile (e.g. Symbols ★, Math ∑) populates {@code shortcut.icon} with that punctuation.
+     */
     private boolean isEmojiIcon(String raw) {
-        if (raw == null || raw.trim().isEmpty()) {
+        if (raw == null) {
             return false;
         }
-        return !raw.matches("^[A-Za-z0-9_]+$");
+        String t = raw.trim();
+        if (t.isEmpty()) {
+            return false;
+        }
+        if (t.matches("^[A-Za-z0-9_]+$")) {
+            return false;
+        }
+        boolean allPrintableAscii = true;
+        for (int i = 0; i < t.length(); ) {
+            int cp = t.codePointAt(i);
+            if (cp < 0x21 || cp > 0x7E) {
+                allPrintableAscii = false;
+                break;
+            }
+            i += Character.charCount(cp);
+        }
+        if (allPrintableAscii) {
+            // Grave / tilde: still use centered custom-glyph autosize (Fn layer on page-2 row-2)
+            // so they are not drawn as small chord text beside a redundant Fn corner hint.
+            if ("\u0060".equals(t) || "~".equals(t)) {
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
 
     private Key buildTopPanelModifierKey(int code) {
@@ -3992,6 +4039,16 @@ public class CustomKeyboardView extends LinearLayout {
     private String compactShortcutSymbol(ShortcutProfileManager.Shortcut shortcut) {
         if (shortcut == null) {
             return "";
+        }
+        String lbl = shortcut.label != null ? shortcut.label.trim() : "";
+        String icn = shortcut.icon != null ? shortcut.icon.trim() : "";
+        // Built-ins store the same string in label and icon for strip glyphs. Prefer that for
+        // symbol/chord display so e.g. ⟨ / ⦅ stay visible even when HID resolves to "(" from 0x26+Shift.
+        if (!lbl.isEmpty() && lbl.equals(icn)) {
+            String fromLbl = KeyParser.displayLabel(lbl, getTargetOs()).trim();
+            if (!fromLbl.isEmpty() && !KeyParser.isUnparsedKeyTokenLabel(fromLbl)) {
+                return fromLbl.length() > 10 ? fromLbl.substring(0, 10) : fromLbl;
+            }
         }
         if (shortcut.keyCode >= 0) {
             int mods = normalizeShortcutModifiersForTargetOs(shortcut.modifiers);
@@ -4083,6 +4140,90 @@ public class CustomKeyboardView extends LinearLayout {
         return ld;
     }
 
+    /**
+     * Rows 2–3 strip profile hub slots (page 3 row 3): base fill + top-right triangular accent
+     * (dog-ear), same theme colors as {@link #newProfileHubStackedLayers}.
+     */
+    private static LayerDrawable newStripProfileHubStackedLayers(
+            int baseColorArgb, int accentColorArgb, float cornerPx, int dogEarLegPx) {
+        GradientDrawable base = new GradientDrawable();
+        base.setShape(GradientDrawable.RECTANGLE);
+        base.setColor(baseColorArgb);
+        base.setCornerRadius(cornerPx);
+        StripProfileHubDogEarDrawable ear = new StripProfileHubDogEarDrawable(accentColorArgb, dogEarLegPx);
+        return new LayerDrawable(new Drawable[]{base, ear});
+    }
+
+    /** Top-right isosceles triangle accent; bounds are the full key so the ear scales with key size. */
+    private static final class StripProfileHubDogEarDrawable extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+        private int legPx;
+
+        StripProfileHubDogEarDrawable(int accentColorArgb, int legPx) {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(accentColorArgb);
+            this.legPx = Math.max(1, legPx);
+        }
+
+        @Override
+        protected void onBoundsChange(Rect bounds) {
+            super.onBoundsChange(bounds);
+            path.reset();
+            int r = bounds.right;
+            int t = bounds.top;
+            int L = Math.min(legPx, Math.min(bounds.width(), bounds.height()));
+            path.moveTo(r, t);
+            path.lineTo(r - L, t);
+            path.lineTo(r, t + L);
+            path.close();
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            canvas.drawPath(path, paint);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(@Nullable ColorFilter colorFilter) {
+            paint.setColorFilter(colorFilter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    /**
+     * Strip profile hub slot keycaps (page 3): base + top-right dog-ear; colors match Row 1 profile slots.
+     */
+    private Drawable buildStripProfileHubSlotBackground(boolean activeProfileSelected) {
+        Context ctx = getContext();
+        Resources res = ctx.getResources();
+        float cornerPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 9f, res.getDisplayMetrics());
+        int dogEarLeg = Math.round(res.getDimension(R.dimen.strip_profile_hub_dog_ear_leg));
+        int container = ThemeManager.getColorPrimaryContainer(ctx);
+        int idle = ContextCompat.getColor(ctx, R.color.key_bg_function);
+        int earOnContainer = resolveProfileHubStripColor(ctx, container);
+        int earOnIdle = resolveProfileHubStripColor(ctx, idle);
+        if (activeProfileSelected) {
+            return newStripProfileHubStackedLayers(container, earOnContainer, cornerPx, dogEarLeg);
+        }
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_pressed},
+                newStripProfileHubStackedLayers(container, earOnContainer, cornerPx, dogEarLeg));
+        states.addState(StateSet.WILD_CARD,
+                newStripProfileHubStackedLayers(idle, earOnIdle, cornerPx, dogEarLeg));
+        return states;
+    }
+
     /** Clips profile-hub keycaps (base + strip) to the same 9dp round-rect as other function keys. */
     private void installProfileHubRoundedOutlineClip(View view) {
         Resources res = getResources();
@@ -4112,7 +4253,13 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void applyTopPanelKeyCapBackground(View view, Key key, boolean keyLockedVisualState) {
-        if (isTopProfileSlotKey(key) || isTopStripProfileSlotKey(key)) {
+        if (isTopStripProfileSlotKey(key)) {
+            view.setBackground(buildStripProfileHubSlotBackground(keyLockedVisualState));
+            view.setBackgroundTintList(null);
+            installProfileHubRoundedOutlineClip(view);
+            return;
+        }
+        if (isTopProfileSlotKey(key)) {
             view.setBackground(buildProfileHubSlotBackground(keyLockedVisualState));
             view.setBackgroundTintList(null);
             installProfileHubRoundedOutlineClip(view);
@@ -4295,9 +4442,25 @@ public class CustomKeyboardView extends LinearLayout {
                     applyTopPanelKeyCapBackground(iconTextButton, k, keyLockedVisualState);
                     iconTextButton.setSelected(keyLockedVisualState);
                     iconTextButton.setGravity(Gravity.CENTER);
-                    iconTextButton.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                            fixedRowsSlice ? TOP_FIXED_ROWS_CUSTOM_GLYPH_SP : TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP);
-                    iconTextButton.setTypeface(Typeface.DEFAULT_BOLD);
+                    if (fixedRowsSlice) {
+                        // Tight padding so autosize can use most of the cell; dingbat / math glyphs
+                        // (Symbols ★ / Math ∑ profiles) then approach drawable-icon visual weight.
+                        int glyphPad = dpToPx(1);
+                        iconTextButton.setPadding(glyphPad, glyphPad, glyphPad, glyphPad);
+                        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                                iconTextButton,
+                                TOP_FIXED_ROWS_CUSTOM_GLYPH_MIN_SP,
+                                TOP_FIXED_ROWS_CUSTOM_GLYPH_MAX_SP,
+                                TOP_FIXED_ROWS_CUSTOM_GLYPH_STEP_SP,
+                                TypedValue.COMPLEX_UNIT_SP);
+                        // Regular weight: Unicode dingbats / math glyphs render cleanest in normal weight;
+                        // bold can compress or distort outline shapes (e.g. ✓ ⊿ ❄).
+                        iconTextButton.setTypeface(Typeface.DEFAULT);
+                    } else {
+                        iconTextButton.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                                TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP);
+                        iconTextButton.setTypeface(Typeface.DEFAULT_BOLD);
+                    }
                     iconTextButton.setText(k.customIconGlyph);
                     iconTextButton.setTextColor(resolveThemeTextColor());
                     iconTextButton.setAllCaps(false);
@@ -4316,17 +4479,23 @@ public class CustomKeyboardView extends LinearLayout {
                             : p);
                     applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
                     b.setSelected(keyLockedVisualState);
-                    boolean profileHubSlot = (isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) && fixedRowsSlice;
+                    boolean row1ProfileHubSlot = isTopProfileSlotKey(k) && fixedRowsSlice;
+                    boolean stripProfileHubSlot = isTopStripProfileSlotKey(k) && fixedRowsSlice;
+                    boolean profileHubSlot = row1ProfileHubSlot || stripProfileHubSlot;
                     if (!profileHubSlot) {
                         b.setGravity(Gravity.CENTER);
                     }
-                    if (profileHubSlot) {
+                    if (row1ProfileHubSlot) {
                         int stripPx = Math.round(getResources().getDimension(
                                 R.dimen.profile_hub_slot_bottom_accent_height));
                         // Symmetric vertical padding so CENTER_VERTICAL sits in the full key, not biased
                         // toward the top (asymmetric pad was: small top, large bottom reserve).
                         int vPad = stripPx + dpToPx(6);
                         b.setPadding(dpToPx(4), vPad, dpToPx(4), vPad);
+                    } else if (stripProfileHubSlot) {
+                        int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
+                        int uniform = textPad + dpToPx(2);
+                        b.setPadding(uniform, uniform, uniform, uniform);
                     } else {
                         int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
                         b.setPadding(textPad, textPad, textPad, textPad);
@@ -4391,7 +4560,11 @@ public class CustomKeyboardView extends LinearLayout {
                                 maxSp,
                                 TOP_PROFILE_HUB_SLOT_TEXT_STEP_SP,
                                 TypedValue.COMPLEX_UNIT_SP);
-                        b.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+                        if (row1ProfileHubSlot) {
+                            b.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+                        } else {
+                            b.setGravity(Gravity.CENTER);
+                        }
                         b.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             b.setFirstBaselineToTopHeight(0);
@@ -6087,6 +6260,11 @@ public class CustomKeyboardView extends LinearLayout {
             boolean renderAsActionLabel,
             int panelPageIndex) {
         if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
+            return null;
+        }
+        // Page-2 row-2 cols 0–1: base vs Fn is already the full cap swap; corner hints duplicate
+        // the partner layer (e.g. "(" on "`") and fight chord/icon layout.
+        if (isPage2Row2ParenGraveDualLayerStripSlot(k)) {
             return null;
         }
         int effectivePage = (k.stripSlotPage >= 0) ? k.stripSlotPage : panelPageIndex;
