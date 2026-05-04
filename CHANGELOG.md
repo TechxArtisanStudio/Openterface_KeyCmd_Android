@@ -9,6 +9,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 ### Highlights
 
 - **Gamepad**: the separate **1 Button / 2 Buttons** toggle is removed; **one-button** and **two-button** layouts are **built-in presets** (`preset_default` and `preset_two_buttons`). Use **short tap** on **Preset** to cycle the active layout, **long-press** for the full preset list (import, add module, export). Upgrades from the legacy two-button preference activate the two-button preset automatically once.
+- **Gamepad UI**: Material toolbar for **Edit** / **Preset** / **Done**, active **preset name** beside Preset, **cardinal key highlights** fixed for dynamic stick bounds (`stick_left` / `stick_right`), light **haptic tick** when a stick cardinal newly engages and **haptics only for `button_*` face keys** (not mouse clicks), **empty-area long-press** for background and **add module** only while **Editing**, with the same add actions as the preset menu.
 - **Shortcut Hub** rework: clearer navigation between Row 1 app shortcuts and Rows 2–3 fixed-strip behavior, a visual strip catalog, and stronger profile and preset workflows.
 - **Rows 2–3 strip profiles**: built-in **Symbols** and **Math** themes, canonical slot IDs for imports and tooling, and a dedicated full-screen editor for each strip key.
 - **Keyboard strip page 3**: six quick slots for Row 1 profiles and six for strip profiles (seventh column on row 2 stays empty; row 3 keeps **FN**).

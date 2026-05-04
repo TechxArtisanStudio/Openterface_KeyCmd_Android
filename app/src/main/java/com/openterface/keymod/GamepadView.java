@@ -953,8 +953,7 @@ public class GamepadView extends View {
                         }
                         invalidate();
                     }
-                } else if (longPressEnabled) {
-                    // Long press on empty area when edit mode is enabled
+                } else if (longPressEnabled && isEditMode) {
                     longPressDownX = x;
                     longPressDownY = y;
                     longPressCancelled = false;
@@ -1241,7 +1240,7 @@ public class GamepadView extends View {
                         }
                         invalidate();
                     }
-                } else if (longPressEnabled) {
+                } else if (longPressEnabled && isEditMode) {
                     longPressDownX = x;
                     longPressDownY = y;
                     longPressCancelled = false;
@@ -1718,20 +1717,41 @@ public class GamepadView extends View {
         if (onBackgroundViewportChanged != null) onBackgroundViewportChanged.run();
     }
 
+    /**
+     * Analog callbacks use {@code l}/{@code r}; legacy bounds use {@code stick_l}/{@code stick_r},
+     * dynamic layout uses {@code stick_left}/{@code stick_right}. Highlight keys must match draw ids.
+     */
+    private static List<String> stickHighlightPrefixes(String stickLabel) {
+        String s = stickLabel.toLowerCase(Locale.ROOT);
+        List<String> out = new ArrayList<>(2);
+        if ("l".equals(s)) {
+            out.add("stick_l");
+            out.add("stick_left");
+        } else if ("r".equals(s)) {
+            out.add("stick_r");
+            out.add("stick_right");
+        } else {
+            out.add("stick_" + s);
+        }
+        return out;
+    }
+
     public void setActiveStickDirections(String stickLabel, Set<String> directions) {
-        String stickId = "stick_" + stickLabel.toLowerCase();
-        // Remove old directions for this stick
-        activeStickDirections.removeIf(d -> d.startsWith(stickId + "_"));
-        // Add new directions
-        for (String dir : directions) {
-            activeStickDirections.add(stickId + "_" + dir);
+        for (String prefix : stickHighlightPrefixes(stickLabel)) {
+            activeStickDirections.removeIf(d -> d.startsWith(prefix + "_"));
+        }
+        for (String prefix : stickHighlightPrefixes(stickLabel)) {
+            for (String dir : directions) {
+                activeStickDirections.add(prefix + "_" + dir);
+            }
         }
         invalidate();
     }
 
     public void clearStickDirections(String stickLabel) {
-        String stickId = "stick_" + stickLabel.toLowerCase();
-        activeStickDirections.removeIf(d -> d.startsWith(stickId + "_"));
+        for (String prefix : stickHighlightPrefixes(stickLabel)) {
+            activeStickDirections.removeIf(d -> d.startsWith(prefix + "_"));
+        }
         invalidate();
     }
 

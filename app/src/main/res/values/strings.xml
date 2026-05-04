@@ -680,6 +680,12 @@ by TechxArtisan</string>
     <string name="top_mode_label_gamepad">Gamepad</string>
     <string name="gamepad_toast_edit_layout_hint">Drag components to reposition, tap Done when finished.</string>
     <string name="gamepad_toast_image_load_failed">Failed to load image</string>
+    <string name="gamepad_edit_mode_off">Edit</string>
+    <string name="gamepad_edit_mode_on">Editing</string>
+    <string name="gamepad_edit_done">Done</string>
+    <string name="gamepad_edit_canvas_menu_title">Background &amp; modules</string>
+    <string name="gamepad_bg_pick_gallery">Pick from gallery</string>
+    <string name="gamepad_bg_remove">Remove background</string>
     <string name="gamepad_presets_button">Preset</string>
     <string name="gamepad_preset_cycled_toast">Layout: %1$s</string>
     <string name="gamepad_presets_title">Gamepad presets</string>
