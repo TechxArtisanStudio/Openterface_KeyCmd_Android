@@ -58,6 +58,8 @@ public class GamepadView extends View {
     // Interaction
     private boolean isEditMode = false;
     private String draggedComponentId = null;
+    /** Pointer that started an in-progress edit drag (ACTION_MOVE must follow this finger). */
+    private int dragPointerId = -1;
     private String pressedComponentId = null;
     private ButtonPressListener buttonPressListener;
     private AnalogStickListener analogStickListener;
@@ -957,6 +959,7 @@ public class GamepadView extends View {
                         invalidate();
                     } else if (isEditMode) {
                         draggedComponentId = componentId;
+                        dragPointerId = pointerId;
                     } else {
                         pressedComponentId = componentId;
                         buttonsPressedSet.add(componentId);
@@ -1088,13 +1091,14 @@ public class GamepadView extends View {
                                 label, dx / activeStickRadius, dy / activeStickRadius);
                     }
                 } else if (draggedComponentId != null && isEditMode) {
-                    GamepadConfigManager.ComponentPosition pos =
-                            componentPositions.get(draggedComponentId);
-                    if (pos != null) {
-                        pos.x = x / getWidth();
-                        pos.y = y / getHeight();
-                        invalidate();
+                    int dragIdx = dragPointerId >= 0 ? event.findPointerIndex(dragPointerId) : 0;
+                    if (dragIdx < 0) {
+                        dragIdx = 0;
                     }
+                    float moveX = event.getX(dragIdx);
+                    float moveY = event.getY(dragIdx);
+                    applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+                    invalidate();
                 }
                 return true;
             }
@@ -1129,6 +1133,7 @@ public class GamepadView extends View {
                 }
                 if (draggedComponentId != null) {
                     draggedComponentId = null;
+                    dragPointerId = -1;
                 }
 
                 // Release component for this pointer
@@ -1142,6 +1147,7 @@ public class GamepadView extends View {
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
                     }
+                    dragPointerId = -1;
                 }
 
                 if (pressedComponentId != null) {
@@ -1155,6 +1161,10 @@ public class GamepadView extends View {
                 if (isManipulatingBg) {
                     isManipulatingBg = false;
                     bgLastDistance = -1f;
+                }
+                if (draggedComponentId != null && pointerId == dragPointerId) {
+                    draggedComponentId = null;
+                    dragPointerId = -1;
                 }
                 // Release component for the lifted pointer
                 releasePointerComponent(pointerId);
@@ -1206,6 +1216,41 @@ public class GamepadView extends View {
         return keys;
     }
 
+    /**
+     * Updates normalized position for the module being dragged. Dynamic layouts read anchors from
+     * {@link #layoutDocument}; legacy SIMPLE reads {@link #componentPositions}. Keep both in sync
+     * so the canvas repaints immediately and exit/save still merges positions.
+     */
+    private void applyDraggedComponentAnchors(float normX, float normY) {
+        if (draggedComponentId == null) {
+            return;
+        }
+        int vw = getWidth();
+        int vh = getHeight();
+        if (vw <= 0 || vh <= 0) {
+            return;
+        }
+        float x = Math.max(0.02f, Math.min(0.98f, normX));
+        float y = Math.max(0.02f, Math.min(0.98f, normY));
+
+        if (layoutDocument != null && layoutDocument.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : layoutDocument.modules) {
+                if (m != null && draggedComponentId.equals(m.id)) {
+                    m.anchorX = x;
+                    m.anchorY = y;
+                    break;
+                }
+            }
+        }
+        ComponentPosition pos = componentPositions.get(draggedComponentId);
+        if (pos == null) {
+            componentPositions.put(draggedComponentId, new ComponentPosition(x, y));
+        } else {
+            pos.x = x;
+            pos.y = y;
+        }
+    }
+
     private boolean onTouchDynamicLayout(MotionEvent event) {
         int action = event.getActionMasked();
         int pointerIndex = event.getActionIndex();
@@ -1245,6 +1290,7 @@ public class GamepadView extends View {
                         invalidate();
                     } else if (isEditMode) {
                         draggedComponentId = componentId;
+                        dragPointerId = pointerId;
                     } else {
                         pressedComponentId = componentId;
                         buttonsPressedSet.add(componentId);
@@ -1388,13 +1434,14 @@ public class GamepadView extends View {
                     }
                     invalidate();
                 } else if (draggedComponentId != null && isEditMode) {
-                    GamepadConfigManager.ComponentPosition pos =
-                            componentPositions.get(draggedComponentId);
-                    if (pos != null) {
-                        pos.x = x / getWidth();
-                        pos.y = y / getHeight();
-                        invalidate();
+                    int dragIdx = dragPointerId >= 0 ? event.findPointerIndex(dragPointerId) : 0;
+                    if (dragIdx < 0) {
+                        dragIdx = 0;
                     }
+                    float moveX = event.getX(dragIdx);
+                    float moveY = event.getY(dragIdx);
+                    applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+                    invalidate();
                 }
                 return true;
             }
@@ -1431,6 +1478,7 @@ public class GamepadView extends View {
                 }
                 if (draggedComponentId != null) {
                     draggedComponentId = null;
+                    dragPointerId = -1;
                 }
                 releasePointerComponent(pointerId);
                 if (action == MotionEvent.ACTION_UP) {
@@ -1441,6 +1489,7 @@ public class GamepadView extends View {
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
                     }
+                    dragPointerId = -1;
                 }
                 invalidate();
                 return true;
@@ -1449,6 +1498,10 @@ public class GamepadView extends View {
                 if (isManipulatingBg) {
                     isManipulatingBg = false;
                     bgLastDistance = -1f;
+                }
+                if (draggedComponentId != null && pointerId == dragPointerId) {
+                    draggedComponentId = null;
+                    dragPointerId = -1;
                 }
                 String releasedStick = dynamicPointerStick.remove(pointerId);
                 if (releasedStick != null) {
