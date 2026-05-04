@@ -1278,8 +1278,10 @@ public class GamepadView extends View {
                 String componentId = getComponentAt(x, y);
                 if (componentId != null && !isComponentDisabled(componentId)) {
                     pointerComponents.put(pointerId, componentId);
-                    if (longPressEnabled && isEditMode
-                            && (touchpadDeltaListener == null || !componentId.startsWith("touchpad_"))) {
+                    // In edit mode, touchpad is repositioned by drag, not scroll; allow long-press menu too.
+                    boolean skipTouchpadLongPress = !isEditMode && componentId.startsWith("touchpad_")
+                            && touchpadDeltaListener != null;
+                    if (longPressEnabled && isEditMode && !skipTouchpadLongPress) {
                         longPressComponentId = componentId;
                         longPressDownX = x;
                         longPressDownY = y;
@@ -1295,7 +1297,7 @@ public class GamepadView extends View {
                         if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
                             dpadStateListener.onDpadStateChanged(getCurrentDpadKeys());
                         }
-                    } else if (componentId.startsWith("touchpad_")) {
+                    } else if (componentId.startsWith("touchpad_") && !isEditMode) {
                         touchpadPointerId = pointerId;
                         touchpadLastX = x;
                         touchpadLastY = y;
@@ -1337,7 +1339,7 @@ public class GamepadView extends View {
                         if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
                             dpadStateListener.onDpadStateChanged(getCurrentDpadKeys());
                         }
-                    } else if (componentId.startsWith("touchpad_")) {
+                    } else if (componentId.startsWith("touchpad_") && !isEditMode) {
                         if (touchpadPointerId < 0) {
                             touchpadPointerId = pointerId;
                             touchpadLastX = x;
