@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.util.KeyParser;
+import com.openterface.keymod.util.TopRows23StripProfileSlotPrefs;
 import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Read-only description of fixed strip rows 2–3 for pages 0–2, aligned with
+ * Read-only description of fixed strip rows 2–3 for pages 0–3, aligned with
  * {@link com.openterface.keymod.CustomKeyboardView#buildFixedTopRowsPage0()} and siblings.
  * Used by Shortcut Hub to show what each physical slot does (base + Fn overlay where applicable).
  */
@@ -160,8 +161,13 @@ public final class FixedStripLayoutCatalog {
                 return "*";
             case 0x2D:
                 return requiresShift ? "." : ",";
+            case 0x26:
+                return requiresShift ? "`" : null;
+            case 0x27:
+                return requiresShift ? "~" : null;
             case 0x35:
-                return "[";
+                // Page 2 grave key: Fn-off pair is ( / ); Fn-on row shows ` / ~ with ( / ) hints.
+                return requiresShift ? ")" : "(";
             case 0x34:
                 return requiresShift ? ":" : "]";
             case 0x22:
@@ -267,11 +273,55 @@ public final class FixedStripLayoutCatalog {
         addPage(out, 1, "Page 1 — Modifiers & nav", p1sub, p1r2, p1r3, p1r2c, p1r2s, p1r3c, p1r3s, noSlot, noSlot);
 
         out.add(Row.section("Page 2 — Hub & symbols",
-                "Row content swaps when local Fn is on (latch). Below: Fn off, then Fn on."));
+                "Row content swaps when local Fn is on (latch). Row 1 profile toggles are on page 3."));
         addPage2Variant(context, out, false, pm);
         addPage2Variant(context, out, true, pm);
 
+        out.add(Row.section("Page 3 — Shortcut Hub toggles",
+                "Row 2: Row 1 app profiles. Row 3: Rows 2–3 strip profiles. Long-press a slot to reassign."));
+        addPage3Static(context, out, pm);
+
         return out;
+    }
+
+    private static void addPage3Static(
+            @NonNull Context context,
+            List<Row> out,
+            @NonNull ShortcutProfileManager pm
+    ) {
+        final int latch = FN_LATCH_NONE;
+        out.add(Row.section("Row 2", null, latch));
+        addSlot(out, 3, 2, 0, resolveHubSlotTitle(context, pm, 1), null, 1, latch);
+        addSlot(out, 3, 2, 1, resolveHubSlotTitle(context, pm, 2), null, 2, latch);
+        addSlot(out, 3, 2, 2, resolveHubSlotTitle(context, pm, 3), null, 3, latch);
+        for (int c = 3; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS; c++) {
+            addSlot(out, 3, 2, c, "—", null, 0, latch);
+        }
+        out.add(Row.section("Row 3", null, latch));
+        Rows23StripProfileManager sm = new Rows23StripProfileManager(context, pm);
+        addSlot(out, 3, 3, 0, resolveStripHubSlotTitle(context, sm, 1), null, 0, latch);
+        addSlot(out, 3, 3, 1, resolveStripHubSlotTitle(context, sm, 2), null, 0, latch);
+        addSlot(out, 3, 3, 2, resolveStripHubSlotTitle(context, sm, 3), null, 0, latch);
+        for (int c = 3; c < KeyboardStripPresetConstants.TOP_PANEL_COLUMNS - 1; c++) {
+            addSlot(out, 3, 3, c, "—", null, 0, latch);
+        }
+        addSlot(out, 3, 3, 6, "FN", null, 0, latch);
+    }
+
+    @NonNull
+    private static String resolveStripHubSlotTitle(
+            @NonNull Context context,
+            @NonNull Rows23StripProfileManager mgr,
+            int slot1Based
+    ) {
+        String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
+                context, slot1Based, mgr);
+        Rows23StripProfile p = mgr.getProfileById(id);
+        if (p != null && p.name != null && !p.name.trim().isEmpty()) {
+            String n = p.name.trim();
+            return n.length() > 12 ? n.substring(0, 12) + "\u2026" : n;
+        }
+        return "Strip " + slot1Based;
     }
 
     /**
@@ -424,9 +474,7 @@ public final class FixedStripLayoutCatalog {
 
         String[] r2Off = {"(", ")", "[", "]", ":", "#", "@"};
         String[] r3Off = {"/", "\\", "|", "?", "-", "_", "FN"};
-        String s1 = resolveHubSlotTitle(context, pm, 1);
-        String s2 = resolveHubSlotTitle(context, pm, 2);
-        String[] r2On = {s1, s2, "~", "'", "\"", "%", "^"};
+        String[] r2On = {"`", "~", "'", "\"", "%", "^", "|"};
         String[] r3On = {"<", ">", "*", "&", ",", ".", "FN"};
 
         int[] r2OffCodes = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
@@ -448,15 +496,13 @@ public final class FixedStripLayoutCatalog {
         out.add(Row.section(fnOn ? "Page 2 — local Fn on" : "Page 2 — local Fn off", null, latch));
         out.add(Row.section("Row 2", null, latch));
         if (fnOn) {
-            String s1 = resolveHubSlotTitle(context, pm, 1);
-            String s2 = resolveHubSlotTitle(context, pm, 2);
-            addSlot(out, 2, 2, 0, s1, null, 1, latch);
-            addSlot(out, 2, 2, 1, s2, null, 2, latch);
-            addSlot(out, 2, 2, 2, "~", overlayFnHint(0x35, true), 0, latch);
-            addSlot(out, 2, 2, 3, "'", overlayFnHint(0x34, false), 0, latch);
-            addSlot(out, 2, 2, 4, "\"", overlayFnHint(0x34, true), 0, latch);
-            addSlot(out, 2, 2, 5, "%", overlayFnHint(0x22, true), 0, latch);
-            addSlot(out, 2, 2, 6, "^", overlayFnHint(0x23, true), 0, latch);
+            addSlot(out, 2, 2, 0, "`", overlayFnHint(0x35, false), 0, latch);
+            addSlot(out, 2, 2, 1, "~", overlayFnHint(0x35, true), 0, latch);
+            addSlot(out, 2, 2, 2, "'", overlayFnHint(0x34, false), 0, latch);
+            addSlot(out, 2, 2, 3, "\"", overlayFnHint(0x34, true), 0, latch);
+            addSlot(out, 2, 2, 4, "%", overlayFnHint(0x22, true), 0, latch);
+            addSlot(out, 2, 2, 5, "^", overlayFnHint(0x23, true), 0, latch);
+            addSlot(out, 2, 2, 6, "|", overlayFnHint(0x64, false), 0, latch);
             out.add(Row.section("Row 3", null, latch));
             addSlot(out, 2, 3, 0, "<", overlayFnHint(0x36, true), 0, latch);
             addSlot(out, 2, 3, 1, ">", overlayFnHint(0x37, true), 0, latch);
@@ -466,8 +512,8 @@ public final class FixedStripLayoutCatalog {
             addSlot(out, 2, 3, 5, ".", overlayFnHint(0x37, false), 0, latch);
             addSlot(out, 2, 3, 6, "FN", null, 0, latch);
         } else {
-            addSlot(out, 2, 2, 0, "(", null, 0, latch);
-            addSlot(out, 2, 2, 1, ")", null, 0, latch);
+            addSlot(out, 2, 2, 0, "(", overlayFnHint(0x26, true), 0, latch);
+            addSlot(out, 2, 2, 1, ")", overlayFnHint(0x27, true), 0, latch);
             addSlot(out, 2, 2, 2, "[", overlayFnHint(0x2F, false), 0, latch);
             addSlot(out, 2, 2, 3, "]", overlayFnHint(0x30, false), 0, latch);
             addSlot(out, 2, 2, 4, ":", overlayFnHint(0x33, true), 0, latch);
@@ -549,6 +595,7 @@ public final class FixedStripLayoutCatalog {
     private static final int[] P1_R3_CODES = {0x29, 0xE1, 0x4C, 0x50, 0x51, 0x4F, 0xF00C};
     private static final boolean[] P1_R3_SHIFT = {false, false, false, false, false, false, false};
 
+    /** Cols 0–1: Shift+9 / Shift+0 → "(" / ")"; remainder matches page 2 punctuation row. */
     private static final int[] P2_R2_CODES = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
     private static final boolean[] P2_R2_SHIFT = {true, true, false, false, true, true, true};
     private static final int[] P2_R3_CODES = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};

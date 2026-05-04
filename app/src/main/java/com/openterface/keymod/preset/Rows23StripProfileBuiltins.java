@@ -167,17 +167,17 @@ public final class Rows23StripProfileBuiltins {
             new SlotSpec(1, 3, 3, true, "⚓", 0x49, MOD_NONE),
             new SlotSpec(1, 3, 4, true, "⚔", 0x4D, MOD_NONE),
             new SlotSpec(1, 3, 5, true, "⚕", 0x4E, MOD_NONE),
-            // Page 2 row 2 base — ( ) [ ] : # @
-            new SlotSpec(2, 2, 0, false, "◆", 0x26, MOD_SHIFT),
-            new SlotSpec(2, 2, 1, false, "◇", 0x27, MOD_SHIFT),
+            // Page 2 row 2 base — ( ) then [ ] …; Fn layer is ` ~ (matches factory row when latch off)
+            new SlotSpec(2, 2, 0, false, "(", 0x26, MOD_SHIFT),
+            new SlotSpec(2, 2, 1, false, ")", 0x27, MOD_SHIFT),
             new SlotSpec(2, 2, 2, false, "◈", 0x2F, MOD_NONE),
             new SlotSpec(2, 2, 3, false, "◉", 0x30, MOD_NONE),
             new SlotSpec(2, 2, 4, false, "◎", 0x33, MOD_SHIFT),
             new SlotSpec(2, 2, 5, false, "●", 0x20, MOD_SHIFT),
             new SlotSpec(2, 2, 6, false, "○", 0x1F, MOD_SHIFT),
-            // Page 2 row 2 fn — overlay: ~ ' " % ^ (cols 0/1 share factory codes)
-            new SlotSpec(2, 2, 0, true, "▲", 0x26, MOD_SHIFT),
-            new SlotSpec(2, 2, 1, true, "△", 0x27, MOD_SHIFT),
+            // Page 2 row 2 fn — same grave/tilde HID as base (strip overlay reads f-p… for these cells)
+            new SlotSpec(2, 2, 0, true, "`", 0x35, MOD_NONE),
+            new SlotSpec(2, 2, 1, true, "~", 0x35, MOD_SHIFT),
             new SlotSpec(2, 2, 2, true, "▼", 0x35, MOD_SHIFT),
             new SlotSpec(2, 2, 3, true, "▽", 0x34, MOD_NONE),
             new SlotSpec(2, 2, 4, true, "◀", 0x34, MOD_SHIFT),
@@ -262,17 +262,17 @@ public final class Rows23StripProfileBuiltins {
             new SlotSpec(1, 3, 3, true, "⊗", 0x49, MOD_NONE),
             new SlotSpec(1, 3, 4, true, "⊖", 0x4D, MOD_NONE),
             new SlotSpec(1, 3, 5, true, "⊙", 0x4E, MOD_NONE),
-            // Page 2 row 2 base — ( ) [ ] : # @ (factory HID, equivalence / dots)
-            new SlotSpec(2, 2, 0, false, "≅", 0x26, MOD_SHIFT),
-            new SlotSpec(2, 2, 1, false, "≜", 0x27, MOD_SHIFT),
+            // Page 2 row 2 base — ( ) then [ ] : # @
+            new SlotSpec(2, 2, 0, false, "(", 0x26, MOD_SHIFT),
+            new SlotSpec(2, 2, 1, false, ")", 0x27, MOD_SHIFT),
             new SlotSpec(2, 2, 2, false, "≡", 0x2F, MOD_NONE),
             new SlotSpec(2, 2, 3, false, "⋮", 0x30, MOD_NONE),
             new SlotSpec(2, 2, 4, false, "⋯", 0x33, MOD_SHIFT),
             new SlotSpec(2, 2, 5, false, "⋰", 0x20, MOD_SHIFT),
             new SlotSpec(2, 2, 6, false, "⋱", 0x1F, MOD_SHIFT),
-            // Page 2 row 2 fn — overlay codes for ~ ' " % ^ (cols 0/1 share factory codes)
-            new SlotSpec(2, 2, 0, true, "⊿", 0x26, MOD_SHIFT),
-            new SlotSpec(2, 2, 1, true, "▷", 0x27, MOD_SHIFT),
+            // Page 2 row 2 fn — grave/tilde (match factory page 2 row 2 cols 0–1)
+            new SlotSpec(2, 2, 0, true, "`", 0x35, MOD_NONE),
+            new SlotSpec(2, 2, 1, true, "~", 0x35, MOD_SHIFT),
             new SlotSpec(2, 2, 2, true, "▽", 0x35, MOD_SHIFT),
             new SlotSpec(2, 2, 3, true, "◇", 0x34, MOD_NONE),
             new SlotSpec(2, 2, 4, true, "◈", 0x34, MOD_SHIFT),

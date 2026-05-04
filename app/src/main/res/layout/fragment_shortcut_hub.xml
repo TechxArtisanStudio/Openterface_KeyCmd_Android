@@ -63,6 +63,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/shortcut_hub_tab_fixed_strip" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/shortcut_hub_tab_page3_strip" />
         </com.google.android.material.tabs.TabLayout>
 
         <FrameLayout
@@ -188,6 +193,39 @@
                     </LinearLayout>
                 </FrameLayout>
             </LinearLayout>
+
+            <ScrollView
+                android:id="@+id/hub_tab_content_page3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/shortcut_hub_page3_info_title"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/hub_page3_info_body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:lineSpacingMultiplier="1.15"
+                        android:text="@string/shortcut_hub_page3_info_body"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="15sp" />
+                </LinearLayout>
+            </ScrollView>
         </FrameLayout>
 
     </LinearLayout>

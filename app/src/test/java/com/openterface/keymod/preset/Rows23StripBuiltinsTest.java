@@ -136,4 +136,53 @@ public class Rows23StripBuiltinsTest {
             }
         }
     }
+
+    @Test
+    public void symbolsAndMathProfiles_page2Row2FnUsesGraveTildeHid() {
+        for (Rows23StripProfile p : new Rows23StripProfile[]{
+                Rows23StripProfileBuiltins.buildSymbolsProfile(),
+                Rows23StripProfileBuiltins.buildMathProfile(),
+        }) {
+            for (int col = 0; col <= 1; col++) {
+                String sk = StripSlotMapStore.slotKey(2, 2, col, true);
+                String sid = p.slotMap.get(sk);
+                Assert.assertNotNull("slot " + sk, sid);
+                Shortcut found = null;
+                for (Shortcut x : p.shortcuts) {
+                    if (sid.equals(x.id)) {
+                        found = x;
+                        break;
+                    }
+                }
+                Assert.assertNotNull(found);
+                Assert.assertEquals(0x35, found.keyCode);
+                int m = HidKeyCatalog.normalizeStripModifiers(found.modifiers);
+                Assert.assertEquals(col == 0 ? 0 : 0x02, m);
+            }
+        }
+    }
+
+    @Test
+    public void symbolsAndMathProfiles_page2Row2BaseUsesParenHid() {
+        for (Rows23StripProfile p : new Rows23StripProfile[]{
+                Rows23StripProfileBuiltins.buildSymbolsProfile(),
+                Rows23StripProfileBuiltins.buildMathProfile(),
+        }) {
+            for (int col = 0; col <= 1; col++) {
+                String sk = StripSlotMapStore.slotKey(2, 2, col, false);
+                String sid = p.slotMap.get(sk);
+                Assert.assertNotNull("slot " + sk, sid);
+                Shortcut found = null;
+                for (Shortcut x : p.shortcuts) {
+                    if (sid.equals(x.id)) {
+                        found = x;
+                        break;
+                    }
+                }
+                Assert.assertNotNull(found);
+                Assert.assertEquals(col == 0 ? 0x26 : 0x27, found.keyCode);
+                Assert.assertEquals(0x02, HidKeyCatalog.normalizeStripModifiers(found.modifiers));
+            }
+        }
+    }
 }

@@ -8,8 +8,8 @@ import androidx.annotation.NonNull;
 import com.openterface.keymod.ShortcutProfileManager;
 
 /**
- * Persists which Shortcut Hub profile id is bound to each of the seven slots on
- * fixed top-strip page 2 (row 3). Defaults match bundled profiles in {@link ShortcutProfileManager}.
+ * Persists which Shortcut Hub profile id is bound to each of the seven slots (shown on
+ * fixed strip page 3 row 2 for slots 1–3). Defaults match bundled profiles in {@link ShortcutProfileManager}.
  */
 public final class TopShortcutProfileSlotPrefs {
 
@@ -37,7 +37,7 @@ public final class TopShortcutProfileSlotPrefs {
             case 2:
                 return "kicad";
             case 3:
-                return "fusion360";
+                return "blender";
             case 4:
                 return "blender";
             case 5:

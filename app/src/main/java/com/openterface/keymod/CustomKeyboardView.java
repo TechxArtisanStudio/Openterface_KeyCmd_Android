@@ -65,10 +65,12 @@ import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
+import com.openterface.keymod.util.TopRows23StripProfileSlotPrefs;
 import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
+import com.openterface.keymod.preset.Rows23StripProfile;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.target.CH9329MSKBMap;
@@ -89,7 +91,6 @@ public class CustomKeyboardView extends LinearLayout {
     private static final String TAG = "CustomKeyboardView";
     private static final int TOP_PANEL_COLUMNS = 7;
     private static final int TOP_PANEL_ROWS = 3;
-    private static final int FIXED_TOP_ROWS_TOTAL_PAGES = 3;
     private static final int FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX = 1;
     private static final int TOP_PANEL_PAGE_SIZE = TOP_PANEL_COLUMNS * TOP_PANEL_ROWS;
     private static final int TOP_ROW_PAGE_SIZE = TOP_PANEL_COLUMNS;
@@ -187,11 +188,14 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_TOP_SHORTCUT_DISPLAY_TOGGLE = 0xF00B;
     /** Local Fn latch for fixed top rows 2-3 only. */
     private static final int KEY_FIXED_TOP_LOCAL_FN = 0xF00C;
-    /** Shortcut Hub strip (Page 2): profile slot key codes span 7 slots for prefs/back-compat; only 1–2 are shown when local Fn is on. */
+    /** Shortcut Hub: Row 1 profile slot key codes (page 3 row 2); seven ids for prefs/back-compat. */
     private static final int KEY_TOP_PROFILE_SLOT_1 = 0xF00D;
     private static final int KEY_TOP_PROFILE_SLOT_7 = 0xF013;
     /** Row-1 strip: opens quick-create shortcut sheet (after last favorite on last page). */
     private static final int KEY_TOP_STRIP_CREATE_SHORTCUT = 0xF014;
+    /** Rows 2–3 strip profile quick toggles (page 3 row 3). */
+    private static final int KEY_TOP_STRIP_PROFILE_SLOT_1 = 0xF015;
+    private static final int KEY_TOP_STRIP_PROFILE_SLOT_3 = 0xF017;
     private static final int KEY_NOOP_PLACEHOLDER = -1;
     private static final String APP_PREFS_NAME = "AppPrefs";
     private static final String KEY_SYSTEM_IME_CAPTURE = "system_ime_capture_mode";
@@ -887,6 +891,31 @@ public class CustomKeyboardView extends LinearLayout {
         return key != null && topProfileSlotIndexFromKeyCode(key.code) > 0;
     }
 
+    private static int topStripProfileSlotIndexFromKeyCode(int code) {
+        if (code >= KEY_TOP_STRIP_PROFILE_SLOT_1 && code <= KEY_TOP_STRIP_PROFILE_SLOT_3) {
+            return code - KEY_TOP_STRIP_PROFILE_SLOT_1 + 1;
+        }
+        return 0;
+    }
+
+    private static boolean isTopStripProfileSlotKey(Key key) {
+        return key != null && topStripProfileSlotIndexFromKeyCode(key.code) > 0;
+    }
+
+    private boolean isTopStripProfileSlotActive(Key key) {
+        int slot = topStripProfileSlotIndexFromKeyCode(key != null ? key.code : 0);
+        if (slot <= 0) {
+            return false;
+        }
+        Context ctx = getContext();
+        if (ctx == null) {
+            return false;
+        }
+        Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
+        String sid = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(ctx, slot, mgr);
+        return sid != null && sid.equals(mgr.getActiveProfileId());
+    }
+
     private boolean isTopProfileSlotActive(Key key) {
         int slot = topProfileSlotIndexFromKeyCode(key != null ? key.code : 0);
         if (slot <= 0) {
@@ -937,7 +966,7 @@ public class CustomKeyboardView extends LinearLayout {
                 || key.code == KEY_FIXED_TOP_LOCAL_FN) {
             return false;
         }
-        if (isTopProfileSlotKey(key)) {
+        if (isTopProfileSlotKey(key) || isTopStripProfileSlotKey(key)) {
             return true;
         }
         // Fixed strip icon keys use shortcutModifiers == -1; still honor strip display mode (name/icon/chord).
@@ -1214,6 +1243,44 @@ public class CustomKeyboardView extends LinearLayout {
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     TopShortcutProfileSlotPrefs.setProfileIdForSlot(
                             act.getApplicationContext(), slotIndex1Based, ids[which]);
+                    refreshProfileSlotStrip();
+                    dialog.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showTopStripProfileSlotPicker(int slotIndex1Based) {
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        if (act == null) {
+            return;
+        }
+        Context appCtx = act.getApplicationContext();
+        Rows23StripProfileManager mgr = new Rows23StripProfileManager(appCtx, shortcutProfileManager);
+        List<Rows23StripProfile> profiles = mgr.getProfiles();
+        if (profiles.isEmpty()) {
+            return;
+        }
+        CharSequence[] labels = new CharSequence[profiles.size()];
+        String[] ids = new String[profiles.size()];
+        for (int i = 0; i < profiles.size(); i++) {
+            Rows23StripProfile p = profiles.get(i);
+            labels[i] = p.name != null ? p.name : (p.id != null ? p.id : "");
+            ids[i] = p.id != null ? p.id : "";
+        }
+        String current = TopRows23StripProfileSlotPrefs.getStripProfileIdForSlot(appCtx, slotIndex1Based);
+        int checked = 0;
+        for (int i = 0; i < ids.length; i++) {
+            if (ids[i].equals(current)) {
+                checked = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(act)
+                .setTitle(R.string.top_rows23_strip_slot_picker_title)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    TopRows23StripProfileSlotPrefs.setStripProfileIdForSlot(
+                            appCtx, slotIndex1Based, ids[which]);
                     refreshProfileSlotStrip();
                     dialog.dismiss();
                 })
@@ -3415,6 +3482,7 @@ public class CustomKeyboardView extends LinearLayout {
         fixedTopRowsPanels.add(buildFixedTopRowsPage0());
         fixedTopRowsPanels.add(buildFixedTopRowsPage1());
         fixedTopRowsPanels.add(buildFixedTopRowsPage2());
+        fixedTopRowsPanels.add(buildFixedTopRowsPage3());
         if (fixedTopRowsPageIndex < 0 || fixedTopRowsPageIndex >= fixedTopRowsPanels.size()) {
             fixedTopRowsPageIndex = FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX;
         }
@@ -3566,16 +3634,18 @@ public class CustomKeyboardView extends LinearLayout {
 
     private List<Key> buildFixedTopRowsPage2() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
-        // Page 2 (Shortcut Hub): local Fn swaps between punctuation rows and two profile hub slots (+ symbols).
+        // Page 2 (Shortcut Hub): local Fn swaps row 2/3 punctuation. Row 1 profile toggles live on page 3.
         if (fixedTopLocalFnLocked) {
-            keys.add(fixedStripSlotKey(buildProfileHubSlotKey(1), 2, 2, 0));
-            keys.add(fixedStripSlotKey(buildProfileHubSlotKey(2), 2, 2, 1));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("~", 0x35, true), 2, 2, 2));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("'", 0x34, false), 2, 2, 3));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("\"", 0x34, true), 2, 2, 4));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("%", 0x22, true), 2, 2, 5));
-            keys.add(fixedStripSlotKey(buildPage2PunctKey("^", 0x23, true), 2, 2, 6));
+            // Fn latched: row 2 cols 1–2 are grave/tilde (strip f-p2r2c1 / f-p2r2c2).
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("`", 0x35, false), 2, 2, 0));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("~", 0x35, true), 2, 2, 1));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("'", 0x34, false), 2, 2, 2));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("\"", 0x34, true), 2, 2, 3));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("%", 0x22, true), 2, 2, 4));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("^", 0x23, true), 2, 2, 5));
+            keys.add(fixedStripSlotKey(buildPage2PunctKey("|", 0x64, false), 2, 2, 6));
         } else {
+            // Fn off: base caps ( / ) on 9/0 keys + Shift (strip b-p2r2c1 / b-p2r2c2).
             keys.add(fixedStripSlotKey(buildPage2PunctKey("(", 0x26, true), 2, 2, 0));
             keys.add(fixedStripSlotKey(buildPage2PunctKey(")", 0x27, true), 2, 2, 1));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("[", 0x2F, false), 2, 2, 2));
@@ -3604,6 +3674,29 @@ public class CustomKeyboardView extends LinearLayout {
         return keys;
     }
 
+    /**
+     * Page 3: dedicated Shortcut Hub toggles (Row 1 app profiles on row 2; Rows 2–3 strip profiles on
+     * row 3). Not edited via Rows 2–3 strip profile slot map — see Shortcut Hub “Page 3” tab.
+     */
+    private List<Key> buildFixedTopRowsPage3() {
+        List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
+        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(1), 3, 2, 0));
+        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(2), 3, 2, 1));
+        keys.add(fixedStripSlotKey(buildProfileHubSlotKey(3), 3, 2, 2));
+        for (int c = 3; c < TOP_PANEL_COLUMNS; c++) {
+            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 2, c));
+        }
+        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(1), 3, 3, 0));
+        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(2), 3, 3, 1));
+        keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(3), 3, 3, 2));
+        for (int c = 3; c < TOP_PANEL_COLUMNS - 1; c++) {
+            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 3, c));
+        }
+        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        applyStripSlotOverrides(keys);
+        return keys;
+    }
+
     private static Key buildPage2PunctKey(String label, int hidScanCode, boolean requiresShift) {
         String hex = Integer.toHexString(hidScanCode).toUpperCase();
         return new Key(label, "", hidScanCode, hex, 1f, 0, 0f, false, requiresShift, -1, true);
@@ -3624,6 +3717,26 @@ public class CustomKeyboardView extends LinearLayout {
         }
         String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
         int code = KEY_TOP_PROFILE_SLOT_1 + (slotIndex1Based - 1);
+        String codeStr = Integer.toHexString(code).toUpperCase();
+        return markFixedRowKey(new Key(compact, fullName, code, codeStr, 1f, 0, 0f, false, false, -1, true));
+    }
+
+    private Key buildStripProfileHubSlotKey(int slotIndex1Based) {
+        Context ctx = getContext();
+        String fullName = "?";
+        if (ctx != null) {
+            Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
+            String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
+                    ctx, slotIndex1Based, mgr);
+            Rows23StripProfile p = mgr.getProfileById(id);
+            if (p != null && p.name != null && !p.name.trim().isEmpty()) {
+                fullName = p.name.trim();
+            } else {
+                fullName = "?";
+            }
+        }
+        String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
+        int code = KEY_TOP_STRIP_PROFILE_SLOT_1 + (slotIndex1Based - 1);
         String codeStr = Integer.toHexString(code).toUpperCase();
         return markFixedRowKey(new Key(compact, fullName, code, codeStr, 1f, 0, 0f, false, false, -1, true));
     }
@@ -3683,9 +3796,22 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
+     * Page 2 strip row 2 columns 1–2: {@link #buildFixedTopRowsPage2()} swaps physical caps when local Fn
+     * latches; strip profile uses {@code b-p2r2c1}/{@code b-p2r2c2} for "(" / ")" and {@code f-p2r2c1}/
+     * {@code f-p2r2c2} for "`" / "~". Primary slot suffix must follow {@link #fixedTopLocalFnLocked} so
+     * {@link #applyStripSlotOverrides} does not overwrite the latched row back to the base shortcuts.
+     */
+    private static boolean isPage2Row2ParenGraveDualLayerStripSlot(@Nullable Key k) {
+        return k != null && k.stripSlotPage == 2 && k.stripSlotRow == 2 && k.stripSlotCol >= 0 && k.stripSlotCol <= 1;
+    }
+
+    /**
      * Page 0 row 2/3 F-keys: {@link Key#label}/{@link Key#code} are the latch-on (Fn) layer; digit overlay is
      * latch-off (base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code f-p…}
      * slots for page-0 F-row keys and {@code b-p…} elsewhere when applying overrides to the key itself.
+     * <p>Page 2 row 2 columns 1–2 are an exception: the rebuilt row swaps paren base vs grave/tilde when local
+     * Fn is latched, so we read {@code f-p…} for the primary shortcut when {@link #fixedTopLocalFnLocked} is
+     * true (see {@link #isPage2Row2ParenGraveDualLayerStripSlot(Key)}).
      */
     private void applyStripSlotOverrides(@NonNull java.util.List<Key> keys) {
         Context ctx = getContext();
@@ -3697,7 +3823,13 @@ public class CustomKeyboardView extends LinearLayout {
             if (k == null || k.stripSlotPage < 0) {
                 continue;
             }
+            if (k.stripSlotPage == 3) {
+                continue;
+            }
             boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(k);
+            if (isPage2Row2ParenGraveDualLayerStripSlot(k)) {
+                latchOnLayer = fixedTopLocalFnLocked;
+            }
             String slotKey = StripSlotMapStore.slotKey(
                     k.stripSlotPage, k.stripSlotRow, k.stripSlotCol, latchOnLayer);
             ShortcutProfileManager.Shortcut sc = mgr.resolveActiveSlotShortcut(slotKey);
@@ -3721,6 +3853,12 @@ public class CustomKeyboardView extends LinearLayout {
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         }
+        // Page 2: overrides may replace a slot whose physical factory scan differed; keep factory scan
+        // aligned with the active shortcut so {@link #resolvedStripSlotFactoryScanCode} and overlay logic match.
+        if (key.stripSlotPage == 2) {
+            key.stripSlotFactoryCode = shortcut.keyCode;
+            key.requiresShift = (normalizedModifiers & MOD_SHIFT) != 0;
+        }
     }
 
     /**
@@ -3732,12 +3870,18 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.stripSlotPage < 0) {
             return null;
         }
+        if (key.stripSlotPage == 3) {
+            return null;
+        }
         Context ctx = getContext();
         if (ctx == null) {
             return null;
         }
         Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
         boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(key);
+        if (isPage2Row2ParenGraveDualLayerStripSlot(key)) {
+            latchOnLayer = fixedTopLocalFnLocked;
+        }
         String overlayKey = StripSlotMapStore.slotKey(
                 key.stripSlotPage, key.stripSlotRow, key.stripSlotCol, !latchOnLayer);
         ShortcutProfileManager.Shortcut s = mgr.resolveActiveSlotShortcut(overlayKey);
@@ -3968,7 +4112,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void applyTopPanelKeyCapBackground(View view, Key key, boolean keyLockedVisualState) {
-        if (isTopProfileSlotKey(key)) {
+        if (isTopProfileSlotKey(key) || isTopStripProfileSlotKey(key)) {
             view.setBackground(buildProfileHubSlotBackground(keyLockedVisualState));
             view.setBackgroundTintList(null);
             installProfileHubRoundedOutlineClip(view);
@@ -3995,7 +4139,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * @param fixedTopBindPageIndex strip page index (0–2) for the keys in {@code panelKeys} when
+     * @param fixedTopBindPageIndex strip page index (0–3) for the keys in {@code panelKeys} when
      *        rendering the two fixed rows; {@code -1} when not a fixed-rows slice (ignored).
      */
     private void addShortcutPanelRows(
@@ -4053,7 +4197,7 @@ public class CustomKeyboardView extends LinearLayout {
                 // profile is the active Shortcut Hub profile.
                 boolean keyLockedVisualState = isFixedTopLocalFnKey(k)
                         ? fixedTopLocalFnLocked
-                        : (modifierLocked || isTopProfileSlotActive(k));
+                        : (modifierLocked || isTopProfileSlotActive(k) || isTopStripProfileSlotActive(k));
                 FnMapping fixedTopLocalFn = fixedRowsSlice
                         ? resolveFixedTopLocalFnMapping(k, fixedTopPageForResolvers)
                         : resolveFixedTopLocalFnMapping(k);
@@ -4172,7 +4316,7 @@ public class CustomKeyboardView extends LinearLayout {
                             : p);
                     applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
                     b.setSelected(keyLockedVisualState);
-                    boolean profileHubSlot = isTopProfileSlotKey(k) && fixedRowsSlice;
+                    boolean profileHubSlot = (isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) && fixedRowsSlice;
                     if (!profileHubSlot) {
                         b.setGravity(Gravity.CENTER);
                     }
@@ -4206,7 +4350,7 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                     } else if (nameMode || chordMode || (iconMode && effectiveTopIconResId == 0)) {
                         topButtonText = formatTopShortcutActionLabel(k);
-                    } else if (isTopProfileSlotKey(k)) {
+                    } else if (isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
                         topButtonText = k.label != null ? k.label : "";
                     } else if (k.symbolLabel != null && !k.symbolLabel.isEmpty()) {
                         if (k.label != null && !k.label.trim().isEmpty()) {
@@ -4555,11 +4699,13 @@ public class CustomKeyboardView extends LinearLayout {
         final boolean[] longPressConsumed = new boolean[1];
         final Runnable[] pendingModifierLongPress = new Runnable[1];
         final Runnable[] pendingProfileSlotLongPress = new Runnable[1];
+        final Runnable[] pendingStripProfileSlotLongPress = new Runnable[1];
         final Runnable[] pendingFnStripEditLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
         final boolean canSwipePanel = !isTopModifierLockCandidate(key);
         final int profileSlotIndex = key != null ? topProfileSlotIndexFromKeyCode(key.code) : 0;
+        final int stripProfileSlotIndex = key != null ? topStripProfileSlotIndexFromKeyCode(key.code) : 0;
         final boolean isLocalFnStripKey = isFixedTopLocalFnKey(key);
 
         return (v, event) -> {
@@ -4572,6 +4718,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (pendingProfileSlotLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                         pendingProfileSlotLongPress[0] = null;
+                    }
+                    if (pendingStripProfileSlotLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
+                        pendingStripProfileSlotLongPress[0] = null;
                     }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
@@ -4598,6 +4748,13 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingProfileSlotLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingProfileSlotLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
+                    } else if (stripProfileSlotIndex > 0) {
+                        pendingStripProfileSlotLongPress[0] = () -> {
+                            longPressConsumed[0] = true;
+                            showTopStripProfileSlotPicker(stripProfileSlotIndex);
+                            pendingStripProfileSlotLongPress[0] = null;
+                        };
+                        longPressHandler.postDelayed(pendingStripProfileSlotLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
                     } else if (isLocalFnStripKey) {
                         pendingFnStripEditLongPress[0] = () -> {
                             longPressConsumed[0] = true;
@@ -4627,6 +4784,10 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                             pendingProfileSlotLongPress[0] = null;
                         }
+                        if (pendingStripProfileSlotLongPress[0] != null) {
+                            longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
+                            pendingStripProfileSlotLongPress[0] = null;
+                        }
                         if (pendingFnStripEditLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                             pendingFnStripEditLongPress[0] = null;
@@ -4648,6 +4809,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (pendingProfileSlotLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
                         pendingProfileSlotLongPress[0] = null;
+                    }
+                    if (pendingStripProfileSlotLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
+                        pendingStripProfileSlotLongPress[0] = null;
                     }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
@@ -5238,7 +5403,7 @@ public class CustomKeyboardView extends LinearLayout {
                         || (key.code == 0xE3 && isWinLeftLocked);
                 boolean keyLockedVisualState = isFixedTopLocalFnKey(key)
                         ? fixedTopLocalFnLocked
-                        : (modifierLocked || isTopProfileSlotActive(key));
+                        : (modifierLocked || isTopProfileSlotActive(key) || isTopStripProfileSlotActive(key));
                 applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
                 view.setSelected(keyLockedVisualState);
             }
@@ -5709,6 +5874,9 @@ public class CustomKeyboardView extends LinearLayout {
         if (c >= KEY_TOP_PROFILE_SLOT_1 && c <= KEY_TOP_PROFILE_SLOT_7) {
             return true;
         }
+        if (c >= KEY_TOP_STRIP_PROFILE_SLOT_1 && c <= KEY_TOP_STRIP_PROFILE_SLOT_3) {
+            return true;
+        }
         switch (c) {
             case 0x1F: // @
             case 0x20: // #
@@ -5722,7 +5890,9 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x31: // \
             case 0x33: // :
             case 0x34: // ', "
-            case 0x35: // ~
+            case 0x35: // `, ~ (Fn-on); also legacy grave slot
+            case 0x26: // ( — 9 + Shift
+            case 0x27: // ) — 0 + Shift
             case 0x36: // <, ,
             case 0x37: // >, .
             case 0x38: // /, ?
@@ -5801,6 +5971,9 @@ public class CustomKeyboardView extends LinearLayout {
                 || isTopModeSlotKey(key)) {
             return null;
         }
+        if (key.stripSlotPage == 3) {
+            return null;
+        }
         FnMapping stripFn = rows23StripOverlayOverrideMapping(key);
         if (stripFn != null) {
             return stripFn;
@@ -5851,7 +6024,25 @@ public class CustomKeyboardView extends LinearLayout {
                 return key.requiresShift
                         ? new FnMapping(".", 0x37, 0)              // _ -> .
                         : new FnMapping(",", 0x36, 0);             // - -> ,
-            case 0x35: return new FnMapping("[", 0x2F, 0);         // ~ -> [
+            case 0x26:
+                if (key.stripSlotPage == 2 && key.stripSlotRow == 2 && key.stripSlotCol == 0 && key.requiresShift) {
+                    return new FnMapping("`", 0x35, 0);
+                }
+                return null;
+            case 0x27:
+                if (key.stripSlotPage == 2 && key.stripSlotRow == 2 && key.stripSlotCol == 1 && key.requiresShift) {
+                    return new FnMapping("~", 0x35, MOD_SHIFT);
+                }
+                return null;
+            case 0x35:
+                // Page 2 row 2 Fn-on: physical ` / ~ — pair with ( / ) when latch off.
+                if (key.stripSlotPage == 2 && key.stripSlotRow == 2 && key.stripSlotCol == 0 && !key.requiresShift) {
+                    return new FnMapping("(", 0x26, MOD_SHIFT);
+                }
+                if (key.stripSlotPage == 2 && key.stripSlotRow == 2 && key.stripSlotCol == 1 && key.requiresShift) {
+                    return new FnMapping(")", 0x27, MOD_SHIFT);
+                }
+                return new FnMapping("[", 0x2F, 0);         // [ key / legacy ~ slot -> [
             case 0x34:
                 return key.requiresShift
                         ? new FnMapping(":", 0x33, MOD_SHIFT)      // " -> :
@@ -5895,7 +6086,7 @@ public class CustomKeyboardView extends LinearLayout {
             @Nullable FnMapping activeOverlay,
             boolean renderAsActionLabel,
             int panelPageIndex) {
-        if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k)) {
+        if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
             return null;
         }
         int effectivePage = (k.stripSlotPage >= 0) ? k.stripSlotPage : panelPageIndex;
@@ -6176,6 +6367,21 @@ public class CustomKeyboardView extends LinearLayout {
             if (ctx != null && onTopModeShortcutListener != null) {
                 String mode = TopModeShortcutPrefs.getModeForSlot(ctx, topSlot);
                 onTopModeShortcutListener.onRequestSwitchToMode(mode);
+            }
+            return;
+        }
+
+        int stripProfileSlot = topStripProfileSlotIndexFromKeyCode(key.code);
+        if (stripProfileSlot > 0) {
+            Context ctx = getContext();
+            if (ctx != null) {
+                Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
+                String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
+                        ctx, stripProfileSlot, mgr);
+                if (mgr.getProfileById(id) != null) {
+                    mgr.setActiveProfileId(id);
+                }
+                refreshProfileSlotStrip();
             }
             return;
         }

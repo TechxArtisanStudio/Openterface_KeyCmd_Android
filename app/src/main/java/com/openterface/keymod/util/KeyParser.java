@@ -170,6 +170,23 @@ public class KeyParser {
      */
     public static String toLabelForTargetOs(int keyCode, int modifiers, String targetOs) {
         String os = targetOs != null && !targetOs.trim().isEmpty() ? targetOs.trim() : "macos";
+        // HID usage 0x35 (decimal 53): grave / tilde — same physical key; avoid generic "Key 53".
+        if (keyCode == 53) {
+            int m = modifiers & 0xFF;
+            if (m == 0) {
+                return "`";
+            }
+            if (m == 0x02) {
+                return "~";
+            }
+        }
+        // HID 0x26 / 0x27: 9 / 0 keys; Shift+ → "(" / ")" on US layout.
+        if (keyCode == 0x26 && modifiers == 0x02) {
+            return "(";
+        }
+        if (keyCode == 0x27 && modifiers == 0x02) {
+            return ")";
+        }
         StringBuilder sb = new StringBuilder();
         if ((modifiers & 0x08) != 0) {
             if ("macos".equals(os)) {
@@ -229,6 +246,19 @@ public class KeyParser {
                 case 68: sb.append("F11"); break;
                 case 69: sb.append("F12"); break;
                 case 46: sb.append("="); break; // HID 0x2E
+                case 53: // HID 0x35 grave/tilde (US); Shift-only handled above
+                    if ((modifiers & 0x02) != 0 && (modifiers & ~0x02) != 0) {
+                        sb.append("`");
+                    } else {
+                        sb.append((modifiers & 0x02) != 0 ? "~" : "`");
+                    }
+                    break;
+                case 0x26:
+                    sb.append((modifiers & 0x02) != 0 ? "(" : "9");
+                    break;
+                case 0x27:
+                    sb.append((modifiers & 0x02) != 0 ? ")" : "0");
+                    break;
                 // Modifier keys sent as plain HID usages (Rows 2–3 strip, etc.)
                 case 224:
                     sb.append("macos".equals(os) ? "Control" : "Ctrl");

@@ -37,6 +37,20 @@ public class Rows23StripProfileManager {
     private static final String KEY_ACTIVE_ID = "active_strip_profile_id";
     private static final String KEY_MIGRATED_V1 = "migration_rows23_strip_profiles_v1";
 
+    private static final String DEFAULT_STRIP_B_P2R2C1_PAREN = "default_builtin_strip_b_p2r2c1_paren";
+    private static final String DEFAULT_STRIP_B_P2R2C2_PAREN = "default_builtin_strip_b_p2r2c2_paren";
+    private static final String DEFAULT_STRIP_F_P2R2C1_GRAVE = "default_builtin_strip_f_p2r2c1_grave";
+    private static final String DEFAULT_STRIP_F_P2R2C2_TILDE = "default_builtin_strip_f_p2r2c2_tilde";
+
+    /** Legacy ids (grave on base) — rebind to paren base slots when still present. */
+    private static final String LEGACY_STRIP_B_P2R2C1_GRAVE = "default_builtin_strip_b_p2r2c1_grave";
+    private static final String LEGACY_STRIP_B_P2R2C2_TILDE = "default_builtin_strip_b_p2r2c2_tilde";
+
+    private static final int PAGE2_GRAVE_HID = 0x35;
+    private static final int PAGE2_PAREN_OPEN_HID = 0x26;
+    private static final int PAGE2_PAREN_CLOSE_HID = 0x27;
+    private static final int MOD_SHIFT_STRIP = 0x02;
+
     private final Context appContext;
     private final Gson gson = new Gson();
     private final ShortcutProfileManager shortcutProfileManager;
@@ -92,9 +106,235 @@ public class Rows23StripProfileManager {
                 p.shortcuts = new ArrayList<>();
             }
         }
-        if (migrateAllProfileSlotMapsToCanonicalKeys()) {
+        boolean remapped = migrateAllProfileSlotMapsToCanonicalKeys();
+        boolean punct = ensureDefaultStripProfilePage2PunctSlotsIfEmpty();
+        boolean builtInsP2 = upgradeBuiltInStripProfilesIfPage2Row2LayoutStale();
+        if (remapped || punct || builtInsP2) {
             save();
         }
+    }
+
+    /**
+     * Page 2 row 2: base caps are "(" / ")" (HID 0x26/0x27 + Shift); Fn layer is "`" / "~" (0x35).
+     * Seeds {@code b-p…} / {@code f-p…} on Default and repairs bindings that no longer match.
+     */
+    private boolean ensureDefaultStripProfilePage2PunctSlotsIfEmpty() {
+        Rows23StripProfile def = getProfileById(Rows23StripProfileConstants.DEFAULT_PROFILE_ID);
+        if (def == null || def.slotMap == null || def.shortcuts == null) {
+            return false;
+        }
+        boolean changed = false;
+        changed |= migrateLegacyDefaultPage2BaseGraveIds(def);
+        upsertDefaultPage2ParenShortcut(def, DEFAULT_STRIP_B_P2R2C1_PAREN, false);
+        upsertDefaultPage2ParenShortcut(def, DEFAULT_STRIP_B_P2R2C2_PAREN, true);
+        upsertDefaultPage2GraveTildeShortcut(def, DEFAULT_STRIP_F_P2R2C1_GRAVE, false);
+        upsertDefaultPage2GraveTildeShortcut(def, DEFAULT_STRIP_F_P2R2C2_TILDE, true);
+        changed |= bindDefaultPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 0, false),
+                DEFAULT_STRIP_B_P2R2C1_PAREN, 0);
+        changed |= bindDefaultPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 1, false),
+                DEFAULT_STRIP_B_P2R2C2_PAREN, 1);
+        changed |= bindDefaultPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 0, true),
+                DEFAULT_STRIP_F_P2R2C1_GRAVE, 0);
+        changed |= bindDefaultPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 1, true),
+                DEFAULT_STRIP_F_P2R2C2_TILDE, 1);
+        return changed;
+    }
+
+    /** Rewire Default profile base slots that still point at retired grave/tilde builtin ids. */
+    private static boolean migrateLegacyDefaultPage2BaseGraveIds(@NonNull Rows23StripProfile def) {
+        if (def.slotMap == null) {
+            return false;
+        }
+        boolean changed = false;
+        String k0 = StripSlotMapStore.slotKey(2, 2, 0, false);
+        String k1 = StripSlotMapStore.slotKey(2, 2, 1, false);
+        if (LEGACY_STRIP_B_P2R2C1_GRAVE.equals(def.slotMap.get(k0))) {
+            def.slotMap.put(k0, DEFAULT_STRIP_B_P2R2C1_PAREN);
+            changed = true;
+        }
+        if (LEGACY_STRIP_B_P2R2C2_TILDE.equals(def.slotMap.get(k1))) {
+            def.slotMap.put(k1, DEFAULT_STRIP_B_P2R2C2_PAREN);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private static boolean isPage2ParenBaseHid(@Nullable Shortcut s, int col0) {
+        if (s == null) {
+            return false;
+        }
+        int m = HidKeyCatalog.normalizeStripModifiers(s.modifiers);
+        if (m != MOD_SHIFT_STRIP) {
+            return false;
+        }
+        if (col0 == 0) {
+            return s.keyCode == PAGE2_PAREN_OPEN_HID;
+        }
+        if (col0 == 1) {
+            return s.keyCode == PAGE2_PAREN_CLOSE_HID;
+        }
+        return false;
+    }
+
+    private static boolean isPage2GraveOrTildeHid(@Nullable Shortcut s, int col0) {
+        if (s == null) {
+            return false;
+        }
+        if (s.keyCode != PAGE2_GRAVE_HID) {
+            return false;
+        }
+        int m = HidKeyCatalog.normalizeStripModifiers(s.modifiers);
+        if (col0 == 0) {
+            return m == 0;
+        }
+        if (col0 == 1) {
+            return m == MOD_SHIFT_STRIP;
+        }
+        return false;
+    }
+
+    @Nullable
+    private static Shortcut findShortcutById(@NonNull Rows23StripProfile p, @NonNull String id) {
+        for (Shortcut x : p.shortcuts) {
+            if (id.equals(x.id)) {
+                return x;
+            }
+        }
+        return null;
+    }
+
+    private static void upsertDefaultPage2ParenShortcut(
+            @NonNull Rows23StripProfile def, @NonNull String shortcutId, boolean closing) {
+        Shortcut s = findShortcutById(def, shortcutId);
+        if (s == null) {
+            s = new Shortcut();
+            s.id = shortcutId;
+            s.displayOrder = def.shortcuts.size();
+            def.shortcuts.add(s);
+        }
+        s.name = closing ? ")" : "(";
+        s.label = closing ? ")" : "(";
+        s.keyCode = closing ? PAGE2_PAREN_CLOSE_HID : PAGE2_PAREN_OPEN_HID;
+        s.modifiers = MOD_SHIFT_STRIP;
+        s.icon = "";
+    }
+
+    private static void upsertDefaultPage2GraveTildeShortcut(
+            @NonNull Rows23StripProfile def, @NonNull String shortcutId, boolean tilde) {
+        Shortcut s = findShortcutById(def, shortcutId);
+        if (s == null) {
+            s = new Shortcut();
+            s.id = shortcutId;
+            s.displayOrder = def.shortcuts.size();
+            def.shortcuts.add(s);
+        }
+        s.name = tilde ? "~" : "`";
+        s.label = tilde ? "~" : "`";
+        s.keyCode = PAGE2_GRAVE_HID;
+        s.modifiers = tilde ? MOD_SHIFT_STRIP : 0;
+        s.icon = "";
+    }
+
+    private static boolean bindDefaultPage2BaseParenSlot(
+            @NonNull Rows23StripProfile def,
+            @NonNull String slotKey,
+            @NonNull String builtinShortcutId,
+            int col0) {
+        String boundId = def.slotMap.get(slotKey);
+        if (boundId == null || boundId.trim().isEmpty()) {
+            def.slotMap.put(slotKey, builtinShortcutId);
+            return true;
+        }
+        Shortcut bound = findShortcutById(def, boundId.trim());
+        if (bound == null || !isPage2ParenBaseHid(bound, col0)) {
+            def.slotMap.put(slotKey, builtinShortcutId);
+            return true;
+        }
+        String wantLabel = col0 == 0 ? "(" : ")";
+        boolean fixLabel = bound.label == null || !wantLabel.equals(bound.label.trim());
+        boolean fixName = bound.name == null || !wantLabel.equals(bound.name.trim());
+        if (fixLabel || fixName) {
+            bound.label = wantLabel;
+            bound.name = wantLabel;
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean bindDefaultPage2FnGraveSlot(
+            @NonNull Rows23StripProfile def,
+            @NonNull String slotKey,
+            @NonNull String builtinShortcutId,
+            int col0) {
+        String boundId = def.slotMap.get(slotKey);
+        if (boundId == null || boundId.trim().isEmpty()) {
+            def.slotMap.put(slotKey, builtinShortcutId);
+            return true;
+        }
+        Shortcut bound = findShortcutById(def, boundId.trim());
+        if (bound == null || !isPage2GraveOrTildeHid(bound, col0)) {
+            def.slotMap.put(slotKey, builtinShortcutId);
+            return true;
+        }
+        String wantLabel = col0 == 0 ? "`" : "~";
+        boolean fixLabel = bound.label == null || !wantLabel.equals(bound.label.trim());
+        boolean fixName = bound.name == null || !wantLabel.equals(bound.name.trim());
+        if (fixLabel || fixName) {
+            bound.label = wantLabel;
+            bound.name = wantLabel;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Replaces persisted "Symbols ★" / "Math ∑" when page 2 row 2 no longer matches factory
+     * (base "(" / ")"; Fn "`" / "~").
+     */
+    private boolean upgradeBuiltInStripProfilesIfPage2Row2LayoutStale() {
+        boolean changed = false;
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.SYMBOLS_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildSymbolsProfile());
+        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
+                Rows23StripProfileConstants.MATH_PROFILE_ID,
+                Rows23StripProfileBuiltins.buildMathProfile());
+        return changed;
+    }
+
+    private boolean replaceBuiltInProfileIfPage2Row2LayoutStale(
+            @NonNull String profileId, @NonNull Rows23StripProfile fresh) {
+        for (int i = 0; i < profiles.size(); i++) {
+            Rows23StripProfile cur = profiles.get(i);
+            if (!profileId.equals(cur.id)) {
+                continue;
+            }
+            Shortcut b0 = resolveSlotShortcut(cur, 2, 2, 0, false);
+            Shortcut b1 = resolveSlotShortcut(cur, 2, 2, 1, false);
+            Shortcut fnGrave = resolveSlotShortcut(cur, 2, 2, 0, true);
+            Shortcut fnTilde = resolveSlotShortcut(cur, 2, 2, 1, true);
+            if (isPage2ParenBaseHid(b0, 0) && isPage2ParenBaseHid(b1, 1)
+                    && isPage2GraveOrTildeHid(fnGrave, 0) && isPage2GraveOrTildeHid(fnTilde, 1)) {
+                return false;
+            }
+            profiles.set(i, fresh);
+            return true;
+        }
+        return false;
+    }
+
+    @Nullable
+    private static Shortcut resolveSlotShortcut(
+            @NonNull Rows23StripProfile p, int page, int row, int col0, boolean fnLayer) {
+        if (p.slotMap == null || p.shortcuts == null) {
+            return null;
+        }
+        String sk = StripSlotMapStore.slotKey(page, row, col0, fnLayer);
+        String sid = p.slotMap.get(sk);
+        if (sid == null || sid.trim().isEmpty()) {
+            return null;
+        }
+        return findShortcutById(p, sid.trim());
     }
 
     /**

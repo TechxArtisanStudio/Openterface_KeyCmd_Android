@@ -101,6 +101,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private TabLayout hubMainTabs;
     private View hubTabContentProfiles;
     private View hubTabContentStrip;
+    @Nullable
+    private View hubTabContentPage3;
     private LinearLayout panelStripProfileList;
     private LinearLayout panelStripProfileDetail;
     private Button createStripProfileButton;
@@ -252,6 +254,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         hubMainTabs = view.findViewById(R.id.hub_main_tabs);
         hubTabContentProfiles = view.findViewById(R.id.hub_tab_content_profiles);
         hubTabContentStrip = view.findViewById(R.id.hub_tab_content_strip);
+        hubTabContentPage3 = view.findViewById(R.id.hub_tab_content_page3);
         panelStripProfileList = view.findViewById(R.id.panel_strip_profile_list);
         panelStripProfileDetail = view.findViewById(R.id.panel_strip_profile_detail);
         createStripProfileButton = view.findViewById(R.id.create_strip_profile_button);
@@ -519,13 +522,25 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         if (position == 1) {
             hubTabContentProfiles.setVisibility(View.GONE);
             hubTabContentStrip.setVisibility(View.VISIBLE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.GONE);
+            }
             loadStripProfiles();
             if (selectedStripDetailProfile != null && panelStripProfileDetail.getVisibility() == View.VISIBLE) {
                 refreshStripCatalogForSelectedStrip();
             }
+        } else if (position == 2) {
+            hubTabContentProfiles.setVisibility(View.GONE);
+            hubTabContentStrip.setVisibility(View.GONE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.VISIBLE);
+            }
         } else {
             hubTabContentProfiles.setVisibility(View.VISIBLE);
             hubTabContentStrip.setVisibility(View.GONE);
+            if (hubTabContentPage3 != null) {
+                hubTabContentPage3.setVisibility(View.GONE);
+            }
         }
     }
 

@@ -15,7 +15,8 @@ public final class KeyboardStripPresetConstants {
     public static final String STRIP_PROFILE_ID = "keyboard_strip";
 
     public static final int TOP_PANEL_COLUMNS = 7;
-    public static final int FIXED_ROW_BUILTIN_PAGES = 3;
+    /** Includes page 3 (Shortcut Hub toggles); pages 0–2 are the main strip. */
+    public static final int FIXED_ROW_BUILTIN_PAGES = 4;
     public static final int FIXED_ROWS_PER_BUILTIN_PAGE = 2;
     public static final int FAVORITES_TRAILING_SYSTEM_SLOTS = 2;
 

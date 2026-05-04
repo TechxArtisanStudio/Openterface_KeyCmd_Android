@@ -461,6 +461,7 @@ by TechxArtisan</string>
     <!-- Top strip PH1–PH3: long-press mode picker -->
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>
     <string name="top_profile_slot_picker_title">Choose Shortcut Hub profile for this slot</string>
+    <string name="top_rows23_strip_slot_picker_title">Choose Rows 2–3 strip profile for this slot</string>
     <string name="top_strip_favorite_picker_title">Choose shortcut for this slot</string>
     <!-- Top strip long-press: subtitle for favourite picker (title above). -->
     <string name="top_strip_favorite_picker_subtitle">Place a shortcut from your favourites list in this slot.</string>
@@ -513,6 +514,9 @@ by TechxArtisan</string>
     <string name="shortcut_hub_export">Export</string>
     <string name="shortcut_hub_tab_app_profiles">Row 1 · Profiles</string>
     <string name="shortcut_hub_tab_fixed_strip">Rows 2–3 · Strip</string>
+    <string name="shortcut_hub_tab_page3_strip">Page 3 · Hub keys</string>
+    <string name="shortcut_hub_page3_info_title">Page 3 on the keyboard strip</string>
+    <string name="shortcut_hub_page3_info_body">In Keyboard &amp; Mouse mode, swipe the fixed rows to page 3.\n\n• Row 2: tap activates the Row 1 app profile for that slot. Long-press to pick which profile is bound (same flow as the profile slot picker).\n• Row 3: tap activates the Rows 2–3 strip profile. Long-press to pick which strip profile each slot shows.\n\nEditing strip key caps and slot overrides for pages 0–2 stays under Rows 2–3 · Strip.</string>
     <string name="shortcut_hub_strip_grid_layer_base">Base</string>
     <string name="shortcut_hub_strip_grid_layer_fn">Fn</string>
     <string name="shortcut_hub_strip_catalog_page0_title">Page 0 — F-keys</string>
