@@ -3684,8 +3684,8 @@ public class CustomKeyboardView extends LinearLayout {
 
     /**
      * Page 0 row 2/3 F-keys: {@link Key#label}/{@link Key#code} are the latch-on (Fn) layer; digit overlay is
-     * latch-off (Base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code *_fn}
-     * for page-0 F-row keys and {@code *_base} elsewhere when applying overrides to the key itself.
+     * latch-off (base). Other pages: label/code are latch-off; overlay is latch-on. So we read {@code f-p…}
+     * slots for page-0 F-row keys and {@code b-p…} elsewhere when applying overrides to the key itself.
      */
     private void applyStripSlotOverrides(@NonNull java.util.List<Key> keys) {
         Context ctx = getContext();

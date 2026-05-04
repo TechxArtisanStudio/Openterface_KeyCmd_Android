@@ -502,12 +502,13 @@ public final class FixedStripLayoutCatalog {
         return "Hub " + slot1Based;
     }
 
-    /** Parsed {@code p0_r2_c3_base}-style strip slot key (rows 2–3 only). */
+    /** Parsed canonical strip slot key {@code b-p0r2c1} / legacy {@code p0_r2_c0_base} (rows 2–3 only). */
     public static final class ParsedSlotKey {
         public final int pageIndex;
         public final int stripRow;
+        /** 0-based column index (0…{@link KeyboardStripPresetConstants#TOP_PANEL_COLUMNS}-1). */
         public final int col;
-        /** {@code true} = Fn column in the Hub grid (suffix {@code _fn}). */
+        /** {@code true} = Fn layer ({@code f-p…} or legacy {@code _fn}). */
         public final boolean fnLayer;
 
         public ParsedSlotKey(int pageIndex, int stripRow, int col, boolean fnLayer) {
@@ -530,8 +531,13 @@ public final class FixedStripLayoutCatalog {
         }
     }
 
-    private static final Pattern SLOT_KEY_PATTERN =
-            Pattern.compile("^p(\\d+)_r(2|3)_c(\\d+)_(base|fn)$");
+    /** Canonical: {@code b-p0r2c1} … {@code f-p0r2c7} (1-based column in id). */
+    private static final Pattern SLOT_KEY_PATTERN_CANONICAL =
+            Pattern.compile("^(b|f)-p(\\d+)r(2|3)c([1-7])$", Pattern.CASE_INSENSITIVE);
+
+    /** Legacy persisted form: {@code p0_r2_c0_base}. */
+    private static final Pattern SLOT_KEY_PATTERN_LEGACY =
+            Pattern.compile("^p(\\d+)_r(2|3)_c(\\d+)_(base|fn)$", Pattern.CASE_INSENSITIVE);
 
     private static final int[] P0_R2_CODES = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x2E};
     private static final boolean[] P0_R2_SHIFT = {false, false, false, false, false, false, false};
@@ -550,14 +556,27 @@ public final class FixedStripLayoutCatalog {
 
     @Nullable
     public static ParsedSlotKey parseSlotKey(@NonNull String slotKey) {
-        Matcher m = SLOT_KEY_PATTERN.matcher(slotKey.trim());
-        if (!m.matches()) {
+        String t = slotKey.trim();
+        Matcher m = SLOT_KEY_PATTERN_CANONICAL.matcher(t);
+        if (m.matches()) {
+            boolean fn = "f".equalsIgnoreCase(m.group(1));
+            int page = Integer.parseInt(m.group(2));
+            int row = Integer.parseInt(m.group(3));
+            int col1 = Integer.parseInt(m.group(4));
+            int col0 = col1 - 1;
+            if (col0 < 0 || col0 >= KeyboardStripPresetConstants.TOP_PANEL_COLUMNS) {
+                return null;
+            }
+            return new ParsedSlotKey(page, row, col0, fn);
+        }
+        Matcher legacy = SLOT_KEY_PATTERN_LEGACY.matcher(t);
+        if (!legacy.matches()) {
             return null;
         }
-        int page = Integer.parseInt(m.group(1));
-        int row = Integer.parseInt(m.group(2));
-        int col = Integer.parseInt(m.group(3));
-        boolean fn = "fn".equals(m.group(4));
+        int page = Integer.parseInt(legacy.group(1));
+        int row = Integer.parseInt(legacy.group(2));
+        int col = Integer.parseInt(legacy.group(3));
+        boolean fn = "fn".equalsIgnoreCase(legacy.group(4));
         if (col < 0 || col >= KeyboardStripPresetConstants.TOP_PANEL_COLUMNS) {
             return null;
         }

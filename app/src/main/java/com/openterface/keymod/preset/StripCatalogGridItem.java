@@ -28,7 +28,7 @@ public final class StripCatalogGridItem {
     public final int pageIndex;
     public final int stripRow;
     public final int col;
-    /** {@code true} = Fn modifier layer ({@code *_fn} key). */
+    /** {@code true} = Fn modifier layer ({@code f-p…} slot id). */
     public final boolean fnLayer;
     /** Short label for the layer (e.g. Base / Fn). */
     @Nullable

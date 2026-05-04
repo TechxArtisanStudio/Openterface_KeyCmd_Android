@@ -89,6 +89,28 @@ public class Rows23StripProfileManager {
                 p.shortcuts = new ArrayList<>();
             }
         }
+        if (migrateAllProfileSlotMapsToCanonicalKeys()) {
+            save();
+        }
+    }
+
+    /**
+     * Rewrites legacy {@code p0_r2_c0_base} slot keys to canonical {@code b-p0r2c1} ids so lookups
+     * match {@link StripSlotMapStore#slotKey}.
+     */
+    private boolean migrateAllProfileSlotMapsToCanonicalKeys() {
+        boolean changed = false;
+        for (Rows23StripProfile p : profiles) {
+            if (p.slotMap == null || p.slotMap.isEmpty()) {
+                continue;
+            }
+            Map<String, String> remapped = StripSlotMapStore.remapSlotMapKeysToCanonical(p.slotMap);
+            if (!remapped.equals(p.slotMap)) {
+                p.slotMap = remapped;
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     private void save() {
@@ -104,7 +126,8 @@ public class Rows23StripProfileManager {
             def.id = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
             def.name = "Default";
             def.createdAt = System.currentTimeMillis();
-            def.slotMap = new HashMap<>(new StripSlotMapStore(appContext).getAll());
+            def.slotMap = StripSlotMapStore.remapSlotMapKeysToCanonical(
+                    new HashMap<>(new StripSlotMapStore(appContext).getAll()));
             shortcutProfileManager.ensureKeyboardStripLayoutProfile();
             ShortcutProfile strip = shortcutProfileManager.getProfileById(KeyboardStripPresetConstants.STRIP_PROFILE_ID);
             def.shortcuts = new ArrayList<>();
@@ -321,7 +344,11 @@ public class Rows23StripProfileManager {
         if (p.slotMap == null) {
             p.slotMap = new HashMap<>();
         }
-        p.slotMap.put(slotKey, shortcutId);
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
+        if (!canon.equals(slotKey)) {
+            p.slotMap.remove(slotKey);
+        }
+        p.slotMap.put(canon, shortcutId);
         save();
     }
 
@@ -330,7 +357,11 @@ public class Rows23StripProfileManager {
         if (p == null || p.slotMap == null) {
             return;
         }
-        p.slotMap.remove(slotKey);
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
+        p.slotMap.remove(canon);
+        if (!canon.equals(slotKey)) {
+            p.slotMap.remove(slotKey);
+        }
         save();
     }
 
@@ -374,7 +405,7 @@ public class Rows23StripProfileManager {
     }
 
     /**
-     * Swaps shortcut assignments for exactly two slot keys (each may be {@code *_base} or {@code *_fn}).
+     * Swaps shortcut assignments for exactly two slot keys (each base {@code b-p…} or fn {@code f-p…}).
      * No-op if keys are equal.
      */
     public void swapSlotAssignments(
@@ -382,7 +413,9 @@ public class Rows23StripProfileManager {
             @NonNull String slotKeyA,
             @NonNull String slotKeyB
     ) {
-        if (slotKeyA.equals(slotKeyB)) {
+        String canonA = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKeyA);
+        String canonB = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKeyB);
+        if (canonA.equals(canonB)) {
             return;
         }
         Rows23StripProfile p = getProfileById(profileId);
@@ -392,10 +425,16 @@ public class Rows23StripProfileManager {
         if (p.slotMap == null) {
             p.slotMap = new HashMap<>();
         }
-        String valA = p.slotMap.get(slotKeyA);
-        String valB = p.slotMap.get(slotKeyB);
-        putOrRemoveSlotValue(p.slotMap, slotKeyA, valB);
-        putOrRemoveSlotValue(p.slotMap, slotKeyB, valA);
+        String valA = p.slotMap.get(canonA);
+        if (valA == null) {
+            valA = p.slotMap.get(slotKeyA);
+        }
+        String valB = p.slotMap.get(canonB);
+        if (valB == null) {
+            valB = p.slotMap.get(slotKeyB);
+        }
+        putOrRemoveSlotValue(p.slotMap, canonA, valB);
+        putOrRemoveSlotValue(p.slotMap, canonB, valA);
         save();
     }
 
@@ -487,6 +526,7 @@ public class Rows23StripProfileManager {
                 target.slotMap = new HashMap<>();
             }
             target.slotMap.putAll(incoming.slotMap);
+            target.slotMap = StripSlotMapStore.remapSlotMapKeysToCanonical(new HashMap<>(target.slotMap));
         }
         if (incoming.shortcuts != null) {
             if (target.shortcuts == null) {
@@ -578,7 +618,11 @@ public class Rows23StripProfileManager {
         if (p == null || p.slotMap == null) {
             return null;
         }
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
         String sid = p.slotMap.get(slotKey);
+        if (sid == null || sid.trim().isEmpty()) {
+            sid = p.slotMap.get(canon);
+        }
         if (sid == null || sid.isEmpty()) {
             return null;
         }

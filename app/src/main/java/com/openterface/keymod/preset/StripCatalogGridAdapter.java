@@ -143,10 +143,9 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
     private void bindCell(@NonNull CellVH h, @NonNull StripCatalogGridItem item, @NonNull RecyclerView.ViewHolder holder) {
         Context rowCtx = holder.itemView.getContext();
         h.layer.setText(item.layerLabel != null ? item.layerLabel : "");
-        if (item.pageIndex >= 0 && item.stripRow >= 0 && item.col >= 0) {
-            String prefix = item.fnLayer ? "f" : "b";
+        if (item.pageIndex >= 0 && item.stripRow >= 0 && item.col >= 0 && !TextUtils.isEmpty(item.slotKey)) {
             h.slotId.setVisibility(View.VISIBLE);
-            h.slotId.setText(prefix + "_p" + item.pageIndex + "r" + item.stripRow + "c" + item.col);
+            h.slotId.setText(item.slotKey);
         } else {
             h.slotId.setVisibility(View.GONE);
             h.slotId.setText("");
@@ -304,13 +303,25 @@ public class StripCatalogGridAdapter extends RecyclerView.Adapter<RecyclerView.V
 
     private static boolean slotMapHasShortcut(@NonNull Map<String, String> map, @NonNull String key) {
         String v = map.get(key);
-        return v != null && !v.trim().isEmpty();
+        if (v != null && !v.trim().isEmpty()) {
+            return true;
+        }
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(key);
+        if (!canon.equals(key)) {
+            v = map.get(canon);
+            return v != null && !v.trim().isEmpty();
+        }
+        return false;
     }
 
     @Nullable
     private Shortcut resolveShortcutForSlotKey(@NonNull String slotKey) {
         Map<String, String> map = resolveSlotMapForSummary();
         String sid = map.get(slotKey);
+        if (sid == null || sid.trim().isEmpty()) {
+            String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
+            sid = map.get(canon);
+        }
         if (sid == null || sid.trim().isEmpty()) {
             return null;
         }

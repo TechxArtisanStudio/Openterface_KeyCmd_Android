@@ -1804,7 +1804,15 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             return false;
         }
         String v = slotMap.get(slotKey);
-        return v != null && !v.trim().isEmpty();
+        if (v != null && !v.trim().isEmpty()) {
+            return true;
+        }
+        String canon = StripSlotMapStore.canonicalSlotKeyOrSelf(slotKey);
+        if (!canon.equals(slotKey)) {
+            v = slotMap.get(canon);
+            return v != null && !v.trim().isEmpty();
+        }
+        return false;
     }
 
     /**

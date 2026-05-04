@@ -16,7 +16,7 @@ public class Rows23StripProfile {
     public String id;
     public String name;
     public long createdAt;
-    /** Keys {@link StripSlotMapStore#slotKey}; values shortcut ids in {@link #shortcuts}. */
+    /** Keys {@link StripSlotMapStore#slotKey} (e.g. {@code b-p0r2c1}); values shortcut ids in {@link #shortcuts}. */
     public Map<String, String> slotMap;
     public List<ShortcutProfileManager.Shortcut> shortcuts;
 

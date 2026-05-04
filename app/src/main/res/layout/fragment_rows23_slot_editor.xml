@@ -61,7 +61,7 @@
                     android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
                     android:textColor="@color/text_primary"
                     android:textIsSelectable="true"
-                    tools:text="p0_r2_c3_base" />
+                    tools:text="b-p0r2c4" />
 
                 <TextView
                     android:id="@+id/rows23_slot_editor_slot_summary"

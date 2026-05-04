@@ -21,7 +21,7 @@ public class Rows23StripProfileDocumentTest {
         doc.profile.id = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
         doc.profile.name = "Default";
         doc.profile.slotMap = new HashMap<>();
-        doc.profile.slotMap.put("p0_r2_c0_base", "s1");
+        doc.profile.slotMap.put("b-p0r2c1", "s1");
         doc.profile.shortcuts = new java.util.ArrayList<>();
         Shortcut s = new Shortcut("s1", "Hello", "Hello", 0, 0x04);
         doc.profile.shortcuts.add(s);
@@ -33,7 +33,7 @@ public class Rows23StripProfileDocumentTest {
         Rows23StripProfileDocument parsed = Rows23StripProfileDocument.parseOrNull(json);
         Assert.assertNotNull(parsed);
         Rows23StripProfileDocument.validateOrThrow(parsed);
-        Assert.assertEquals("s1", parsed.profile.slotMap.get("p0_r2_c0_base"));
+        Assert.assertEquals("s1", parsed.profile.slotMap.get("b-p0r2c1"));
         Assert.assertEquals(1, parsed.profile.shortcuts.size());
         Assert.assertEquals(0x04, parsed.profile.shortcuts.get(0).keyCode);
     }
