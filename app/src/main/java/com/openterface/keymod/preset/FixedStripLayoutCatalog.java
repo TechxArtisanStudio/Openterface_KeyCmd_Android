@@ -36,6 +36,18 @@ public final class FixedStripLayoutCatalog {
     /** Page 2 catalog rows when local Fn latch is on. */
     public static final int FN_LATCH_ON = 2;
 
+    /**
+     * Page 2 fixed strip row 2: base caps (local Fn off) / latched caps (local Fn on).
+     * Keep in sync with {@link com.openterface.keymod.CustomKeyboardView#buildFixedTopRowsPage2()}.
+     */
+    public static final String[] PAGE2_ROW2_BASE = {"(", ")", "[", "]", ":", "#", "@"};
+    /** Row 2 latched punctuation caps (local Fn on). */
+    public static final String[] PAGE2_ROW2_FN = {"`", "~", "'", "\"", "%", "^", "|"};
+    /** Row 3 base caps (local Fn off); index 6 is the Fn toggle label in the grid only. */
+    public static final String[] PAGE2_ROW3_BASE = {"/", "\\", "|", "?", "-", "_", "FN"};
+    /** Row 3 latched caps (local Fn on). */
+    public static final String[] PAGE2_ROW3_FN = {"<", ">", "*", "&", ",", ".", "FN"};
+
     public static final class Row {
         public final int viewType;
         @NonNull
@@ -191,7 +203,9 @@ public final class FixedStripLayoutCatalog {
 
     /**
      * Factory top-right local-Fn corner hint for fixed strip page index 2 (punctuation grid), independent
-     * of Rows 2–3 strip profile decorative glyphs. Matches {@link #addPage2Variant} / {@link #overlayFnHint}.
+     * of Rows 2–3 strip profile decorative glyphs. Uses the same-slot other-latch cap from
+     * {@link #PAGE2_ROW2_BASE} / {@link #PAGE2_ROW2_FN} / {@link #PAGE2_ROW3_BASE} / {@link #PAGE2_ROW3_FN}
+     * (not HID {@link #overlayFnHint} pairings).
      *
      * @param stripRow    physical strip row {@code 2} or {@code 3}
      * @param stripCol    column {@code 0…6} (row 3 col {@code 6} is the Fn toggle — returns {@code null})
@@ -212,80 +226,13 @@ public final class FixedStripLayoutCatalog {
         if (stripRow == 3 && stripCol > 5) {
             return null;
         }
-        if (!localFnLocked) {
-            if (stripRow == 2) {
-                switch (stripCol) {
-                    case 0:
-                        return "`";
-                    case 1:
-                        return "~";
-                    case 2:
-                        return "~";
-                    case 3:
-                        return "'";
-                    case 4:
-                        return "\"";
-                    case 5:
-                        return "%";
-                    case 6:
-                        return "^";
-                    default:
-                        return null;
-                }
-            }
-            switch (stripCol) {
-                case 0:
-                    return "<";
-                case 1:
-                    return ">";
-                case 2:
-                    return "*";
-                case 3:
-                    return "&";
-                case 4:
-                    return ",";
-                case 5:
-                    return ".";
-                default:
-                    return null;
-            }
-        }
         if (stripRow == 2) {
-            switch (stripCol) {
-                case 0:
-                    return "(";
-                case 1:
-                    return ")";
-                case 2:
-                    return "]";
-                case 3:
-                    return ":";
-                case 4:
-                    return "#";
-                case 5:
-                    return "@";
-                case 6:
-                    return "*";
-                default:
-                    return null;
-            }
-        }
-        switch (stripCol) {
-            case 0:
-                return "/";
-            case 1:
-                return "\\";
-            case 2:
-                return "|";
-            case 3:
-                return "?";
-            case 4:
-                return "-";
-            case 5:
-                return "_";
-            default:
+            if (stripCol >= PAGE2_ROW2_BASE.length) {
                 return null;
+            }
+            return localFnLocked ? PAGE2_ROW2_BASE[stripCol] : PAGE2_ROW2_FN[stripCol];
         }
+        return localFnLocked ? PAGE2_ROW3_BASE[stripCol] : PAGE2_ROW3_FN[stripCol];
     }
 
     /**
@@ -565,18 +512,13 @@ public final class FixedStripLayoutCatalog {
                 "Page 2 — Hub & symbols",
                 "Caps swap when local Fn is latched; slot keys are the same in both states."));
 
-        String[] r2Off = {"(", ")", "[", "]", ":", "#", "@"};
-        String[] r3Off = {"/", "\\", "|", "?", "-", "_", "FN"};
-        String[] r2On = {"`", "~", "'", "\"", "%", "^", "|"};
-        String[] r3On = {"<", ">", "*", "&", ",", ".", "FN"};
-
         int[] r2OffCodes = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
         boolean[] r2OffShift = {true, true, false, false, true, true, true};
         int[] r3OffCodes = {0x38, 0x31, 0x31, 0x38, 0x2D, 0x2D, 0xF00C};
         boolean[] r3OffShift = {false, false, true, true, false, true, false};
 
-        appendGridStripRow(context, out, 2, 2, r2Off, r2OffCodes, r2OffShift, r2On, targetOs);
-        appendGridStripRow(context, out, 2, 3, r3Off, r3OffCodes, r3OffShift, r3On, targetOs);
+        appendGridStripRow(context, out, 2, 2, PAGE2_ROW2_BASE, r2OffCodes, r2OffShift, PAGE2_ROW2_FN, targetOs);
+        appendGridStripRow(context, out, 2, 3, PAGE2_ROW3_BASE, r3OffCodes, r3OffShift, PAGE2_ROW3_FN, targetOs);
     }
 
     private static void addPage2Variant(

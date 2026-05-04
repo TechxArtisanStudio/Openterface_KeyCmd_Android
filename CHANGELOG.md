@@ -35,6 +35,7 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 - After hub edits, the keyboard **reloads strip-related preferences**; slot rows show **id badges** where helpful; strip profiles support **Reset** where applicable.
 - **Icon picker** for Rows 2–3 uses **theme-aware** selection styling.
 - **Correctness**: fixes for page-0 **local Fn** overlays, page-2 **paren / grave** behavior with **Fn latch**, and **Unicode** entry for strip shortcuts where applicable.
+- **Fixed strip page 2 (punctuation):** local **Fn** top-right corner hints use **same-column latch swap** (shared `PAGE2_ROW*` caps with the strip catalog), not HID overlay pairings—so **`[`**↔**`'`**, **`:`**↔**`%`**, **`@`**↔**`|`** among others stay consistent when the latch toggles.
 
 ### Keyboard (page 3 quick toggles)
 

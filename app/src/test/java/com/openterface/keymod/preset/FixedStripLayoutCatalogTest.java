@@ -43,18 +43,33 @@ public class FixedStripLayoutCatalogTest {
     }
 
     @Test
-    public void page2CornerHint_fnOff_row2_colon_pairIsDoubleQuote() {
-        assertEquals("\"", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 4, false));
+    public void page2CornerHint_fnOff_row2_openBracket_pairIsApostrophe_notTilde() {
+        assertEquals("'", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 2, false));
     }
 
     @Test
-    public void page2CornerHint_fnOn_row2_colon_pairIsDoubleQuoteOpposite() {
-        assertEquals(":", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 3, true));
+    public void page2CornerHint_fnOff_row2_colon_pairIsPercent_notDoubleQuote() {
+        assertEquals("%", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 4, false));
     }
 
     @Test
-    public void page2CornerHint_fnOn_row2_col4_pairIsHash() {
-        assertEquals("#", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 4, true));
+    public void page2CornerHint_fnOff_row2_at_pairIsPipe_notCaret() {
+        assertEquals("|", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 6, false));
+    }
+
+    @Test
+    public void page2CornerHint_fnOn_row2_doubleQuote_pairIsCloseBracket_notColon() {
+        assertEquals("]", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 3, true));
+    }
+
+    @Test
+    public void page2CornerHint_fnOn_row2_percent_pairIsColon_notHash() {
+        assertEquals(":", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 4, true));
+    }
+
+    @Test
+    public void page2CornerHint_fnOn_row2_apostrophe_pairIsOpenBracket() {
+        assertEquals("[", FixedStripLayoutCatalog.page2LocalFnOppositeCornerHint(2, 2, true));
     }
 
     @Test
