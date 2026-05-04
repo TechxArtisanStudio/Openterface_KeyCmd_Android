@@ -255,7 +255,7 @@ public final class Rows23StripProfileBuiltins {
             // Page 2 row 3 base — / \ | ? - _
             new SlotSpec(2, 3, 0, false, "♬", 0x38, MOD_NONE),
             new SlotSpec(2, 3, 1, false, "♪", 0x31, MOD_NONE),
-            new SlotSpec(2, 3, 2, false, "♫", 0x64, MOD_NONE),
+            new SlotSpec(2, 3, 2, false, "♫", 0x31, MOD_SHIFT),
             new SlotSpec(2, 3, 3, false, "♩", 0x38, MOD_SHIFT),
             new SlotSpec(2, 3, 4, false, "♭", 0x2D, MOD_NONE),
             new SlotSpec(2, 3, 5, false, "♯", 0x2D, MOD_SHIFT),
@@ -350,7 +350,7 @@ public final class Rows23StripProfileBuiltins {
             // Page 2 row 3 base — / \ | ? - _ (relations)
             new SlotSpec(2, 3, 0, false, "∝", 0x38, MOD_NONE),
             new SlotSpec(2, 3, 1, false, "∞", 0x31, MOD_NONE),
-            new SlotSpec(2, 3, 2, false, "⊥", 0x64, MOD_NONE),
+            new SlotSpec(2, 3, 2, false, "⊥", 0x31, MOD_SHIFT),
             new SlotSpec(2, 3, 3, false, "∠", 0x38, MOD_SHIFT),
             new SlotSpec(2, 3, 4, false, "∡", 0x2D, MOD_NONE),
             new SlotSpec(2, 3, 5, false, "∢", 0x2D, MOD_SHIFT),

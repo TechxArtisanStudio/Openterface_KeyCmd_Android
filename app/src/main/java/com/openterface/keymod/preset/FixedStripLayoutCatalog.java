@@ -36,6 +36,18 @@ public final class FixedStripLayoutCatalog {
     /** Page 2 catalog rows when local Fn latch is on. */
     public static final int FN_LATCH_ON = 2;
 
+    /**
+     * Page 2 fixed strip row 2: base caps (local Fn off) / latched caps (local Fn on).
+     * Keep in sync with {@link com.openterface.keymod.CustomKeyboardView#buildFixedTopRowsPage2()}.
+     */
+    public static final String[] PAGE2_ROW2_BASE = {"(", ")", "[", "]", ":", "#", "@"};
+    /** Row 2 latched punctuation caps (local Fn on). */
+    public static final String[] PAGE2_ROW2_FN = {"`", "~", "'", "\"", "%", "^", "|"};
+    /** Row 3 base caps (local Fn off); index 6 is the Fn toggle label in the grid only. */
+    public static final String[] PAGE2_ROW3_BASE = {"/", "\\", "|", "?", "-", "_", "FN"};
+    /** Row 3 latched caps (local Fn on). */
+    public static final String[] PAGE2_ROW3_FN = {"<", ">", "*", "&", ",", ".", "FN"};
+
     public static final class Row {
         public final int viewType;
         @NonNull
@@ -148,7 +160,8 @@ public final class FixedStripLayoutCatalog {
             case 0x30:
                 return "'";
             case 0x33:
-                return requiresShift ? "\"" : ":";
+                // US HID: 0x33 unshifted is ';', shifted is ':'.
+                return requiresShift ? "\"" : ";";
             case 0x20:
                 return "%";
             case 0x1F:
@@ -156,9 +169,7 @@ public final class FixedStripLayoutCatalog {
             case 0x38:
                 return requiresShift ? "&" : "<";
             case 0x31:
-                return ">";
-            case 0x64:
-                return "*";
+                return requiresShift ? "*" : ">";
             case 0x2D:
                 return requiresShift ? "." : ",";
             case 0x26:
@@ -188,6 +199,40 @@ public final class FixedStripLayoutCatalog {
             default:
                 return null;
         }
+    }
+
+    /**
+     * Factory top-right local-Fn corner hint for fixed strip page index 2 (punctuation grid), independent
+     * of Rows 2–3 strip profile decorative glyphs. Uses the same-slot other-latch cap from
+     * {@link #PAGE2_ROW2_BASE} / {@link #PAGE2_ROW2_FN} / {@link #PAGE2_ROW3_BASE} / {@link #PAGE2_ROW3_FN}
+     * (not HID {@link #overlayFnHint} pairings).
+     *
+     * @param stripRow    physical strip row {@code 2} or {@code 3}
+     * @param stripCol    column {@code 0…6} (row 3 col {@code 6} is the Fn toggle — returns {@code null})
+     * @param localFnLocked same meaning as {@code CustomKeyboardView#fixedTopLocalFnLocked}
+     * @return opposite-layer legend for the key cap, or {@code null} if none
+     */
+    @Nullable
+    public static String page2LocalFnOppositeCornerHint(int stripRow, int stripCol, boolean localFnLocked) {
+        if (stripRow != 2 && stripRow != 3) {
+            return null;
+        }
+        if (stripCol < 0 || stripCol > 6) {
+            return null;
+        }
+        if (stripRow == 3 && stripCol == 6) {
+            return null;
+        }
+        if (stripRow == 3 && stripCol > 5) {
+            return null;
+        }
+        if (stripRow == 2) {
+            if (stripCol >= PAGE2_ROW2_BASE.length) {
+                return null;
+            }
+            return localFnLocked ? PAGE2_ROW2_BASE[stripCol] : PAGE2_ROW2_FN[stripCol];
+        }
+        return localFnLocked ? PAGE2_ROW3_BASE[stripCol] : PAGE2_ROW3_FN[stripCol];
     }
 
     /**
@@ -467,18 +512,13 @@ public final class FixedStripLayoutCatalog {
                 "Page 2 — Hub & symbols",
                 "Caps swap when local Fn is latched; slot keys are the same in both states."));
 
-        String[] r2Off = {"(", ")", "[", "]", ":", "#", "@"};
-        String[] r3Off = {"/", "\\", "|", "?", "-", "_", "FN"};
-        String[] r2On = {"`", "~", "'", "\"", "%", "^", "|"};
-        String[] r3On = {"<", ">", "*", "&", ",", ".", "FN"};
-
         int[] r2OffCodes = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
         boolean[] r2OffShift = {true, true, false, false, true, true, true};
-        int[] r3OffCodes = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
-        boolean[] r3OffShift = {false, false, false, true, false, true, false};
+        int[] r3OffCodes = {0x38, 0x31, 0x31, 0x38, 0x2D, 0x2D, 0xF00C};
+        boolean[] r3OffShift = {false, false, true, true, false, true, false};
 
-        appendGridStripRow(context, out, 2, 2, r2Off, r2OffCodes, r2OffShift, r2On, targetOs);
-        appendGridStripRow(context, out, 2, 3, r3Off, r3OffCodes, r3OffShift, r3On, targetOs);
+        appendGridStripRow(context, out, 2, 2, PAGE2_ROW2_BASE, r2OffCodes, r2OffShift, PAGE2_ROW2_FN, targetOs);
+        appendGridStripRow(context, out, 2, 3, PAGE2_ROW3_BASE, r3OffCodes, r3OffShift, PAGE2_ROW3_FN, targetOs);
     }
 
     private static void addPage2Variant(
@@ -497,7 +537,7 @@ public final class FixedStripLayoutCatalog {
             addSlot(out, 2, 2, 3, "\"", overlayFnHint(0x34, true), 0, latch);
             addSlot(out, 2, 2, 4, "%", overlayFnHint(0x22, true), 0, latch);
             addSlot(out, 2, 2, 5, "^", overlayFnHint(0x23, true), 0, latch);
-            addSlot(out, 2, 2, 6, "|", overlayFnHint(0x64, false), 0, latch);
+            addSlot(out, 2, 2, 6, "|", overlayFnHint(0x31, true), 0, latch);
             out.add(Row.section("Row 3", null, latch));
             addSlot(out, 2, 3, 0, "<", overlayFnHint(0x36, true), 0, latch);
             addSlot(out, 2, 3, 1, ">", overlayFnHint(0x37, true), 0, latch);
@@ -517,7 +557,7 @@ public final class FixedStripLayoutCatalog {
             out.add(Row.section("Row 3", null, latch));
             addSlot(out, 2, 3, 0, "/", overlayFnHint(0x38, false), 0, latch);
             addSlot(out, 2, 3, 1, "\\", overlayFnHint(0x31, false), 0, latch);
-            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x64, false), 0, latch);
+            addSlot(out, 2, 3, 2, "|", overlayFnHint(0x31, true), 0, latch);
             addSlot(out, 2, 3, 3, "?", overlayFnHint(0x38, true), 0, latch);
             addSlot(out, 2, 3, 4, "-", overlayFnHint(0x2D, false), 0, latch);
             addSlot(out, 2, 3, 5, "_", overlayFnHint(0x2D, true), 0, latch);
@@ -593,8 +633,8 @@ public final class FixedStripLayoutCatalog {
     /** Cols 0–1: Shift+9 / Shift+0 → "(" / ")"; remainder matches page 2 punctuation row. */
     private static final int[] P2_R2_CODES = {0x26, 0x27, 0x2F, 0x30, 0x33, 0x20, 0x1F};
     private static final boolean[] P2_R2_SHIFT = {true, true, false, false, true, true, true};
-    private static final int[] P2_R3_CODES = {0x38, 0x31, 0x64, 0x38, 0x2D, 0x2D, 0xF00C};
-    private static final boolean[] P2_R3_SHIFT = {false, false, false, true, false, true, false};
+    private static final int[] P2_R3_CODES = {0x38, 0x31, 0x31, 0x38, 0x2D, 0x2D, 0xF00C};
+    private static final boolean[] P2_R3_SHIFT = {false, false, true, true, false, true, false};
 
     @Nullable
     public static ParsedSlotKey parseSlotKey(@NonNull String slotKey) {
