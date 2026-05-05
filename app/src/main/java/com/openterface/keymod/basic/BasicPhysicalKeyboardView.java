@@ -44,10 +44,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     @Nullable
     private UsbSerialPort port;
 
-    private boolean stickyShift;
-    private boolean stickyCtrl;
-    private boolean stickyAlt;
-    private boolean stickyWin;
+    /**
+     * Sticky mode: latched modifier bits (USB HID boot keyboard modifier byte). Left: Ctrl 0x01,
+     * Shift 0x02, Alt 0x04, Win 0x08; right: CtrlR 0x10, ShiftR 0x20, AltR 0x40, WinR 0x80. Momentary
+     * taps use usages 0xE0–0xE7 in the key slot via {@link #tapModifierMomentary(int)}.
+     */
+    private int stickyModMask;
     private boolean capsLock;
 
     @Nullable
@@ -90,10 +92,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 if (!KmBasicKeyboardPrefs.PREF_KEY.equals(key)) {
                     return;
                 }
-                stickyShift = false;
-                stickyCtrl = false;
-                stickyAlt = false;
-                stickyWin = false;
+                stickyModMask = 0;
                 capsLock = false;
                 MainActivity ma = mainActivity;
                 if (ma != null && isAttachedToWindow()) {
@@ -228,12 +227,21 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         keyPreview.dismiss();
     }
 
+    private int shiftMaskBoth() {
+        return parseMod("Shift") | parseMod("ShiftR");
+    }
+
+    /** True when either Shift side is active (sticky or chord-held). */
+    private boolean stickyShiftLayer() {
+        return (stickyModMask & shiftMaskBoth()) != 0;
+    }
+
     /** Sticky latched shift, or chord mode with Shift long-held. */
     private boolean shiftLayerActive() {
         if (isMomentaryChordMode()) {
-            return (chordHeldModMask & parseMod("Shift")) != 0;
+            return (chordHeldModMask & shiftMaskBoth()) != 0;
         }
-        return stickyShift;
+        return stickyShiftLayer();
     }
 
     private void tapModifierMomentary(int extendedKeyCode) {
@@ -346,11 +354,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         v.setOnTouchListener(createChordModifierTouchListener(extendedKeyCode, holdModMask, preview));
     }
 
-    private void wireBottomModifier(View v, String which, int extKey, int holdMask, Supplier<String> preview) {
+    private void wireBottomModifier(
+            View v, String which, int extKey, int holdMask, int stickyMaskBit, Supplier<String> preview) {
         if (isMomentaryChordMode()) {
             wireChordModifierTouch(v, extKey, holdMask, preview);
         } else {
-            wireStickyModifierTap(v, which, preview);
+            wireStickyModifierTap(v, which, stickyMaskBit, preview);
         }
     }
 
@@ -362,13 +371,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
         if (isMomentaryChordMode()) {
             int ext = isLeft ? HID_EXT_LSHIFT : HID_EXT_RSHIFT;
-            wireChordModifierTouch(v, ext, parseMod("Shift"), preview);
+            int hold = isLeft ? parseMod("Shift") : parseMod("ShiftR");
+            wireChordModifierTouch(v, ext, hold, preview);
         } else {
             styleStickyModifierKeySurface(v);
+            int bit = isLeft ? parseMod("Shift") : parseMod("ShiftR");
             wireTap(
                     v,
                     () -> {
-                        tapModifierToggle("shift");
+                        toggleStickyModBit(bit);
                         refreshModifierVisuals();
                     },
                     preview);
@@ -404,20 +415,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private int stickyModifiersMask() {
-        int m = 0;
-        if (stickyCtrl) {
-            m |= parseMod("Ctrl");
-        }
-        if (stickyShift) {
-            m |= parseMod("Shift");
-        }
-        if (stickyAlt) {
-            m |= parseMod("Alt");
-        }
-        if (stickyWin) {
-            m |= parseMod("Win");
-        }
-        return m;
+        return stickyModMask;
     }
 
     private int effectiveModifiersMask() {
@@ -434,7 +432,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
         int mods = effectiveModifiersMask();
         boolean shiftForCase =
-                !isMomentaryChordMode() && isLetter && capsLock != stickyShift;
+                !isMomentaryChordMode() && isLetter && capsLock != stickyShiftLayer();
         if (needsShiftForSymbol) {
             mods |= parseMod("Shift");
         } else if (shiftForCase) {
@@ -485,7 +483,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             return letter;
         }
         boolean upper =
-                isMomentaryChordMode() ? capsLock : (capsLock != stickyShift);
+                isMomentaryChordMode() ? capsLock : (capsLock != stickyShiftLayer());
         return upper ? letter.toUpperCase(Locale.ROOT) : letter.toLowerCase(Locale.ROOT);
     }
 
@@ -505,40 +503,37 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return previewShiftLayer(label, hint);
     }
 
+    private void toggleStickyModBit(int bit) {
+        stickyModMask ^= bit;
+    }
+
     private void tapModifierToggle(String which) {
-        switch (which) {
-            case "shift":
-                stickyShift = !stickyShift;
-                break;
-            case "ctrl":
-                stickyCtrl = !stickyCtrl;
-                break;
-            case "alt":
-                stickyAlt = !stickyAlt;
-                break;
-            case "win":
-                stickyWin = !stickyWin;
-                break;
-            case "caps":
-                capsLock = !capsLock;
-                break;
-            default:
-                break;
+        if ("caps".equals(which)) {
+            capsLock = !capsLock;
         }
     }
 
     private void refreshStickyModifierVisuals() {
         if (shiftKeyLeft != null) {
-            shiftKeyLeft.setSelected(stickyShift);
+            shiftKeyLeft.setSelected((stickyModMask & parseMod("Shift")) != 0);
         }
         if (shiftKeyRight != null) {
-            shiftKeyRight.setSelected(stickyShift);
+            shiftKeyRight.setSelected((stickyModMask & parseMod("ShiftR")) != 0);
         }
-        setSelectedOnModifierKeys(ctrlModifierKeys, stickyCtrl);
-        setSelectedOnModifierKeys(altModifierKeys, stickyAlt);
-        setSelectedOnModifierKeys(winModifierKeys, stickyWin);
+        refreshStickySideKeys(ctrlModifierKeys, parseMod("Ctrl"), parseMod("CtrlR"));
+        refreshStickySideKeys(altModifierKeys, parseMod("Alt"), parseMod("AltR"));
+        refreshStickySideKeys(winModifierKeys, parseMod("Win"), parseMod("WinR"));
         if (capsKeyView != null) {
             capsKeyView.setSelected(capsLock);
+        }
+    }
+
+    private void refreshStickySideKeys(List<View> keys, int leftBit, int rightBit) {
+        if (keys.size() > 0) {
+            keys.get(0).setSelected((stickyModMask & leftBit) != 0);
+        }
+        if (keys.size() > 1) {
+            keys.get(1).setSelected((stickyModMask & rightBit) != 0);
         }
     }
 
@@ -570,12 +565,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
     }
 
-    private void wireStickyModifierTap(View v, String which, Supplier<String> previewText) {
+    private void wireStickyModifierTap(View v, String which, int stickyMaskBit, Supplier<String> previewText) {
         registerStickyModifierKey(which, v);
         wireTap(
                 v,
                 () -> {
-                    tapModifierToggle(which);
+                    toggleStickyModBit(stickyMaskBit);
                     refreshModifierVisuals();
                 },
                 previewText);
@@ -819,17 +814,18 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = {"Ctrl", "\u2325", "\u2318", "Space", "\u2318", "\u2325"};
         float[] w = {1f, 1f, 1f, 3f, 1f, 1f};
         View k0 = inflateKey(row, labels[0], null, w[0]);
-        wireBottomModifier(k0, "ctrl", HID_EXT_LCTRL, parseMod("Ctrl"), () -> labels[0]);
+        wireBottomModifier(
+                k0, "ctrl", HID_EXT_LCTRL, parseMod("Ctrl"), parseMod("Ctrl"), () -> labels[0]);
         View k1 = inflateKey(row, labels[1], null, w[1]);
-        wireBottomModifier(k1, "alt", HID_EXT_LALT, parseMod("Alt"), () -> labels[1]);
+        wireBottomModifier(k1, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[1]);
         View k2 = inflateKey(row, labels[2], null, w[2]);
-        wireBottomModifier(k2, "win", HID_EXT_LGUI, parseMod("Win"), () -> labels[2]);
+        wireBottomModifier(k2, "win", HID_EXT_LGUI, parseMod("Win"), parseMod("Win"), () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
         wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
-        wireBottomModifier(k4, "win", HID_EXT_RGUI, parseMod("Win"), () -> labels[4]);
+        wireBottomModifier(k4, "win", HID_EXT_RGUI, parseMod("WinR"), parseMod("WinR"), () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
-        wireBottomModifier(k5, "alt", HID_EXT_RALT, parseMod("Alt"), () -> labels[5]);
+        wireBottomModifier(k5, "alt", HID_EXT_RALT, parseMod("AltR"), parseMod("AltR"), () -> labels[5]);
         row.addView(createArrowCluster(4f));
     }
 
@@ -837,19 +833,21 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = {"Ctrl", "Win", "Alt", "Space", "Alt", "App", "Ctrl"};
         float[] w = {1f, 1f, 1f, 3f, 1f, 1f, 1f};
         View k0 = inflateKey(row, labels[0], null, w[0]);
-        wireBottomModifier(k0, "ctrl", HID_EXT_LCTRL, parseMod("Ctrl"), () -> labels[0]);
+        wireBottomModifier(
+                k0, "ctrl", HID_EXT_LCTRL, parseMod("Ctrl"), parseMod("Ctrl"), () -> labels[0]);
         View k1 = inflateKey(row, labels[1], null, w[1]);
-        wireBottomModifier(k1, "win", HID_EXT_LGUI, parseMod("Win"), () -> labels[1]);
+        wireBottomModifier(k1, "win", HID_EXT_LGUI, parseMod("Win"), parseMod("Win"), () -> labels[1]);
         View k2 = inflateKey(row, labels[2], null, w[2]);
-        wireBottomModifier(k2, "alt", HID_EXT_LALT, parseMod("Alt"), () -> labels[2]);
+        wireBottomModifier(k2, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
         wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
-        wireBottomModifier(k4, "alt", HID_EXT_RALT, parseMod("Alt"), () -> labels[4]);
+        wireBottomModifier(k4, "alt", HID_EXT_RALT, parseMod("AltR"), parseMod("AltR"), () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
         wireRepeatableTap(k5, () -> tapKey(0x65, false, false), () -> labels[5]);
         View k6 = inflateKey(row, labels[6], null, w[6]);
-        wireBottomModifier(k6, "ctrl", HID_EXT_RCTRL, parseMod("Ctrl"), () -> labels[6]);
+        wireBottomModifier(
+                k6, "ctrl", HID_EXT_RCTRL, parseMod("CtrlR"), parseMod("CtrlR"), () -> labels[6]);
         row.addView(createArrowCluster(4f));
     }
 

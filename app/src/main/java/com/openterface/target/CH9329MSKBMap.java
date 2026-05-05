@@ -46,6 +46,11 @@ public class CH9329MSKBMap {
         DataLen.put("Shift", "02");
         DataLen.put("Alt", "04");
         DataLen.put("Win", "08");
+        // USB HID keyboard boot modifier byte: right-hand column (distinct from left bits above).
+        DataLen.put("CtrlR", "10");
+        DataLen.put("ShiftR", "20");
+        DataLen.put("AltR", "40");
+        DataLen.put("WinR", "80");
 
         return DataLen;
     }
