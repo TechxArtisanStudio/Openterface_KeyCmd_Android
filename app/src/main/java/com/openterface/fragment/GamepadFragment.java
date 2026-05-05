@@ -271,7 +271,7 @@ public class GamepadFragment extends Fragment {
 
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(mouseBtn, true);
+                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), true);
                 return;
             }
             if (keyCode == 1001) {
@@ -302,7 +302,7 @@ public class GamepadFragment extends Fragment {
             if (keyCode == 1001 || keyCode == 1002) return;
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(mouseBtn, false);
+                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), false);
                 return;
             }
             Log.d(TAG, "Button released: " + buttonId);
@@ -401,6 +401,23 @@ public class GamepadFragment extends Fragment {
             return null;
         }
         return m.mouseButton;
+    }
+
+    /**
+     * Preset layout stores mouse buttons as 1=left, 2=middle, 3=right.
+     * HID relative-mouse reports use a bitmask (left=1, right=2, middle=4).
+     */
+    private static int semanticMouseButtonToHidMask(int semantic) {
+        switch (semantic) {
+            case 1:
+                return 1;
+            case 2:
+                return 4;
+            case 3:
+                return 2;
+            default:
+                return 0;
+        }
     }
 
     private static int intOr(@Nullable Integer v, int def) {
