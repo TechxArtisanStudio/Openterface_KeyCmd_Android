@@ -1706,7 +1706,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Splits {@code keyAlternates} on commas without regex quirks; ignores empty segments.
+     * Splits {@code keyAlternates} on commas without regex quirks.
+     * Empty segments are kept so token indices align with picker slots (Up…Right, then corners).
      */
     private static List<String> splitAlternatesTokens(String alternates) {
         if (TextUtils.isEmpty(alternates)) {
@@ -1716,17 +1717,11 @@ public class CustomKeyboardView extends LinearLayout {
         int start = 0;
         for (int i = 0; i < alternates.length(); i++) {
             if (alternates.charAt(i) == ',') {
-                String t = alternates.substring(start, i).trim();
-                if (!t.isEmpty()) {
-                    out.add(t);
-                }
+                out.add(alternates.substring(start, i).trim());
                 start = i + 1;
             }
         }
-        String last = alternates.substring(start).trim();
-        if (!last.isEmpty()) {
-            out.add(last);
-        }
+        out.add(alternates.substring(start).trim());
         return out;
     }
 

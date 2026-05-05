@@ -16,7 +16,7 @@ Keep **landscape and portrait** definitions aligned unless you intentionally div
 | Layer | Location | Purpose |
 |--------|----------|---------|
 | Parse XML | `CustomKeyboardView.parseKeyboard()` | Reads `android:codes`, `keyLabel`, `keySymbolLabel`, `keyAlternates`, `keyCornerHint`. Custom attrs are passed through `decodeKeyboardXmlEntities` so values like `&#92;` / `&amp;` become real single characters (XmlPullParser does not decode these in custom attrs). |
-| Slot fill | `fillAlternateSlotOptions(Key, AlternateOption[])` | Nine logical slots (`SLOT_CENTER` … `SLOT_DOWN_RIGHT`). **Center** = capital when `keyLabel` is `a`–`z`, else mappable single-character label. **`keyAlternates` tokens** (up to **eight**) map in order to **Up, Down, Left, Right**, then **Up-Left, Up-Right, Down-Left, Down-Right** (geometry indices 5–8). There is no automatic lowercase fill for Down. For **`/`**, if parsing fails or Up is mis-set, code forces **`\`** on **Up** and **`|`** on **Down**. |
+| Slot fill | `fillAlternateSlotOptions(Key, AlternateOption[])` | Nine logical slots (`SLOT_CENTER` … `SLOT_DOWN_RIGHT`). **Center** = capital when `keyLabel` is `a`–`z`, else mappable single-character label. **`keyAlternates` tokens** (up to **eight**) map in order to **Up, Down, Left, Right**, then **Up-Left, Up-Right, Down-Left, Down-Right** (geometry indices 5–8). `splitAlternatesTokens` keeps **empty** comma-separated fields so a later token (e.g. a corner symbol) stays aligned with the correct slot. There is no automatic lowercase fill for Down. For **`/`**, if parsing fails or Up is mis-set, code forces **`\`** on **Up** and **`|`** on **Down**. |
 | Popup layout | `showAlternatesPopup` | **3×3** grid matching screen directions (see diagram below). Cells with a mapped option are shown; empty cells are omitted when trimming the popup bounds. |
 | Gesture → slot | `AlternatePopupGeometry.pickSlot` | Delta from touch-down: inner radius → default (center); outer radius → cancel; else classify into outer cells using **axis deadbands** plus a **neutral cross** (both axes weak → stays default highlight). Corner cells use the same thresholds as cardinals (`AlternatePopupGeometryTest`). |
 | Character → HID / Unicode | `mapAsciiAlternate(String token)` | Each token must be **one Unicode code point** and supported here, or that slot is **empty**. Some symbols use HID usage + modifiers; others set `unicodeCodePoint` and send via `HidTextKeystrokeSender`. |
@@ -30,7 +30,7 @@ Keep **landscape and portrait** definitions aligned unless you intentionally div
 | `android:codes` | Base key HID usage (hex string in XML). |
 | `android:keyLabel` | Main label (often one letter). |
 | `custom:keySymbolLabel` | Shift/preview label on key face; not an extra long-press slot. |
-| `custom:keyAlternates` | Comma-separated **single code-point** tokens (after trim). Order is **Up**, **Down**, **Left**, **Right** (max four), then optional **UL**, **UR**, **DL**, **DR** (four more). **Center** is not set from XML (capital `A`–`Z` from `keyLabel`). |
+| `custom:keyAlternates` | Comma-separated **single code-point** tokens (after trim). Order is **Up**, **Down**, **Left**, **Right** (max four), then optional **UL**, **UR**, **DL**, **DR** (four more). Use consecutive commas to leave a slot empty while keeping later positions (e.g. `$ , € , ¥ , , , , , ₺`). **Center** is not set from XML (capital `A`–`Z` from `keyLabel`). |
 | `custom:keyCornerHint` | Legacy small hint (top-end); prefer defining `keyAlternates` so the hint row matches **U,D,L,R** order. |
 
 ### XML escaping (common)
@@ -79,7 +79,7 @@ Base HID = `android:codes` (hex). The table’s **`keyAlternates`** column lists
 | p | 13 | P | 0 | 0 |
 | a | 04 | A | @ | @ |
 | s | 16 | S | # | # |
-| d | 07 | D | $ , € , ¥ , £ , ₹ , ₩ , ₽ , ₺ (↑↓←→ then UL–DR) | $ |
+| d | 07 | D | $ , € , ¥ , (empty ×4) , ₺ (↑↓←→ then UL–DR); £ / ₹ / ₩ / ₽ removed — unreliable on device | $ |
 | f | 09 | F | % | % |
 | g | 0A | G | ^ | ^ |
 | h | 0B | H | & | & |
