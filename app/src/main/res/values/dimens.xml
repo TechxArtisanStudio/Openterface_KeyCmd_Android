@@ -44,6 +44,8 @@
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>
+    <!-- KM Basic physical keyboard: horizontal + bottom inset so edge keys are easier to tap -->
+    <dimen name="basic_keyboard_content_inset">12dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
     <dimen name="compose_shortcut_strip_height">120dp</dimen>
     

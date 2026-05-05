@@ -93,6 +93,9 @@
         android:id="@+id/basic_physical_keyboard"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:paddingStart="@dimen/basic_keyboard_content_inset"
+        android:paddingEnd="@dimen/basic_keyboard_content_inset"
+        android:paddingBottom="@dimen/basic_keyboard_content_inset" />
 
 </LinearLayout>
