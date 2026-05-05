@@ -52,6 +52,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
     @Nullable private LinearLayout chromeConnectionWrap;
+    @Nullable private View kbMouseHost;
 
     private final MainActivity.OnTargetOsChangeListener basicOsListener =
             os -> {
@@ -98,6 +99,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        kbMouseHost = view.findViewById(R.id.kb_mouse_host);
         View chromeInset = view.findViewById(R.id.km_basic_chrome_inset_container);
         applyKmBasicChromeTopInset(chromeInset);
         wireChrome(view);
@@ -137,6 +139,7 @@ public final class KeyboardMouseFragment extends Fragment {
     public void onResume() {
         super.onResume();
         applyOrientationForCurrentSubmode();
+        updateKbMouseHostVisibilityForCurrentState();
         MainActivity ma = mainActivity();
         if (ma != null) {
             ma.addOsChangeListener(basicOsListener);
@@ -160,6 +163,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        updateKbMouseHostVisibilityForCurrentState();
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
     }
@@ -305,6 +309,8 @@ public final class KeyboardMouseFragment extends Fragment {
             submode = SUBMODE_KEYBOARD;
         }
         currentSubmode = submode;
+        applyOrientationForCurrentSubmode();
+        updateKbMouseHostVisibilityForCurrentState();
         Fragment f = buildChildForSubmode(submode);
         FragmentTransaction tx = getChildFragmentManager().beginTransaction();
         tx.replace(R.id.kb_mouse_host, f);
@@ -312,7 +318,24 @@ public final class KeyboardMouseFragment extends Fragment {
         getChildFragmentManager().executePendingTransactions();
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
-        applyOrientationForCurrentSubmode();
+    }
+
+    /**
+     * Avoids one squeezed portrait layout pass of the full PC keyboard: when the keyboard submode
+     * is active but the device is still portrait (before {@link #applyOrientationForCurrentSubmode}
+     * takes effect), the host stays {@link View#GONE} until {@link #onConfigurationChanged} runs in
+     * landscape.
+     */
+    private void updateKbMouseHostVisibilityForCurrentState() {
+        if (kbMouseHost == null) {
+            return;
+        }
+        if (!SUBMODE_KEYBOARD.equals(currentSubmode)) {
+            kbMouseHost.setVisibility(View.VISIBLE);
+            return;
+        }
+        int o = getResources().getConfiguration().orientation;
+        kbMouseHost.setVisibility(o == Configuration.ORIENTATION_PORTRAIT ? View.GONE : View.VISIBLE);
     }
 
     @NonNull

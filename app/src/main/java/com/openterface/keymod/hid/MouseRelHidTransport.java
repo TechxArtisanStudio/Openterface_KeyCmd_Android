@@ -43,11 +43,50 @@ public final class MouseRelHidTransport {
         }
     }
 
+    /**
+     * Sends a relative mouse report with the given HID button mask (bits: left=1, right=2,
+     * middle=4) and zero movement — no automatic release. Used for press-and-hold on mouse buttons.
+     */
+    public static void sendRelButtonsNoMotion(
+            UsbSerialPort port,
+            BluetoothService bluetoothService,
+            boolean bluetoothServiceBound,
+            int buttonMask) {
+        new Thread(() -> {
+            try {
+                String buttonByte = String.format("%02X", buttonMask & 0xFF);
+                String sendMsData =
+                        CH9329MSKBMap.getKeyCodeMap().get("prefix1")
+                                + CH9329MSKBMap.getKeyCodeMap().get("prefix2")
+                                + CH9329MSKBMap.getKeyCodeMap().get("address")
+                                + CH9329MSKBMap.CmdData().get("CmdMS_REL")
+                                + CH9329MSKBMap.DataLen().get("DataLenRelMS")
+                                + CH9329MSKBMap.MSRelData().get("FirstData")
+                                + buttonByte
+                                + "00"
+                                + "00"
+                                + CH9329MSKBMap.DataNull().get("DataNull");
+                sendMsData = sendMsData + Ch9329PacketUtil.makeChecksum(sendMsData);
+                if (sendMsData.length() % 2 != 0) {
+                    sendMsData += "0";
+                }
+                byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(sendMsData);
+                if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                    bluetoothService.sendData(bytes);
+                } else if (port != null) {
+                    port.write(bytes, 20);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "sendRelButtonsNoMotion: " + e.getMessage());
+            }
+        }).start();
+    }
+
     public static void sendRelMove(
             UsbSerialPort port,
             BluetoothService bluetoothService,
             boolean bluetoothServiceBound,
-            boolean dragButtonHeld,
+            int heldButtonMask,
             float startMoveMsX,
             float startMoveMsY,
             float lastMoveMsX,
@@ -75,7 +114,7 @@ public final class MouseRelHidTransport {
                 } else {
                     yByte = String.format("%02X", 0x100 + yMovement);
                 }
-                String buttonByte = dragButtonHeld ? "01" : CH9329MSKBMap.MSAbsData().get("SecNullData");
+                String buttonByte = String.format("%02X", heldButtonMask & 0xFF);
                 String sendMsData =
                         CH9329MSKBMap.getKeyCodeMap().get("prefix1")
                                 + CH9329MSKBMap.getKeyCodeMap().get("prefix2")
@@ -109,11 +148,26 @@ public final class MouseRelHidTransport {
             boolean bluetoothServiceBound,
             int deltaX,
             int deltaY) {
+        sendScroll(port, bluetoothService, bluetoothServiceBound, deltaX, deltaY, 0);
+    }
+
+    /**
+     * @param heldButtonMask HID button bits to keep pressed in each scroll sub-packet (left=1,
+     *     right=2, middle=4), so scrolling does not clear a strip-held button on the host.
+     */
+    public static void sendScroll(
+            UsbSerialPort port,
+            BluetoothService bluetoothService,
+            boolean bluetoothServiceBound,
+            int deltaX,
+            int deltaY,
+            int heldButtonMask) {
         new Thread(() -> {
             try {
                 if (deltaX == 0 && deltaY == 0) {
                     return;
                 }
+                String buttonByte = String.format("%02X", heldButtonMask & 0xFF);
                 String base =
                         CH9329MSKBMap.getKeyCodeMap().get("prefix1")
                                 + CH9329MSKBMap.getKeyCodeMap().get("prefix2")
@@ -121,7 +175,7 @@ public final class MouseRelHidTransport {
                                 + CH9329MSKBMap.CmdData().get("CmdMS_REL")
                                 + CH9329MSKBMap.DataLen().get("DataLenRelMS")
                                 + CH9329MSKBMap.MSRelData().get("FirstData")
-                                + "00";
+                                + buttonByte;
                 if (deltaY != 0) {
                     String wheelByte = deltaY > 0
                             ? String.format("%02X", Math.min(deltaY, 0x7F))

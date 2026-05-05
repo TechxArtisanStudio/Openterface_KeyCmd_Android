@@ -21,10 +21,22 @@ import com.openterface.keymod.basic.BasicPortraitScrollStripView;
 import com.openterface.keymod.hid.MouseRelHidTransport;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * KM Basic touchpad: reuses {@link TouchPadView} gestures with shared relative-mouse HID transport.
  */
 public class BasicTouchpadFragment extends Fragment {
+
+    /** HID relative button bit: left */
+    private static final int BTN_LEFT = 0x01;
+    /** HID relative button bit: right */
+    private static final int BTN_RIGHT = 0x02;
+    /** HID relative button bit: middle */
+    private static final int BTN_MIDDLE = 0x04;
+
+    /** Strip L/M/R currently held (OR of {@link #BTN_LEFT} / {@link #BTN_RIGHT} / {@link #BTN_MIDDLE}). */
+    private final AtomicInteger stripHeldMouseButtons = new AtomicInteger(0);
 
     public static BasicTouchpadFragment instantiateWithPort(@Nullable UsbSerialPort p) {
         BasicTouchpadFragment f = new BasicTouchpadFragment();
@@ -71,31 +83,14 @@ public class BasicTouchpadFragment extends Fragment {
                         ma.getBluetoothService(),
                         ma.isBluetoothServiceBound(),
                         deltaX,
-                        deltaY);
+                        deltaY,
+                        stripHeldMouseButtons.get());
             });
         }
 
-        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_left), () -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                MouseRelHidTransport.sendLeftClick(
-                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
-            }
-        });
-        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_middle), () -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                MouseRelHidTransport.sendMiddleClick(
-                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
-            }
-        });
-        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_right), () -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                MouseRelHidTransport.sendRightClick(
-                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
-            }
-        });
+        wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_left), BTN_LEFT);
+        wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_middle), BTN_MIDDLE);
+        wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_right), BTN_RIGHT);
     }
 
     /**
@@ -147,19 +142,21 @@ public class BasicTouchpadFragment extends Fragment {
                 if (ma == null) {
                     return;
                 }
+                int mask = stripHeldMouseButtons.get();
                 if (lastX == 0 && lastY == 0) {
                     MouseRelHidTransport.sendScroll(
                             port,
                             ma.getBluetoothService(),
                             ma.isBluetoothServiceBound(),
                             (int) startX,
-                            (int) startY);
+                            (int) startY,
+                            mask);
                 } else {
                     MouseRelHidTransport.sendRelMove(
                             port,
                             ma.getBluetoothService(),
                             ma.isBluetoothServiceBound(),
-                            false,
+                            mask,
                             startX,
                             startY,
                             lastX,
@@ -169,6 +166,9 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchClick() {
+                if ((stripHeldMouseButtons.get() & BTN_LEFT) != 0) {
+                    return;
+                }
                 MainActivity ma = mainActivity();
                 if (ma == null) {
                     return;
@@ -179,6 +179,9 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchDoubleClick() {
+                if ((stripHeldMouseButtons.get() & BTN_LEFT) != 0) {
+                    return;
+                }
                 MainActivity ma = mainActivity();
                 if (ma == null) {
                     return;
@@ -189,6 +192,9 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchRightClick() {
+                if ((stripHeldMouseButtons.get() & BTN_RIGHT) != 0) {
+                    return;
+                }
                 MainActivity ma = mainActivity();
                 if (ma == null) {
                     return;
@@ -199,6 +205,9 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchRelease() {
+                if (stripHeldMouseButtons.get() != 0) {
+                    return;
+                }
                 MainActivity ma = mainActivity();
                 if (ma == null) {
                     return;
@@ -209,12 +218,43 @@ public class BasicTouchpadFragment extends Fragment {
         });
     }
 
-    private static void wireMouseButton(@Nullable View button, Runnable onUpInside) {
+    private void wireStripMouseButton(@Nullable View button, int bit) {
         if (button == null) {
             return;
         }
         button.setOnTouchListener(
-                (v, event) -> BasicKeyFeedback.handleStandardKeyTouch(v, event, onUpInside));
+                BasicKeyFeedback.sustainedKeyTouchListener(
+                        () -> {
+                            MainActivity ma = mainActivity();
+                            if (ma == null) {
+                                return;
+                            }
+                            int mask = stripHeldMouseButtons.updateAndGet(v -> v | bit);
+                            MouseRelHidTransport.sendRelButtonsNoMotion(
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound(),
+                                    mask);
+                        },
+                        () -> {
+                            MainActivity ma = mainActivity();
+                            if (ma == null) {
+                                return;
+                            }
+                            int mask = stripHeldMouseButtons.updateAndGet(v -> v & ~bit);
+                            if (mask == 0) {
+                                MouseRelHidTransport.releaseAll(
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                            } else {
+                                MouseRelHidTransport.sendRelButtonsNoMotion(
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound(),
+                                        mask);
+                            }
+                        }));
     }
 
     @Nullable

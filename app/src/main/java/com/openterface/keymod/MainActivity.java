@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PorterDuff;
@@ -328,6 +329,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         ThemeManager.applyTheme(this);
         appliedThemeResId = ThemeManager.getSelectedThemeResId(this);
         super.onCreate(savedInstanceState);
+        Intent launchIntent = getIntent();
+        String earlyLaunchMode = launchIntent.getStringExtra("launch_mode");
+        String earlyKbSub = launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -1270,12 +1277,37 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void showKeyboardMouseFragment(@Nullable String initialSubmode) {
+        if (initialSubmodeImpliesFullKeyboard(initialSubmode)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(
                 R.id.fragment_container,
                 KeyboardMouseFragment.newInstance(port, initialSubmode));
         transaction.commit();
+    }
+
+    /**
+     * {@code launch_mode == null} matches the onCreate branch that defaults to KM Basic; extras can
+     * still request numpad/compose without {@code launch_mode}.
+     */
+    private static boolean shouldLockLandscapeForKmBasicKeyboardIntent(
+            @Nullable String launchMode, @Nullable String kbInitialSubmode) {
+        if (LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(launchMode)) {
+            return !KeyboardMouseFragment.SUBMODE_NUMPAD.equals(kbInitialSubmode)
+                    && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode);
+        }
+        if (launchMode == null) {
+            return kbInitialSubmode == null
+                    || KeyboardMouseFragment.SUBMODE_KEYBOARD.equals(kbInitialSubmode);
+        }
+        return false;
+    }
+
+    private static boolean initialSubmodeImpliesFullKeyboard(@Nullable String initialSubmode) {
+        return initialSubmode == null
+                || KeyboardMouseFragment.SUBMODE_KEYBOARD.equals(initialSubmode);
     }
 
     private void showCompositeFragment() {

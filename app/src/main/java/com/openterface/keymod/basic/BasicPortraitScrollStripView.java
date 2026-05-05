@@ -1,7 +1,6 @@
 package com.openterface.keymod.basic;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.util.AttributeSet;
@@ -9,18 +8,15 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.R;
 
 /**
- * Vertical drag strip for relative wheel HID. Uses the same {@code touchpad_scroll_sensitivity}
- * preference as {@link com.openterface.keymod.TouchPadView} two-finger scroll, with a separate
- * pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT}) so the strip is not overly hot.
+ * Vertical drag strip for relative wheel HID. Sensitivity comes from {@link KmBasicTouchpadPrefs}
+ * (Settings → Keyboard &amp; Mouse); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
+ * keeps the strip usable at 100%.
  */
 public class BasicPortraitScrollStripView extends View {
-
-    private static final String PREF_TOUCHPAD_SCROLL_SENSITIVITY = "touchpad_scroll_sensitivity";
 
     /** Pixels of finger travel per one wheel unit accumulated; higher = calmer strip scrolling. */
     private static final float STRIP_PIXELS_PER_WHEEL_UNIT = 5f;
@@ -105,8 +101,7 @@ public class BasicPortraitScrollStripView extends View {
     }
 
     private float getScrollSensitivity() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
-        int sensitivityPercent = prefs.getInt(PREF_TOUCHPAD_SCROLL_SENSITIVITY, 100);
+        int sensitivityPercent = KmBasicTouchpadPrefs.getStripScrollSensitivityPercent(getContext());
         return Math.max(0.2f, Math.min(2.0f, sensitivityPercent / 100f));
     }
 }

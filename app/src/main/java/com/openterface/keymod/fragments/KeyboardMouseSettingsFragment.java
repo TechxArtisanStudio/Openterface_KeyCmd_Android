@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,6 +18,7 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.R;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
+import com.openterface.keymod.basic.KmBasicTouchpadPrefs;
 
 /**
  * Keyboard and mouse related settings (KM Basic modifier behavior).
@@ -26,6 +29,8 @@ public class KeyboardMouseSettingsFragment extends Fragment {
     private boolean loading;
     private View sustainCard;
     private SwitchCompat sustainSwitch;
+    private SeekBar stripScrollSensitivitySeekBar;
+    private TextView stripScrollSensitivityValueText;
 
     @Nullable
     @Override
@@ -39,6 +44,8 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         RadioButton longPressHold = view.findViewById(R.id.km_basic_long_press_hold);
         sustainCard = view.findViewById(R.id.km_basic_chord_sustain_card);
         sustainSwitch = view.findViewById(R.id.km_basic_chord_sustain_switch);
+        stripScrollSensitivitySeekBar = view.findViewById(R.id.km_basic_strip_scroll_sensitivity_seekbar);
+        stripScrollSensitivityValueText = view.findViewById(R.id.km_basic_strip_scroll_sensitivity_value_text);
 
         loading = true;
         if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
@@ -56,6 +63,17 @@ public class KeyboardMouseSettingsFragment extends Fragment {
             longPressRepeat.setChecked(true);
         }
         sustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
+
+        int stripPercent = KmBasicTouchpadPrefs.getStripScrollSensitivityPercent(requireContext());
+        int stripSeekProgress =
+                Math.max(
+                        0,
+                        Math.min(
+                                180,
+                                stripPercent - KmBasicTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MIN_PERCENT));
+        stripScrollSensitivitySeekBar.setProgress(stripSeekProgress);
+        stripScrollSensitivityValueText.setText(String.format("%.1fx", stripPercent / 100f));
+
         loading = false;
 
         updateSustainCardVisibility(chord.isChecked());
@@ -89,6 +107,31 @@ public class KeyboardMouseSettingsFragment extends Fragment {
                                     ? KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD
                                     : KmBasicKeyboardPrefs.VALUE_LONG_PRESS_REPEAT;
                     prefs.edit().putString(KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR, value).apply();
+                });
+
+        stripScrollSensitivitySeekBar.setOnSeekBarChangeListener(
+                new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        if (loading) {
+                            return;
+                        }
+                        int sensitivityPercent =
+                                progress + KmBasicTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MIN_PERCENT;
+                        stripScrollSensitivityValueText.setText(
+                                String.format("%.1fx", sensitivityPercent / 100f));
+                        prefs.edit()
+                                .putInt(
+                                        KmBasicTouchpadPrefs.PREF_STRIP_SCROLL_SENSITIVITY,
+                                        sensitivityPercent)
+                                .apply();
+                    }
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) {}
+
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) {}
                 });
 
         return view;

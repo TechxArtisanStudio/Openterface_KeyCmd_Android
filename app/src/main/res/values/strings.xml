@@ -20,6 +20,10 @@
     <string name="settings_km_basic_long_press_repeat_desc">After a short delay, sends many quick press-and-release cycles—similar to auto-repeat when holding a physical key for typing.</string>
     <string name="settings_km_basic_long_press_hold">Hold key down on the target</string>
     <string name="settings_km_basic_long_press_hold_desc">Sends one key-down when you press and releases when you lift your finger. Better for games or apps that expect a real held key instead of repeated taps.</string>
+    <string name="settings_km_basic_touchpad_section_title">KM Basic touchpad</string>
+    <string name="settings_km_basic_touchpad_section_summary">Touchpad sub-mode in Keyboard &amp; Mouse (Basic): the vertical strip at the right edge for page scroll.</string>
+    <string name="settings_km_basic_strip_scroll_sensitivity">Vertical scroll strip sensitivity</string>
+    <string name="settings_km_basic_strip_scroll_sensitivity_desc">How fast content scrolls when you drag the strip beside the touchpad. Independent from General → touchpad two-finger scroll sensitivity.</string>
     <!-- KM Basic full keyboard bottom row: accessibility for icon keys (Windows target) / Linux GUI label -->
     <string name="km_basic_cd_windows_modifier">Windows key</string>
     <string name="km_basic_cd_application_key">Application key</string>
