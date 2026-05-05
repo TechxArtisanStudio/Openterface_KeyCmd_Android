@@ -18,13 +18,13 @@
         android:textStyle="bold" />
 
     <!--
-      Single weighted region (FrameLayout) so the pad row always gets height; inner row is
-      match_parent×match_parent. Pad + scroll strip share width 5:1 (strip on the right).
+      Pad + strip vs mouse row: height weights 4:3 (sibling weights only; inner row match_parent).
+      Pad + scroll strip share width 5:1 (strip on the right).
     -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="4">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -52,8 +52,10 @@
     <LinearLayout
         android:id="@+id/basic_touchpad_mouse_row"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="3"
         android:baselineAligned="false"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingTop="8dp">
 
@@ -61,9 +63,8 @@
             android:id="@+id/basic_touchpad_btn_left"
             style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:minHeight="48dp"
             android:contentDescription="@string/kb_basic_touchpad_mouse_left_a11y"
             android:text="@string/kb_basic_touchpad_mouse_left_label" />
 
@@ -71,10 +72,9 @@
             android:id="@+id/basic_touchpad_btn_middle"
             style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:minHeight="48dp"
             android:contentDescription="@string/kb_basic_touchpad_mouse_middle_a11y"
             android:text="@string/kb_basic_touchpad_mouse_middle_label" />
 
@@ -82,10 +82,9 @@
             android:id="@+id/basic_touchpad_btn_right"
             style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:minHeight="48dp"
             android:contentDescription="@string/kb_basic_touchpad_mouse_right_a11y"
             android:text="@string/kb_basic_touchpad_mouse_right_label" />
     </LinearLayout>
