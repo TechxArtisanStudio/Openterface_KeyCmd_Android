@@ -6,13 +6,14 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
@@ -49,6 +50,10 @@ public class BasicComposeFragment extends Fragment {
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
 
+    /** Restore manifest default when leaving compose (other screens expect resize). */
+    private static final int DEFAULT_ACTIVITY_SOFT_INPUT_MODE =
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+
     @Nullable
     @Override
     public View onCreateView(
@@ -61,17 +66,6 @@ public class BasicComposeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        View root = view.findViewById(R.id.basic_compose_root);
-        final int padL = root.getPaddingLeft();
-        final int padT = root.getPaddingTop();
-        final int padR = root.getPaddingRight();
-        final int padB = root.getPaddingBottom();
-        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-            int imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-            v.setPadding(padL, padT, padR, padB + imeBottom);
-            return insets;
-        });
-        ViewCompat.requestApplyInsets(root);
 
         view.findViewById(R.id.basic_compose_back).setOnClickListener(v -> {
             Fragment p = getParentFragment();
@@ -80,6 +74,7 @@ public class BasicComposeFragment extends Fragment {
             }
         });
         editor = view.findViewById(R.id.basic_compose_editor);
+        editor.setImeOptions(editor.getImeOptions() | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         clearBtn = view.findViewById(R.id.basic_compose_clear);
         redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
@@ -102,6 +97,23 @@ public class BasicComposeFragment extends Fragment {
                     }
                 });
         refreshToolbarState();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Window w = requireActivity().getWindow();
+        // Landscape IME often uses extracted fullscreen UI that hides our editor; pan keeps the
+        // focused field above a docked keyboard. IME_FLAG_NO_EXTRACT_UI asks IM not to use extract UI.
+        w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+    }
+
+    @Override
+    public void onPause() {
+        if (getActivity() != null) {
+            getActivity().getWindow().setSoftInputMode(DEFAULT_ACTIVITY_SOFT_INPUT_MODE);
+        }
+        super.onPause();
     }
 
     private void onClearClicked() {
