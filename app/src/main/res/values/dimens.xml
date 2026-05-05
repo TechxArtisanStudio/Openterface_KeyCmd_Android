@@ -49,10 +49,12 @@
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>
-    <!-- KM Basic physical keyboard: horizontal + bottom inset so edge keys are easier to tap -->
+    <!-- KM Basic physical keyboard: horizontal inset so edge keys are easier to tap -->
     <dimen name="basic_keyboard_content_inset">18dp</dimen>
     <!-- End (LTR: right); defaults same as start; landscape can override for a slimmer nav margin. -->
     <dimen name="basic_keyboard_content_inset_end">18dp</dimen>
+    <!-- Bottom (portrait: below Space row); separate so it can be tighter than start/end. -->
+    <dimen name="basic_keyboard_content_inset_bottom">12dp</dimen>
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>

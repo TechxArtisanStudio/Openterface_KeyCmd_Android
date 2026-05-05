@@ -55,27 +55,34 @@ public class BasicKeyboardFragment extends Fragment {
     }
 
     /**
-     * Adds navigation bar insets on top of {@link R.dimen#basic_keyboard_content_inset} (start,
-     * bottom) and {@link R.dimen#basic_keyboard_content_inset_end} (end). Landscape uses a smaller
-     * end base so keys sit slightly closer to the system nav strip. Display cutout is not merged
-     * into horizontal padding to avoid oversized side gutters.
+     * Applies {@link R.dimen#basic_keyboard_content_inset} (start), {@link
+     * R.dimen#basic_keyboard_content_inset_end} (end), and {@link R.dimen#basic_keyboard_content_inset_bottom}
+     * plus {@link WindowInsetsCompat.Type#navigationBars()} on each axis. Some hosts still lay out
+     * edge-to-edge under the nav strip (overlap); others already inset the window — when the
+     * system has consumed nav insets at the root, {@code bars.right} and {@code bars.bottom} are often
+     * zero here so we do not double-pad. Dimens are read inside the listener so rotation stays
+     * correct with {@code configChanges}. Re-install on {@link #onConfigurationChanged}.
      */
     private void installKeyboardContentInsets(@NonNull BasicPhysicalKeyboardView keyboard) {
-        final int baseStart =
-                getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset);
-        final int baseEnd =
-                getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_end);
         ViewCompat.setOnApplyWindowInsetsListener(
                 keyboard,
                 (v, windowInsets) -> {
                     Insets bars =
                             windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    int baseStart =
+                            getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset);
+                    int baseEnd =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_end);
+                    int baseBottom =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_bottom);
                     ViewCompat.setPaddingRelative(
                             v,
                             baseStart + bars.left,
                             v.getPaddingTop(),
                             baseEnd + bars.right,
-                            baseStart + bars.bottom);
+                            baseBottom + bars.bottom);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(keyboard);
@@ -90,6 +97,9 @@ public class BasicKeyboardFragment extends Fragment {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (physicalKeyboardView != null) {
+            installKeyboardContentInsets(physicalKeyboardView);
+        }
         bindKeyboard();
     }
 
