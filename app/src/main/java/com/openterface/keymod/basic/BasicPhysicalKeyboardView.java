@@ -148,6 +148,9 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private View inflateKey(LinearLayout row, String label, @Nullable String hint, float weight) {
         View v = LayoutInflater.from(getContext()).inflate(R.layout.basic_key_button, row, false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
+        int mh = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_h);
+        int mv = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_v);
+        lp.setMargins(mh, mv, mh, mv);
         v.setLayoutParams(lp);
         TextView lab = v.findViewById(R.id.basic_key_label);
         TextView h = v.findViewById(R.id.basic_key_hint);
@@ -275,6 +278,9 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         cluster.setBaselineAligned(false);
         LinearLayout.LayoutParams clusterLp =
                 new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, horizontalWeight);
+        int mh = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_h);
+        int mv = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_v);
+        clusterLp.setMargins(mh, mv, mh, mv);
         cluster.setLayoutParams(clusterLp);
 
         LinearLayout top = new LinearLayout(c);
