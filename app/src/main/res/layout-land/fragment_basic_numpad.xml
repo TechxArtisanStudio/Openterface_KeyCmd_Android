@@ -7,7 +7,7 @@
     android:padding="8dp"
     android:background="?android:attr/colorBackground">
 
-    <!-- Landscape numpad: 8 columns x 5 rows. Spans: Del (row 0, cols 2-3), + (rows 1-2, col 7),
+    <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),
          00 (rows 3-4, col 3), 0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->
     <GridLayout
         android:id="@+id/basic_numpad_grid"
@@ -19,7 +19,7 @@
         android:rowCount="5"
         android:useDefaultMargins="false">
 
-        <!-- Row 0: ESC TAB [Del wide] NumLk / * - -->
+        <!-- Row 0: ESC TAB [BKSP wide] NumLk / * - -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
@@ -58,8 +58,8 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:maxLines="2"
-            android:text="@string/kb_basic_numpad_del"
-            android:tag="Delete" />
+            android:text="@string/kb_basic_numpad_nav_bksp"
+            android:tag="DEL" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"

@@ -377,8 +377,8 @@
             android:layout_rowWeight="3"
             android:layout_gravity="fill"
             android:gravity="center"
-            android:text="@string/kb_basic_numpad_del"
-            android:tag="Delete" />
+            android:text="@string/kb_basic_numpad_nav_bksp"
+            android:tag="DEL" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
