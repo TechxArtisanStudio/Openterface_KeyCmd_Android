@@ -8,6 +8,9 @@
     </item>
     <item android:state_selected="true">
         <shape android:shape="rectangle">
+            <stroke
+                android:width="2dp"
+                android:color="?attr/colorPrimary" />
             <solid android:color="?attr/colorPrimaryContainer" />
             <corners android:radius="9dp" />
         </shape>

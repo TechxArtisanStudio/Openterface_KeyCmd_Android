@@ -18,6 +18,7 @@ import android.widget.TextView;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
@@ -93,9 +94,18 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     @Nullable private BasicHoldLockPopup activeHoldLockPopup;
     private final Runnable holdLockPopupRunnable = this::onHoldLockPopupTimeout;
     @Nullable private View holdLockPopupAnchorView;
-    /** Raw at ACTION_DOWN on the modifier key; used as hold-lock gesture origin (matches Pro alternates). */
-    private float holdLockDownRawX;
-    private float holdLockDownRawY;
+    /**
+     * True from modifier ACTION_DOWN until UP/CANCEL/dismiss for hold-lock. Do not rely on {@link
+     * View#isPressed()} at the 1s timeout — many key surfaces clear pressed during chord sustain.
+     */
+    private boolean holdLockFingerDown;
+    /**
+     * Latest raw finger position while waiting for / using the hold-lock popup. The popup uses this
+     * as gesture origin (not ACTION_DOWN) so a ~1s press does not consume the vertical budget and
+     * “swipe up toward the lock” is measured from where the finger was when the lock appeared.
+     */
+    private float holdLockGestureRawX;
+    private float holdLockGestureRawY;
     private int holdLockPendingModMask;
     private final KmBasicHoldLockController.Listener kmBasicHoldLockListener =
             controller -> {
@@ -311,15 +321,16 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             activeHoldLockPopup = null;
         }
         holdLockPopupAnchorView = null;
+        holdLockFingerDown = false;
     }
 
     private void onHoldLockPopupTimeout() {
-        if (holdLockPopupAnchorView == null || !holdLockPopupAnchorView.isPressed()) {
+        if (holdLockPopupAnchorView == null || !holdLockFingerDown) {
             return;
         }
         keyPreview.dismiss();
         activeHoldLockPopup = new BasicHoldLockPopup();
-        activeHoldLockPopup.show(holdLockPopupAnchorView, holdLockDownRawX, holdLockDownRawY);
+        activeHoldLockPopup.show(holdLockPopupAnchorView, holdLockGestureRawX, holdLockGestureRawY);
     }
 
     private void clearChordUiPreserveHostForLock() {
@@ -352,6 +363,9 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return (v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    handler.removeCallbacks(chordLongPressRunnable);
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
                     v.setPressed(true);
                     BasicKeyFeedback.performKeyHaptic(v);
                     chordLongPressActivated = false;
@@ -359,12 +373,10 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     chordLongPressAnchor = v;
                     chordLongPressPendingMask = holdModMask;
                     holdLockPopupAnchorView = v;
+                    holdLockFingerDown = true;
                     holdLockPendingModMask = holdModMask;
-                    holdLockDownRawX = event.getRawX();
-                    holdLockDownRawY = event.getRawY();
-                    handler.removeCallbacks(chordLongPressRunnable);
-                    handler.removeCallbacks(holdLockPopupRunnable);
-                    dismissHoldLockPopup();
+                    holdLockGestureRawX = event.getRawX();
+                    holdLockGestureRawY = event.getRawY();
                     handler.postDelayed(
                             chordLongPressRunnable,
                             ViewConfiguration.get(v.getContext()).getLongPressTimeout());
@@ -377,9 +389,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     boolean inside = BasicKeyFeedback.isPointerInsideView(v, event);
                     if (activeHoldLockPopup != null) {
                         v.setPressed(true);
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
                         activeHoldLockPopup.updatePointer(
                                 event.getRawX(), event.getRawY());
                         return true;
+                    }
+                    if (inside) {
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
                     }
                     v.setPressed(inside);
                     if (!inside) {
@@ -392,6 +410,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 case MotionEvent.ACTION_UP:
                     handler.removeCallbacks(chordLongPressRunnable);
                     handler.removeCallbacks(holdLockPopupRunnable);
+                    holdLockFingerDown = false;
                     v.setPressed(false);
                     keyPreview.dismiss();
                     boolean committedLock = false;
@@ -436,7 +455,19 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         chordLongPressActivated = false;
                         chordLongPressAnchor = null;
                     } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
-                        tapModifierMomentary(extendedKeyCode);
+                        MainActivity maTap = mainActivity;
+                        if (kmBasicHoldLockController != null
+                                && maTap != null
+                                && kmBasicHoldLockController.isModifierLocked(
+                                        holdLockPendingModMask)) {
+                            kmBasicHoldLockController.unlockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    maTap.getBluetoothService(),
+                                    maTap.isBluetoothServiceBound());
+                        } else {
+                            tapModifierMomentary(extendedKeyCode);
+                        }
                     }
                     chordLongPressAnchor = null;
                     holdLockPopupAnchorView = null;
@@ -479,12 +510,16 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void wireChordModifierTouch(View v, int extendedKeyCode, int holdModMask, Supplier<String> preview) {
+        applyHoldLockModifierKeySurface(v);
         v.setOnTouchListener(createChordModifierTouchListener(extendedKeyCode, holdModMask, preview));
     }
 
     private void wireBottomModifier(
             View v, String which, int extKey, int holdMask, int stickyMaskBit, Supplier<String> preview) {
         if (isMomentaryChordMode()) {
+            // Lists are also used in chord mode for locked / chord-held visuals (see
+            // applyModifierVisualsChordMode); sticky registration alone would leave them empty here.
+            registerModifierKeyInSideLists(which, v);
             wireChordModifierTouch(v, extKey, holdMask, preview);
         } else {
             wireStickyModifierTap(v, which, stickyMaskBit, preview);
@@ -722,13 +757,21 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
     }
 
-    /** Same drawable/states as Shift: latched modifier uses {@code state_selected}. */
-    private void styleStickyModifierKeySurface(View v) {
+    /**
+     * Background for every key that participates in KM Basic swipe-up lock (Shift/Ctrl/Alt/Win
+     * and Caps in sticky mode): {@code state_selected} shows primary stroke + container fill.
+     */
+    private static void applyHoldLockModifierKeySurface(View v) {
         v.setBackgroundResource(R.drawable.basic_shift_key_background);
     }
 
-    private void registerStickyModifierKey(String which, View v) {
-        styleStickyModifierKeySurface(v);
+    /** Same drawable/states as chord modifiers: latched / locked uses {@code state_selected}. */
+    private void styleStickyModifierKeySurface(View v) {
+        applyHoldLockModifierKeySurface(v);
+    }
+
+    /** Adds a bottom-row modifier view to the side lists used by {@link #refreshModifierVisuals()}. */
+    private void registerModifierKeyInSideLists(String which, View v) {
         switch (which) {
             case "ctrl":
                 ctrlModifierKeys.add(v);
@@ -744,6 +787,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
     }
 
+    private void registerStickyModifierKey(String which, View v) {
+        styleStickyModifierKeySurface(v);
+        registerModifierKeyInSideLists(which, v);
+    }
+
     private void wireStickyModifierTap(View v, String which, int stickyMaskBit, Supplier<String> previewText) {
         registerStickyModifierKey(which, v);
         v.setOnTouchListener(createStickyModifierWithLockListener(stickyMaskBit, previewText));
@@ -754,14 +802,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return (v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
                     v.setPressed(true);
                     BasicKeyFeedback.performKeyHaptic(v);
                     holdLockPopupAnchorView = v;
+                    holdLockFingerDown = true;
                     holdLockPendingModMask = stickyMaskBit;
-                    holdLockDownRawX = event.getRawX();
-                    holdLockDownRawY = event.getRawY();
-                    handler.removeCallbacks(holdLockPopupRunnable);
-                    dismissHoldLockPopup();
+                    holdLockGestureRawX = event.getRawX();
+                    holdLockGestureRawY = event.getRawY();
                     handler.postDelayed(holdLockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
                     if (previewText != null) {
                         keyPreview.show(v, previewText.get());
@@ -771,9 +820,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
                     if (activeHoldLockPopup != null) {
                         v.setPressed(true);
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
                         activeHoldLockPopup.updatePointer(
                                 event.getRawX(), event.getRawY());
                         return true;
+                    }
+                    if (insideSticky) {
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
                     }
                     v.setPressed(insideSticky);
                     if (!insideSticky) {
@@ -784,6 +839,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     return true;
                 case MotionEvent.ACTION_UP:
                     handler.removeCallbacks(holdLockPopupRunnable);
+                    holdLockFingerDown = false;
                     v.setPressed(false);
                     keyPreview.dismiss();
                     boolean committedStickyLock = false;
@@ -868,7 +924,13 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             h.setVisibility(GONE);
             icon.setVisibility(VISIBLE);
             icon.setImageResource(iconRes);
-            icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.text_primary)));
+            ColorStateList iconTint =
+                    AppCompatResources.getColorStateList(getContext(), R.color.basic_key_icon_tint);
+            icon.setImageTintList(
+                    iconTint != null
+                            ? iconTint
+                            : ColorStateList.valueOf(
+                                    ContextCompat.getColor(getContext(), R.color.text_primary)));
             String cd = getContext().getString(iconContentDescRes);
             icon.setContentDescription(cd);
             v.setContentDescription(cd);

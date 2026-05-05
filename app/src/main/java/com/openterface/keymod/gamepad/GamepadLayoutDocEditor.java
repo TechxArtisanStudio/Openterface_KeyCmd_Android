@@ -133,20 +133,21 @@ public final class GamepadLayoutDocEditor {
             return;
         }
         float y = 0.52f;
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID, 1, 0.38f, y, 0.38f);
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID, 2, 0.5f, y, 0.38f);
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID, 3, 0.62f, y, 0.38f);
+        float moduleScale = 1.0f;
+        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID, 1, 0.38f, y, moduleScale);
+        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID, 2, 0.5f, y, moduleScale);
+        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID, 3, 0.62f, y, moduleScale);
     }
 
     private static void addMouseBtn(GamepadLayoutPresetDocument doc, String id, int btn,
-                                      float ax, float ay, float scale) {
+                                      float anchorX, float anchorY, float moduleScale) {
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
         m.id = id;
         m.type = GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON;
         m.zIndex = nextZ(doc);
-        m.scale = scale;
-        m.anchorX = ax;
-        m.anchorY = ay;
+        m.scale = moduleScale;
+        m.anchorX = anchorX;
+        m.anchorY = anchorY;
         m.mouseButton = btn;
         m.displayLabel = btn == 1 ? "L" : (btn == 2 ? "M" : "R");
         doc.modules.add(m);

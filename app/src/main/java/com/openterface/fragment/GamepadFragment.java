@@ -494,6 +494,12 @@ public class GamepadFragment extends Fragment {
         gamepadView.setShowTwoButtons(twoButtonMode);
         gamepadView.setStickSizeScale(stickSizeScale);
         gamepadView.setButtonSizeScale(buttonSizeScale);
+        float touchpadMouseBtnLayout = 1f;
+        if (layoutDoc != null && layoutDoc.layout != null
+                && layoutDoc.layout.touchpadMouseButtonScale != null) {
+            touchpadMouseBtnLayout = layoutDoc.layout.touchpadMouseButtonScale;
+        }
+        gamepadView.setTouchpadMouseButtonLayoutScale(touchpadMouseBtnLayout);
         updateGamepadLabels();
     }
 
@@ -939,6 +945,10 @@ public class GamepadFragment extends Fragment {
         opts.add(getString(R.string.gamepad_menu_move));
         if ("touchpad_1".equals(componentId)) {
             opts.add(getString(R.string.gamepad_menu_touchpad_resize));
+            opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
+        }
+        if (componentId != null && componentId.startsWith("mouse_btn_")) {
+            opts.add(getString(R.string.gamepad_menu_mouse_btn_module_size));
         }
         if (hasKeyMapping) {
             opts.add(getString(R.string.gamepad_menu_edit_keys));
@@ -955,6 +965,10 @@ public class GamepadFragment extends Fragment {
                 enterMoveMode(componentId);
             } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_resize))) {
                 showTouchpadResizeDialog();
+            } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_mouse_btn_size))) {
+                showTouchpadMouseButtonsLayoutSizeDialog();
+            } else if (choice.equals(getString(R.string.gamepad_menu_mouse_btn_module_size))) {
+                showMouseButtonModuleSizeDialog(componentId);
             } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
                 showConfigDialog(componentId);
             } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
@@ -1002,6 +1016,71 @@ public class GamepadFragment extends Fragment {
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
                     tp.widthNorm = wSeek.getProgress() / 100f;
                     tp.heightNorm = hSeek.getProgress() / 100f;
+                    applyLayoutDocFromMemory();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** Layout-level scale for all touchpad L/M/R mouse buttons (50%–200%). */
+    private void showTouchpadMouseButtonsLayoutSizeDialog() {
+        if (layoutDoc == null || layoutDoc.layout == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(ctx);
+        title.setText(R.string.gamepad_mouse_btn_size_pct);
+        android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
+        seek.setMax(150);
+        float cur = layoutDoc.layout.touchpadMouseButtonScale != null
+                ? layoutDoc.layout.touchpadMouseButtonScale : 1.0f;
+        seek.setProgress(Math.max(0, Math.min(150, Math.round(cur * 100f) - 50)));
+
+        root.addView(title);
+        root.addView(seek);
+
+        new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_touchpad_mouse_btn_size_title)
+                .setView(root)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    layoutDoc.layout.touchpadMouseButtonScale = (seek.getProgress() + 50) / 100f;
+                    applyLayoutDocFromMemory();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** Per-module radius scale for one MOUSE_BUTTON (50%–200%). */
+    private void showMouseButtonModuleSizeDialog(String componentId) {
+        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(componentId);
+        if (m == null || layoutDoc == null || layoutDoc.layout == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(ctx);
+        title.setText(R.string.gamepad_mouse_btn_size_pct);
+        android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
+        seek.setMax(150);
+        seek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
+
+        root.addView(title);
+        root.addView(seek);
+
+        new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_mouse_btn_module_size_title)
+                .setView(root)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    m.scale = (seek.getProgress() + 50) / 100f;
                     applyLayoutDocFromMemory();
                 })
                 .setNegativeButton(android.R.string.cancel, null)

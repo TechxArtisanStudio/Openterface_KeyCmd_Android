@@ -281,18 +281,20 @@ public class BasicTouchpadFragment extends Fragment {
             return;
         }
         final BasicHoldLockPopup[] popupHolder = new BasicHoldLockPopup[1];
-        final float[] downRaw = new float[2];
+        /** Latest raw coords; used as hold-lock gesture origin when the popup fires (not initial DOWN). */
+        final float[] lastRaw = new float[2];
         final boolean[] gestureLockedTapOnly = new boolean[1];
+        final boolean[] stripFingerDown = new boolean[1];
         final Runnable lockPopupRunnable =
                 () -> {
-                    if (!button.isPressed()) {
+                    if (!stripFingerDown[0]) {
                         return;
                     }
                     if (gestureLockedTapOnly[0]) {
                         return;
                     }
                     popupHolder[0] = new BasicHoldLockPopup();
-                    popupHolder[0].show(button, downRaw[0], downRaw[1]);
+                    popupHolder[0].show(button, lastRaw[0], lastRaw[1]);
                 };
         button.setOnTouchListener(
                 (v, event) -> {
@@ -302,14 +304,15 @@ public class BasicTouchpadFragment extends Fragment {
                     }
                     switch (event.getActionMasked()) {
                         case MotionEvent.ACTION_DOWN:
+                            stripFingerDown[0] = true;
                             gestureLockedTapOnly[0] =
                                     holdLockController != null
                                             && holdLockController.isMouseLocked(bit)
                                             && (stripHeldMouseButtons.get() & bit) == 0;
                             BasicKeyFeedback.performKeyHaptic(v);
                             v.setPressed(true);
-                            downRaw[0] = event.getRawX();
-                            downRaw[1] = event.getRawY();
+                            lastRaw[0] = event.getRawX();
+                            lastRaw[1] = event.getRawY();
                             stripHandler.removeCallbacks(lockPopupRunnable);
                             if (popupHolder[0] != null) {
                                 popupHolder[0].dismiss();
@@ -328,6 +331,8 @@ public class BasicTouchpadFragment extends Fragment {
                             }
                             return true;
                         case MotionEvent.ACTION_MOVE:
+                            lastRaw[0] = event.getRawX();
+                            lastRaw[1] = event.getRawY();
                             if (popupHolder[0] != null) {
                                 v.setPressed(true);
                                 popupHolder[0].updatePointer(event.getRawX(), event.getRawY());
@@ -341,6 +346,7 @@ public class BasicTouchpadFragment extends Fragment {
                             return true;
                         case MotionEvent.ACTION_UP:
                         case MotionEvent.ACTION_CANCEL:
+                            stripFingerDown[0] = false;
                             stripHandler.removeCallbacks(lockPopupRunnable);
                             v.setPressed(false);
                             if (gestureLockedTapOnly[0]) {

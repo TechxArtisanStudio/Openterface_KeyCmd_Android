@@ -33,6 +33,11 @@ public class GamepadLayoutPresetDocument {
         public float mouseSensitivity = 1.0f;
         /** Optional extra multiplier for right-stick mouse mode (null = use app default tuning). */
         @Nullable public Float rightStickMouseGain;
+        /**
+         * Optional multiplier for {@code MOUSE_BUTTON} draw radius (touchpad L/M/R). Null = 1.0.
+         * Valid range when set: {@code [0.5, 2.0]}.
+         */
+        @Nullable public Float touchpadMouseButtonScale;
         public boolean showTwoButtons;
         @Nullable public String backgroundImageFile;
         public float backgroundScale = 1.0f;
@@ -110,10 +115,17 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("layout.rightStickMouseGain must be in [0.25, 4]");
             }
         }
+        if (d.layout.touchpadMouseButtonScale != null) {
+            float t = d.layout.touchpadMouseButtonScale;
+            if (t < 0.5f || t > 2.0f) {
+                throw new IllegalArgumentException("layout.touchpadMouseButtonScale must be in [0.5, 2]");
+            }
+        }
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
         GamepadLayoutPresetUpgrader.upgradeToLatest(d);
+        GamepadLayoutPresetUpgrader.normalizeBundledMouseButtonModuleScales(d);
         GamepadModule stick = findModule(d.modules, "stick_left");
         if (stick == null) {
             throw new IllegalArgumentException("Missing module id=stick_left");

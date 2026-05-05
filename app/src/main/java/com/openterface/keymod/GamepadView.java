@@ -144,6 +144,15 @@ public class GamepadView extends View {
     private float touchpadLastX;
     private float touchpadLastY;
 
+    /**
+     * Layout-level multiplier for {@code MOUSE_BUTTON} radius (L/M/R with touchpad). Set from preset
+     * {@code layout.touchpadMouseButtonScale}; default 1.0. Clamped to {@code [0.5, 2.0]}.
+     */
+    private float touchpadMouseButtonLayoutScale = 1.0f;
+
+    /** Base radius in dp before per-module {@code scale} and {@link #touchpadMouseButtonLayoutScale}. */
+    private static final float MOUSE_BUTTON_BASE_RADIUS_DP = 52f;
+
     /** SNES/GBA pastel face + rim + label (Material theme accent used separately for presses). */
     private static final class FaceStyle {
         final int body;
@@ -459,6 +468,19 @@ public class GamepadView extends View {
         this.touchpadDeltaListener = listener;
     }
 
+    /**
+     * Multiplier for drawing all {@code MOUSE_BUTTON} modules (typically touchpad L/M/R).
+     * Values outside {@code [0.5, 2.0]} are clamped; NaN and non-positive fall back to 1.0.
+     */
+    public void setTouchpadMouseButtonLayoutScale(float scale) {
+        if (!(scale > 0f) || Float.isNaN(scale)) {
+            touchpadMouseButtonLayoutScale = 1.0f;
+        } else {
+            touchpadMouseButtonLayoutScale = Math.max(0.5f, Math.min(2.0f, scale));
+        }
+        invalidate();
+    }
+
     private void drawDynamicSimpleLayout(Canvas canvas) {
         dynamicHitTestOrder.clear();
         int w = getWidth();
@@ -508,7 +530,7 @@ public class GamepadView extends View {
                 dynamicHitTestOrder.add(m.id);
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
                 float density = getResources().getDisplayMetrics().density;
-                float rpx = 40f * m.scale * density;
+                float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale;
                 String disp = m.displayLabel != null && !m.displayLabel.isEmpty() ? m.displayLabel : "?";
                 drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp);
                 dynamicHitTestOrder.add(m.id);
@@ -1412,53 +1434,58 @@ public class GamepadView extends View {
                     bgStartScale = bgScale;
                     invalidate();
                     notifyBackgroundViewportChanged();
-                } else if (touchpadPointerId >= 0 && touchpadDeltaListener != null) {
-                    int idx = event.findPointerIndex(touchpadPointerId);
-                    if (idx >= 0) {
-                        float nx = event.getX(idx);
-                        float ny = event.getY(idx);
-                        touchpadDeltaListener.onTouchpadDelta(nx - touchpadLastX, ny - touchpadLastY);
-                        touchpadLastX = nx;
-                        touchpadLastY = ny;
-                    }
-                } else if (!dynamicPointerStick.isEmpty() && analogStickListener != null) {
-                    for (Map.Entry<Integer, String> e : dynamicPointerStick.entrySet()) {
-                        String sid = e.getValue();
-                        int pid = e.getKey();
-                        int idx = event.findPointerIndex(pid);
-                        if (idx < 0) {
-                            continue;
+                } else {
+                    // Touchpad and stick(s) may use different pointers — run both, not else-if.
+                    if (touchpadPointerId >= 0 && touchpadDeltaListener != null) {
+                        int idx = event.findPointerIndex(touchpadPointerId);
+                        if (idx >= 0) {
+                            float nx = event.getX(idx);
+                            float ny = event.getY(idx);
+                            touchpadDeltaListener.onTouchpadDelta(nx - touchpadLastX, ny - touchpadLastY);
+                            touchpadLastX = nx;
+                            touchpadLastY = ny;
                         }
-                        float sx = event.getX(idx);
-                        float sy = event.getY(idx);
-                        RectF b = componentBounds.get(sid);
-                        if (b == null) {
-                            continue;
-                        }
-                        float cx = b.centerX();
-                        float cy = b.centerY();
-                        float rad = b.width() / 2f;
-                        float ddx = sx - cx;
-                        float ddy = sy - cy;
-                        float dist = (float) Math.sqrt(ddx * ddx + ddy * ddy);
-                        if (dist > rad) {
-                            ddx = ddx * rad / dist;
-                            ddy = ddy * rad / dist;
-                        }
-                        dynamicStickOffset.put(sid, new float[]{ddx, ddy});
-                        String label = dynamicAnalogStickCallbackId(sid);
-                        analogStickListener.onAnalogStickMoved(label, ddx / rad, ddy / rad);
                     }
-                    invalidate();
-                } else if (draggedComponentId != null && isEditMode) {
-                    int dragIdx = dragPointerId >= 0 ? event.findPointerIndex(dragPointerId) : 0;
-                    if (dragIdx < 0) {
-                        dragIdx = 0;
+                    if (!dynamicPointerStick.isEmpty() && analogStickListener != null) {
+                        for (Map.Entry<Integer, String> e : dynamicPointerStick.entrySet()) {
+                            String sid = e.getValue();
+                            int pid = e.getKey();
+                            int idx = event.findPointerIndex(pid);
+                            if (idx < 0) {
+                                continue;
+                            }
+                            float sx = event.getX(idx);
+                            float sy = event.getY(idx);
+                            RectF b = componentBounds.get(sid);
+                            if (b == null) {
+                                continue;
+                            }
+                            float scx = b.centerX();
+                            float scy = b.centerY();
+                            float rad = b.width() / 2f;
+                            float ddx = sx - scx;
+                            float ddy = sy - scy;
+                            float sdist = (float) Math.sqrt(ddx * ddx + ddy * ddy);
+                            if (sdist > rad) {
+                                ddx = ddx * rad / sdist;
+                                ddy = ddy * rad / sdist;
+                            }
+                            dynamicStickOffset.put(sid, new float[]{ddx, ddy});
+                            String label = dynamicAnalogStickCallbackId(sid);
+                            analogStickListener.onAnalogStickMoved(label, ddx / rad, ddy / rad);
+                        }
+                        invalidate();
                     }
-                    float moveX = event.getX(dragIdx);
-                    float moveY = event.getY(dragIdx);
-                    applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
-                    invalidate();
+                    if (draggedComponentId != null && isEditMode) {
+                        int dragIdx = dragPointerId >= 0 ? event.findPointerIndex(dragPointerId) : 0;
+                        if (dragIdx < 0) {
+                            dragIdx = 0;
+                        }
+                        float moveX = event.getX(dragIdx);
+                        float moveY = event.getY(dragIdx);
+                        applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+                        invalidate();
+                    }
                 }
                 return true;
             }
