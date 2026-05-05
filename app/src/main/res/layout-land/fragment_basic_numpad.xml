@@ -12,7 +12,7 @@
     android:background="?android:attr/colorBackground">
 
     <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),
-         00 (rows 3-4, col 3), 0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->
+         0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->
     <GridLayout
         android:id="@+id/basic_numpad_grid"
         android:layout_width="match_parent"
@@ -301,7 +301,7 @@
             android:text="6"
             android:tag="NUMPAD_6" />
 
-        <!-- Row 3: DEL Up BKSP [00 tall] 1 2 3 [Enter tall] -->
+        <!-- Row 3: DEL Up BKSP 00 1 2 3 [Enter tall] -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
@@ -347,9 +347,8 @@
             android:layout_height="0dp"
             android:layout_row="3"
             android:layout_column="3"
-            android:layout_rowSpan="2"
             android:layout_columnWeight="1"
-            android:layout_rowWeight="2"
+            android:layout_rowWeight="1"
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_00"
@@ -405,7 +404,7 @@
             android:tag="NUMPAD_ENTER"
             android:contentDescription="@string/kb_basic_numpad_enter_desc" />
 
-        <!-- Row 4: Left Down Right (00 continued) [0 wide] . (Enter continued) -->
+        <!-- Row 4: Left Down Right = [0 wide] . (Enter continued) -->
         <androidx.appcompat.widget.AppCompatImageView
             style="@style/KeyModBasicNumpadIconCell"
             android:layout_width="0dp"
@@ -445,6 +444,18 @@
             android:tag="DPAD_RIGHT"
             app:srcCompat="@drawable/keyboard_arrow_right_24"
             app:tint="@color/text_primary" />
+        <TextView
+            style="@style/Widget.KeyMod.BasicNumpadCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="4"
+            android:layout_column="3"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:gravity="center"
+            android:text="="
+            android:tag="NUMPAD_EQUALS" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"

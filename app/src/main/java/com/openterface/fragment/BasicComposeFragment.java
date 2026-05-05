@@ -1,5 +1,6 @@
 package com.openterface.fragment;
 
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -20,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
@@ -274,12 +276,29 @@ public class BasicComposeFragment extends Fragment {
         Integer blocked = ImeComposeSendGate.resolveSendBlockedReasonResId(cm, t);
         boolean canSend = blocked == null;
 
+        int primary =
+                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorPrimary);
+        int outline =
+                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOutline);
+        int onSurface =
+                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOnSurface);
+        ColorStateList primaryStroke = ColorStateList.valueOf(primary);
+        ColorStateList outlineStroke = ColorStateList.valueOf(outline);
+        ColorStateList primaryIcon = ColorStateList.valueOf(primary);
+        ColorStateList mutedIcon = ColorStateList.valueOf(onSurface);
+
+        if (editor != null) {
+            editor.setActivated(canSend && !sending);
+        }
+
         if (sending) {
             sendBtn.setText("");
             sendBtn.setIconResource(R.drawable.ic_compose_stop_24);
             sendBtn.setContentDescription(getString(R.string.compose_stop));
             sendBtn.setEnabled(true);
             sendBtn.setAlpha(1f);
+            sendBtn.setStrokeColor(primaryStroke);
+            sendBtn.setIconTint(primaryIcon);
             clearBtn.setEnabled(false);
             clearBtn.setAlpha(0.45f);
             redoBtn.setEnabled(false);
@@ -296,6 +315,9 @@ public class BasicComposeFragment extends Fragment {
             boolean canRedo = undoSnapshot != null && !undoSnapshot.isEmpty();
             redoBtn.setEnabled(canRedo);
             redoBtn.setAlpha(canRedo ? 1f : 0.45f);
+
+            sendBtn.setStrokeColor(canSend ? primaryStroke : outlineStroke);
+            sendBtn.setIconTint(canSend ? primaryIcon : mutedIcon);
         }
     }
 
