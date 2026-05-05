@@ -14,12 +14,16 @@ import androidx.preference.PreferenceManager;
 import com.openterface.keymod.R;
 
 /**
- * Vertical drag strip for relative wheel HID, aligned with {@link com.openterface.keymod.TouchPadView}
- * two-finger scroll sensitivity (same preference key).
+ * Vertical drag strip for relative wheel HID. Uses the same {@code touchpad_scroll_sensitivity}
+ * preference as {@link com.openterface.keymod.TouchPadView} two-finger scroll, with a separate
+ * pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT}) so the strip is not overly hot.
  */
 public class BasicPortraitScrollStripView extends View {
 
     private static final String PREF_TOUCHPAD_SCROLL_SENSITIVITY = "touchpad_scroll_sensitivity";
+
+    /** Pixels of finger travel per one wheel unit accumulated; higher = calmer strip scrolling. */
+    private static final float STRIP_PIXELS_PER_WHEEL_UNIT = 5f;
 
     public interface OnStripScrollListener {
         void onStripScroll(int deltaX, int deltaY);
@@ -78,7 +82,7 @@ public class BasicPortraitScrollStripView extends View {
                 float dy = y - lastY;
                 lastY = y;
                 float sensitivity = getScrollSensitivity();
-                accumY += (-dy / 3f) * sensitivity;
+                accumY += (-dy / STRIP_PIXELS_PER_WHEEL_UNIT) * sensitivity;
                 int sx = (int) accumX;
                 int sy = (int) accumY;
                 if (sx != 0) {

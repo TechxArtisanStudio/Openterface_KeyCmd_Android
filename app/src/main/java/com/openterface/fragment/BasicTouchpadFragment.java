@@ -1,5 +1,6 @@
 package com.openterface.fragment;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +8,9 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.openterface.keymod.MainActivity;
@@ -29,6 +33,7 @@ public class BasicTouchpadFragment extends Fragment {
     }
 
     public UsbSerialPort port;
+    @Nullable private View touchpadRoot;
 
     @Nullable
     @Override
@@ -47,6 +52,10 @@ public class BasicTouchpadFragment extends Fragment {
             lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
             view.setLayoutParams(lp);
+        }
+        touchpadRoot = view.findViewById(R.id.basic_touchpad_root);
+        if (touchpadRoot != null) {
+            installTouchpadContentInsets(touchpadRoot);
         }
         wireTouchPad(view.findViewById(R.id.basic_touch_pad));
 
@@ -87,6 +96,45 @@ public class BasicTouchpadFragment extends Fragment {
                         port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
             }
         });
+    }
+
+    /**
+     * Horizontal insets match {@link BasicKeyboardFragment#installKeyboardContentInsets}; bottom uses
+     * {@link R.dimen#basic_touchpad_content_inset_bottom} so the L/M/R row clears portrait gesture /
+     * 3-button nav when {@code navigationBars().bottom} is zero. Plus {@link
+     * WindowInsetsCompat.Type#navigationBars()}. Top keeps the layout {@code 8dp} breathing room.
+     */
+    private void installTouchpadContentInsets(@NonNull View root) {
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    Insets bars =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    int baseStart =
+                            getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset);
+                    int baseEnd =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_end);
+                    int baseBottom =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_touchpad_content_inset_bottom);
+                    ViewCompat.setPaddingRelative(
+                            v,
+                            baseStart + bars.left,
+                            v.getPaddingTop(),
+                            baseEnd + bars.right,
+                            baseBottom + bars.bottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (touchpadRoot != null) {
+            installTouchpadContentInsets(touchpadRoot);
+        }
     }
 
     private void wireTouchPad(@NonNull TouchPadView pad) {

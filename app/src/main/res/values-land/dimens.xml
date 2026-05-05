@@ -11,6 +11,7 @@
     <dimen name="basic_keyboard_content_inset">10dp</dimen>
     <dimen name="basic_keyboard_content_inset_end">6dp</dimen>
     <dimen name="basic_keyboard_content_inset_bottom">6dp</dimen>
+    <dimen name="basic_touchpad_content_inset_bottom">6dp</dimen>
 
     <!-- Split + narrow center column: cap hint width so wrap matches portrait-style bubble -->
     <dimen name="touchpad_help_overlay_max_width_split">256dp</dimen>
