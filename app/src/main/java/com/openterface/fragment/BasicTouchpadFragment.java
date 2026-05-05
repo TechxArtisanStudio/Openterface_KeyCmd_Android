@@ -99,10 +99,11 @@ public class BasicTouchpadFragment extends Fragment {
     }
 
     /**
-     * Horizontal insets match {@link BasicKeyboardFragment#installKeyboardContentInsets}; bottom uses
-     * {@link R.dimen#basic_touchpad_content_inset_bottom} so the L/M/R row clears portrait gesture /
-     * 3-button nav when {@code navigationBars().bottom} is zero. Plus {@link
-     * WindowInsetsCompat.Type#navigationBars()}. Top keeps the layout {@code 8dp} breathing room.
+     * Horizontal insets match {@link BasicKeyboardFragment#installKeyboardContentInsets}. Bottom
+     * uses {@link R.dimen#basic_touchpad_content_inset_bottom} and {@link
+     * WindowInsetsCompat.Type#navigationBars()} bottom, combined as {@code max(base, bars.bottom)}
+     * so we do not stack two full nav clearances when the window already fits above the bar but
+     * insets are still reported. Top keeps the layout {@code 8dp} breathing room.
      */
     private void installTouchpadContentInsets(@NonNull View root) {
         ViewCompat.setOnApplyWindowInsetsListener(
@@ -118,12 +119,13 @@ public class BasicTouchpadFragment extends Fragment {
                     int baseBottom =
                             getResources()
                                     .getDimensionPixelSize(R.dimen.basic_touchpad_content_inset_bottom);
+                    int bottomPad = Math.max(baseBottom, bars.bottom);
                     ViewCompat.setPaddingRelative(
                             v,
                             baseStart + bars.left,
                             v.getPaddingTop(),
                             baseEnd + bars.right,
-                            baseBottom + bars.bottom);
+                            bottomPad);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(root);

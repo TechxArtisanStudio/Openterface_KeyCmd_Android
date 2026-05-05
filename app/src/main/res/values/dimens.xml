@@ -55,8 +55,8 @@
     <dimen name="basic_keyboard_content_inset_end">18dp</dimen>
     <!-- Bottom (portrait: below Space row); separate so it can be tighter than start/end. -->
     <dimen name="basic_keyboard_content_inset_bottom">12dp</dimen>
-    <!-- KM Basic touchpad: bottom under L/M/R row; larger than keyboard when nav insets are zero. -->
-    <dimen name="basic_touchpad_content_inset_bottom">16dp</dimen>
+    <!-- KM Basic touchpad: comfort gap under L/M/R; combined with nav insets in code (see fragment). -->
+    <dimen name="basic_touchpad_content_inset_bottom">10dp</dimen>
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>
