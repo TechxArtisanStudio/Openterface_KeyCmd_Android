@@ -29,7 +29,7 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Num pad / IME, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / IME / Num pad, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
 | ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |

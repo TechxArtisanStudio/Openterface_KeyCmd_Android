@@ -194,16 +194,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 (view, event) -> BasicKeyFeedback.handleStandardKeyTouch(view, event, onTap));
     }
 
-    private LinearLayout newRow() {
+    /** Row container; {@code heightWeight} is the vertical share (Basic full keyboard uses {@code 1:1:2:2:2:2}). */
+    private LinearLayout newRow(float heightWeight) {
         LinearLayout row = new LinearLayout(getContext());
-        row.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+        row.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, heightWeight));
         row.setOrientation(HORIZONTAL);
         addView(row);
         return row;
     }
 
     private void addRowEscF() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(1f);
         int[] codes = new int[] {
                 0x29, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45
         };
@@ -218,7 +219,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addRowNumbers() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(1f);
         String[] labels = {"`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "\u232B"};
         String[] hints = {"~", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+", null};
         int[] codes = {0x35, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2D, 0x2E, 0x2A};
@@ -231,7 +232,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addRowQwerty1() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(2f);
         String[] labels = {"Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\"};
         String[] hints = {null, null, null, null, null, null, null, null, null, null, null, "{", "}", "|"};
         int[] codes = {0x2B, 0x14, 0x1A, 0x08, 0x15, 0x17, 0x1C, 0x18, 0x0C, 0x12, 0x13, 0x2F, 0x30, 0x64};
@@ -245,7 +246,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addRowQwerty2() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(2f);
         String[] labels = {"Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter"};
         String[] hints = {null, null, null, null, null, null, null, null, null, null, ":", "\"", null};
         int[] codes = {0x39, 0x04, 0x16, 0x07, 0x09, 0x0A, 0x0B, 0x0D, 0x0E, 0x0F, 0x33, 0x34, 0x28};
@@ -264,7 +265,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addRowQwerty3() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(2f);
         String[] labels = {"Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift"};
         String[] hints = {null, null, null, null, null, null, null, null, "<", ">", "?", null};
         int[] codes = {0xE1, 0x1D, 0x1B, 0x06, 0x19, 0x05, 0x11, 0x10, 0x36, 0x37, 0x38, 0xE5};
@@ -281,7 +282,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addRowBottom() {
-        LinearLayout row = newRow();
+        LinearLayout row = newRow(2f);
         MainActivity ma = mainActivity;
         String os = ma != null ? ma.getTargetOs().toLowerCase(Locale.US) : "macos";
         if ("macos".equals(os)) {

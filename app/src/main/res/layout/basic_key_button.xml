@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Primary label is full-cell centered; shift/symbol hint overlays top-end (no vertical split).
+     Stacked hint+label used to steal height on compact rows (e.g. KM Basic number row at 1:1:2…). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="0dp"
     android:layout_height="match_parent"
@@ -7,33 +9,27 @@
     android:focusable="false"
     android:background="@drawable/key_background">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/basic_key_label"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center">
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textSize="16sp"
+        android:duplicateParentState="true"
+        android:textColor="@color/basic_key_label_color"
+        android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/basic_key_hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            android:paddingEnd="4dp"
-            android:paddingTop="2dp"
-            android:textSize="12sp"
-            android:duplicateParentState="true"
-            android:textColor="@color/basic_key_hint_color"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/basic_key_label"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            android:duplicateParentState="true"
-            android:textColor="@color/basic_key_label_color"
-            android:textStyle="bold" />
-    </LinearLayout>
+    <TextView
+        android:id="@+id/basic_key_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:paddingTop="2dp"
+        android:paddingEnd="4dp"
+        android:textSize="12sp"
+        android:includeFontPadding="false"
+        android:duplicateParentState="true"
+        android:textColor="@color/basic_key_hint_color"
+        android:visibility="gone" />
 </FrameLayout>

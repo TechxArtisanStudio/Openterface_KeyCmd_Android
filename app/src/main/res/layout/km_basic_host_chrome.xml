@@ -48,14 +48,14 @@
                 android:text="@string/kb_mouse_sub_touchpad" />
 
             <TextView
-                android:id="@+id/basic_km_tab_numpad"
-                style="@style/KbMouseSubmodeTab"
-                android:text="@string/kb_mouse_sub_numpad" />
-
-            <TextView
                 android:id="@+id/basic_km_tab_ime"
                 style="@style/KbMouseSubmodeTab"
                 android:text="@string/kb_mouse_sub_ime" />
+
+            <TextView
+                android:id="@+id/basic_km_tab_numpad"
+                style="@style/KbMouseSubmodeTab"
+                android:text="@string/kb_mouse_sub_numpad" />
         </LinearLayout>
     </HorizontalScrollView>
 
