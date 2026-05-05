@@ -103,7 +103,7 @@
             android:id="@+id/nav_icon_keyboard_mouse_pro"
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/keyboard_mouse"
+            android:src="@drawable/keyboard_mouse_pro"
             android:tint="?attr/colorPrimary" />
 
         <TextView

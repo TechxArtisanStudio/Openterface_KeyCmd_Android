@@ -60,7 +60,8 @@ public class BasicPortraitScrollStripView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float x = getWidth() - dividerPaint.getStrokeWidth() * 0.5f;
+        // Divider on the edge toward the touchpad (strip sits on the right of the pad).
+        float x = dividerPaint.getStrokeWidth() * 0.5f;
         canvas.drawLine(x, 0, x, getHeight(), dividerPaint);
     }
 

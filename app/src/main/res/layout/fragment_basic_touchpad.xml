@@ -19,7 +19,7 @@
 
     <!--
       Single weighted region (FrameLayout) so the pad row always gets height; inner row is
-      match_parent×match_parent. Scroll strip + pad share width 1:5 in all orientations.
+      match_parent×match_parent. Pad + scroll strip share width 5:1 (strip on the right).
     -->
     <FrameLayout
         android:layout_width="match_parent"
@@ -32,6 +32,13 @@
             android:baselineAligned="false"
             android:orientation="horizontal">
 
+            <com.openterface.keymod.TouchPadView
+                android:id="@+id/basic_touch_pad"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="5"
+                android:background="@color/background_light" />
+
             <com.openterface.keymod.basic.BasicPortraitScrollStripView
                 android:id="@+id/basic_touchpad_scroll_strip"
                 android:layout_width="0dp"
@@ -39,13 +46,6 @@
                 android:layout_weight="1"
                 android:background="@color/background_light"
                 android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
-
-            <com.openterface.keymod.TouchPadView
-                android:id="@+id/basic_touch_pad"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="5"
-                android:background="@color/background_light" />
         </LinearLayout>
     </FrameLayout>
 
