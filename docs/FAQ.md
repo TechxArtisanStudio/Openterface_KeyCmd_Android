@@ -1,6 +1,6 @@
 # KeyMod FAQ — Keyboard output and strip profiles
 
-Common questions about what KeyMod can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles.
+Common questions about what KeyMod can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior.
 
 ---
 
@@ -43,6 +43,34 @@ That is where results are most **consistent across different machines**.
 ## Rows 2–3 strip profiles in the app
 
 Built-in **Default** and **Mine** start from the **factory strip layout** (no overrides until you edit). You can **create additional strip profiles**, **import/export** JSON, and **assign** profiles to the page 3 strip quick-toggle row—same customization as before, without bundled decorative or Unicode-heavy presets.
+
+---
+
+## What is the difference between sticky modifiers and long-press chord on the Basic keyboard?
+
+These options apply only to the **full keyboard** in **Keyboard & Mouse (Basic)** (**Settings → Keyboard & Mouse**).
+
+**Sticky modifiers:** Tap **Ctrl**, **Shift**, **Alt**, or **Win/Cmd** once to **latch** it on (highlighted). Tap again to turn off. To type **!**, tap **Shift**, then tap **1** as separate steps—like sticky keys on a physical keyboard.
+
+**Momentary and long-press chord (default):** A **short tap** sends that modifier **once** to the target (quick press and release). **Long-press** a modifier and **keep your finger on it**, then tap other keys to chord (for example long-press **Shift** and tap **1** for **!**). **Lift your finger** from the modifier to stop.
+
+Changing modifier mode **rebuilds** the Basic keyboard and clears latched modifiers.
+
+---
+
+## What does “Hold modifier on target while chording” do?
+
+This switch appears when **Momentary and long-press chord** is selected. It is **on** by default.
+
+When **on**, after you long-press a modifier, KeyMod sends a **real modifier-down** to the connected device and, after each chorded key, sends the **hold again** so the target keeps treating the modifier as pressed while your finger stays on the modifier. That supports several shifted symbols in a row (for example **!** then **@** without releasing Shift between number taps).
+
+When **off**, you still get the on-screen chord highlight, but the host may only see the modifier combined with each single key event. Turn it **off** if a specific computer misbehaves with sustained modifier-down over USB.
+
+---
+
+## Do Basic modifier settings affect Pro mode or the shortcut strip?
+
+**No.** Sticky vs chord and “Hold modifier on target while chording” apply to **Keyboard & Mouse (Basic)** only. **Keyboard & Mouse Pro** and the **Shortcut Hub** strip use separate behavior.
 
 ---
 
