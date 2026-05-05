@@ -1,5 +1,6 @@
 package com.openterface.fragment;
 
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -108,6 +109,10 @@ public class BasicKeyboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Full-width PC layout is unusable in portrait; keep this submode in landscape only.
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
         MainActivity ma = mainActivity();
         if (ma != null) {
             ma.addOsChangeListener(basicOsListener);
@@ -118,6 +123,9 @@ public class BasicKeyboardFragment extends Fragment {
 
     @Override
     public void onPause() {
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+        }
         MainActivity ma = mainActivity();
         if (ma != null) {
             ma.removeOsChangeListener(basicOsListener);

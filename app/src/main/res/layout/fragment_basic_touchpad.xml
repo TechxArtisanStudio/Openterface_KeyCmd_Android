@@ -3,6 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:baselineAligned="false"
+    android:padding="8dp"
     android:background="@color/background_light">
 
     <TextView
@@ -12,12 +14,79 @@
         android:padding="12dp"
         android:text="@string/kb_basic_back_to_keyboard"
         android:textColor="?attr/colorPrimary"
+        android:textSize="16sp"
         android:textStyle="bold" />
 
-    <com.openterface.keymod.TouchPadView
-        android:id="@+id/basic_touch_pad"
+    <!--
+      Single weighted region (FrameLayout) so the pad row always gets height; inner row is
+      match_parent×match_parent. Scroll strip + pad share width 1:5 in all orientations.
+    -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@color/background_light" />
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.openterface.keymod.basic.BasicPortraitScrollStripView
+                android:id="@+id/basic_touchpad_scroll_strip"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@color/background_light"
+                android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
+
+            <com.openterface.keymod.TouchPadView
+                android:id="@+id/basic_touch_pad"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="5"
+                android:background="@color/background_light" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/basic_touchpad_mouse_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        android:paddingTop="8dp">
+
+        <TextView
+            android:id="@+id/basic_touchpad_btn_left"
+            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:contentDescription="@string/kb_basic_touchpad_mouse_left_a11y"
+            android:text="@string/kb_basic_touchpad_mouse_left_label" />
+
+        <TextView
+            android:id="@+id/basic_touchpad_btn_middle"
+            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:contentDescription="@string/kb_basic_touchpad_mouse_middle_a11y"
+            android:text="@string/kb_basic_touchpad_mouse_middle_label" />
+
+        <TextView
+            android:id="@+id/basic_touchpad_btn_right"
+            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:contentDescription="@string/kb_basic_touchpad_mouse_right_a11y"
+            android:text="@string/kb_basic_touchpad_mouse_right_label" />
+    </LinearLayout>
 </LinearLayout>

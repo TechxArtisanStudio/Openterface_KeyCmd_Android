@@ -42,6 +42,12 @@ public class BasicTouchpadFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        ViewGroup.LayoutParams lp = view.getLayoutParams();
+        if (lp != null) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            view.setLayoutParams(lp);
+        }
         view.findViewById(R.id.basic_touchpad_back).setOnClickListener(v -> {
             Fragment p = getParentFragment();
             if (p instanceof KeyboardMouseFragment) {
