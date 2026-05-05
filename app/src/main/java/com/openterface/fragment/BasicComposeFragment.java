@@ -256,7 +256,9 @@ public class BasicComposeFragment extends Fragment {
         boolean canSend = blocked == null;
 
         if (sending) {
-            sendBtn.setText(R.string.compose_stop);
+            sendBtn.setText("");
+            sendBtn.setIconResource(R.drawable.ic_compose_stop_24);
+            sendBtn.setContentDescription(getString(R.string.compose_stop));
             sendBtn.setEnabled(true);
             sendBtn.setAlpha(1f);
             clearBtn.setEnabled(false);
@@ -264,7 +266,9 @@ public class BasicComposeFragment extends Fragment {
             redoBtn.setEnabled(false);
             redoBtn.setAlpha(0.45f);
         } else {
-            sendBtn.setText(R.string.compose_send);
+            sendBtn.setText("");
+            sendBtn.setIconResource(R.drawable.ic_compose_send_24);
+            sendBtn.setContentDescription(getString(R.string.compose_send));
             sendBtn.setEnabled(true);
             sendBtn.setAlpha(canSend ? 1f : 0.45f);
             boolean canClear = !t.isEmpty();
