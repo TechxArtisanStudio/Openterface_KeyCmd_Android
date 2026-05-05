@@ -88,6 +88,22 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private final Runnable chordLongPressRunnable = this::onChordLongPressThreshold;
     private final Runnable physicalKeyReleaseRunnable = this::runPhysicalKeyRelease;
 
+    private static final long KM_BASIC_HOLD_LOCK_MS = 1000L;
+    @Nullable private KmBasicHoldLockController kmBasicHoldLockController;
+    @Nullable private BasicHoldLockPopup activeHoldLockPopup;
+    private final Runnable holdLockPopupRunnable = this::onHoldLockPopupTimeout;
+    @Nullable private View holdLockPopupAnchorView;
+    /** Raw at ACTION_DOWN on the modifier key; used as hold-lock gesture origin (matches Pro alternates). */
+    private float holdLockDownRawX;
+    private float holdLockDownRawY;
+    private int holdLockPendingModMask;
+    private final KmBasicHoldLockController.Listener kmBasicHoldLockListener =
+            controller -> {
+                if (isAttachedToWindow()) {
+                    refreshModifierVisuals();
+                }
+            };
+
     private final SharedPreferences.OnSharedPreferenceChangeListener kmBasicPrefListener =
             (sharedPreferences, key) -> {
                 if (KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR.equals(key)) {
@@ -152,6 +168,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     public void bind(@Nullable MainActivity activity, @Nullable UsbSerialPort usbPort) {
         keyPreview.dismiss();
         handler.removeCallbacks(chordLongPressRunnable);
+        handler.removeCallbacks(holdLockPopupRunnable);
+        dismissHoldLockPopup();
         handler.removeCallbacks(physicalKeyReleaseRunnable);
         clearChordHoldState();
         shiftKeyLeft = null;
@@ -181,11 +199,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     private void clearChordHoldState() {
         handler.removeCallbacks(chordLongPressRunnable);
+        handler.removeCallbacks(holdLockPopupRunnable);
+        dismissHoldLockPopup();
         if (chordHostHoldSent) {
             MainActivity ma = mainActivity;
             if (ma != null) {
                 KeyboardHidTransport.sendAllKeysReleased(
                         port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+                reassertLockedKeyboardAfterAllKeysReleased();
             }
             chordHostHoldSent = false;
         }
@@ -240,15 +261,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return parseMod("Shift") | parseMod("ShiftR");
     }
 
-    /** True when either Shift side is active (sticky or chord-held). */
+    /** True when either Shift side is active (sticky, locked, or chord-held). */
     private boolean stickyShiftLayer() {
-        return (stickyModMask & shiftMaskBoth()) != 0;
+        return ((stickyModMask | lockedModsOr0()) & shiftMaskBoth()) != 0;
     }
 
-    /** Sticky latched shift, or chord mode with Shift long-held. */
+    /** Sticky latched shift, lock, or chord mode with Shift long-held. */
     private boolean shiftLayerActive() {
         if (isMomentaryChordMode()) {
-            return (chordHeldModMask & shiftMaskBoth()) != 0;
+            return ((chordHeldModMask | lockedModsOr0()) & shiftMaskBoth()) != 0;
         }
         return stickyShiftLayer();
     }
@@ -265,12 +286,65 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 0,
                 extendedKeyCode);
         handler.postDelayed(
-                () ->
-                        KeyboardHidTransport.sendAllKeysReleased(
-                                port,
-                                ma.getBluetoothService(),
-                                ma.isBluetoothServiceBound()),
+                () -> {
+                    KeyboardHidTransport.sendAllKeysReleased(
+                            port,
+                            ma.getBluetoothService(),
+                            ma.isBluetoothServiceBound());
+                    reassertLockedKeyboardAfterAllKeysReleased();
+                },
                 30);
+    }
+
+    private void reassertLockedKeyboardAfterAllKeysReleased() {
+        MainActivity ma = mainActivity;
+        if (ma == null || kmBasicHoldLockController == null) {
+            return;
+        }
+        kmBasicHoldLockController.reassertKeyboardModifiersIfNeeded(
+                port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+    }
+
+    private void dismissHoldLockPopup() {
+        if (activeHoldLockPopup != null) {
+            activeHoldLockPopup.dismiss();
+            activeHoldLockPopup = null;
+        }
+        holdLockPopupAnchorView = null;
+    }
+
+    private void onHoldLockPopupTimeout() {
+        if (holdLockPopupAnchorView == null || !holdLockPopupAnchorView.isPressed()) {
+            return;
+        }
+        keyPreview.dismiss();
+        activeHoldLockPopup = new BasicHoldLockPopup();
+        activeHoldLockPopup.show(holdLockPopupAnchorView, holdLockDownRawX, holdLockDownRawY);
+    }
+
+    private void clearChordUiPreserveHostForLock() {
+        handler.removeCallbacks(chordLongPressRunnable);
+        handler.removeCallbacks(holdLockPopupRunnable);
+        dismissHoldLockPopup();
+        chordSustainFingerDown = false;
+        chordLongPressActivated = false;
+        chordHeldModMask = 0;
+        chordHostHoldSent = false;
+        if (chordHeldView != null) {
+            chordHeldView.setSelected(false);
+            chordHeldView = null;
+        }
+        chordLongPressAnchor = null;
+    }
+
+    public void setHoldLockController(@Nullable KmBasicHoldLockController controller) {
+        if (kmBasicHoldLockController != null) {
+            kmBasicHoldLockController.removeListener(kmBasicHoldLockListener);
+        }
+        kmBasicHoldLockController = controller;
+        if (kmBasicHoldLockController != null) {
+            kmBasicHoldLockController.addListener(kmBasicHoldLockListener);
+        }
     }
 
     private View.OnTouchListener createChordModifierTouchListener(
@@ -284,26 +358,63 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     chordActiveExtKey = extendedKeyCode;
                     chordLongPressAnchor = v;
                     chordLongPressPendingMask = holdModMask;
+                    holdLockPopupAnchorView = v;
+                    holdLockPendingModMask = holdModMask;
+                    holdLockDownRawX = event.getRawX();
+                    holdLockDownRawY = event.getRawY();
                     handler.removeCallbacks(chordLongPressRunnable);
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
                     handler.postDelayed(
                             chordLongPressRunnable,
                             ViewConfiguration.get(v.getContext()).getLongPressTimeout());
+                    handler.postDelayed(holdLockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
                     if (previewText != null) {
                         keyPreview.show(v, previewText.get());
                     }
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     boolean inside = BasicKeyFeedback.isPointerInsideView(v, event);
+                    if (activeHoldLockPopup != null) {
+                        v.setPressed(true);
+                        activeHoldLockPopup.updatePointer(
+                                event.getRawX(), event.getRawY());
+                        return true;
+                    }
                     v.setPressed(inside);
                     if (!inside) {
                         handler.removeCallbacks(chordLongPressRunnable);
+                        handler.removeCallbacks(holdLockPopupRunnable);
+                        dismissHoldLockPopup();
                         keyPreview.dismiss();
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
                     handler.removeCallbacks(chordLongPressRunnable);
+                    handler.removeCallbacks(holdLockPopupRunnable);
                     v.setPressed(false);
                     keyPreview.dismiss();
+                    boolean committedLock = false;
+                    if (activeHoldLockPopup != null) {
+                        activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                        committedLock = activeHoldLockPopup.commitIfLockSelected();
+                        dismissHoldLockPopup();
+                    }
+                    if (committedLock && kmBasicHoldLockController != null) {
+                        MainActivity maLock = mainActivity;
+                        if (maLock != null) {
+                            kmBasicHoldLockController.lockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    maLock.getBluetoothService(),
+                                    maLock.isBluetoothServiceBound());
+                        }
+                        clearChordUiPreserveHostForLock();
+                        refreshModifierVisuals();
+                        chordLongPressAnchor = null;
+                        holdLockPopupAnchorView = null;
+                        return true;
+                    }
                     if (chordLongPressActivated) {
                         if (chordHostHoldSent) {
                             MainActivity maUp = mainActivity;
@@ -312,6 +423,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                                         port,
                                         maUp.getBluetoothService(),
                                         maUp.isBluetoothServiceBound());
+                                reassertLockedKeyboardAfterAllKeysReleased();
                             }
                             chordHostHoldSent = false;
                         }
@@ -327,9 +439,13 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         tapModifierMomentary(extendedKeyCode);
                     }
                     chordLongPressAnchor = null;
+                    holdLockPopupAnchorView = null;
+                    refreshModifierVisuals();
                     return true;
                 case MotionEvent.ACTION_CANCEL:
                     handler.removeCallbacks(chordLongPressRunnable);
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
                     v.setPressed(false);
                     keyPreview.dismiss();
                     if (chordLongPressActivated) {
@@ -340,6 +456,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                                         port,
                                         maCancel.getBluetoothService(),
                                         maCancel.isBluetoothServiceBound());
+                                reassertLockedKeyboardAfterAllKeysReleased();
                             }
                             chordHostHoldSent = false;
                         }
@@ -352,6 +469,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         chordLongPressActivated = false;
                     }
                     chordLongPressAnchor = null;
+                    holdLockPopupAnchorView = null;
+                    refreshModifierVisuals();
                     return true;
                 default:
                     return false;
@@ -385,37 +504,50 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         } else {
             styleStickyModifierKeySurface(v);
             int bit = isLeft ? parseMod("Shift") : parseMod("ShiftR");
-            wireTap(
-                    v,
-                    () -> {
-                        toggleStickyModBit(bit);
-                        refreshModifierVisuals();
-                    },
-                    preview);
+            v.setOnTouchListener(createStickyModifierWithLockListener(bit, preview));
         }
     }
 
     private void refreshModifierVisuals() {
         if (isMomentaryChordMode()) {
-            clearStickyLatchVisuals();
+            applyModifierVisualsChordMode();
         } else {
             refreshStickyModifierVisuals();
         }
     }
 
-    /** In chord mode, latched modifier highlights are off; Shift/Caps use default key background. */
-    private void clearStickyLatchVisuals() {
+    /** Chord-held key, locked modifiers, and caps highlight. */
+    private void applyModifierVisualsChordMode() {
+        int locked = lockedModsOr0();
         if (shiftKeyLeft != null) {
-            shiftKeyLeft.setSelected(false);
+            shiftKeyLeft.setSelected(
+                    (chordLongPressActivated && chordHeldView == shiftKeyLeft)
+                            || (locked & parseMod("Shift")) != 0);
         }
         if (shiftKeyRight != null) {
-            shiftKeyRight.setSelected(false);
+            shiftKeyRight.setSelected(
+                    (chordLongPressActivated && chordHeldView == shiftKeyRight)
+                            || (locked & parseMod("ShiftR")) != 0);
         }
-        setSelectedOnModifierKeys(ctrlModifierKeys, false);
-        setSelectedOnModifierKeys(altModifierKeys, false);
-        setSelectedOnModifierKeys(winModifierKeys, false);
+        applyChordOrLockVisualSide(ctrlModifierKeys, parseMod("Ctrl"), parseMod("CtrlR"), locked);
+        applyChordOrLockVisualSide(altModifierKeys, parseMod("Alt"), parseMod("AltR"), locked);
+        applyChordOrLockVisualSide(winModifierKeys, parseMod("Win"), parseMod("WinR"), locked);
         if (capsKeyView != null) {
-            capsKeyView.setSelected(false);
+            capsKeyView.setSelected(capsLock);
+        }
+    }
+
+    private void applyChordOrLockVisualSide(
+            List<View> keys, int leftBit, int rightBit, int lockedMask) {
+        if (keys.size() > 0) {
+            View v = keys.get(0);
+            v.setSelected((chordLongPressActivated && chordHeldView == v)
+                    || (lockedMask & leftBit) != 0);
+        }
+        if (keys.size() > 1) {
+            View v = keys.get(1);
+            v.setSelected((chordLongPressActivated && chordHeldView == v)
+                    || (lockedMask & rightBit) != 0);
         }
     }
 
@@ -427,11 +559,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return stickyModMask;
     }
 
+    private int lockedModsOr0() {
+        return kmBasicHoldLockController != null
+                ? kmBasicHoldLockController.getLockedModMask()
+                : 0;
+    }
+
     private int effectiveModifiersMask() {
-        if (isMomentaryChordMode()) {
-            return chordHeldModMask;
-        }
-        return stickyModifiersMask();
+        int base = isMomentaryChordMode() ? chordHeldModMask : stickyModifiersMask();
+        return base | lockedModsOr0();
     }
 
     private int effectiveModifiersForPhysicalKey(boolean isLetter, boolean needsShiftForSymbol) {
@@ -490,6 +626,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 port,
                 ma.getBluetoothService(),
                 ma.isBluetoothServiceBound());
+        reassertLockedKeyboardAfterAllKeysReleased();
         if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())
                 && chordSustainFingerDown
                 && chordLongPressActivated) {
@@ -552,11 +689,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void refreshStickyModifierVisuals() {
+        int locked = lockedModsOr0();
         if (shiftKeyLeft != null) {
-            shiftKeyLeft.setSelected((stickyModMask & parseMod("Shift")) != 0);
+            shiftKeyLeft.setSelected((stickyModMask & parseMod("Shift")) != 0
+                    || (locked & parseMod("Shift")) != 0);
         }
         if (shiftKeyRight != null) {
-            shiftKeyRight.setSelected((stickyModMask & parseMod("ShiftR")) != 0);
+            shiftKeyRight.setSelected((stickyModMask & parseMod("ShiftR")) != 0
+                    || (locked & parseMod("ShiftR")) != 0);
         }
         refreshStickySideKeys(ctrlModifierKeys, parseMod("Ctrl"), parseMod("CtrlR"));
         refreshStickySideKeys(altModifierKeys, parseMod("Alt"), parseMod("AltR"));
@@ -567,11 +707,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void refreshStickySideKeys(List<View> keys, int leftBit, int rightBit) {
+        int locked = lockedModsOr0();
         if (keys.size() > 0) {
-            keys.get(0).setSelected((stickyModMask & leftBit) != 0);
+            keys.get(0).setSelected((stickyModMask & leftBit) != 0 || (locked & leftBit) != 0);
         }
         if (keys.size() > 1) {
-            keys.get(1).setSelected((stickyModMask & rightBit) != 0);
+            keys.get(1).setSelected((stickyModMask & rightBit) != 0 || (locked & rightBit) != 0);
         }
     }
 
@@ -605,13 +746,93 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     private void wireStickyModifierTap(View v, String which, int stickyMaskBit, Supplier<String> previewText) {
         registerStickyModifierKey(which, v);
-        wireTap(
-                v,
-                () -> {
-                    toggleStickyModBit(stickyMaskBit);
-                    refreshModifierVisuals();
-                },
-                previewText);
+        v.setOnTouchListener(createStickyModifierWithLockListener(stickyMaskBit, previewText));
+    }
+
+    private View.OnTouchListener createStickyModifierWithLockListener(
+            final int stickyMaskBit, final Supplier<String> previewText) {
+        return (v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.setPressed(true);
+                    BasicKeyFeedback.performKeyHaptic(v);
+                    holdLockPopupAnchorView = v;
+                    holdLockPendingModMask = stickyMaskBit;
+                    holdLockDownRawX = event.getRawX();
+                    holdLockDownRawY = event.getRawY();
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
+                    handler.postDelayed(holdLockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
+                    if (previewText != null) {
+                        keyPreview.show(v, previewText.get());
+                    }
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
+                    if (activeHoldLockPopup != null) {
+                        v.setPressed(true);
+                        activeHoldLockPopup.updatePointer(
+                                event.getRawX(), event.getRawY());
+                        return true;
+                    }
+                    v.setPressed(insideSticky);
+                    if (!insideSticky) {
+                        handler.removeCallbacks(holdLockPopupRunnable);
+                        dismissHoldLockPopup();
+                        keyPreview.dismiss();
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    v.setPressed(false);
+                    keyPreview.dismiss();
+                    boolean committedStickyLock = false;
+                    if (activeHoldLockPopup != null) {
+                        activeHoldLockPopup.updatePointer(
+                                event.getRawX(), event.getRawY());
+                        committedStickyLock = activeHoldLockPopup.commitIfLockSelected();
+                        dismissHoldLockPopup();
+                    }
+                    MainActivity maSticky = mainActivity;
+                    if (committedStickyLock
+                            && kmBasicHoldLockController != null
+                            && maSticky != null) {
+                        stickyModMask &= ~stickyMaskBit;
+                        kmBasicHoldLockController.lockModifier(
+                                holdLockPendingModMask,
+                                port,
+                                maSticky.getBluetoothService(),
+                                maSticky.isBluetoothServiceBound());
+                        refreshModifierVisuals();
+                        holdLockPopupAnchorView = null;
+                        return true;
+                    }
+                    if (BasicKeyFeedback.isPointerInsideView(v, event) && maSticky != null) {
+                        if (kmBasicHoldLockController != null
+                                && kmBasicHoldLockController.isModifierLocked(stickyMaskBit)) {
+                            kmBasicHoldLockController.unlockModifier(
+                                    stickyMaskBit,
+                                    port,
+                                    maSticky.getBluetoothService(),
+                                    maSticky.isBluetoothServiceBound());
+                        } else {
+                            toggleStickyModBit(stickyMaskBit);
+                        }
+                        refreshModifierVisuals();
+                    }
+                    holdLockPopupAnchorView = null;
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    handler.removeCallbacks(holdLockPopupRunnable);
+                    dismissHoldLockPopup();
+                    v.setPressed(false);
+                    keyPreview.dismiss();
+                    holdLockPopupAnchorView = null;
+                    return true;
+                default:
+                    return false;
+            }
+        };
     }
 
     private static void applyKeyCellMargins(LinearLayout.LayoutParams lp, Context context) {

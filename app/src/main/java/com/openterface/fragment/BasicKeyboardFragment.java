@@ -106,6 +106,13 @@ public class BasicKeyboardFragment extends Fragment {
     public void bindKeyboard() {
         MainActivity ma = mainActivity();
         if (physicalKeyboardView != null) {
+            Fragment p = getParentFragment();
+            if (p instanceof KeyboardMouseFragment) {
+                physicalKeyboardView.setHoldLockController(
+                        ((KeyboardMouseFragment) p).getHoldLockController());
+            } else {
+                physicalKeyboardView.setHoldLockController(null);
+            }
             physicalKeyboardView.bind(ma, port);
         }
     }

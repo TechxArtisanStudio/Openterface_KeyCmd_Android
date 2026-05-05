@@ -13,24 +13,24 @@ package com.openterface.keymod;
  *   DL   D   DR
  * </pre>
  */
-final class AlternatePopupGeometry {
+public final class AlternatePopupGeometry {
     /** Release commits the center (default) option when finger stayed inside min radius or neutral cross. */
-    static final int RESULT_DEFAULT = -1;
+    public static final int RESULT_DEFAULT = -1;
     /** Oversized movement or empty cell — release does not send a character. */
-    static final int RESULT_CANCEL = -2;
+    public static final int RESULT_CANCEL = -2;
 
-    static final int SLOT_COUNT = 9;
+    public static final int SLOT_COUNT = 9;
 
     /** Center: default on release (e.g. capital for a–z). */
-    static final int SLOT_CENTER = 0;
-    static final int SLOT_UP = 1;
-    static final int SLOT_DOWN = 2;
-    static final int SLOT_LEFT = 3;
-    static final int SLOT_RIGHT = 4;
-    static final int SLOT_UP_LEFT = 5;
-    static final int SLOT_UP_RIGHT = 6;
-    static final int SLOT_DOWN_LEFT = 7;
-    static final int SLOT_DOWN_RIGHT = 8;
+    public static final int SLOT_CENTER = 0;
+    public static final int SLOT_UP = 1;
+    public static final int SLOT_DOWN = 2;
+    public static final int SLOT_LEFT = 3;
+    public static final int SLOT_RIGHT = 4;
+    public static final int SLOT_UP_LEFT = 5;
+    public static final int SLOT_UP_RIGHT = 6;
+    public static final int SLOT_DOWN_LEFT = 7;
+    public static final int SLOT_DOWN_RIGHT = 8;
 
     /**
      * Maps row (0 = up, 2 = down) and column (0 = left, 2 = right) to slot index.
@@ -55,7 +55,7 @@ final class AlternatePopupGeometry {
      * @param slotOccupied    length {@link #SLOT_COUNT}; true if that cell can be selected
      *                        (including corners satisfied via fallback to U/D in the model)
      */
-    static int pickSlot(
+    public static int pickSlot(
             float dx,
             float dy,
             float rMinPx,

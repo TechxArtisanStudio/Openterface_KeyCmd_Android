@@ -2,7 +2,10 @@ package com.openterface.fragment;
 
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -16,8 +19,10 @@ import androidx.fragment.app.Fragment;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.TouchPadView;
+import com.openterface.keymod.basic.BasicHoldLockPopup;
 import com.openterface.keymod.basic.BasicKeyFeedback;
 import com.openterface.keymod.basic.BasicPortraitScrollStripView;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.hid.MouseRelHidTransport;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
@@ -28,6 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class BasicTouchpadFragment extends Fragment {
 
+    private static final long KM_BASIC_HOLD_LOCK_MS = 1000L;
+
     /** HID relative button bit: left */
     private static final int BTN_LEFT = 0x01;
     /** HID relative button bit: right */
@@ -37,6 +44,11 @@ public class BasicTouchpadFragment extends Fragment {
 
     /** Strip L/M/R currently held (OR of {@link #BTN_LEFT} / {@link #BTN_RIGHT} / {@link #BTN_MIDDLE}). */
     private final AtomicInteger stripHeldMouseButtons = new AtomicInteger(0);
+
+    private final Handler stripHandler = new Handler(Looper.getMainLooper());
+    @Nullable private KmBasicHoldLockController holdLockController;
+    private final KmBasicHoldLockController.Listener holdLockListener =
+            controller -> refreshMouseStripLockUi();
 
     public static BasicTouchpadFragment instantiateWithPort(@Nullable UsbSerialPort p) {
         BasicTouchpadFragment f = new BasicTouchpadFragment();
@@ -69,6 +81,14 @@ public class BasicTouchpadFragment extends Fragment {
         if (touchpadRoot != null) {
             installTouchpadContentInsets(touchpadRoot);
         }
+        Fragment p = getParentFragment();
+        if (p instanceof KeyboardMouseFragment) {
+            holdLockController = ((KeyboardMouseFragment) p).getHoldLockController();
+            holdLockController.addListener(holdLockListener);
+        } else {
+            holdLockController = null;
+        }
+
         wireTouchPad(view.findViewById(R.id.basic_touch_pad));
 
         BasicPortraitScrollStripView scrollStrip = view.findViewById(R.id.basic_touchpad_scroll_strip);
@@ -84,13 +104,51 @@ public class BasicTouchpadFragment extends Fragment {
                         ma.isBluetoothServiceBound(),
                         deltaX,
                         deltaY,
-                        stripHeldMouseButtons.get());
+                        effectiveMouseMaskForHid());
             });
         }
 
         wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_left), BTN_LEFT);
         wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_middle), BTN_MIDDLE);
         wireStripMouseButton(view.findViewById(R.id.basic_touchpad_btn_right), BTN_RIGHT);
+        refreshMouseStripLockUi();
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (holdLockController != null) {
+            holdLockController.removeListener(holdLockListener);
+            holdLockController = null;
+        }
+        super.onDestroyView();
+    }
+
+    private int lockedMouseOr0() {
+        return holdLockController != null ? holdLockController.getLockedMouseMask() : 0;
+    }
+
+    private int effectiveMouseMaskForHid() {
+        return (stripHeldMouseButtons.get() | lockedMouseOr0()) & 0xFF;
+    }
+
+    private void refreshMouseStripLockUi() {
+        View v = getView();
+        if (v == null) {
+            return;
+        }
+        int locked = lockedMouseOr0();
+        View left = v.findViewById(R.id.basic_touchpad_btn_left);
+        View mid = v.findViewById(R.id.basic_touchpad_btn_middle);
+        View right = v.findViewById(R.id.basic_touchpad_btn_right);
+        if (left != null) {
+            left.setSelected((locked & BTN_LEFT) != 0);
+        }
+        if (mid != null) {
+            mid.setSelected((locked & BTN_MIDDLE) != 0);
+        }
+        if (right != null) {
+            right.setSelected((locked & BTN_RIGHT) != 0);
+        }
     }
 
     /**
@@ -142,7 +200,7 @@ public class BasicTouchpadFragment extends Fragment {
                 if (ma == null) {
                     return;
                 }
-                int mask = stripHeldMouseButtons.get();
+                int mask = effectiveMouseMaskForHid();
                 if (lastX == 0 && lastY == 0) {
                     MouseRelHidTransport.sendScroll(
                             port,
@@ -166,7 +224,7 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchClick() {
-                if ((stripHeldMouseButtons.get() & BTN_LEFT) != 0) {
+                if ((effectiveMouseMaskForHid() & BTN_LEFT) != 0) {
                     return;
                 }
                 MainActivity ma = mainActivity();
@@ -179,7 +237,7 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchDoubleClick() {
-                if ((stripHeldMouseButtons.get() & BTN_LEFT) != 0) {
+                if ((effectiveMouseMaskForHid() & BTN_LEFT) != 0) {
                     return;
                 }
                 MainActivity ma = mainActivity();
@@ -192,7 +250,7 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchRightClick() {
-                if ((stripHeldMouseButtons.get() & BTN_RIGHT) != 0) {
+                if ((effectiveMouseMaskForHid() & BTN_RIGHT) != 0) {
                     return;
                 }
                 MainActivity ma = mainActivity();
@@ -205,7 +263,7 @@ public class BasicTouchpadFragment extends Fragment {
 
             @Override
             public void onTouchRelease() {
-                if (stripHeldMouseButtons.get() != 0) {
+                if (effectiveMouseMaskForHid() != 0) {
                     return;
                 }
                 MainActivity ma = mainActivity();
@@ -222,39 +280,121 @@ public class BasicTouchpadFragment extends Fragment {
         if (button == null) {
             return;
         }
+        final BasicHoldLockPopup[] popupHolder = new BasicHoldLockPopup[1];
+        final float[] downRaw = new float[2];
+        final boolean[] gestureLockedTapOnly = new boolean[1];
+        final Runnable lockPopupRunnable =
+                () -> {
+                    if (!button.isPressed()) {
+                        return;
+                    }
+                    if (gestureLockedTapOnly[0]) {
+                        return;
+                    }
+                    popupHolder[0] = new BasicHoldLockPopup();
+                    popupHolder[0].show(button, downRaw[0], downRaw[1]);
+                };
         button.setOnTouchListener(
-                BasicKeyFeedback.sustainedKeyTouchListener(
-                        () -> {
-                            MainActivity ma = mainActivity();
-                            if (ma == null) {
-                                return;
+                (v, event) -> {
+                    MainActivity ma = mainActivity();
+                    if (ma == null) {
+                        return false;
+                    }
+                    switch (event.getActionMasked()) {
+                        case MotionEvent.ACTION_DOWN:
+                            gestureLockedTapOnly[0] =
+                                    holdLockController != null
+                                            && holdLockController.isMouseLocked(bit)
+                                            && (stripHeldMouseButtons.get() & bit) == 0;
+                            BasicKeyFeedback.performKeyHaptic(v);
+                            v.setPressed(true);
+                            downRaw[0] = event.getRawX();
+                            downRaw[1] = event.getRawY();
+                            stripHandler.removeCallbacks(lockPopupRunnable);
+                            if (popupHolder[0] != null) {
+                                popupHolder[0].dismiss();
+                                popupHolder[0] = null;
                             }
-                            int mask = stripHeldMouseButtons.updateAndGet(v -> v | bit);
-                            MouseRelHidTransport.sendRelButtonsNoMotion(
-                                    port,
-                                    ma.getBluetoothService(),
-                                    ma.isBluetoothServiceBound(),
-                                    mask);
-                        },
-                        () -> {
-                            MainActivity ma = mainActivity();
-                            if (ma == null) {
-                                return;
-                            }
-                            int mask = stripHeldMouseButtons.updateAndGet(v -> v & ~bit);
-                            if (mask == 0) {
-                                MouseRelHidTransport.releaseAll(
-                                        port,
-                                        ma.getBluetoothService(),
-                                        ma.isBluetoothServiceBound());
-                            } else {
+                            if (!gestureLockedTapOnly[0]) {
+                                stripHandler.postDelayed(lockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
+                                int downMask =
+                                        stripHeldMouseButtons.updateAndGet(x -> x | bit)
+                                                | lockedMouseOr0();
                                 MouseRelHidTransport.sendRelButtonsNoMotion(
                                         port,
                                         ma.getBluetoothService(),
                                         ma.isBluetoothServiceBound(),
-                                        mask);
+                                        downMask);
                             }
-                        }));
+                            return true;
+                        case MotionEvent.ACTION_MOVE:
+                            if (popupHolder[0] != null) {
+                                v.setPressed(true);
+                                popupHolder[0].updatePointer(event.getRawX(), event.getRawY());
+                                return true;
+                            }
+                            boolean inside = BasicKeyFeedback.isPointerInsideView(v, event);
+                            v.setPressed(inside);
+                            if (!inside) {
+                                stripHandler.removeCallbacks(lockPopupRunnable);
+                            }
+                            return true;
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            stripHandler.removeCallbacks(lockPopupRunnable);
+                            v.setPressed(false);
+                            if (gestureLockedTapOnly[0]) {
+                                gestureLockedTapOnly[0] = false;
+                                if (event.getActionMasked() == MotionEvent.ACTION_UP
+                                        && BasicKeyFeedback.isPointerInsideView(v, event)
+                                        && holdLockController != null) {
+                                    holdLockController.unlockMouseButtons(
+                                            bit,
+                                            port,
+                                            ma.getBluetoothService(),
+                                            ma.isBluetoothServiceBound());
+                                }
+                                refreshMouseStripLockUi();
+                                return true;
+                            }
+                            boolean committed = false;
+                            if (popupHolder[0] != null) {
+                                popupHolder[0].updatePointer(
+                                        event.getRawX(), event.getRawY());
+                                committed = popupHolder[0].commitIfLockSelected();
+                                popupHolder[0].dismiss();
+                                popupHolder[0] = null;
+                            }
+                            if (committed && holdLockController != null) {
+                                holdLockController.lockMouseButtons(
+                                        bit,
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                                stripHeldMouseButtons.updateAndGet(x -> x & ~bit);
+                                finishStripFingerUp(ma);
+                                refreshMouseStripLockUi();
+                                return true;
+                            }
+                            stripHeldMouseButtons.updateAndGet(x -> x & ~bit);
+                            finishStripFingerUp(ma);
+                            refreshMouseStripLockUi();
+                            return true;
+                        default:
+                            return false;
+                    }
+                });
+    }
+
+    private void finishStripFingerUp(MainActivity ma) {
+        int combined = effectiveMouseMaskForHid();
+        if (combined == 0) {
+            MouseRelHidTransport.releaseAll(
+                    port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+        } else {
+            MouseRelHidTransport.sendRelButtonsNoMotion(
+                    port, ma.getBluetoothService(), ma.isBluetoothServiceBound(), combined);
+        }
     }
 
     @Nullable

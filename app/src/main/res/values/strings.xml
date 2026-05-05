@@ -24,6 +24,7 @@
     <string name="settings_km_basic_touchpad_section_summary">Touchpad sub-mode in Keyboard &amp; Mouse (Basic): the vertical strip at the right edge for page scroll.</string>
     <string name="settings_km_basic_strip_scroll_sensitivity">Vertical scroll strip sensitivity</string>
     <string name="settings_km_basic_strip_scroll_sensitivity_desc">How fast content scrolls when you drag the strip beside the touchpad. Independent from General → touchpad two-finger scroll sensitivity.</string>
+    <string name="km_basic_hold_lock_popup_lock_cd">Lock hold on target</string>
     <!-- KM Basic full keyboard bottom row: accessibility for icon keys (Windows target) / Linux GUI label -->
     <string name="km_basic_cd_windows_modifier">Windows key</string>
     <string name="km_basic_cd_application_key">Application key</string>

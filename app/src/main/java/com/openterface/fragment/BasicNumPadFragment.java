@@ -19,6 +19,7 @@ import androidx.fragment.app.Fragment;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.target.CH9329MSKBMap;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -35,6 +36,8 @@ import java.util.Map;
  * {@code layout} vs {@code layout-land} variants apply correctly.
  */
 public class BasicNumPadFragment extends Fragment {
+
+    @Nullable private KmBasicHoldLockController holdLockController;
 
     public static BasicNumPadFragment instantiateWithPort(@Nullable UsbSerialPort p) {
         BasicNumPadFragment f = new BasicNumPadFragment();
@@ -61,7 +64,19 @@ public class BasicNumPadFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        Fragment p = getParentFragment();
+        if (p instanceof KeyboardMouseFragment) {
+            holdLockController = ((KeyboardMouseFragment) p).getHoldLockController();
+        } else {
+            holdLockController = null;
+        }
         inflateAndWireNumpad();
+    }
+
+    @Override
+    public void onDestroyView() {
+        holdLockController = null;
+        super.onDestroyView();
     }
 
     @Override
@@ -180,17 +195,26 @@ public class BasicNumPadFragment extends Fragment {
         if (ma == null) {
             return;
         }
+        int mods = holdLockController != null ? holdLockController.getLockedModMask() : 0;
         KeyboardHidTransport.sendKeyReport(
                 port,
                 ma.getBluetoothService(),
                 ma.isBluetoothServiceBound(),
-                0,
+                mods,
                 hidCode);
         root.postDelayed(
-                () -> KeyboardHidTransport.sendAllKeysReleased(
-                        port,
-                        ma.getBluetoothService(),
-                        ma.isBluetoothServiceBound()),
+                () -> {
+                    KeyboardHidTransport.sendAllKeysReleased(
+                            port,
+                            ma.getBluetoothService(),
+                            ma.isBluetoothServiceBound());
+                    if (holdLockController != null) {
+                        holdLockController.reassertKeyboardModifiersIfNeeded(
+                                port,
+                                ma.getBluetoothService(),
+                                ma.isBluetoothServiceBound());
+                    }
+                },
                 30);
     }
 

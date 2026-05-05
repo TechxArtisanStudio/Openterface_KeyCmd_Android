@@ -22,6 +22,7 @@ import androidx.fragment.app.FragmentTransaction;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
@@ -54,11 +55,18 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private LinearLayout chromeConnectionWrap;
     @Nullable private View kbMouseHost;
 
+    /** Session-scoped modifier / mouse-button locks for KM Basic sub-modes. */
+    private final KmBasicHoldLockController holdLockController = new KmBasicHoldLockController();
+
     private final MainActivity.OnTargetOsChangeListener basicOsListener =
             os -> {
                 refreshBasicEmbeddedChrome();
                 notifyKeyboardBodyIfShown();
             };
+
+    public KmBasicHoldLockController getHoldLockController() {
+        return holdLockController;
+    }
 
     public static KeyboardMouseFragment newInstance(UsbSerialPort port, @Nullable String initialSubmode) {
         KeyboardMouseFragment f = new KeyboardMouseFragment();
@@ -240,8 +248,26 @@ public final class KeyboardMouseFragment extends Fragment {
         outState.putString(STATE_SUBMODE, currentSubmode);
     }
 
+    @Override
+    public void onDestroy() {
+        MainActivity ma = mainActivity();
+        if (ma != null) {
+            holdLockController.clearAllAndReleaseHid(
+                    port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+        } else {
+            holdLockController.clearAllAndReleaseHid(null, null, false);
+        }
+        super.onDestroy();
+    }
+
     /** Called from {@link com.openterface.keymod.MainActivity} when the serial port changes. */
     public void onPortChanged(UsbSerialPort newPort) {
+        MainActivity ma = mainActivity();
+        UsbSerialPort oldPort = port;
+        if (newPort == null && ma != null && holdLockController.hasAnyLock()) {
+            holdLockController.clearAllAndReleaseHid(
+                    oldPort, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+        }
         port = newPort;
         Fragment child = getChildFragmentManager().findFragmentById(R.id.kb_mouse_host);
         if (child instanceof BasicKeyboardFragment) {
