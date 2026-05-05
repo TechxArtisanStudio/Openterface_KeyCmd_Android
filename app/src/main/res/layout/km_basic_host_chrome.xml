@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- KM Basic shared chrome: menu, four submode tabs, target OS, connection. Lives in KeyboardMouseFragment host. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <ImageButton
+        android:id="@+id/basic_km_menu_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/menu"
+        android:padding="6dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_menu"
+        android:tint="@color/text_primary" />
+
+    <HorizontalScrollView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/basic_km_tab_keyboard"
+                style="@style/KbMouseSubmodeTab"
+                android:text="@string/kb_mouse_sub_keyboard" />
+
+            <TextView
+                android:id="@+id/basic_km_tab_touchpad"
+                style="@style/KbMouseSubmodeTab"
+                android:text="@string/kb_mouse_sub_touchpad" />
+
+            <TextView
+                android:id="@+id/basic_km_tab_numpad"
+                style="@style/KbMouseSubmodeTab"
+                android:text="@string/kb_mouse_sub_numpad" />
+
+            <TextView
+                android:id="@+id/basic_km_tab_ime"
+                style="@style/KbMouseSubmodeTab"
+                android:text="@string/kb_mouse_sub_ime" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <ImageButton
+        android:id="@+id/basic_km_target_os"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/target_os_header_cd"
+        android:padding="6dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_os_macos"
+        android:tint="@color/text_secondary" />
+
+    <LinearLayout
+        android:id="@+id/basic_km_connection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="4dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:id="@+id/basic_km_connection_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@string/connection"
+            android:src="@drawable/ic_bluetooth"
+            android:tint="@color/text_secondary" />
+    </LinearLayout>
+</LinearLayout>

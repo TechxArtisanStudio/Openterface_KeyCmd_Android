@@ -685,7 +685,6 @@ by TechxArtisan</string>
     <string name="kb_mouse_sub_touchpad">Touchpad</string>
     <string name="kb_mouse_sub_compose">Compose</string>
     <string name="kb_mouse_sub_ime">IME</string>
-    <string name="kb_basic_back_to_keyboard">Back to keyboard</string>
     <string name="kb_basic_touchpad_scroll_area_a11y">Mouse wheel scroll strip</string>
     <string name="kb_basic_touchpad_mouse_left_label">L</string>
     <string name="kb_basic_touchpad_mouse_middle_label">M</string>

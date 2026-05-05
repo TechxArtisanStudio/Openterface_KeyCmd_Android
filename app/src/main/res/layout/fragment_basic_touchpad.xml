@@ -7,16 +7,6 @@
     android:padding="8dp"
     android:background="@color/background_light">
 
-    <TextView
-        android:id="@+id/basic_touchpad_back"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="12dp"
-        android:text="@string/kb_basic_back_to_keyboard"
-        android:textColor="?attr/colorPrimary"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
     <!--
       Pad + strip vs mouse row: height weights 5:2 (sibling weights only; inner row match_parent).
       Mouse keys L:M:R width weights 2:1:2. Pad + scroll strip share width 5:1 (strip on the right).

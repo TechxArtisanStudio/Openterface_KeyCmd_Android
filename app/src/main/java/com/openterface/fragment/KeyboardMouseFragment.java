@@ -1,15 +1,23 @@
 package com.openterface.fragment;
 
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
@@ -32,6 +40,21 @@ public final class KeyboardMouseFragment extends Fragment {
     public UsbSerialPort port;
 
     private String currentSubmode = SUBMODE_KEYBOARD;
+
+    @Nullable private ImageButton chromeMenu;
+    @Nullable private TextView tabKeyboard;
+    @Nullable private TextView tabTouch;
+    @Nullable private TextView tabNum;
+    @Nullable private TextView tabIme;
+    @Nullable private ImageButton chromeTargetOs;
+    @Nullable private ImageView chromeConnectionIcon;
+    @Nullable private LinearLayout chromeConnectionWrap;
+
+    private final MainActivity.OnTargetOsChangeListener basicOsListener =
+            os -> {
+                refreshBasicEmbeddedChrome();
+                notifyKeyboardBodyIfShown();
+            };
 
     public static KeyboardMouseFragment newInstance(UsbSerialPort port, @Nullable String initialSubmode) {
         KeyboardMouseFragment f = new KeyboardMouseFragment();
@@ -72,7 +95,92 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        wireChrome(view);
         showSubmode(currentSubmode);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
+        MainActivity ma = mainActivity();
+        if (ma != null) {
+            ma.addOsChangeListener(basicOsListener);
+        }
+        refreshBasicEmbeddedChrome();
+        notifyKeyboardBodyIfShown();
+    }
+
+    @Override
+    public void onPause() {
+        if (getActivity() != null) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+        }
+        MainActivity ma = mainActivity();
+        if (ma != null) {
+            ma.removeOsChangeListener(basicOsListener);
+        }
+        super.onPause();
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        refreshBasicEmbeddedChrome();
+        notifyKeyboardBodyIfShown();
+    }
+
+    private void wireChrome(@NonNull View root) {
+        chromeMenu = root.findViewById(R.id.basic_km_menu_button);
+        tabKeyboard = root.findViewById(R.id.basic_km_tab_keyboard);
+        tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
+        tabNum = root.findViewById(R.id.basic_km_tab_numpad);
+        tabIme = root.findViewById(R.id.basic_km_tab_ime);
+        chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
+        chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
+        chromeConnectionIcon = root.findViewById(R.id.basic_km_connection_icon);
+
+        if (chromeMenu != null) {
+            chromeMenu.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openDrawerForBasic();
+                        }
+                    });
+        }
+        if (tabKeyboard != null) {
+            tabKeyboard.setOnClickListener(v -> requestSubmode(SUBMODE_KEYBOARD));
+        }
+        if (tabTouch != null) {
+            tabTouch.setOnClickListener(v -> requestSubmode(SUBMODE_TOUCHPAD));
+        }
+        if (tabNum != null) {
+            tabNum.setOnClickListener(v -> requestSubmode(SUBMODE_NUMPAD));
+        }
+        if (tabIme != null) {
+            tabIme.setOnClickListener(v -> requestSubmode(SUBMODE_COMPOSE));
+        }
+        if (chromeTargetOs != null) {
+            chromeTargetOs.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.showTargetOsPickerDialogFromBasic();
+                        }
+                    });
+        }
+        if (chromeConnectionWrap != null) {
+            chromeConnectionWrap.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.showConnectionDialogFromBasic();
+                        }
+                    });
+        }
     }
 
     @Override
@@ -94,6 +202,8 @@ public final class KeyboardMouseFragment extends Fragment {
         } else if (child instanceof BasicComposeFragment) {
             ((BasicComposeFragment) child).onHostPortChanged(newPort);
         }
+        refreshBasicEmbeddedChrome();
+        notifyKeyboardBodyIfShown();
     }
 
     public void requestSubmode(@NonNull String submode) {
@@ -106,9 +216,40 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     public void refreshBasicEmbeddedChrome() {
+        MainActivity ma = mainActivity();
+        if (ma == null) {
+            return;
+        }
+        if (chromeTargetOs != null) {
+            ma.applyBasicTargetOsIcon(chromeTargetOs);
+        }
+        ConnectionManager cm = ma.getConnectionManager();
+        if (cm != null && chromeConnectionIcon != null) {
+            ma.applyBasicConnectionIcon(
+                    chromeConnectionIcon, cm.getCurrentConnectionType(), cm.getCurrentConnectionState());
+        }
+        updateTabSelection();
+    }
+
+    private void updateTabSelection() {
+        if (tabKeyboard != null) {
+            tabKeyboard.setSelected(SUBMODE_KEYBOARD.equals(currentSubmode));
+        }
+        if (tabTouch != null) {
+            tabTouch.setSelected(SUBMODE_TOUCHPAD.equals(currentSubmode));
+        }
+        if (tabNum != null) {
+            tabNum.setSelected(SUBMODE_NUMPAD.equals(currentSubmode));
+        }
+        if (tabIme != null) {
+            tabIme.setSelected(SUBMODE_COMPOSE.equals(currentSubmode));
+        }
+    }
+
+    private void notifyKeyboardBodyIfShown() {
         Fragment child = getChildFragmentManager().findFragmentById(R.id.kb_mouse_host);
         if (child instanceof BasicKeyboardFragment) {
-            ((BasicKeyboardFragment) child).refreshChrome();
+            ((BasicKeyboardFragment) child).bindKeyboard();
         }
     }
 
@@ -122,10 +263,8 @@ public final class KeyboardMouseFragment extends Fragment {
         tx.replace(R.id.kb_mouse_host, f);
         tx.commit();
         getChildFragmentManager().executePendingTransactions();
-        Fragment child = getChildFragmentManager().findFragmentById(R.id.kb_mouse_host);
-        if (child instanceof BasicKeyboardFragment) {
-            ((BasicKeyboardFragment) child).refreshChrome();
-        }
+        refreshBasicEmbeddedChrome();
+        notifyKeyboardBodyIfShown();
     }
 
     @NonNull
@@ -149,5 +288,13 @@ public final class KeyboardMouseFragment extends Fragment {
                 || SUBMODE_NUMPAD.equals(s)
                 || SUBMODE_TOUCHPAD.equals(s)
                 || SUBMODE_COMPOSE.equals(s);
+    }
+
+    @Nullable
+    private MainActivity mainActivity() {
+        if (getActivity() instanceof MainActivity) {
+            return (MainActivity) getActivity();
+        }
+        return null;
     }
 }

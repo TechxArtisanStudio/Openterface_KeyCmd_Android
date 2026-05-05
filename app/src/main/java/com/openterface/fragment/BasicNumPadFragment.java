@@ -48,14 +48,6 @@ public class BasicNumPadFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         GridLayout grid = view.findViewById(R.id.basic_numpad_grid);
         wireGrid(view, grid);
-        View back = view.findViewById(R.id.basic_numpad_back_row);
-        back.setOnClickListener(v -> {
-            BasicKeyFeedback.performKeyHaptic(v);
-            Fragment p = getParentFragment();
-            if (p instanceof KeyboardMouseFragment) {
-                ((KeyboardMouseFragment) p).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
-            }
-        });
     }
 
     private void wireGrid(View root, GridLayout grid) {

@@ -1,28 +1,22 @@
 package com.openterface.fragment;
 
-import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.basic.BasicPhysicalKeyboardView;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
- * KM Basic full-screen keyboard: row-1 chrome + physical layout (no {@code CustomKeyboardView} strip).
+ * KM Basic full-screen keyboard body (physical layout only; chrome lives on {@link KeyboardMouseFragment}).
  */
 public class BasicKeyboardFragment extends Fragment {
 
@@ -34,17 +28,6 @@ public class BasicKeyboardFragment extends Fragment {
 
     public UsbSerialPort port;
     private BasicPhysicalKeyboardView physicalKeyboardView;
-    private ImageButton targetOsButton;
-    private ImageView connectionIcon;
-    private TextView tabTouch;
-    private TextView tabNum;
-    private TextView tabIme;
-
-    private final MainActivity.OnTargetOsChangeListener basicOsListener =
-            os -> {
-                bindKeyboard();
-                refreshChrome();
-            };
 
     @Nullable
     @Override
@@ -64,80 +47,18 @@ public class BasicKeyboardFragment extends Fragment {
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         }
         physicalKeyboardView = view.findViewById(R.id.basic_physical_keyboard);
-        ImageButton menu = view.findViewById(R.id.basic_km_menu_button);
-        targetOsButton = view.findViewById(R.id.basic_km_target_os);
-        connectionIcon = view.findViewById(R.id.basic_km_connection_icon);
-        LinearLayout connectionWrap = view.findViewById(R.id.basic_km_connection);
-        tabTouch = view.findViewById(R.id.basic_km_tab_touchpad);
-        tabNum = view.findViewById(R.id.basic_km_tab_numpad);
-        tabIme = view.findViewById(R.id.basic_km_tab_ime);
-
-        menu.setOnClickListener(v -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                ma.openDrawerForBasic();
-            }
-        });
-        targetOsButton.setOnClickListener(v -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                ma.showTargetOsPickerDialogFromBasic();
-            }
-        });
-        connectionWrap.setOnClickListener(v -> {
-            MainActivity ma = mainActivity();
-            if (ma != null) {
-                ma.showConnectionDialogFromBasic();
-            }
-        });
-
-        tabTouch.setOnClickListener(v -> switchSub(KeyboardMouseFragment.SUBMODE_TOUCHPAD));
-        tabNum.setOnClickListener(v -> switchSub(KeyboardMouseFragment.SUBMODE_NUMPAD));
-        tabIme.setOnClickListener(v -> switchSub(KeyboardMouseFragment.SUBMODE_COMPOSE));
-
-        refreshChrome();
         bindKeyboard();
-    }
-
-    private void switchSub(String mode) {
-        Fragment p = getParentFragment();
-        if (p instanceof KeyboardMouseFragment) {
-            ((KeyboardMouseFragment) p).requestSubmode(mode);
-        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // Full-width PC layout is unusable in portrait; keep this submode in landscape only.
-        if (getActivity() != null) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        }
-        MainActivity ma = mainActivity();
-        if (ma != null) {
-            ma.addOsChangeListener(basicOsListener);
-        }
-        refreshChrome();
         bindKeyboard();
-    }
-
-    @Override
-    public void onPause() {
-        if (getActivity() != null) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
-        }
-        MainActivity ma = mainActivity();
-        if (ma != null) {
-            ma.removeOsChangeListener(basicOsListener);
-        }
-        super.onPause();
     }
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        // MainActivity handles configChanges without recreate; re-measure/rebuild keyboard rows.
-        refreshChrome();
         bindKeyboard();
     }
 
@@ -145,36 +66,6 @@ public class BasicKeyboardFragment extends Fragment {
         MainActivity ma = mainActivity();
         if (physicalKeyboardView != null) {
             physicalKeyboardView.bind(ma, port);
-        }
-    }
-
-    public void refreshChrome() {
-        MainActivity ma = mainActivity();
-        if (ma == null) {
-            return;
-        }
-        ma.applyBasicTargetOsIcon(targetOsButton);
-        ConnectionManager cm = ma.getConnectionManager();
-        if (cm != null && connectionIcon != null) {
-            ma.applyBasicConnectionIcon(connectionIcon, cm.getCurrentConnectionType(), cm.getCurrentConnectionState());
-        }
-        updateTabSelection();
-    }
-
-    private void updateTabSelection() {
-        Fragment p = getParentFragment();
-        String mode = KeyboardMouseFragment.SUBMODE_KEYBOARD;
-        if (p instanceof KeyboardMouseFragment) {
-            mode = ((KeyboardMouseFragment) p).getCurrentSubmodePublic();
-        }
-        if (tabTouch != null) {
-            tabTouch.setSelected(KeyboardMouseFragment.SUBMODE_TOUCHPAD.equals(mode));
-        }
-        if (tabNum != null) {
-            tabNum.setSelected(KeyboardMouseFragment.SUBMODE_NUMPAD.equals(mode));
-        }
-        if (tabIme != null) {
-            tabIme.setSelected(KeyboardMouseFragment.SUBMODE_COMPOSE.equals(mode));
         }
     }
 

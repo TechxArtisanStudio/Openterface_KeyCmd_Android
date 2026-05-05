@@ -10,19 +10,6 @@
     android:paddingEnd="12dp">
 
     <TextView
-        android:id="@+id/basic_compose_back"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:paddingBottom="8dp"
-        android:text="@string/kb_basic_back_to_keyboard"
-        android:textColor="?attr/colorPrimary"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
         android:id="@+id/basic_compose_hint"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -32,7 +19,7 @@
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/basic_compose_back" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:id="@+id/basic_compose_actions"

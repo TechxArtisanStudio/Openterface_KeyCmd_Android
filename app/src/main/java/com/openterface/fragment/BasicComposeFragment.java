@@ -67,12 +67,6 @@ public class BasicComposeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        view.findViewById(R.id.basic_compose_back).setOnClickListener(v -> {
-            Fragment p = getParentFragment();
-            if (p instanceof KeyboardMouseFragment) {
-                ((KeyboardMouseFragment) p).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
-            }
-        });
         editor = view.findViewById(R.id.basic_compose_editor);
         editor.setImeOptions(editor.getImeOptions() | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         clearBtn = view.findViewById(R.id.basic_compose_clear);

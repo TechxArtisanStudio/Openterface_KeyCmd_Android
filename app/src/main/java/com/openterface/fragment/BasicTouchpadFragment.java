@@ -48,12 +48,6 @@ public class BasicTouchpadFragment extends Fragment {
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
             view.setLayoutParams(lp);
         }
-        view.findViewById(R.id.basic_touchpad_back).setOnClickListener(v -> {
-            Fragment p = getParentFragment();
-            if (p instanceof KeyboardMouseFragment) {
-                ((KeyboardMouseFragment) p).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
-            }
-        });
         wireTouchPad(view.findViewById(R.id.basic_touch_pad));
 
         BasicPortraitScrollStripView scrollStrip = view.findViewById(R.id.basic_touchpad_scroll_strip);
