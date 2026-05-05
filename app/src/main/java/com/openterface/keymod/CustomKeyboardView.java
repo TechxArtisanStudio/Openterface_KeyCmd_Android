@@ -67,6 +67,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.hid.Ch9329PacketUtil;
+import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
@@ -6504,18 +6506,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public static byte[] hexStringToByteArray(String ByteData) {
-        if (ByteData.length() % 2 != 0) {
-            throw new IllegalArgumentException("Hex string must have an even length");
-        }
-
-        int len = ByteData.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(ByteData.charAt(i), 16) << 4)
-                    + Character.digit(ByteData.charAt(i + 1), 16));
-        }
-        Log.d(TAG, "Data: " + Arrays.toString(data));
-        return data;
+        return Ch9329PacketUtil.hexStringToByteArray(ByteData);
     }
 
     public void setPort(UsbSerialPort port) {
@@ -6524,16 +6515,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public static String makeChecksum(String data) {
-        int total = 0;
-
-        for (int i = 0; i < data.length(); i += 2) {
-            String byteStr = data.substring(i, Math.min(i + 2, data.length()));
-            total += Integer.parseInt(byteStr, 16);
-        }
-
-        int mod = total % 256;
-
-        return String.format("%02X", mod);
+        return Ch9329PacketUtil.makeChecksum(data);
     }
 
     public void sendReleaseData() {
@@ -6869,17 +6851,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyboardAllKeysReleasedSync() {
-        final String releasePacket = "57AB00020800000000000000000C";
-        byte[] bytes = hexStringToByteArray(releasePacket);
-        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            bluetoothService.sendData(bytes);
-        } else if (port != null) {
-            try {
-                port.write(bytes, 20);
-            } catch (IOException e) {
-                Log.e(TAG, "Keyboard release write failed: " + e.getMessage());
-            }
-        }
+        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
     }
 
     private boolean isBackspaceKey(Key key) {
@@ -6933,24 +6905,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyData(int modifiers, int keyCode) {
-        String sendKBData = String.format("57AB000208%02X00%02X0000000000", modifiers, keyCode);
-        sendKBData += makeChecksum(sendKBData);
-
-        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            byte[] sendKBDataBytes = hexStringToByteArray(sendKBData);
-            bluetoothService.sendData(sendKBDataBytes);
-            Log.d(TAG, "Sent Bluetooth data: " + sendKBData);
-        } else if (port != null) {
-            try {
-                byte[] sendKBDataBytes = hexStringToByteArray(sendKBData);
-                port.write(sendKBDataBytes, 20);
-                Log.d(TAG, "Sent USB data: " + sendKBData);
-            } catch (IOException e) {
-                Log.e(TAG, "Error sending USB data: " + e.getMessage());
-            }
-        } else {
-            Log.w(TAG, "No connection available (Bluetooth or USB)");
-        }
+        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, modifiers, keyCode);
     }
 
     private void startRepeatingDelete(Key key) {

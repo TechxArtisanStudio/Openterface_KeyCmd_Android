@@ -1,0 +1,149 @@
+package com.openterface.fragment;
+
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.GridLayout;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.R;
+import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.hid.KeyboardHidTransport;
+import com.openterface.target.CH9329MSKBMap;
+import com.hoho.android.usbserial.driver.UsbSerialPort;
+
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * KM Basic numpad grid (HID keypad usages).
+ */
+public class BasicNumPadFragment extends Fragment {
+
+    public static BasicNumPadFragment instantiateWithPort(@Nullable UsbSerialPort p) {
+        BasicNumPadFragment f = new BasicNumPadFragment();
+        f.port = p;
+        return f;
+    }
+
+    public UsbSerialPort port;
+
+    @Nullable
+    @Override
+    public View onCreateView(
+            @NonNull LayoutInflater inflater,
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_basic_numpad, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        GridLayout grid = view.findViewById(R.id.basic_numpad_grid);
+        wireGrid(view, grid);
+        View back = view.findViewById(R.id.basic_numpad_back_row);
+        back.setOnClickListener(v -> {
+            BasicKeyFeedback.performKeyHaptic(v);
+            Fragment p = getParentFragment();
+            if (p instanceof KeyboardMouseFragment) {
+                ((KeyboardMouseFragment) p).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
+            }
+        });
+    }
+
+    private void wireGrid(View root, GridLayout grid) {
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            if (!(child instanceof TextView)) {
+                continue;
+            }
+            TextView tv = (TextView) child;
+            Object tag = tv.getTag();
+            if (!(tag instanceof String)) {
+                continue;
+            }
+            String raw = (String) tag;
+            if ("NUMPAD_00".equals(raw)) {
+                tv.setClickable(true);
+                tv.setOnTouchListener(
+                        (v, event) ->
+                                BasicKeyFeedback.handleStandardKeyTouch(v, event, () -> sendDoubleNumpadZero(root)));
+                continue;
+            }
+            Integer hid = resolveHid(raw);
+            if (hid == null) {
+                continue;
+            }
+            int code = hid;
+            tv.setClickable(true);
+            tv.setOnTouchListener(
+                    (v, event) -> BasicKeyFeedback.handleStandardKeyTouch(v, event, () -> sendTap(root, code)));
+        }
+    }
+
+    @Nullable
+    private Integer resolveHid(String key) {
+        try {
+            Map<?, String> map = CH9329MSKBMap.getKeyCodeMap();
+            String hex = map.get(key);
+            if (hex == null) {
+                hex = map.get(key.toUpperCase(Locale.US));
+            }
+            if (hex == null) {
+                return null;
+            }
+            return Integer.parseInt(hex, 16);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Sends two numpad-zero HID taps (physical “00” key). */
+    private void sendDoubleNumpadZero(View root) {
+        Integer z = resolveHid("NUMPAD_0");
+        if (z == null) {
+            return;
+        }
+        int zero = z;
+        sendTap(root, zero);
+        root.postDelayed(() -> sendTap(root, zero), 50);
+    }
+
+    private void sendTap(View root, int hidCode) {
+        MainActivity ma = mainActivity();
+        if (ma == null) {
+            return;
+        }
+        KeyboardHidTransport.sendKeyReport(
+                port,
+                ma.getBluetoothService(),
+                ma.isBluetoothServiceBound(),
+                0,
+                hidCode);
+        root.postDelayed(
+                () -> KeyboardHidTransport.sendAllKeysReleased(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound()),
+                30);
+    }
+
+    @Nullable
+    private MainActivity mainActivity() {
+        if (requireActivity() instanceof MainActivity) {
+            return (MainActivity) requireActivity();
+        }
+        return null;
+    }
+
+    public void onHostPortChanged(@Nullable UsbSerialPort newPort) {
+        port = newPort;
+    }
+}

@@ -80,4 +80,26 @@
         <item name="cornerRadius">12dp</item>
     </style>
 
+    <style name="KbMouseSubmodeTab">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+        <item name="android:paddingVertical">8dp</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:background">@drawable/nav_item_background_selector</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="Widget.KeyMod.BasicNumpadCell" parent="@android:style/Widget.TextView">
+        <item name="android:background">@drawable/key_background</item>
+        <item name="android:textColor">@color/basic_key_label_color</item>
+        <item name="android:textSize">21sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_margin">4dp</item>
+    </style>
+
 </resources>

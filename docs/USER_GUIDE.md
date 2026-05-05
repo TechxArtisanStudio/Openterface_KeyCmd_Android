@@ -25,11 +25,12 @@ KeyMod supports two connection methods:
 
 ### 3. Select a Mode
 
-On the **Welcome & Guide** screen (first launch or side menu), tap one of six mode cards:
+On the **Welcome & Guide** screen (first launch or side menu), pick your primary mode. Side navigation matches the same choices.
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard** | Full virtual keyboard with all keys |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Num pad / IME, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
 | ⚡ **Shortcuts** | Pre-built keyboard shortcuts (Ctrl+C, Win+L, etc.) |

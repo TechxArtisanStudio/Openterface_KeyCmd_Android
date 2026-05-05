@@ -1,5 +1,7 @@
 package com.openterface.keymod;
 
+import com.openterface.fragment.KeyboardMouseFragment;
+
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -33,6 +35,8 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     // Mode constants
     public static final String MODE_KEYBOARD_MOUSE = "keyboard_mouse";
+    /** Advanced composite: strips, split layouts, IME workflows (legacy single &quot;keyboard_mouse&quot; experience). */
+    public static final String MODE_KEYBOARD_MOUSE_PRO = "keyboard_mouse_pro";
     public static final String MODE_GAMEPAD = "gamepad";
     // Kept for backward compatibility with older intents/preferences.
     public static final String MODE_NUMPAD = "numpad";
@@ -51,6 +55,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     // Mode cards
     private CardView keyboardMouseCard;
+    private CardView keyboardMouseProCard;
     private CardView gamepadCard;
     private CardView shortcutsCard;
     private CardView macrosCard;
@@ -71,7 +76,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
         boolean showPanel = getIntent().getBooleanExtra(SHOW_PANEL, false);
         if (rememberChoice && !showPanel) {
             String lastMode = prefs.getString(LAST_MODE_KEY, MODE_KEYBOARD_MOUSE);
-            launchModeInternal(normalizeMode(lastMode));
+            launchModeInternal(lastMode, null);
             return;
         }
 
@@ -106,6 +111,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
         // Mode cards
         keyboardMouseCard = findViewById(R.id.keyboard_mouse_card);
+        keyboardMouseProCard = findViewById(R.id.keyboard_mouse_pro_card);
         gamepadCard = findViewById(R.id.gamepad_card);
         shortcutsCard = findViewById(R.id.shortcuts_card);
         macrosCard = findViewById(R.id.macros_card);
@@ -120,6 +126,9 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     private void updateCardSelections() {
         keyboardMouseCard.setSelected(selectedMode.equals(MODE_KEYBOARD_MOUSE));
+        if (keyboardMouseProCard != null) {
+            keyboardMouseProCard.setSelected(selectedMode.equals(MODE_KEYBOARD_MOUSE_PRO));
+        }
         gamepadCard.setSelected(selectedMode.equals(MODE_GAMEPAD));
         shortcutsCard.setSelected(selectedMode.equals(MODE_SHORTCUTS));
         macrosCard.setSelected(selectedMode.equals(MODE_MACROS));
@@ -132,6 +141,13 @@ public class LaunchPanelActivity extends AppCompatActivity {
             selectedMode = MODE_KEYBOARD_MOUSE;
             updateCardSelections();
         });
+
+        if (keyboardMouseProCard != null) {
+            keyboardMouseProCard.setOnClickListener(v -> {
+                selectedMode = MODE_KEYBOARD_MOUSE_PRO;
+                updateCardSelections();
+            });
+        }
 
         gamepadCard.setOnClickListener(v -> {
             selectedMode = MODE_GAMEPAD;
@@ -162,7 +178,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
         skipButton.setOnClickListener(v -> {
             prefs.edit().putBoolean(REMEMBER_CHOICE_KEY, false).apply();
-            launchModeInternal(MODE_KEYBOARD_MOUSE);
+            launchModeInternal(MODE_KEYBOARD_MOUSE, null);
         });
 
         if (showTutorialLink != null) {
@@ -177,44 +193,67 @@ public class LaunchPanelActivity extends AppCompatActivity {
         }
     }
 
-    private void launchMode(String mode) {
-        String normalizedMode = normalizeMode(mode);
-        // Save preference if checkbox is checked
+    private void launchMode(String selectedMode) {
+        String primary = primaryLaunchModeFor(selectedMode);
         if (rememberChoiceCheckBox.isChecked()) {
             prefs.edit()
                 .putBoolean(REMEMBER_CHOICE_KEY, true)
-                .putString(LAST_MODE_KEY, normalizedMode)
+                .putString(LAST_MODE_KEY, primary)
                 .apply();
-            
+
             Toast.makeText(
                 this,
-                getString(R.string.launch_panel_will_remember, getModeDisplayName(normalizedMode)),
+                getString(R.string.launch_panel_will_remember, getModeDisplayName(primary)),
                 Toast.LENGTH_SHORT
             ).show();
         } else {
-            // Clear remembered choice
             prefs.edit()
                 .putBoolean(REMEMBER_CHOICE_KEY, false)
                 .apply();
         }
 
-        launchModeInternal(normalizedMode);
+        String kbSub = kbMouseInitialSubmodeFor(selectedMode);
+        launchModeInternal(primary, kbSub);
     }
 
-    private void launchModeInternal(String mode) {
+    private void launchModeInternal(@NonNull String primaryLaunchMode, @Nullable String kbMouseSubmode) {
         Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra("launch_mode", normalizeMode(mode));
-        
+        intent.putExtra("launch_mode", primaryLaunchMode);
+        if (kbMouseSubmode != null && MODE_KEYBOARD_MOUSE.equals(primaryLaunchMode)) {
+            intent.putExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE, kbMouseSubmode);
+        }
+
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
     }
 
+    @NonNull
+    private String primaryLaunchModeFor(String selectedMode) {
+        if (MODE_NUMPAD.equals(selectedMode) || MODE_COMPOSE.equals(selectedMode)) {
+            return MODE_KEYBOARD_MOUSE;
+        }
+        return selectedMode;
+    }
+
+    @Nullable
+    private String kbMouseInitialSubmodeFor(String selectedMode) {
+        if (MODE_NUMPAD.equals(selectedMode)) {
+            return KeyboardMouseFragment.SUBMODE_NUMPAD;
+        }
+        if (MODE_COMPOSE.equals(selectedMode)) {
+            return KeyboardMouseFragment.SUBMODE_COMPOSE;
+        }
+        return null;
+    }
+
     @StringRes
     private int modeTitleRes(String mode) {
-        switch (normalizeMode(mode)) {
+        switch (mode) {
             case MODE_KEYBOARD_MOUSE:
                 return R.string.top_mode_label_keyboard_mouse;
+            case MODE_KEYBOARD_MOUSE_PRO:
+                return R.string.top_mode_label_keyboard_mouse_pro;
             case MODE_GAMEPAD:
                 return R.string.top_mode_label_gamepad;
             case MODE_NUMPAD:
@@ -234,13 +273,6 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     private String getModeDisplayName(String mode) {
         return getString(modeTitleRes(mode));
-    }
-
-    private String normalizeMode(String mode) {
-        if (MODE_NUMPAD.equals(mode) || MODE_COMPOSE.equals(mode)) {
-            return MODE_KEYBOARD_MOUSE;
-        }
-        return mode;
     }
 
     @Override

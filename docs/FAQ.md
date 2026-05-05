@@ -4,6 +4,14 @@ Common questions about what KeyMod can type over USB, especially **Shortcut Hub*
 
 ---
 
+## What is the difference between “Keyboard & Mouse” and “Keyboard & Mouse Pro”?
+
+**Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and IME-style compose screen. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
+
+**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with **Shortcut Hub** strip rows, split options, and richer IME behavior—what power users already expect from the single “keyboard + mouse” experience.
+
+---
+
 ## Does KeyMod send “Unicode” or special characters directly over USB?
 
 **Not as a dedicated Unicode pipe.** KeyMod works like a **standard USB keyboard**: it sends **key presses and modifier keys** (Shift, Ctrl, Alt, Win/Command, and so on). The **computer you plug into** turns those into letters and symbols using your **keyboard layout** and software.
