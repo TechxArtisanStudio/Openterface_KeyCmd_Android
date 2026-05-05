@@ -35,6 +35,8 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         RadioButton sticky = view.findViewById(R.id.km_basic_modifier_sticky);
         RadioButton chord = view.findViewById(R.id.km_basic_modifier_chord);
+        RadioButton longPressRepeat = view.findViewById(R.id.km_basic_long_press_repeat);
+        RadioButton longPressHold = view.findViewById(R.id.km_basic_long_press_hold);
         sustainCard = view.findViewById(R.id.km_basic_chord_sustain_card);
         sustainSwitch = view.findViewById(R.id.km_basic_chord_sustain_switch);
 
@@ -44,6 +46,14 @@ public class KeyboardMouseSettingsFragment extends Fragment {
             chord.setChecked(true);
         } else {
             sticky.setChecked(true);
+        }
+        if (KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD.equals(
+                prefs.getString(
+                        KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR,
+                        KmBasicKeyboardPrefs.PREF_LONG_PRESS_DEFAULT))) {
+            longPressHold.setChecked(true);
+        } else {
+            longPressRepeat.setChecked(true);
         }
         sustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
         loading = false;
@@ -67,6 +77,19 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         sustainSwitch.setOnCheckedChangeListener(
                 (buttonView, isChecked) ->
                         prefs.edit().putBoolean(KmBasicKeyboardPrefs.PREF_CHORD_SUSTAIN_HID, isChecked).apply());
+
+        RadioGroup longPressGroup = view.findViewById(R.id.km_basic_long_press_behavior_group);
+        longPressGroup.setOnCheckedChangeListener(
+                (group, checkedId) -> {
+                    if (loading) {
+                        return;
+                    }
+                    String value =
+                            checkedId == R.id.km_basic_long_press_hold
+                                    ? KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD
+                                    : KmBasicKeyboardPrefs.VALUE_LONG_PRESS_REPEAT;
+                    prefs.edit().putString(KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR, value).apply();
+                });
 
         return view;
     }

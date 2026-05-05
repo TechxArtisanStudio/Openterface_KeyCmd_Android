@@ -16,6 +16,10 @@
     <string name="settings_km_basic_modifier_chord_desc">Short tap sends that modifier key once to the target. Long-press a modifier, keep your finger down, then tap other keys to chord (e.g. long-press Shift and tap 1 for !). Release the modifier to stop.</string>
     <string name="settings_km_basic_chord_sustain_title">Hold modifier on target while chording</string>
     <string name="settings_km_basic_chord_sustain_desc">Sends a real modifier-down to the connected device when you long-press, and keeps it applied after each chorded key until you lift your finger. Turn off only if your host misbehaves with sustained modifiers.</string>
+    <string name="settings_km_basic_long_press_repeat">Repeat key presses while held (default)</string>
+    <string name="settings_km_basic_long_press_repeat_desc">After a short delay, sends many quick press-and-release cycles—similar to auto-repeat when holding a physical key for typing.</string>
+    <string name="settings_km_basic_long_press_hold">Hold key down on the target</string>
+    <string name="settings_km_basic_long_press_hold_desc">Sends one key-down when you press and releases when you lift your finger. Better for games or apps that expect a real held key instead of repeated taps.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>

@@ -86,9 +86,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     /** True after we sent a sustained modifier-down to the host (needs release on UP / clear). */
     private boolean chordHostHoldSent;
     private final Runnable chordLongPressRunnable = this::onChordLongPressThreshold;
+    private final Runnable physicalKeyReleaseRunnable = this::runPhysicalKeyRelease;
 
     private final SharedPreferences.OnSharedPreferenceChangeListener kmBasicPrefListener =
             (sharedPreferences, key) -> {
+                if (KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR.equals(key)) {
+                    MainActivity ma = mainActivity;
+                    if (ma != null && isAttachedToWindow()) {
+                        bind(ma, port);
+                    }
+                    return;
+                }
                 if (!KmBasicKeyboardPrefs.PREF_KEY.equals(key)) {
                     return;
                 }
@@ -144,6 +152,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     public void bind(@Nullable MainActivity activity, @Nullable UsbSerialPort usbPort) {
         keyPreview.dismiss();
         handler.removeCallbacks(chordLongPressRunnable);
+        handler.removeCallbacks(physicalKeyReleaseRunnable);
         clearChordHoldState();
         shiftKeyLeft = null;
         shiftKeyRight = null;
@@ -425,11 +434,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         return stickyModifiersMask();
     }
 
-    private void tapKey(int hidCode, boolean isLetter, boolean needsShiftForSymbol) {
-        MainActivity ma = mainActivity;
-        if (ma == null) {
-            return;
-        }
+    private int effectiveModifiersForPhysicalKey(boolean isLetter, boolean needsShiftForSymbol) {
         int mods = effectiveModifiersMask();
         boolean shiftForCase =
                 !isMomentaryChordMode() && isLetter && capsLock != stickyShiftLayer();
@@ -438,40 +443,73 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         } else if (shiftForCase) {
             mods |= parseMod("Shift");
         }
+        return mods;
+    }
+
+    private void tapKey(int hidCode, boolean isLetter, boolean needsShiftForSymbol) {
+        MainActivity ma = mainActivity;
+        if (ma == null) {
+            return;
+        }
+        int mods = effectiveModifiersForPhysicalKey(isLetter, needsShiftForSymbol);
         KeyboardHidTransport.sendKeyReport(
                 port,
                 ma.getBluetoothService(),
                 ma.isBluetoothServiceBound(),
                 mods,
                 hidCode);
-        handler.postDelayed(
-                () -> {
-                    KeyboardHidTransport.sendAllKeysReleased(
-                            port,
-                            ma.getBluetoothService(),
-                            ma.isBluetoothServiceBound());
-                    if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())
-                            && chordSustainFingerDown
-                            && chordLongPressActivated) {
-                        if (chordHeldModMask != 0) {
-                            KeyboardHidTransport.sendKeyReport(
-                                    port,
-                                    ma.getBluetoothService(),
-                                    ma.isBluetoothServiceBound(),
-                                    chordHeldModMask,
-                                    0);
-                        } else if (chordActiveExtKey != 0) {
-                            KeyboardHidTransport.sendKeyReport(
-                                    port,
-                                    ma.getBluetoothService(),
-                                    ma.isBluetoothServiceBound(),
-                                    0,
-                                    chordActiveExtKey);
-                        }
-                        chordHostHoldSent = true;
-                    }
-                },
-                30);
+        scheduleReleaseAfterPhysicalKey();
+    }
+
+    /** HID key-down only (sustained-hold mode); pair with {@link #scheduleReleaseAfterPhysicalKey}. */
+    private void sendPhysicalKeyDown(int hidCode, boolean isLetter, boolean needsShiftForSymbol) {
+        MainActivity ma = mainActivity;
+        if (ma == null) {
+            return;
+        }
+        int mods = effectiveModifiersForPhysicalKey(isLetter, needsShiftForSymbol);
+        KeyboardHidTransport.sendKeyReport(
+                port,
+                ma.getBluetoothService(),
+                ma.isBluetoothServiceBound(),
+                mods,
+                hidCode);
+    }
+
+    private void scheduleReleaseAfterPhysicalKey() {
+        handler.removeCallbacks(physicalKeyReleaseRunnable);
+        handler.postDelayed(physicalKeyReleaseRunnable, 30);
+    }
+
+    private void runPhysicalKeyRelease() {
+        MainActivity ma = mainActivity;
+        if (ma == null) {
+            return;
+        }
+        KeyboardHidTransport.sendAllKeysReleased(
+                port,
+                ma.getBluetoothService(),
+                ma.isBluetoothServiceBound());
+        if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())
+                && chordSustainFingerDown
+                && chordLongPressActivated) {
+            if (chordHeldModMask != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound(),
+                        chordHeldModMask,
+                        0);
+            } else if (chordActiveExtKey != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound(),
+                        0,
+                        chordActiveExtKey);
+            }
+            chordHostHoldSent = true;
+        }
     }
 
     private String previewLetter(String letter) {
@@ -629,6 +667,28 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 BasicKeyFeedback.repeatableKeyTouchListener(onAction, keyPreview, previewText));
     }
 
+    /**
+     * Repeat vs sustained hold per {@link KmBasicKeyboardPrefs#PREF_LONG_PRESS_BEHAVIOR}; includes auto-repeat
+     * or HID hold for the same logical key.
+     */
+    private void wireKeyedRepeatOrHold(
+            View v,
+            int hidCode,
+            boolean isLetter,
+            boolean needsShiftForSymbol,
+            Supplier<String> previewText) {
+        if (KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+            v.setOnTouchListener(
+                    BasicKeyFeedback.sustainedKeyTouchListener(
+                            () -> sendPhysicalKeyDown(hidCode, isLetter, needsShiftForSymbol),
+                            this::scheduleReleaseAfterPhysicalKey,
+                            keyPreview,
+                            previewText));
+        } else {
+            wireRepeatableTap(v, () -> tapKey(hidCode, isLetter, needsShiftForSymbol), previewText);
+        }
+    }
+
     /** Row container; {@code heightWeight} is the vertical share (Basic full keyboard uses {@code 1:1:2:2:2:2}). */
     private LinearLayout newRow(float heightWeight) {
         LinearLayout row = new LinearLayout(getContext());
@@ -655,7 +715,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 float t = (i - 1) / 11f;
                 k.setTag(R.id.basic_key_preview_offset_x, t);
             }
-            wireRepeatableTap(k, () -> tapKey(code, false, false), () -> lab);
+            wireKeyedRepeatOrHold(k, code, false, false, () -> lab);
         }
     }
 
@@ -668,9 +728,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             float w = i == labels.length - 1 ? 1.4f : 1f;
             View k = inflateKey(row, labels[idx], hints[idx], w);
-            wireRepeatableTap(
+            wireKeyedRepeatOrHold(
                     k,
-                    () -> tapKey(codes[idx], false, hints[idx] != null && shiftLayerActive()),
+                    codes[idx],
+                    false,
+                    hints[idx] != null && shiftLayerActive(),
                     () -> previewShiftLayer(labels[idx], hints[idx]));
         }
     }
@@ -685,9 +747,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             View k = inflateKey(row, labels[idx], hints[idx], w[idx]);
             boolean letter = labels[idx].length() == 1 && Character.isLetter(labels[idx].charAt(0));
-            wireRepeatableTap(
+            wireKeyedRepeatOrHold(
                     k,
-                    () -> tapKey(codes[idx], letter, hints[idx] != null && shiftLayerActive()),
+                    codes[idx],
+                    letter,
+                    hints[idx] != null && shiftLayerActive(),
                     () -> previewQwertyRowKey(labels[idx], hints[idx]));
         }
     }
@@ -722,11 +786,13 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                             () -> "Caps");
                 }
             } else if (i == labels.length - 1) {
-                wireRepeatableTap(k, () -> tapKey(codes[idx], false, false), () -> "Enter");
+                wireKeyedRepeatOrHold(k, codes[idx], false, false, () -> "Enter");
             } else {
-                wireRepeatableTap(
+                wireKeyedRepeatOrHold(
                         k,
-                        () -> tapKey(codes[idx], true, hints[idx] != null && shiftLayerActive()),
+                        codes[idx],
+                        true,
+                        hints[idx] != null && shiftLayerActive(),
                         () -> previewQwertyRowKey(labels[idx], hints[idx]));
             }
         }
@@ -744,9 +810,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             if (i == 0 || i == labels.length - 1) {
                 wireShiftKey(k, i == 0, () -> "Shift");
             } else {
-                wireRepeatableTap(
+                wireKeyedRepeatOrHold(
                         k,
-                        () -> tapKey(codes[idx], true, hints[idx] != null && shiftLayerActive()),
+                        codes[idx],
+                        true,
+                        hints[idx] != null && shiftLayerActive(),
                         () -> previewQwertyRowKey(labels[idx], hints[idx]));
             }
         }
@@ -784,7 +852,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         top.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         addArrowRowSpacer(top, 1f);
         View up = inflateArrowKey(top, R.drawable.keyboard_arrow_up_24, R.string.Up_arrow, 1f);
-        wireRepeatableTap(up, () -> tapKey(0x52, false, false), () -> "\u2191");
+        wireKeyedRepeatOrHold(up, 0x52, false, false, () -> "\u2191");
         addArrowRowSpacer(top, 1f);
 
         LinearLayout bottom = new LinearLayout(c);
@@ -792,11 +860,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         bottom.setBaselineAligned(false);
         bottom.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         View left = inflateArrowKey(bottom, R.drawable.keyboard_arrow_left_24, R.string.Left_arrow, 1f);
-        wireRepeatableTap(left, () -> tapKey(0x50, false, false), () -> "\u2190");
+        wireKeyedRepeatOrHold(left, 0x50, false, false, () -> "\u2190");
         View down = inflateArrowKey(bottom, R.drawable.keyboard_arrow_down_24, R.string.Down_arrow, 1f);
-        wireRepeatableTap(down, () -> tapKey(0x51, false, false), () -> "\u2193");
+        wireKeyedRepeatOrHold(down, 0x51, false, false, () -> "\u2193");
         View right = inflateArrowKey(bottom, R.drawable.keyboard_arrow_right_24, R.string.Right_arrow, 1f);
-        wireRepeatableTap(right, () -> tapKey(0x4F, false, false), () -> "\u2192");
+        wireKeyedRepeatOrHold(right, 0x4F, false, false, () -> "\u2192");
 
         cluster.addView(top);
         cluster.addView(bottom);
@@ -821,7 +889,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         View k2 = inflateKey(row, labels[2], null, w[2]);
         wireBottomModifier(k2, "win", HID_EXT_LGUI, parseMod("Win"), parseMod("Win"), () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
-        wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
+        wireKeyedRepeatOrHold(k3, 0x2C, false, false, () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
         wireBottomModifier(k4, "win", HID_EXT_RGUI, parseMod("WinR"), parseMod("WinR"), () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
@@ -840,11 +908,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         View k2 = inflateKey(row, labels[2], null, w[2]);
         wireBottomModifier(k2, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
-        wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
+        wireKeyedRepeatOrHold(k3, 0x2C, false, false, () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
         wireBottomModifier(k4, "alt", HID_EXT_RALT, parseMod("AltR"), parseMod("AltR"), () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
-        wireRepeatableTap(k5, () -> tapKey(0x65, false, false), () -> labels[5]);
+        wireKeyedRepeatOrHold(k5, 0x65, false, false, () -> labels[5]);
         View k6 = inflateKey(row, labels[6], null, w[6]);
         wireBottomModifier(
                 k6, "ctrl", HID_EXT_RCTRL, parseMod("CtrlR"), parseMod("CtrlR"), () -> labels[6]);

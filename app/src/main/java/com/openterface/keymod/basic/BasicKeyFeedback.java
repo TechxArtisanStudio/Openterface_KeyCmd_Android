@@ -164,6 +164,68 @@ public final class BasicKeyFeedback {
         };
     }
 
+    /**
+     * One key-down on {@link MotionEvent#ACTION_DOWN}; {@link Runnable#run release} on {@link
+     * MotionEvent#ACTION_UP}, {@link MotionEvent#ACTION_CANCEL}, or finger leaving the key (match
+     * {@link #repeatableKeyTouchListener} slide-off semantics).
+     */
+    public static View.OnTouchListener sustainedKeyTouchListener(Runnable onDown, Runnable onRelease) {
+        return sustainedKeyTouchListener(onDown, onRelease, null, null);
+    }
+
+    /**
+     * Same as {@link #sustainedKeyTouchListener(Runnable, Runnable)} with optional tap preview while the finger
+     * stays on the key.
+     */
+    public static View.OnTouchListener sustainedKeyTouchListener(
+            Runnable onDown,
+            Runnable onRelease,
+            @Nullable BasicKeyPreview preview,
+            @Nullable Supplier<String> previewText) {
+        return new View.OnTouchListener() {
+            private boolean hostKeyDown;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        v.setPressed(true);
+                        performKeyHaptic(v);
+                        maybeShowPreview(preview, previewText, v);
+                        onDown.run();
+                        hostKeyDown = true;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        boolean inside = isInsideView(v, e);
+                        v.setPressed(inside);
+                        if (inside) {
+                            maybeShowPreview(preview, previewText, v);
+                        } else if (preview != null) {
+                            preview.dismiss();
+                        }
+                        if (!inside && hostKeyDown) {
+                            onRelease.run();
+                            hostKeyDown = false;
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setPressed(false);
+                        if (preview != null) {
+                            preview.dismiss();
+                        }
+                        if (hostKeyDown) {
+                            onRelease.run();
+                            hostKeyDown = false;
+                        }
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        };
+    }
+
     private static void maybeShowPreview(
             @Nullable BasicKeyPreview preview, @Nullable Supplier<String> previewText, View anchor) {
         if (preview == null || previewText == null) {

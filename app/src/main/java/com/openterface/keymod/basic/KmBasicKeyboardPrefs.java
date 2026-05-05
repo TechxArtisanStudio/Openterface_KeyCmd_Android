@@ -22,6 +22,15 @@ public final class KmBasicKeyboardPrefs {
      */
     public static final String PREF_CHORD_SUSTAIN_HID = "km_basic_chord_sustain_hid";
 
+    /**
+     * Full-keyboard keys (letters, Space, arrows, etc.): repeat tap cycles vs one HID key-down until release.
+     */
+    public static final String PREF_LONG_PRESS_BEHAVIOR = "km_basic_long_press_behavior";
+    public static final String VALUE_LONG_PRESS_REPEAT = "repeat";
+    public static final String VALUE_LONG_PRESS_HOLD = "hold";
+
+    public static final String PREF_LONG_PRESS_DEFAULT = VALUE_LONG_PRESS_REPEAT;
+
     private KmBasicKeyboardPrefs() {}
 
     public static boolean isMomentaryChordMode(Context context) {
@@ -33,5 +42,12 @@ public final class KmBasicKeyboardPrefs {
     public static boolean isChordSustainHidEnabled(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(PREF_CHORD_SUSTAIN_HID, true);
+    }
+
+    /** One HID key-down until finger lifts (games / OS repeat). */
+    public static boolean isLongPressSustainedHoldMode(Context context) {
+        return VALUE_LONG_PRESS_HOLD.equals(
+                PreferenceManager.getDefaultSharedPreferences(context)
+                        .getString(PREF_LONG_PRESS_BEHAVIOR, PREF_LONG_PRESS_DEFAULT));
     }
 }

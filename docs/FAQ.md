@@ -1,6 +1,6 @@
 # KeyMod FAQ — Keyboard output and strip profiles
 
-Common questions about what KeyMod can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior.
+Common questions about what KeyMod can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold).
 
 ---
 
@@ -65,6 +65,21 @@ This switch appears when **Momentary and long-press chord** is selected. It is *
 When **on**, after you long-press a modifier, KeyMod sends a **real modifier-down** to the connected device and, after each chorded key, sends the **hold again** so the target keeps treating the modifier as pressed while your finger stays on the modifier. That supports several shifted symbols in a row (for example **!** then **@** without releasing Shift between number taps).
 
 When **off**, you still get the on-screen chord highlight, but the host may only see the modifier combined with each single key event. Turn it **off** if a specific computer misbehaves with sustained modifier-down over USB.
+
+---
+
+## On the Basic full keyboard, holding a key types the same character many times. Can it act like one long press instead?
+
+**Yes.** In **Settings → Keyboard & Mouse**, in the **KM Basic keyboard** section, pick **Hold key down on the target** instead of **Repeat key presses while held (default)**.
+
+| Option | What happens on the connected computer |
+|--------|------------------------------------------|
+| **Repeat (default)** | After a short pause, KeyMod sends **many separate key taps** while your finger stays down—similar to auto-repeat when you hold a key for typing (for example a row of **w** characters). |
+| **Hold** | KeyMod sends **one key-down** when you press and **releases** when you lift your finger. The host treats it like a **physically held key**—often what games or movement controls expect. |
+
+This applies to the **full keyboard** in **Keyboard & Mouse (Basic)** (letters, numbers, function row, Space, arrows, and similar keys). It does **not** change **Keyboard & Mouse Pro** or the shortcut strip.
+
+Changing this option **rebuilds** the Basic keyboard layout so the new behavior applies immediately.
 
 ---
 
