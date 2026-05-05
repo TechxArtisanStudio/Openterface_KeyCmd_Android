@@ -61,20 +61,20 @@ public class BasicNumPadFragment extends Fragment {
     private void wireGrid(View root, GridLayout grid) {
         for (int i = 0; i < grid.getChildCount(); i++) {
             View child = grid.getChildAt(i);
-            if (!(child instanceof TextView)) {
-                continue;
-            }
-            TextView tv = (TextView) child;
-            Object tag = tv.getTag();
+            Object tag = child.getTag();
             if (!(tag instanceof String)) {
                 continue;
             }
             String raw = (String) tag;
             if ("NUMPAD_00".equals(raw)) {
-                tv.setClickable(true);
-                tv.setOnTouchListener(
-                        (v, event) ->
-                                BasicKeyFeedback.handleStandardKeyTouch(v, event, () -> sendDoubleNumpadZero(root)));
+                if (child instanceof TextView) {
+                    TextView tv = (TextView) child;
+                    tv.setClickable(true);
+                    tv.setOnTouchListener(
+                            (v, event) ->
+                                    BasicKeyFeedback.handleStandardKeyTouch(
+                                            v, event, () -> sendDoubleNumpadZero(root)));
+                }
                 continue;
             }
             Integer hid = resolveHid(raw);
@@ -82,8 +82,8 @@ public class BasicNumPadFragment extends Fragment {
                 continue;
             }
             int code = hid;
-            tv.setClickable(true);
-            tv.setOnTouchListener(
+            child.setClickable(true);
+            child.setOnTouchListener(
                     (v, event) -> BasicKeyFeedback.handleStandardKeyTouch(v, event, () -> sendTap(root, code)));
         }
     }

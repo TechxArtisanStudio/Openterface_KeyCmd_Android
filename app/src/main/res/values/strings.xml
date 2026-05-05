@@ -709,6 +709,14 @@ by TechxArtisan</string>
     <string name="kb_basic_numpad_plus_desc">Numpad add</string>
     <string name="kb_basic_numpad_enter_desc">Numpad enter</string>
     <string name="kb_basic_numpad_zero_desc">Numpad 0</string>
+    <string name="kb_basic_numpad_esc">ESC</string>
+    <string name="kb_basic_numpad_tab">TAB</string>
+    <string name="kb_basic_numpad_nav_del">DEL</string>
+    <string name="kb_basic_numpad_nav_up">UP</string>
+    <string name="kb_basic_numpad_nav_bksp">BKSP</string>
+    <string name="kb_basic_numpad_nav_left">Left</string>
+    <string name="kb_basic_numpad_nav_down">Down</string>
+    <string name="kb_basic_numpad_nav_right">Right</string>
     <string name="kb_mouse_placeholder_generic">This section is not available yet.</string>
     <string name="kb_mouse_placeholder_numpad">Num pad as its own screen is coming soon. Use Keyboard &amp; Mouse Pro for keypad and strips.</string>
     <string name="kb_mouse_placeholder_touchpad">Dedicated touchpad view is coming soon. Use Keyboard &amp; Mouse Pro for touchpad and keyboard together.</string>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -16,7 +17,7 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
-    <!-- 5 columns × 6 rows; + and Enter span two rows; bottom 0 spans two columns -->
+    <!-- 5 columns × 8 rows; top two rows: ESC/TAB (span 2) + half-height nav; + and Enter span two rows; bottom 0 spans two columns -->
     <GridLayout
         android:id="@+id/basic_numpad_grid"
         android:layout_width="match_parent"
@@ -24,15 +25,123 @@
         android:layout_weight="1"
         android:alignmentMode="alignMargins"
         android:columnCount="5"
-        android:rowCount="6"
+        android:rowCount="8"
         android:useDefaultMargins="false">
 
-        <!-- Row 0 -->
+        <!-- Rows 0–1: ESC / TAB (full height of two rows) + nav cluster (half-height per row) -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
+            android:layout_column="0"
+            android:layout_rowSpan="2"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="2"
+            android:layout_gravity="fill"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@string/kb_basic_numpad_esc"
+            android:tag="Esc" />
+        <TextView
+            style="@style/Widget.KeyMod.BasicNumpadCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="0"
+            android:layout_column="1"
+            android:layout_rowSpan="2"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="2"
+            android:layout_gravity="fill"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@string/kb_basic_numpad_tab"
+            android:tag="TAB" />
+        <TextView
+            style="@style/Widget.KeyMod.BasicNumpadCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="0"
+            android:layout_column="2"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@string/kb_basic_numpad_nav_del"
+            android:tag="Delete" />
+        <androidx.appcompat.widget.AppCompatImageView
+            style="@style/KeyModBasicNumpadIconCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="0"
+            android:layout_column="3"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:contentDescription="@string/kb_basic_numpad_nav_up"
+            android:tag="DPAD_UP"
+            app:srcCompat="@drawable/keyboard_arrow_up_24"
+            app:tint="@color/text_primary" />
+        <TextView
+            style="@style/Widget.KeyMod.BasicNumpadCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="0"
+            android:layout_column="4"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="@string/kb_basic_numpad_nav_bksp"
+            android:tag="DEL" />
+        <androidx.appcompat.widget.AppCompatImageView
+            style="@style/KeyModBasicNumpadIconCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="1"
+            android:layout_column="2"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:contentDescription="@string/kb_basic_numpad_nav_left"
+            android:tag="DPAD_LEFT"
+            app:srcCompat="@drawable/keyboard_arrow_left_24"
+            app:tint="@color/text_primary" />
+        <androidx.appcompat.widget.AppCompatImageView
+            style="@style/KeyModBasicNumpadIconCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="1"
+            android:layout_column="3"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:contentDescription="@string/kb_basic_numpad_nav_down"
+            android:tag="DPAD_DOWN"
+            app:srcCompat="@drawable/keyboard_arrow_down_24"
+            app:tint="@color/text_primary" />
+        <androidx.appcompat.widget.AppCompatImageView
+            style="@style/KeyModBasicNumpadIconCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="1"
+            android:layout_column="4"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:layout_gravity="fill"
+            android:contentDescription="@string/kb_basic_numpad_nav_right"
+            android:tag="DPAD_RIGHT"
+            app:srcCompat="@drawable/keyboard_arrow_right_24"
+            app:tint="@color/text_primary" />
+
+        <!-- Row 2 (was 0) -->
+        <TextView
+            style="@style/Widget.KeyMod.BasicNumpadCell"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_row="2"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -45,7 +154,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="0"
+            android:layout_row="2"
             android:layout_column="1"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -58,7 +167,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="0"
+            android:layout_row="2"
             android:layout_column="2"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -70,7 +179,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="0"
+            android:layout_row="2"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -82,7 +191,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="0"
+            android:layout_row="2"
             android:layout_column="4"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -91,12 +200,12 @@
             android:text="@string/kb_basic_numpad_end"
             android:tag="End" />
 
-        <!-- Row 1 -->
+        <!-- Row 3 (was 1) -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="1"
+            android:layout_row="3"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -108,7 +217,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="1"
+            android:layout_row="3"
             android:layout_column="1"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -120,7 +229,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="1"
+            android:layout_row="3"
             android:layout_column="2"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -132,7 +241,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="1"
+            android:layout_row="3"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -144,7 +253,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="1"
+            android:layout_row="3"
             android:layout_column="4"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -153,12 +262,12 @@
             android:text="-"
             android:tag="NUMPAD_SUBTRACT" />
 
-        <!-- Row 2 -->
+        <!-- Row 4–5 (was 2–3): + spans two rows -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="2"
+            android:layout_row="4"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -170,7 +279,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="2"
+            android:layout_row="4"
             android:layout_column="1"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -182,7 +291,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="2"
+            android:layout_row="4"
             android:layout_column="2"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -194,7 +303,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="2"
+            android:layout_row="4"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -206,7 +315,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="2"
+            android:layout_row="4"
             android:layout_column="4"
             android:layout_rowSpan="2"
             android:layout_columnWeight="1"
@@ -217,12 +326,12 @@
             android:tag="NUMPAD_ADD"
             android:contentDescription="@string/kb_basic_numpad_plus_desc" />
 
-        <!-- Row 3 -->
+        <!-- Row 5 (was 4) -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="3"
+            android:layout_row="5"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -234,7 +343,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="3"
+            android:layout_row="5"
             android:layout_column="1"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -246,7 +355,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="3"
+            android:layout_row="5"
             android:layout_column="2"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -258,7 +367,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="3"
+            android:layout_row="5"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -267,12 +376,12 @@
             android:text="6"
             android:tag="NUMPAD_6" />
 
-        <!-- Row 4 -->
+        <!-- Rows 6–7 (was 4–5): Enter spans two rows -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="4"
+            android:layout_row="6"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -284,7 +393,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="4"
+            android:layout_row="6"
             android:layout_column="1"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -296,7 +405,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="4"
+            android:layout_row="6"
             android:layout_column="2"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -308,7 +417,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="4"
+            android:layout_row="6"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -320,7 +429,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="4"
+            android:layout_row="6"
             android:layout_column="4"
             android:layout_rowSpan="2"
             android:layout_columnWeight="1"
@@ -331,12 +440,12 @@
             android:tag="NUMPAD_ENTER"
             android:contentDescription="@string/kb_basic_numpad_enter_desc" />
 
-        <!-- Row 5 -->
+        <!-- Row 7 (was 5) -->
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="5"
+            android:layout_row="7"
             android:layout_column="0"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
@@ -348,7 +457,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="5"
+            android:layout_row="7"
             android:layout_column="1"
             android:layout_columnSpan="2"
             android:layout_columnWeight="2"
@@ -362,7 +471,7 @@
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_row="5"
+            android:layout_row="7"
             android:layout_column="3"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
