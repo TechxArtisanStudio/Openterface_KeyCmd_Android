@@ -11,6 +11,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.openterface.keymod.MainActivity;
@@ -74,8 +77,44 @@ public class BasicNumPadFragment extends Fragment {
         ViewGroup host = (ViewGroup) requireView();
         host.removeAllViews();
         LayoutInflater.from(requireContext()).inflate(R.layout.fragment_basic_numpad, host, true);
+        View numpadRoot = host.findViewById(R.id.basic_numpad_root);
+        if (numpadRoot != null) {
+            installNumpadContentInsets(numpadRoot);
+        }
         GridLayout grid = host.findViewById(R.id.basic_numpad_grid);
         wireGrid(host, grid);
+    }
+
+    /**
+     * Matches KM Basic keyboard horizontal insets ({@code base + navigationBars}). Bottom uses {@link
+     * Math#max} of {@link R.dimen#basic_keyboard_content_inset_bottom} and {@code bars.bottom} so
+     * portrait does not stack two full nav clearances; landscape still gets {@code baseEnd +
+     * bars.right} for the side nav strip.
+     */
+    private void installNumpadContentInsets(@NonNull View root) {
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    Insets bars =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    int baseStart =
+                            getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset);
+                    int baseEnd =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_end);
+                    int baseBottom =
+                            getResources()
+                                    .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_bottom);
+                    int bottomPad = Math.max(baseBottom, bars.bottom);
+                    ViewCompat.setPaddingRelative(
+                            v,
+                            baseStart + bars.left,
+                            v.getPaddingTop(),
+                            baseEnd + bars.right,
+                            bottomPad);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(root);
     }
 
     private void wireGrid(View root, GridLayout grid) {

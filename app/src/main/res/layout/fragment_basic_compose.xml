@@ -30,11 +30,10 @@
 
         <EditText
             android:id="@+id/basic_compose_editor"
+            style="@style/Widget.KeyMod.BasicComposeEditor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="@dimen/basic_compose_editor_min_height"
-            android:background="@android:drawable/edit_text"
-            android:gravity="top|start"
             android:imeOptions="flagNoExtractUi"
             android:inputType="textMultiLine|textCapSentences"
             android:minLines="1"
@@ -63,7 +62,7 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
-            app:iconTint="@color/text_primary" />
+            app:iconTint="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_redo"
@@ -79,7 +78,7 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
-            app:iconTint="@color/text_primary" />
+            app:iconTint="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_send"
@@ -95,6 +94,6 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
-            app:iconTint="@color/text_primary" />
+            app:iconTint="?attr/colorOnSurface" />
     </LinearLayout>
 </LinearLayout>

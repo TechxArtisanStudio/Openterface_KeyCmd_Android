@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/basic_numpad_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:paddingStart="@dimen/basic_keyboard_content_inset"
+    android:paddingEnd="@dimen/basic_keyboard_content_inset_end"
+    android:paddingTop="8dp"
+    android:paddingBottom="@dimen/basic_keyboard_content_inset_bottom"
     android:background="?android:attr/colorBackground">
 
     <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),

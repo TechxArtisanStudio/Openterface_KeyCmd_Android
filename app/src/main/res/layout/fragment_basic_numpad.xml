@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/basic_numpad_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:paddingStart="@dimen/basic_keyboard_content_inset"
+    android:paddingEnd="@dimen/basic_keyboard_content_inset_end"
+    android:paddingTop="8dp"
+    android:paddingBottom="@dimen/basic_keyboard_content_inset_bottom"
     android:background="?android:attr/colorBackground">
 
     <!-- 5 columns × 8 rows; row height ratio 1:1:2:2:3:3:3:3 (weights per row). ESC/TAB span rows 0–1 (weight 1+1); + spans 4–5 (3+3); Enter spans 6–7 (3+3). -->

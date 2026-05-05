@@ -681,7 +681,7 @@ by TechxArtisan</string>
     <string name="top_mode_label_keyboard_mouse">Keyboard &amp; Mouse</string>
     <string name="top_mode_label_keyboard_mouse_pro">Keyboard &amp; Mouse Pro</string>
     <string name="kb_mouse_sub_keyboard">Keyboard</string>
-    <string name="kb_mouse_sub_numpad">Num pad</string>
+    <string name="kb_mouse_sub_numpad">NumPad</string>
     <string name="kb_mouse_sub_touchpad">Touchpad</string>
     <string name="kb_mouse_sub_compose">Compose</string>
     <string name="kb_mouse_sub_ime">IME</string>
