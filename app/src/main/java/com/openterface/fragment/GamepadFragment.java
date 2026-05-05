@@ -933,7 +933,7 @@ public class GamepadFragment extends Fragment {
         } else if ("touchpad_1".equals(componentId)) {
             componentName = getString(R.string.gamepad_component_touchpad);
             hasKeyMapping = false;
-        } else if (componentId != null && componentId.startsWith("mouse_btn_")) {
+        } else if (mouseButtonForComponentId(componentId) != null) {
             componentName = getString(R.string.gamepad_component_mouse_button);
             hasKeyMapping = false;
         } else {
@@ -947,8 +947,11 @@ public class GamepadFragment extends Fragment {
             opts.add(getString(R.string.gamepad_menu_touchpad_resize));
             opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
         }
-        if (componentId != null && componentId.startsWith("mouse_btn_")) {
+        if (mouseButtonForComponentId(componentId) != null) {
             opts.add(getString(R.string.gamepad_menu_mouse_btn_module_size));
+            if (GamepadLayoutDocEditor.hasTouchpad(layoutDoc)) {
+                opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
+            }
         }
         if (hasKeyMapping) {
             opts.add(getString(R.string.gamepad_menu_edit_keys));

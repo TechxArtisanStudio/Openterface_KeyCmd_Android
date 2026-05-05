@@ -771,8 +771,8 @@ by TechxArtisan</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
     <string name="gamepad_add_arrow_stick">Arrow stick (extra)</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
-    <string name="gamepad_menu_touchpad_mouse_btn_size">Mouse button size…</string>
-    <string name="gamepad_menu_mouse_btn_module_size">This button size…</string>
+    <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
+    <string name="gamepad_menu_mouse_btn_module_size">Button size…</string>
     <string name="gamepad_touchpad_mouse_btn_size_title">Touchpad mouse buttons (L/M/R)</string>
     <string name="gamepad_mouse_btn_module_size_title">Mouse button size</string>
     <string name="gamepad_mouse_btn_size_pct">Size (%)</string>
