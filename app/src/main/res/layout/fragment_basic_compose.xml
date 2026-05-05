@@ -1,70 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/basic_compose_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="12dp"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    android:paddingStart="12dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="12dp">
 
     <TextView
         android:id="@+id/basic_compose_back"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:paddingBottom="8dp"
         android:text="@string/kb_basic_back_to_keyboard"
         android:textColor="?attr/colorPrimary"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:layout_width="match_parent"
+        android:id="@+id/basic_compose_hint"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
         android:text="@string/kb_basic_compose_hint"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp"
-        android:paddingBottom="8dp" />
-
-    <EditText
-        android:id="@+id/basic_compose_editor"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="top|start"
-        android:inputType="textMultiLine|textCapSentences"
-        android:minLines="6"
-        android:background="@android:drawable/edit_text" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/basic_compose_back" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/basic_compose_actions"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:baselineAligned="false"
         android:orientation="horizontal"
-        android:baselineAligned="false">
+        android:paddingBottom="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_clear"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/compose_clear" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_redo"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:text="@string/compose_redo_clear" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_send"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:text="@string/compose_send" />
     </LinearLayout>
-</LinearLayout>
+
+    <EditText
+        android:id="@+id/basic_compose_editor"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="10dp"
+        android:background="@android:drawable/edit_text"
+        android:gravity="top|start"
+        android:inputType="textMultiLine|textCapSentences"
+        android:minLines="6"
+        android:scrollbars="vertical"
+        app:layout_constraintBottom_toTopOf="@id/basic_compose_actions"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/basic_compose_hint" />
+</androidx.constraintlayout.widget.ConstraintLayout>

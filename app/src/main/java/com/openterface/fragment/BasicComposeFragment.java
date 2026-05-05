@@ -6,13 +6,16 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.button.MaterialButton;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
@@ -38,9 +41,9 @@ public class BasicComposeFragment extends Fragment {
     public UsbSerialPort port;
 
     private EditText editor;
-    private Button clearBtn;
-    private Button redoBtn;
-    private Button sendBtn;
+    private MaterialButton clearBtn;
+    private MaterialButton redoBtn;
+    private MaterialButton sendBtn;
     @Nullable
     private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
@@ -58,6 +61,18 @@ public class BasicComposeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        View root = view.findViewById(R.id.basic_compose_root);
+        final int padL = root.getPaddingLeft();
+        final int padT = root.getPaddingTop();
+        final int padR = root.getPaddingRight();
+        final int padB = root.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            int imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            v.setPadding(padL, padT, padR, padB + imeBottom);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
+
         view.findViewById(R.id.basic_compose_back).setOnClickListener(v -> {
             Fragment p = getParentFragment();
             if (p instanceof KeyboardMouseFragment) {
