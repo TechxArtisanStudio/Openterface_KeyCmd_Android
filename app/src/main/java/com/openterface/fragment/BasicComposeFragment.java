@@ -14,6 +14,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
@@ -97,10 +98,17 @@ public class BasicComposeFragment extends Fragment {
     }
 
     /**
-     * Same strategy as {@link CompositeFragment#setupCompositeImeRootInsets}: pad the compose
-     * root by {@link WindowInsetsCompat.Type#ime()} bottom so the editor and action row stay above
-     * the soft keyboard. {@code adjustPan} prevents reliable IME insets with DrawerLayout + host
-     * weights; {@code adjustResize} (activity default) plus this padding matches Pro behavior.
+     * Pad the compose root by {@link WindowInsetsCompat.Type#ime()} bottom so the editor and
+     * action row stay above the soft keyboard, and by {@link WindowInsetsCompat.Type#navigationBars()}
+     * (merged with {@link WindowInsetsCompat.Type#displayCutout()}) on left / right / bottom so
+     * content is not clipped under the system nav bar in portrait (when the IME is hidden) nor
+     * under the side nav strip in either landscape orientation. Top is left to
+     * {@link KeyboardMouseFragment#applyKmBasicChromeTopInset} since the chrome strip above this
+     * fragment owns the status-bar inset. With {@code targetSdk 35} the framework no longer
+     * auto-pads under {@code setDecorFitsSystemWindows(true)}, so each fragment must apply its own
+     * insets — same pattern as {@link BasicNumPadFragment#installNumpadContentInsets}. Bottom uses
+     * {@link Math#max} of {@code ime} and {@code navigationBars} (rather than additive) so the
+     * action row is not pushed above the open keyboard with a visible nav-bar-sized gap.
      */
     private void setupBasicComposeImeInsets(@NonNull View root) {
         final int baseStart = ViewCompat.getPaddingStart(root);
@@ -111,9 +119,20 @@ public class BasicComposeFragment extends Fragment {
         ViewCompat.setOnApplyWindowInsetsListener(
                 root,
                 (v, windowInsets) -> {
+                    Insets bars =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    Insets cut =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
                     int imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+                    int leftInset = Math.max(bars.left, cut.left);
+                    int rightInset = Math.max(bars.right, cut.right);
+                    int bottomInset = Math.max(imeBottom, Math.max(bars.bottom, cut.bottom));
                     ViewCompat.setPaddingRelative(
-                            v, baseStart, baseTop, baseEnd, baseBottom + imeBottom);
+                            v,
+                            baseStart + leftInset,
+                            baseTop,
+                            baseEnd + rightInset,
+                            baseBottom + bottomInset);
                     return windowInsets;
                 });
         root.post(() -> ViewCompat.requestApplyInsets(root));

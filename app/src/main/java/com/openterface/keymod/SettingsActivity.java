@@ -72,10 +72,10 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] tabTitles = new String[]{
                 getString(R.string.settings_tab_general),
+                getString(R.string.settings_tab_keyboard_mouse),
                 getString(R.string.settings_tab_voice),
                 getString(R.string.settings_tab_ai),
-                getString(R.string.settings_tab_history),
-                getString(R.string.settings_tab_keyboard_mouse)
+                getString(R.string.settings_tab_history)
         };
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> tab.setText(tabTitles[position])).attach();
@@ -137,13 +137,13 @@ public class SettingsActivity extends AppCompatActivity {
                 case 0:
                     return new GeneralSettingsFragment();
                 case 1:
-                    return new VoiceSettingsFragment();
-                case 2:
-                    return new AISettingsFragment();
-                case 3:
-                    return new HistoryFragment();
-                case 4:
                     return new KeyboardMouseSettingsFragment();
+                case 2:
+                    return new VoiceSettingsFragment();
+                case 3:
+                    return new AISettingsFragment();
+                case 4:
+                    return new HistoryFragment();
                 default:
                     throw new IllegalArgumentException("Invalid settings page: " + position);
             }

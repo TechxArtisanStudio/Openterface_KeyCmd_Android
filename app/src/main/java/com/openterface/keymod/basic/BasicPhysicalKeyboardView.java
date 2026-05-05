@@ -564,17 +564,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = new String[] {
                 "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
         };
-        int maxShiftPx =
-                getResources().getDimensionPixelSize(R.dimen.basic_key_preview_f_row_max_shift);
         for (int i = 0; i < labels.length; i++) {
             View k = inflateKey(row, labels[i], null, 1f);
             int code = codes[i];
             final String lab = labels[i];
-            // F1..F12: shift preview away from finger (right at F1 → left at F12); Esc stays centered.
+            // F1..F12: store 0..1 bias; BasicKeyPreview scales shift with key width + base dimen.
             if (i >= 1) {
                 float t = (i - 1) / 11f;
-                int offsetXp = (int) (maxShiftPx * (1f - 2f * t));
-                k.setTag(R.id.basic_key_preview_offset_x, offsetXp);
+                k.setTag(R.id.basic_key_preview_offset_x, t);
             }
             wireRepeatableTap(k, () -> tapKey(code, false, false), () -> lab);
         }

@@ -13,11 +13,14 @@ public final class KmBasicKeyboardPrefs {
     public static final String VALUE_STICKY = "sticky";
     public static final String VALUE_MOMENTARY_CHORD = "momentary_chord";
 
+    /** Default for new installs and when the preference has never been set. */
+    public static final String PREF_DEFAULT_VALUE = VALUE_MOMENTARY_CHORD;
+
     private KmBasicKeyboardPrefs() {}
 
     public static boolean isMomentaryChordMode(Context context) {
         return VALUE_MOMENTARY_CHORD.equals(
                 PreferenceManager.getDefaultSharedPreferences(context)
-                        .getString(PREF_KEY, VALUE_STICKY));
+                        .getString(PREF_KEY, PREF_DEFAULT_VALUE));
     }
 }

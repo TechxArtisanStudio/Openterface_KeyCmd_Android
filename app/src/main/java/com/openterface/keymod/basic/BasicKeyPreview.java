@@ -74,11 +74,20 @@ public final class BasicKeyPreview {
         Rect visible = new Rect();
         anchor.getWindowVisibleDisplayFrame(visible);
 
+        Object fRowTag = anchor.getTag(R.id.basic_key_preview_offset_x);
+        int fRowOffsetX = fRowHorizontalOffsetPx(anchor, fRowTag);
         int popupX = anchorLeft + (anchorW - pw) / 2;
-        popupX += readPreviewOffsetX(anchor);
+        popupX += fRowOffsetX;
         popupX = Math.max(visible.left + margin, Math.min(popupX, visible.right - pw - margin));
 
-        int aboveY = anchorTop - ph - gap;
+        boolean fRowKey = fRowTag instanceof Float || fRowTag instanceof Integer;
+        int extraUp =
+                fRowKey
+                        ? anchor.getResources()
+                                .getDimensionPixelSize(R.dimen.basic_key_preview_f_row_extra_up)
+                        : 0;
+
+        int aboveY = anchorTop - ph - gap - extraUp;
         int belowY = anchorTop + anchorH + gap;
 
         int popupY;
@@ -93,9 +102,21 @@ public final class BasicKeyPreview {
         win.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY);
     }
 
-    /** Horizontal px offset from key-centered position; F-row sets {@code R.id.basic_key_preview_offset_x} on the key. */
-    private static int readPreviewOffsetX(View anchor) {
-        Object tag = anchor.getTag(R.id.basic_key_preview_offset_x);
+    /**
+     * F-row stores bias {@code t} in [0,1] (F1→0, F12→1) on {@code R.id.basic_key_preview_offset_x}. Horizontal
+     * offset is {@code (basePx + widthFraction * keyWidth) * (1 - 2t)} so ends move more on wide keys; legacy
+     * {@link Integer} tags are still honored.
+     */
+    private static int fRowHorizontalOffsetPx(View anchor, Object tag) {
+        if (tag instanceof Float) {
+            float t = (Float) tag;
+            int base =
+                    anchor.getResources()
+                            .getDimensionPixelSize(R.dimen.basic_key_preview_f_row_max_shift);
+            int w = Math.max(0, anchor.getWidth());
+            float widthBoost = 0.45f * w;
+            return (int) ((base + widthBoost) * (1f - 2f * t));
+        }
         if (tag instanceof Integer) {
             return (Integer) tag;
         }

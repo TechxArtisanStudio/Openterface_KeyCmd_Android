@@ -35,7 +35,7 @@ public class KeyboardMouseSettingsFragment extends Fragment {
 
         loading = true;
         if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
-                prefs.getString(KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.VALUE_STICKY))) {
+                prefs.getString(KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.PREF_DEFAULT_VALUE))) {
             chord.setChecked(true);
         } else {
             sticky.setChecked(true);
