@@ -12,6 +12,8 @@ import androidx.fragment.app.Fragment;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.TouchPadView;
+import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.basic.BasicPortraitScrollStripView;
 import com.openterface.keymod.hid.MouseRelHidTransport;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
@@ -46,7 +48,48 @@ public class BasicTouchpadFragment extends Fragment {
                 ((KeyboardMouseFragment) p).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
             }
         });
-        TouchPadView pad = view.findViewById(R.id.basic_touch_pad);
+        wireTouchPad(view.findViewById(R.id.basic_touch_pad));
+
+        BasicPortraitScrollStripView scrollStrip = view.findViewById(R.id.basic_touchpad_scroll_strip);
+        if (scrollStrip != null) {
+            scrollStrip.setOnStripScrollListener((deltaX, deltaY) -> {
+                MainActivity ma = mainActivity();
+                if (ma == null) {
+                    return;
+                }
+                MouseRelHidTransport.sendScroll(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound(),
+                        deltaX,
+                        deltaY);
+            });
+        }
+
+        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_left), () -> {
+            MainActivity ma = mainActivity();
+            if (ma != null) {
+                MouseRelHidTransport.sendLeftClick(
+                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+            }
+        });
+        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_middle), () -> {
+            MainActivity ma = mainActivity();
+            if (ma != null) {
+                MouseRelHidTransport.sendMiddleClick(
+                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+            }
+        });
+        wireMouseButton(view.findViewById(R.id.basic_touchpad_btn_right), () -> {
+            MainActivity ma = mainActivity();
+            if (ma != null) {
+                MouseRelHidTransport.sendRightClick(
+                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+            }
+        });
+    }
+
+    private void wireTouchPad(@NonNull TouchPadView pad) {
         pad.setOnTouchPadListener(new TouchPadView.OnTouchPadListener() {
             @Override
             public void onTouchMove(float startX, float startY, float lastX, float lastY) {
@@ -114,6 +157,14 @@ public class BasicTouchpadFragment extends Fragment {
                         port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
             }
         });
+    }
+
+    private static void wireMouseButton(@Nullable View button, Runnable onUpInside) {
+        if (button == null) {
+            return;
+        }
+        button.setOnTouchListener(
+                (v, event) -> BasicKeyFeedback.handleStandardKeyTouch(v, event, onUpInside));
     }
 
     @Nullable

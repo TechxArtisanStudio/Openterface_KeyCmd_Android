@@ -450,6 +450,7 @@ by TechxArtisan</string>
     <string name="compose_ascii_warning">Non-ASCII characters are not supported for HID send. Remove them to enable Send.</string>
     <string name="compose_clear">Clear</string>
     <string name="compose_undo">Undo</string>
+    <string name="compose_redo_clear">Redo clear</string>
     <string name="compose_touchpad">Touchpad</string>
     <string name="compose_send">Send</string>
     <string name="compose_stop">Stop</string>
@@ -685,8 +686,14 @@ by TechxArtisan</string>
     <string name="kb_mouse_sub_compose">Compose</string>
     <string name="kb_mouse_sub_ime">IME</string>
     <string name="kb_basic_back_to_keyboard">Back to keyboard</string>
+    <string name="kb_basic_touchpad_scroll_area_a11y">Mouse wheel scroll strip</string>
+    <string name="kb_basic_touchpad_mouse_left_label">L</string>
+    <string name="kb_basic_touchpad_mouse_middle_label">M</string>
+    <string name="kb_basic_touchpad_mouse_right_label">R</string>
+    <string name="kb_basic_touchpad_mouse_left_a11y">Left mouse button</string>
+    <string name="kb_basic_touchpad_mouse_middle_a11y">Middle mouse button</string>
+    <string name="kb_basic_touchpad_mouse_right_a11y">Right mouse button</string>
     <string name="kb_basic_compose_hint">Type text, then Send (ASCII-friendly for HID).</string>
-    <string name="kb_basic_compose_send">Send</string>
     <string name="kb_basic_numpad_prt_sc">Prt Sc</string>
     <string name="kb_basic_numpad_scr_lk">Scr Lk</string>
     <string name="kb_basic_numpad_pause">Pause</string>

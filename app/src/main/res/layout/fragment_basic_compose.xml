@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="@color/background_light">
+    android:background="?android:attr/colorBackground">
 
     <TextView
         android:id="@+id/basic_compose_back"
@@ -13,13 +13,14 @@
         android:paddingBottom="8dp"
         android:text="@string/kb_basic_back_to_keyboard"
         android:textColor="?attr/colorPrimary"
+        android:textSize="16sp"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/kb_basic_compose_hint"
-        android:textColor="@color/text_secondary"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp"
         android:paddingBottom="8dp" />
 
@@ -33,10 +34,37 @@
         android:minLines="6"
         android:background="@android:drawable/edit_text" />
 
-    <Button
-        android:id="@+id/basic_compose_send"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="@string/kb_basic_compose_send" />
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <Button
+            android:id="@+id/basic_compose_clear"
+            style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/compose_clear" />
+
+        <Button
+            android:id="@+id/basic_compose_redo"
+            style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/compose_redo_clear" />
+
+        <Button
+            android:id="@+id/basic_compose_send"
+            style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/compose_send" />
+    </LinearLayout>
 </LinearLayout>

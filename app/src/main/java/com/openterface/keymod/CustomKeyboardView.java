@@ -70,6 +70,7 @@ import androidx.preference.PreferenceManager;
 import com.openterface.keymod.hid.Ch9329PacketUtil;
 import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
+import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
@@ -7316,31 +7317,11 @@ public class CustomKeyboardView extends LinearLayout {
         imeCaptureToolbar.requestLayout();
     }
 
-    private static boolean imeCaptureTextContainsNonAscii(String s) {
-        for (int i = 0; i < s.length(); ) {
-            int cp = s.codePointAt(i);
-            if (cp > 127) {
-                return true;
-            }
-            i += Character.charCount(cp);
-        }
-        return false;
-    }
-
     @Nullable
     private Integer resolveImeCaptureSendBlockedReason(
             @Nullable ConnectionManager connectionManager,
             String text) {
-        if (connectionManager == null || !connectionManager.isConnected()) {
-            return R.string.compose_no_connection;
-        }
-        if (text.isEmpty()) {
-            return R.string.compose_empty;
-        }
-        if (imeCaptureTextContainsNonAscii(text)) {
-            return R.string.compose_ascii_warning;
-        }
-        return null;
+        return ImeComposeSendGate.resolveSendBlockedReasonResId(connectionManager, text);
     }
 
     private void updateImeCaptureToolbarState() {

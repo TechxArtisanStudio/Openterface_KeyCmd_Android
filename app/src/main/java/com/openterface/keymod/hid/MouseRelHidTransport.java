@@ -198,6 +198,15 @@ public final class MouseRelHidTransport {
         sendMouseClick(port, bluetoothService, bluetoothServiceBound, data);
     }
 
+    public static void sendMiddleClick(
+            UsbSerialPort port,
+            BluetoothService bluetoothService,
+            boolean bluetoothServiceBound) {
+        String base = "57AB0005050104000000";
+        String data = base + Ch9329PacketUtil.makeChecksum(base);
+        sendMouseClick(port, bluetoothService, bluetoothServiceBound, data);
+    }
+
     public static void sendDoubleClick(
             UsbSerialPort port,
             BluetoothService bluetoothService,
