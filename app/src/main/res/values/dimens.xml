@@ -63,10 +63,10 @@
     <dimen name="basic_keyboard_arrow_icon_size">22dp</dimen>
     <!-- KM Basic: floating label above/below key on press -->
     <dimen name="basic_key_preview_corner_radius">9dp</dimen>
-    <dimen name="basic_key_preview_padding_h">14dp</dimen>
-    <dimen name="basic_key_preview_padding_v">10dp</dimen>
-    <dimen name="basic_key_preview_min_size">40dp</dimen>
-    <dimen name="basic_key_preview_text_size">20sp</dimen>
+    <dimen name="basic_key_preview_padding_h">16dp</dimen>
+    <dimen name="basic_key_preview_padding_v">12dp</dimen>
+    <dimen name="basic_key_preview_min_size">44dp</dimen>
+    <dimen name="basic_key_preview_text_size">24sp</dimen>
     <dimen name="basic_key_preview_gap">6dp</dimen>
     <dimen name="basic_key_preview_screen_margin">6dp</dimen>
     <dimen name="basic_key_preview_elevation">10dp</dimen>

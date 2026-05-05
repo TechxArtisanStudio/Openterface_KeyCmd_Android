@@ -44,6 +44,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private boolean stickyWin;
     private boolean capsLock;
 
+    @Nullable
+    private View shiftKeyLeft;
+    @Nullable
+    private View shiftKeyRight;
+
     public BasicPhysicalKeyboardView(Context context) {
         super(context);
         init();
@@ -69,6 +74,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     public void bind(@Nullable MainActivity activity, @Nullable UsbSerialPort usbPort) {
         keyPreview.dismiss();
+        shiftKeyLeft = null;
+        shiftKeyRight = null;
         mainActivity = activity;
         port = usbPort;
         removeAllViews();
@@ -177,6 +184,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 break;
             default:
                 break;
+        }
+    }
+
+    private void applyShiftKeyVisualState() {
+        if (shiftKeyLeft != null) {
+            shiftKeyLeft.setSelected(stickyShift);
+        }
+        if (shiftKeyRight != null) {
+            shiftKeyRight.setSelected(stickyShift);
         }
     }
 
@@ -323,7 +339,19 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             View k = inflateKey(row, labels[idx], hints[idx], w[idx]);
             if (i == 0 || i == labels.length - 1) {
-                wireTap(k, () -> tapModifierToggle("shift"), () -> "Shift");
+                k.setBackgroundResource(R.drawable.basic_shift_key_background);
+                if (i == 0) {
+                    shiftKeyLeft = k;
+                } else {
+                    shiftKeyRight = k;
+                }
+                wireTap(
+                        k,
+                        () -> {
+                            tapModifierToggle("shift");
+                            applyShiftKeyVisualState();
+                        },
+                        () -> "Shift");
             } else {
                 wireRepeatableTap(
                         k,
@@ -331,6 +359,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         () -> previewQwertyRowKey(labels[idx], hints[idx]));
             }
         }
+        applyShiftKeyVisualState();
     }
 
     private void addRowBottom() {
