@@ -963,6 +963,15 @@ public class GamepadFragment extends Fragment {
         if ("touchpad_1".equals(componentId)) {
             opts.add(getString(R.string.gamepad_menu_touchpad_resize));
             opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
+            if (findModuleById(GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID) == null) {
+                opts.add(getString(R.string.gamepad_menu_add_touchpad_mouse_l));
+            }
+            if (findModuleById(GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID) == null) {
+                opts.add(getString(R.string.gamepad_menu_add_touchpad_mouse_m));
+            }
+            if (findModuleById(GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID) == null) {
+                opts.add(getString(R.string.gamepad_menu_add_touchpad_mouse_r));
+            }
         }
         if (mouseButtonForComponentId(componentId) != null) {
             opts.add(getString(R.string.gamepad_menu_mouse_btn_module_size));
@@ -987,6 +996,18 @@ public class GamepadFragment extends Fragment {
                 showTouchpadResizeDialog();
             } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_mouse_btn_size))) {
                 showTouchpadMouseButtonsLayoutSizeDialog();
+            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_l))) {
+                if (GamepadLayoutDocEditor.addTouchpadMouseButtonLeft(layoutDoc)) {
+                    applyLayoutDocFromMemory();
+                }
+            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_m))) {
+                if (GamepadLayoutDocEditor.addTouchpadMouseButtonMiddle(layoutDoc)) {
+                    applyLayoutDocFromMemory();
+                }
+            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_r))) {
+                if (GamepadLayoutDocEditor.addTouchpadMouseButtonRight(layoutDoc)) {
+                    applyLayoutDocFromMemory();
+                }
             } else if (choice.equals(getString(R.string.gamepad_menu_mouse_btn_module_size))) {
                 showMouseButtonModuleSizeDialog(componentId);
             } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {

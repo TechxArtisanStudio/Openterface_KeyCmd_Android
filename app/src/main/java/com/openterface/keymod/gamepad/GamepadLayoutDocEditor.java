@@ -128,15 +128,59 @@ public final class GamepadLayoutDocEditor {
         appendBundledMouseButtonsIfNeeded(doc);
     }
 
+    /**
+     * When a touchpad is first added, bundle left + right only (no middle by default).
+     * Fills in either side if missing so re-imported layouts can self-heal missing halves.
+     */
     private static void appendBundledMouseButtonsIfNeeded(GamepadLayoutPresetDocument doc) {
-        if (find(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID) != null) {
-            return;
-        }
         float y = 0.52f;
         float moduleScale = 1.0f;
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID, 1, 0.38f, y, moduleScale);
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID, 2, 0.5f, y, moduleScale);
-        addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID, 3, 0.62f, y, moduleScale);
+        if (find(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID) == null) {
+            addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID, 1, 0.4f, y, moduleScale);
+        }
+        if (find(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID) == null) {
+            addMouseBtn(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID, 3, 0.6f, y, moduleScale);
+        }
+    }
+
+    private static int countMouseButtonModules(GamepadLayoutPresetDocument doc) {
+        int n = 0;
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static boolean addTouchpadBundledMouseButton(GamepadLayoutPresetDocument doc, String id,
+                                                         int semanticButton, float anchorX, float anchorY) {
+        if (doc == null || doc.modules == null || !hasTouchpad(doc)) {
+            return false;
+        }
+        if (find(doc, id) != null) {
+            return false;
+        }
+        if (countMouseButtonModules(doc) >= GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
+            return false;
+        }
+        addMouseBtn(doc, id, semanticButton, anchorX, anchorY, 1.0f);
+        return true;
+    }
+
+    /** Re-add bundled left mouse button below touchpad (no-op if already present or no touchpad). */
+    public static boolean addTouchpadMouseButtonLeft(GamepadLayoutPresetDocument doc) {
+        return addTouchpadBundledMouseButton(doc, GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID, 1, 0.4f, 0.52f);
+    }
+
+    /** Re-add middle mouse button (optional; not part of default touchpad bundle). */
+    public static boolean addTouchpadMouseButtonMiddle(GamepadLayoutPresetDocument doc) {
+        return addTouchpadBundledMouseButton(doc, GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID, 2, 0.5f, 0.52f);
+    }
+
+    /** Re-add bundled right mouse button below touchpad. */
+    public static boolean addTouchpadMouseButtonRight(GamepadLayoutPresetDocument doc) {
+        return addTouchpadBundledMouseButton(doc, GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID, 3, 0.6f, 0.52f);
     }
 
     private static void addMouseBtn(GamepadLayoutPresetDocument doc, String id, int btn,
