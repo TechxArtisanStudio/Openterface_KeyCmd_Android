@@ -14,6 +14,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
@@ -50,8 +52,8 @@ public class BasicComposeFragment extends Fragment {
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
 
-    /** Restore manifest default when leaving compose (other screens expect resize). */
-    private static final int DEFAULT_ACTIVITY_SOFT_INPUT_MODE =
+    /** Match {@link android.Manifest} {@code windowSoftInputMode} for {@link MainActivity}. */
+    private static final int ACTIVITY_SOFT_INPUT_MODE =
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
 
     @Nullable
@@ -91,21 +93,49 @@ public class BasicComposeFragment extends Fragment {
                     }
                 });
         refreshToolbarState();
+        setupBasicComposeImeInsets(view);
+    }
+
+    /**
+     * Same strategy as {@link CompositeFragment#setupCompositeImeRootInsets}: pad the compose
+     * root by {@link WindowInsetsCompat.Type#ime()} bottom so the editor and action row stay above
+     * the soft keyboard. {@code adjustPan} prevents reliable IME insets with DrawerLayout + host
+     * weights; {@code adjustResize} (activity default) plus this padding matches Pro behavior.
+     */
+    private void setupBasicComposeImeInsets(@NonNull View root) {
+        final int baseStart = ViewCompat.getPaddingStart(root);
+        final int baseTop = root.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(root);
+        final int baseBottom = root.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    int imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+                    ViewCompat.setPaddingRelative(
+                            v, baseStart, baseTop, baseEnd, baseBottom + imeBottom);
+                    return windowInsets;
+                });
+        root.post(() -> ViewCompat.requestApplyInsets(root));
+        root.postDelayed(() -> ViewCompat.requestApplyInsets(root), 120);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         Window w = requireActivity().getWindow();
-        // Landscape IME often uses extracted fullscreen UI that hides our editor; pan keeps the
-        // focused field above a docked keyboard. IME_FLAG_NO_EXTRACT_UI asks IM not to use extract UI.
-        w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+        w.setSoftInputMode(ACTIVITY_SOFT_INPUT_MODE);
+        View v = getView();
+        if (v != null) {
+            v.post(() -> ViewCompat.requestApplyInsets(v));
+            v.postDelayed(() -> ViewCompat.requestApplyInsets(v), 120);
+        }
     }
 
     @Override
     public void onPause() {
         if (getActivity() != null) {
-            getActivity().getWindow().setSoftInputMode(DEFAULT_ACTIVITY_SOFT_INPUT_MODE);
+            getActivity().getWindow().setSoftInputMode(ACTIVITY_SOFT_INPUT_MODE);
         }
         super.onPause();
     }
