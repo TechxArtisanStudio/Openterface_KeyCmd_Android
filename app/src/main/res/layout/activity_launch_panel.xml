@@ -158,7 +158,7 @@
                 <ImageView
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:src="@drawable/keyboard_mouse"
+                    android:src="@drawable/keyboard_mouse_pro"
                     android:contentDescription="@string/top_mode_label_keyboard_mouse_pro"
                     android:tint="@color/card_icon_tint" />
 

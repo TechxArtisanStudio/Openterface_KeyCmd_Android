@@ -135,8 +135,9 @@ public final class TopModeShortcutPrefs {
             case LaunchPanelActivity.MODE_VOICE:
                 return R.drawable.voice;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
-            case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
                 return R.drawable.keyboard_mouse;
+            case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
+                return R.drawable.keyboard_mouse_pro;
             default:
                 return R.drawable.keyboard_mouse;
         }
