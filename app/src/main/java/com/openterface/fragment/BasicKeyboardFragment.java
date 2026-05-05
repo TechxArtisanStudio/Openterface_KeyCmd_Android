@@ -8,6 +8,9 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.openterface.keymod.MainActivity;
@@ -47,7 +50,35 @@ public class BasicKeyboardFragment extends Fragment {
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         }
         physicalKeyboardView = view.findViewById(R.id.basic_physical_keyboard);
+        installKeyboardContentInsets(physicalKeyboardView);
         bindKeyboard();
+    }
+
+    /**
+     * Adds navigation bar insets on top of {@link R.dimen#basic_keyboard_content_inset} (start,
+     * bottom) and {@link R.dimen#basic_keyboard_content_inset_end} (end). Landscape uses a smaller
+     * end base so keys sit slightly closer to the system nav strip. Display cutout is not merged
+     * into horizontal padding to avoid oversized side gutters.
+     */
+    private void installKeyboardContentInsets(@NonNull BasicPhysicalKeyboardView keyboard) {
+        final int baseStart =
+                getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset);
+        final int baseEnd =
+                getResources().getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_end);
+        ViewCompat.setOnApplyWindowInsetsListener(
+                keyboard,
+                (v, windowInsets) -> {
+                    Insets bars =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                    ViewCompat.setPaddingRelative(
+                            v,
+                            baseStart + bars.left,
+                            v.getPaddingTop(),
+                            baseEnd + bars.right,
+                            baseStart + bars.bottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(keyboard);
     }
 
     @Override

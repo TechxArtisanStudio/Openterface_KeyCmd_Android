@@ -7,7 +7,9 @@
     <dimen name="header_title_size">16sp</dimen>
     <dimen name="keyboard_outer_padding_top">4dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">6dp</dimen>
-    <dimen name="basic_keyboard_content_inset">20dp</dimen>
+    <!-- Start + bottom base; end is slightly smaller so the key block sits a bit closer to the nav bar. -->
+    <dimen name="basic_keyboard_content_inset">14dp</dimen>
+    <dimen name="basic_keyboard_content_inset_end">10dp</dimen>
 
     <!-- Split + narrow center column: cap hint width so wrap matches portrait-style bubble -->
     <dimen name="touchpad_help_overlay_max_width_split">256dp</dimen>
