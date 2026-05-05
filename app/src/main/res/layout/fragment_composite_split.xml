@@ -51,20 +51,44 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
 
-                <TextView
-                    android:id="@+id/touchPadTips"
+                <LinearLayout
+                    android:id="@+id/touchPadFooter"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|center_horizontal"
+                    android:orientation="vertical"
                     android:gravity="center_horizontal"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="10dp"
-                    android:background="@android:color/transparent"
-                    android:text="@string/touch_pad_compact_initial"/>
+                    android:paddingBottom="8dp"
+                    android:background="@android:color/transparent">
+
+                    <TextView
+                        android:id="@+id/touchPadTips"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_horizontal"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="4dp"
+                        android:background="@android:color/transparent"
+                        android:text="@string/touch_pad_compact_initial"/>
+
+                    <ImageView
+                        android:id="@+id/touchPadBrandLogo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="12dp"
+                        android:layout_marginTop="2dp"
+                        android:maxWidth="200dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:alpha="0.82"
+                        android:src="@drawable/ic_openterface_wordmark"
+                        android:tint="@color/text_secondary"
+                        android:contentDescription="@string/touch_pad_brand_content_description"
+                        android:importantForAccessibility="yes"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/touchPadHelpOverlay"

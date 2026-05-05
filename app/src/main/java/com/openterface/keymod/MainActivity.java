@@ -549,6 +549,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (headerLayout != null) {
             headerLayout.setVisibility(basicHost ? View.GONE : View.VISIBLE);
         }
+        TextView appTitle = findViewById(R.id.app_title);
+        if (appTitle != null) {
+            if (basicHost) {
+                appTitle.setVisibility(View.VISIBLE);
+            } else {
+                // Keyboard & Mouse Pro: brand lives on the touchpad footer; keep header uncluttered.
+                appTitle.setVisibility(f instanceof CompositeFragment ? View.GONE : View.VISIBLE);
+            }
+        }
         updateImmersiveForTopFragment();
     }
 

@@ -8,8 +8,10 @@ import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
@@ -951,6 +953,30 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     /**
+     * Space bar uses the wide Openterface wordmark; {@link #inflateKey} defaults to arrow-icon size, so
+     * expand the icon to fit the key cell with horizontal insets and a capped height.
+     */
+    private void applySpaceBarBrandIconLayout(View keyRoot) {
+        ImageView icon = keyRoot.findViewById(R.id.basic_key_icon);
+        if (icon == null || icon.getVisibility() != VISIBLE) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        // Smaller mark + generous side inset so it reads as a subtle brand hint, not a banner.
+        int horizontalPad = Math.round(8f * density);
+        int logoHeight = Math.round(13f * density);
+        icon.setPadding(horizontalPad, 0, horizontalPad, 0);
+        icon.setImageAlpha(210);
+        FrameLayout.LayoutParams flp =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, logoHeight);
+        flp.gravity = Gravity.CENTER;
+        icon.setLayoutParams(flp);
+        icon.setAdjustViewBounds(true);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    }
+
+    /**
      * Arrow cluster keys use Material Symbols–style {@code keyboard_arrow_*_24} vectors (centered icon).
      */
     private View inflateArrowKey(LinearLayout row, @DrawableRes int iconRes, @StringRes int cdRes, float weight) {
@@ -1200,7 +1226,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         wireBottomModifier(k1, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[1]);
         View k2 = inflateKey(row, labels[2], null, w[2]);
         wireBottomModifier(k2, "win", HID_EXT_LGUI, parseMod("Win"), parseMod("Win"), () -> labels[2]);
-        View k3 = inflateKey(row, labels[3], null, w[3]);
+        View k3 =
+                inflateKey(
+                        row,
+                        "",
+                        null,
+                        w[3],
+                        R.drawable.ic_openterface_wordmark,
+                        R.string.Space_Button);
+        applySpaceBarBrandIconLayout(k3);
         wireKeyedRepeatOrHold(k3, 0x2C, false, false, () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
         wireBottomModifier(k4, "win", HID_EXT_RGUI, parseMod("WinR"), parseMod("WinR"), () -> labels[4]);
@@ -1243,7 +1277,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 () -> (isLinux ? getContext().getString(R.string.km_basic_key_sup) : getContext().getString(R.string.Win)));
         View k2 = inflateKey(row, labels[2], null, w[2]);
         wireBottomModifier(k2, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[2]);
-        View k3 = inflateKey(row, labels[3], null, w[3]);
+        View k3 =
+                inflateKey(
+                        row,
+                        "",
+                        null,
+                        w[3],
+                        R.drawable.ic_openterface_wordmark,
+                        R.string.Space_Button);
+        applySpaceBarBrandIconLayout(k3);
         wireKeyedRepeatOrHold(k3, 0x2C, false, false, () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
         wireBottomModifier(k4, "alt", HID_EXT_RALT, parseMod("AltR"), parseMod("AltR"), () -> labels[4]);

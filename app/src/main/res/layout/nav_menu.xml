@@ -337,6 +337,23 @@
         android:drawablePadding="@dimen/spacing_small"
         style="?android:attr/borderlessButtonStyle" />
 
+    <ImageView
+        android:id="@+id/nav_brand_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="13dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="6dp"
+        android:maxWidth="200dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:alpha="0.88"
+        android:src="@drawable/ic_openterface_wordmark"
+        android:tint="@color/text_secondary"
+        android:contentDescription="@string/touch_pad_brand_content_description"
+        android:focusable="false"
+        android:importantForAccessibility="yes" />
+
     <!-- Version Info -->
     <TextView
         android:id="@+id/version_text"
@@ -347,7 +364,7 @@
         android:textColor="@color/text_secondary"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="4dp"
+        android:paddingTop="0dp"
         android:paddingBottom="16dp"
         android:gravity="center" />
 

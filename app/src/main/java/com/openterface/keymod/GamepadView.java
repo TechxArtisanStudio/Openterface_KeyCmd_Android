@@ -12,11 +12,14 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+
+import androidx.appcompat.content.res.AppCompatResources;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -117,6 +120,9 @@ public class GamepadView extends View {
     // Background image
     private android.graphics.Bitmap backgroundBitmap = null;
     private Runnable onBackgroundChanged;
+
+    /** Openterface wordmark on the background plane (drawn under sticks/buttons). */
+    private Drawable brandWatermarkDrawable;
 
     // Background viewport (pan and zoom)
     private float bgScale = 1.0f;
@@ -257,8 +263,44 @@ public class GamepadView extends View {
             bgPaint.setShader(null);
         }
 
+        drawBrandWatermark(canvas);
+
         // Draw components based on layout
         drawComponents(canvas);
+    }
+
+    /** Bottom-center brand mark; sits on the same layer as the gradient/bitmap background. */
+    private void drawBrandWatermark(Canvas canvas) {
+        int vw = getWidth();
+        int vh = getHeight();
+        if (vw <= 0 || vh <= 0) {
+            return;
+        }
+        if (brandWatermarkDrawable == null) {
+            Drawable d = AppCompatResources.getDrawable(getContext(), R.drawable.ic_openterface_wordmark);
+            if (d == null) {
+                return;
+            }
+            brandWatermarkDrawable = d.mutate();
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int hPx = Math.round(11f * density);
+        int maxWPx = Math.round(138f * density);
+        float aspect = 469.34f / 70f;
+        int wPx = Math.min(maxWPx, Math.round(hPx * aspect));
+        int left = (vw - wPx) / 2;
+        int bottomPad = Math.round(14f * density);
+        int top = vh - hPx - bottomPad;
+        int tint =
+                MaterialColors.getColor(
+                        this,
+                        com.google.android.material.R.attr.colorOnSurfaceVariant,
+                        Color.parseColor("#757575"));
+        brandWatermarkDrawable.setTint(tint);
+        brandWatermarkDrawable.setAlpha(100);
+        brandWatermarkDrawable.setBounds(left, top, left + wPx, top + hPx);
+        brandWatermarkDrawable.draw(canvas);
+        brandWatermarkDrawable.setAlpha(255);
     }
 
     private void drawBackgroundWithPanZoom(Canvas canvas) {

@@ -18,6 +18,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -1288,7 +1289,21 @@ public class CompositeFragment extends Fragment {
                 }
             }
         });
-        TouchPadHelpOverlay.wireDismissTouchTargets(pad, tips, helpOverlayForPad(pad));
+        TextView helpOverlay = helpOverlayForPad(pad);
+        TouchPadHelpOverlay.wireDismissTouchTargets(pad, tips, helpOverlay);
+        View padParent = (View) pad.getParent();
+        if (padParent != null) {
+            View brand = padParent.findViewById(R.id.touchPadBrandLogo);
+            if (brand != null) {
+                brand.setOnTouchListener(
+                        (v, e) -> {
+                            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                                TouchPadHelpOverlay.dismissIfVisible(helpOverlay);
+                            }
+                            return false;
+                        });
+            }
+        }
     }
 
     private void cycleDisplayMode() {

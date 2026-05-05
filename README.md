@@ -1,4 +1,4 @@
-# KeyMod for Android
+# Openterface KM for Android
 
 <p align="center"><strong>README language</strong> · <em>GitHub shows this file by default</em></p>
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**KeyMod** is the companion Android app for [Openterface KeyMod](https://openterface.com/) — a hardware KVM-style bridge that lets you control a host computer from your phone over **USB** or **Bluetooth**. This repository contains the Java/Android implementation (`com.openterface.keymod`).
+**Openterface KM** is the companion Android app for [Openterface](https://openterface.com/) — a hardware KVM-style bridge that lets you control a host computer from your phone over **USB** or **Bluetooth**. This repository contains the Java/Android implementation (`com.openterface.keymod`).
 
 - **Requirements:** Android 8.0+ (API 26), USB OTG where you use USB control  
 - **Docs:** See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for connection steps, modes, and shortcuts (English).  

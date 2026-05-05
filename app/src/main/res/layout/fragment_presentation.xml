@@ -365,6 +365,22 @@
             </LinearLayout>
         </LinearLayout>
 
+        <ImageView
+            android:id="@+id/presentation_brand_logo"
+            android:layout_width="wrap_content"
+            android:layout_height="14dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:maxWidth="228dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:alpha="0.82"
+            android:src="@drawable/ic_openterface_wordmark"
+            android:tint="@color/presentation_text_secondary"
+            android:contentDescription="@string/touch_pad_brand_content_description"
+            android:focusable="false"
+            android:clickable="false" />
+
     </LinearLayout>
 
 </RelativeLayout>

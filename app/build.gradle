@@ -13,7 +13,7 @@ android {
         versionCode 10
         versionName "0.10"
 
-        setProperty("archivesBaseName", "KeyMod")
+        setProperty("archivesBaseName", "OpenterfaceKM")
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

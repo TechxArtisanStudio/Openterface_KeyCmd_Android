@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">Openterface KM</string>
     <string name="settings_title">設定</string>
     <string name="settings_tab_general">一般的な</string>
     <string name="settings_tab_voice">声</string>
@@ -428,8 +428,8 @@ TechxArtisan により</string>
     <string name="top_shortcut_display_mode_cd_icon">ショートカット ストリップ: アイコンを表示します。タップしてコンボテキストに切り替えます。</string>
     <string name="top_shortcut_display_mode_cd_chord">ショートカット ストリップ: コンボ キーを表示します (例: Alt+X)。タップすると名前に切り替わります。</string>
     <string name="ime_capture_hint">ここに長いテキストを入力して編集します。[送信] をタップして、接続されているデバイスに送信します。</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod キーボード (システム IME の場合はタップ)</string>
-    <string name="top_shortcut_ime_toggle_system">システム IME (KeyMod キーボードの場合はタップ)</string>
+    <string name="top_shortcut_ime_toggle_keymod">Openterface KM キーボード (システム IME の場合はタップ)</string>
+    <string name="top_shortcut_ime_toggle_system">システム IME (Openterface KM キーボードの場合はタップ)</string>
     <string name="top_shortcut_ime_toggle_keymod_short">内蔵</string>
     <string name="top_shortcut_ime_toggle_system_short">システムIME</string>
     <string name="top_strip_modifier_long_press_lock_hint">ヒント: モディファイアをロックするには、このキーを長押しします。</string>

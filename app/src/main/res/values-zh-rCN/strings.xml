@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">Openterface KM</string>
     <string name="settings_title">设置</string>
     <string name="settings_tab_general">常规</string>
     <string name="settings_tab_voice">语音</string>
@@ -378,7 +378,7 @@
     <string name="bt_last_used_days_ago">上次使用：%1$d 天前</string>
     <string name="bt_last_used_date">上次使用：%1$s</string>
     <string name="bt_device_name_unknown">未知</string>
-    <string name="bt_toast_select_supported_device">请选择 Openterface 或 KeyMod 设备</string>
+    <string name="bt_toast_select_supported_device">请选择受支持的 Openterface 设备</string>
     <string name="bt_toast_only_saved_can_forget">仅已保存的设备可忘记</string>
     <string name="bt_toast_scan_already_in_progress">扫描正在进行中</string>
     <string name="bt_toast_enable_bluetooth_first">请先开启蓝牙</string>
@@ -581,8 +581,8 @@
     <string name="top_shortcut_display_mode_cd_icon">Shortcut strip: showing icons. Tap to switch to combo text.</string>
     <string name="top_shortcut_display_mode_cd_chord">Shortcut strip: showing combo keys (e.g. Alt+X). Tap to switch to names.</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>
+    <string name="top_shortcut_ime_toggle_keymod">Openterface KM 键盘（点按切换系统输入法）</string>
+    <string name="top_shortcut_ime_toggle_system">系统输入法（点按切换 Openterface KM 键盘）</string>
     <string name="top_shortcut_ime_toggle_keymod_short">Built-in</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Tip: Long-press this key to lock the modifier.</string>

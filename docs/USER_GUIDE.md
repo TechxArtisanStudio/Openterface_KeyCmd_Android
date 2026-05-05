@@ -1,6 +1,6 @@
-# KeyMod Android - User Guide
+# Openterface KM Android - User Guide
 
-> **KeyMod** is a companion Android app for the [Openterface KeyMod](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a hardware KVM (Keyboard-Video-Mouse) device that lets you control any computer from your phone via USB or Bluetooth.
+> **Openterface KM** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
 
 ---
 
@@ -16,12 +16,12 @@
 
 ### 2. Choose Your Connection
 
-KeyMod supports two connection methods:
+Openterface KM supports two connection methods:
 
 | Method | How | Notes |
 |--------|-----|-------|
-| **USB** | Connect phone to KeyMod device via USB-C | Most reliable, lowest latency |
-| **Bluetooth (BLE)** | Pair with KeyMod device via Bluetooth | Wireless convenience |
+| **USB** | Connect phone to your Openterface hardware via USB-C | Most reliable, lowest latency |
+| **Bluetooth (BLE)** | Pair with your Openterface hardware via Bluetooth | Wireless convenience |
 
 ### 3. Select a Mode
 
@@ -43,7 +43,7 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 
 ### USB Connection
 
-1. Connect your phone to the KeyMod device via USB-C cable
+1. Connect your phone to your Openterface hardware via USB-C cable
 2. Open the app → tap the **connection icon** (top-right) or go to **Settings → General**
 3. Tap **USB Connection**
 4. Accept the USB permission dialog when prompted
@@ -54,7 +54,7 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 1. Turn on Bluetooth on your phone
 2. Open the app → tap the **connection icon**
 3. Tap **Bluetooth Connection**
-4. Select your KeyMod device from the scan results
+4. Select your Openterface hardware from the scan results
 5. Status changes to ✅ **Connected**
 
 ### Auto-Connect
@@ -244,7 +244,7 @@ Access via the **⚙️ gear icon** on the main screen. Four tabs:
 
 ## 📐 Orientation
 
-KeyMod supports both portrait and landscape modes:
+Openterface KM supports both portrait and landscape modes:
 - **Portrait** (2×3 grid) — thumb-friendly for phones
 - **Landscape** (3×2 grid) — desktop-style for tablets
 
@@ -260,19 +260,19 @@ The app auto-rotates when you turn your device.
 - For Bluetooth: ensure device is discoverable
 
 ### USB permission denied
-- Go to Android **Settings → Apps → KeyMod → Permissions**
+- Go to Android **Settings → Apps → Openterface KM → Permissions**
 - Enable USB access
 - Re-launch the app
 
 ### Keys not sending
 - Verify connection status is **Connected**
 - Try switching modes and back
-- Check if the KeyMod device is powered on
+- Check if the Openterface hardware is powered on
 
 ### Bluetooth won't pair
 - Turn Bluetooth off and on
 - Forget the device and re-pair
-- Ensure KeyMod device is in pairing mode
+- Ensure the Openterface hardware is in pairing mode
 
 ---
 
@@ -287,10 +287,10 @@ cd Openterface_KeyMod_Android
 ./gradlew assembleDebug
 
 # APK output
-ls app/build/outputs/apk/debug/KeyMod-debug.apk
+ls app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
 
 # Install on device
-adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
+adb install -r app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
 ```
 
 ---
@@ -310,7 +310,7 @@ adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
 
 ### HID Protocol (CH9329)
 
-KeyMod communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
+Openterface KM communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
 
 - **Keyboard**: 5-byte header + 8-byte data + 1-byte checksum (14 bytes total)
 - **Mouse**: 5-byte header + 5-byte data + 1-byte checksum (11 bytes total)

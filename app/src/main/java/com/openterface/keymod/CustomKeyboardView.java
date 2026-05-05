@@ -199,7 +199,7 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_TOP_MODE_SLOT_1 = 0xF007;
     private static final int KEY_TOP_MODE_SLOT_2 = 0xF008;
     private static final int KEY_TOP_MODE_SLOT_3 = 0xF009;
-    /** PH1: toggle system IME capture vs KeyMod HID keyboard. */
+    /** PH1: toggle system IME capture vs Openterface KM HID keyboard. */
     private static final int KEY_IME_TOGGLE = 0xF00A;
     private static final int KEY_TOP_SHORTCUT_DISPLAY_TOGGLE = 0xF00B;
     /** Local Fn latch for fixed top rows 2-3 only. */
