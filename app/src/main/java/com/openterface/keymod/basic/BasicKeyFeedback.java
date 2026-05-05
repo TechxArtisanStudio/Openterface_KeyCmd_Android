@@ -181,4 +181,9 @@ public final class BasicKeyFeedback {
         float y = event.getY();
         return x >= 0 && x < view.getWidth() && y >= 0 && y < view.getHeight();
     }
+
+    /** Whether the event is inside {@code view}'s bounds (local coordinates). */
+    public static boolean isPointerInsideView(View view, MotionEvent event) {
+        return isInsideView(view, event);
+    }
 }

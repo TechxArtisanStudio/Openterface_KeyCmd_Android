@@ -5,6 +5,15 @@
     <string name="settings_tab_voice">Voice</string>
     <string name="settings_tab_ai">AI</string>
     <string name="settings_tab_history">History</string>
+    <string name="settings_tab_keyboard_mouse">Keyboard &amp; Mouse</string>
+
+    <!-- Settings: Keyboard & Mouse (KeyboardMouseSettingsFragment) -->
+    <string name="settings_km_basic_section_title">KM Basic keyboard</string>
+    <string name="settings_km_basic_section_summary">Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.</string>
+    <string name="settings_km_basic_modifier_sticky">Sticky modifiers (default)</string>
+    <string name="settings_km_basic_modifier_sticky_desc">Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.</string>
+    <string name="settings_km_basic_modifier_chord">Momentary and long-press chord</string>
+    <string name="settings_km_basic_modifier_chord_desc">Short tap sends that modifier key once to the target. Long-press a modifier, keep your finger down, then tap other keys to chord (e.g. long-press Shift and tap 1 for !). Release the modifier to stop.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>

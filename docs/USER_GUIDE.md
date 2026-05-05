@@ -65,6 +65,15 @@ Enable **Auto-connect on startup** in the connection dialog to automatically rec
 
 ## ⌨️ Keyboard Mode
 
+### KM Basic modifier behavior (Settings)
+
+On **Settings → Keyboard & Mouse**, choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the **Keyboard & Mouse (Basic)** full keyboard:
+
+- **Sticky modifiers (default):** Tap a modifier once to latch it (highlighted keys show what is on). Tap again to turn off. Tap **Shift**, then a number or symbol key, for characters such as `!` and `@`.
+- **Momentary and long-press chord:** A short tap sends that modifier once to the target computer. **Long-press** a modifier and keep your finger on it, then tap other keys to chord (for example long-press **Shift** and tap `1` for `!`). Release the modifier key to stop chording.
+
+Changing this setting rebuilds the Basic keyboard; any latched modifiers are cleared.
+
 ### Layout
 
 The virtual keyboard provides a **full QWERTY layout** with these sections:
