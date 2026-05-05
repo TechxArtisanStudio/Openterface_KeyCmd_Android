@@ -1,9 +1,11 @@
 package com.openterface.fragment;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.TextView;
 
@@ -23,6 +25,11 @@ import java.util.Map;
 
 /**
  * KM Basic numpad grid (HID keypad usages).
+ *
+ * <p>{@link com.openterface.keymod.MainActivity} handles {@code configChanges} for orientation, so
+ * this fragment is not recreated on rotation. We inflate {@link R.layout#fragment_basic_numpad}
+ * into a host {@link FrameLayout} on first show and again in {@link #onConfigurationChanged} so
+ * {@code layout} vs {@code layout-land} variants apply correctly.
  */
 public class BasicNumPadFragment extends Fragment {
 
@@ -40,14 +47,35 @@ public class BasicNumPadFragment extends Fragment {
             @NonNull LayoutInflater inflater,
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_basic_numpad, container, false);
+        FrameLayout host = new FrameLayout(inflater.getContext());
+        host.setLayoutParams(
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        return host;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        GridLayout grid = view.findViewById(R.id.basic_numpad_grid);
-        wireGrid(view, grid);
+        inflateAndWireNumpad();
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (getView() != null) {
+            inflateAndWireNumpad();
+        }
+    }
+
+    /** Re-inflates numpad so {@code layout} / {@code layout-land} match the current orientation. */
+    private void inflateAndWireNumpad() {
+        ViewGroup host = (ViewGroup) requireView();
+        host.removeAllViews();
+        LayoutInflater.from(requireContext()).inflate(R.layout.fragment_basic_numpad, host, true);
+        GridLayout grid = host.findViewById(R.id.basic_numpad_grid);
+        wireGrid(host, grid);
     }
 
     private void wireGrid(View root, GridLayout grid) {
