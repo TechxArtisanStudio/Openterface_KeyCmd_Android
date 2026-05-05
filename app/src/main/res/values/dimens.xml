@@ -33,6 +33,9 @@
     <dimen name="fragment_padding">8dp</dimen>
     <dimen name="fragment_margin">8dp</dimen>
 
+    <!-- KM Basic: keep tab chrome clear of status bar / cutout (used with WindowInsets; floor when insets are 0). -->
+    <dimen name="km_basic_chrome_min_top_padding">12dp</dimen>
+
     <!-- Gamepad toolbar -->
     <dimen name="gamepad_toolbar_margin_top">8dp</dimen>
     <dimen name="gamepad_toolbar_padding_h">4dp</dimen>

@@ -13,6 +13,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -95,16 +98,45 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        View chromeInset = view.findViewById(R.id.km_basic_chrome_inset_container);
+        applyKmBasicChromeTopInset(chromeInset);
         wireChrome(view);
         showSubmode(currentSubmode);
+    }
+
+    /**
+     * Adds top padding only to the tab chrome strip (not the whole KM Basic host), using status-bar
+     * insets. Scoped this way so we do not shrink the keyboard area or affect other activities.
+     * Avoids merging displayCutout into top (can over-pad on some devices when combined with
+     * statusBars).
+     */
+    private void applyKmBasicChromeTopInset(@Nullable View chromeInsetContainer) {
+        if (chromeInsetContainer == null) {
+            return;
+        }
+        final int baseStart = ViewCompat.getPaddingStart(chromeInsetContainer);
+        final int baseTop = chromeInsetContainer.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(chromeInsetContainer);
+        final int baseBottom = chromeInsetContainer.getPaddingBottom();
+        final int minTop =
+                getResources().getDimensionPixelSize(R.dimen.km_basic_chrome_min_top_padding);
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+                chromeInsetContainer,
+                (v, windowInsets) -> {
+                    int statusTop =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+                    int topPad = baseTop + (statusTop > 0 ? statusTop : minTop);
+                    ViewCompat.setPaddingRelative(v, baseStart, topPad, baseEnd, baseBottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(chromeInsetContainer);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (getActivity() != null) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        }
+        applyOrientationForCurrentSubmode();
         MainActivity ma = mainActivity();
         if (ma != null) {
             ma.addOsChangeListener(basicOsListener);
@@ -130,6 +162,21 @@ public final class KeyboardMouseFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
+    }
+
+    /**
+     * Full-width PC keyboard is only practical in landscape; other KM Basic submodes follow device
+     * rotation (portrait and landscape).
+     */
+    private void applyOrientationForCurrentSubmode() {
+        if (getActivity() == null) {
+            return;
+        }
+        if (SUBMODE_KEYBOARD.equals(currentSubmode)) {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        } else {
+            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+        }
     }
 
     private void wireChrome(@NonNull View root) {
@@ -265,6 +312,7 @@ public final class KeyboardMouseFragment extends Fragment {
         getChildFragmentManager().executePendingTransactions();
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
+        applyOrientationForCurrentSubmode();
     }
 
     @NonNull

@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
+import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
@@ -17,7 +18,10 @@ import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 /**
  * Welcome & Guide screen (user-facing name): mode picker, remember choice, and tutorial link.
@@ -83,6 +87,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
         setContentView(R.layout.activity_launch_panel);
         // Keep status bar neutral on launch panel (avoid accent-colored top bar on some OEM skins).
         getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.background_light));
+        applyLaunchPanelRootWindowInsets();
 
         initializeViews();
         if (savedInstanceState != null) {
@@ -101,6 +106,36 @@ public class LaunchPanelActivity extends AppCompatActivity {
         if (rememberChoiceCheckBox != null) {
             outState.putBoolean(STATE_REMEMBER_CHECKED, rememberChoiceCheckBox.isChecked());
         }
+    }
+
+    /**
+     * Pads the Welcome root by system bar and display-cutout insets so content is not clipped by
+     * status / gesture / camera cutout, without relying on fixed {@code Space} heights that break
+     * balance across devices and orientations.
+     */
+    private void applyLaunchPanelRootWindowInsets() {
+        View root = findViewById(R.id.launch_panel_root);
+        if (root == null) {
+            return;
+        }
+        final int defStart = ViewCompat.getPaddingStart(root);
+        final int defTop = root.getPaddingTop();
+        final int defEnd = ViewCompat.getPaddingEnd(root);
+        final int defBottom = root.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    Insets sys = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    Insets cut = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                    int left = defStart + Math.max(sys.left, cut.left);
+                    int top = defTop + Math.max(sys.top, cut.top);
+                    int right = defEnd + Math.max(sys.right, cut.right);
+                    int bottom = defBottom + Math.max(sys.bottom, cut.bottom);
+                    ViewCompat.setPaddingRelative(v, left, top, right, bottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(root);
     }
 
     private void initializeViews() {

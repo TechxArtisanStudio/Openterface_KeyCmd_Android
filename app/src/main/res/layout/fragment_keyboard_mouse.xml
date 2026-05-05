@@ -7,7 +7,13 @@
     android:baselineAligned="false"
     android:background="@color/background_light">
 
-    <include layout="@layout/km_basic_host_chrome" />
+    <FrameLayout
+        android:id="@+id/km_basic_chrome_inset_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <include layout="@layout/km_basic_host_chrome" />
+    </FrameLayout>
 
     <FrameLayout
         android:id="@+id/kb_mouse_host"
