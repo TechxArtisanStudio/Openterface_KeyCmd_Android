@@ -97,7 +97,8 @@
     <style name="Widget.KeyMod.BasicNumpadCell" parent="@android:style/Widget.TextView">
         <item name="android:background">@drawable/key_background</item>
         <item name="android:textColor">@color/basic_key_label_color</item>
-        <item name="android:textSize">21sp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
         <item name="android:gravity">center</item>
         <item name="android:layout_margin">4dp</item>
     </style>

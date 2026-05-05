@@ -40,7 +40,6 @@
             android:gravity="center"
             android:maxLines="2"
             android:text="@string/kb_basic_numpad_prt_sc"
-            android:textSize="13sp"
             android:tag="PrtSc" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -54,7 +53,6 @@
             android:gravity="center"
             android:maxLines="2"
             android:text="@string/kb_basic_numpad_scr_lk"
-            android:textSize="13sp"
             android:tag="ScrLk" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -67,7 +65,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_pause"
-            android:textSize="14sp"
             android:tag="Pause" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -80,7 +77,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_home"
-            android:textSize="14sp"
             android:tag="Home" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -93,7 +89,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_end"
-            android:textSize="14sp"
             android:tag="End" />
 
         <!-- Row 1 -->
@@ -108,7 +103,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_pg_up"
-            android:textSize="14sp"
             android:tag="PgUp" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -121,7 +115,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_num_lock"
-            android:textSize="13sp"
             android:tag="NUM_LOCK" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -134,7 +127,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="/"
-            android:textSize="19sp"
             android:tag="NUMPAD_DIVIDE" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -147,7 +139,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="*"
-            android:textSize="19sp"
             android:tag="NUMPAD_MULTIPLY" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -160,7 +151,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="-"
-            android:textSize="19sp"
             android:tag="NUMPAD_SUBTRACT" />
 
         <!-- Row 2 -->
@@ -175,7 +165,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_pg_dn"
-            android:textSize="14sp"
             android:tag="PgDn" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -188,7 +177,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="7"
-            android:textSize="21sp"
             android:tag="NUMPAD_7" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -201,7 +189,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="8"
-            android:textSize="21sp"
             android:tag="NUMPAD_8" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -214,7 +201,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="9"
-            android:textSize="21sp"
             android:tag="NUMPAD_9" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -228,7 +214,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="+"
-            android:textSize="24sp"
             android:tag="NUMPAD_ADD"
             android:contentDescription="@string/kb_basic_numpad_plus_desc" />
 
@@ -244,7 +229,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_ins"
-            android:textSize="14sp"
             android:tag="Ins" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -257,7 +241,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="4"
-            android:textSize="21sp"
             android:tag="NUMPAD_4" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -270,7 +253,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="5"
-            android:textSize="21sp"
             android:tag="NUMPAD_5" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -283,7 +265,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="6"
-            android:textSize="21sp"
             android:tag="NUMPAD_6" />
 
         <!-- Row 4 -->
@@ -298,7 +279,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_del"
-            android:textSize="14sp"
             android:tag="Delete" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -311,7 +291,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="1"
-            android:textSize="21sp"
             android:tag="NUMPAD_1" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -324,7 +303,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="2"
-            android:textSize="21sp"
             android:tag="NUMPAD_2" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -337,7 +315,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="3"
-            android:textSize="21sp"
             android:tag="NUMPAD_3" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -351,7 +328,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_enter"
-            android:textSize="18sp"
             android:tag="NUMPAD_ENTER"
             android:contentDescription="@string/kb_basic_numpad_enter_desc" />
 
@@ -367,7 +343,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="@string/kb_basic_numpad_00"
-            android:textSize="19sp"
             android:tag="NUMPAD_00" />
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
@@ -381,7 +356,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="0"
-            android:textSize="21sp"
             android:tag="NUMPAD_0"
             android:contentDescription="@string/kb_basic_numpad_zero_desc" />
         <TextView
@@ -395,7 +369,6 @@
             android:layout_gravity="fill"
             android:gravity="center"
             android:text="."
-            android:textSize="21sp"
             android:tag="NUMPAD_DOT" />
     </GridLayout>
 </LinearLayout>

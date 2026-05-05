@@ -49,6 +49,7 @@
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>
+    <dimen name="basic_keyboard_arrow_icon_size">22dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
     <dimen name="compose_shortcut_strip_height">120dp</dimen>
     

@@ -1,17 +1,21 @@
 package com.openterface.keymod.basic;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
 import android.widget.TextView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+import androidx.core.content.ContextCompat;
 
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
@@ -145,12 +149,16 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
     }
 
+    private static void applyKeyCellMargins(LinearLayout.LayoutParams lp, Context context) {
+        int mh = context.getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_h);
+        int mv = context.getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_v);
+        lp.setMargins(mh, mv, mh, mv);
+    }
+
     private View inflateKey(LinearLayout row, String label, @Nullable String hint, float weight) {
         View v = LayoutInflater.from(getContext()).inflate(R.layout.basic_key_button, row, false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
-        int mh = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_h);
-        int mv = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_v);
-        lp.setMargins(mh, mv, mh, mv);
+        applyKeyCellMargins(lp, getContext());
         v.setLayoutParams(lp);
         TextView lab = v.findViewById(R.id.basic_key_label);
         TextView h = v.findViewById(R.id.basic_key_hint);
@@ -161,6 +169,22 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         } else {
             h.setVisibility(GONE);
         }
+        row.addView(v);
+        return v;
+    }
+
+    /**
+     * Arrow cluster keys use Material Symbols–style {@code keyboard_arrow_*_24} vectors (centered icon).
+     */
+    private View inflateArrowKey(LinearLayout row, @DrawableRes int iconRes, @StringRes int cdRes, float weight) {
+        View v = LayoutInflater.from(getContext()).inflate(R.layout.basic_key_arrow_button, row, false);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
+        applyKeyCellMargins(lp, getContext());
+        v.setLayoutParams(lp);
+        ImageView icon = v.findViewById(R.id.basic_key_arrow_icon);
+        icon.setImageResource(iconRes);
+        icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.text_primary)));
+        icon.setContentDescription(getContext().getString(cdRes));
         row.addView(v);
         return v;
     }
@@ -269,7 +293,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     /**
      * Arrow keys in a 2×3 cluster (same total horizontal weight as four single keys on Mac):
-     * {@code [ ][↑][ ]} / {@code [←][↓][→]}.
+     * spacer / up / spacer on the top row; left / down / right on the bottom row. Icons use
+     * Material Symbols–style {@code keyboard_arrow_*_24} drawables.
      */
     private View createArrowCluster(float horizontalWeight) {
         Context c = getContext();
@@ -278,9 +303,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         cluster.setBaselineAligned(false);
         LinearLayout.LayoutParams clusterLp =
                 new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, horizontalWeight);
-        int mh = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_h);
-        int mv = getResources().getDimensionPixelSize(R.dimen.basic_keyboard_key_margin_v);
-        clusterLp.setMargins(mh, mv, mh, mv);
+        applyKeyCellMargins(clusterLp, c);
         cluster.setLayoutParams(clusterLp);
 
         LinearLayout top = new LinearLayout(c);
@@ -288,7 +311,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         top.setBaselineAligned(false);
         top.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         addArrowRowSpacer(top, 1f);
-        View up = inflateKey(top, "\u2191", null, 1f);
+        View up = inflateArrowKey(top, R.drawable.keyboard_arrow_up_24, R.string.Up_arrow, 1f);
         wireTap(up, () -> tapKey(0x52, false, false));
         addArrowRowSpacer(top, 1f);
 
@@ -296,11 +319,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         bottom.setOrientation(HORIZONTAL);
         bottom.setBaselineAligned(false);
         bottom.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
-        View left = inflateKey(bottom, "\u2190", null, 1f);
+        View left = inflateArrowKey(bottom, R.drawable.keyboard_arrow_left_24, R.string.Left_arrow, 1f);
         wireTap(left, () -> tapKey(0x50, false, false));
-        View down = inflateKey(bottom, "\u2193", null, 1f);
+        View down = inflateArrowKey(bottom, R.drawable.keyboard_arrow_down_24, R.string.Down_arrow, 1f);
         wireTap(down, () -> tapKey(0x51, false, false));
-        View right = inflateKey(bottom, "\u2192", null, 1f);
+        View right = inflateArrowKey(bottom, R.drawable.keyboard_arrow_right_24, R.string.Right_arrow, 1f);
         wireTap(right, () -> tapKey(0x4F, false, false));
 
         cluster.addView(top);

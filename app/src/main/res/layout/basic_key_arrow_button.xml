@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:background="@drawable/key_background"
+    android:clickable="false"
+    android:focusable="false">
+
+    <ImageView
+        android:id="@+id/basic_key_arrow_icon"
+        android:layout_width="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_height="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        android:duplicateParentState="true"
+        android:scaleType="fitCenter" />
+</FrameLayout>
