@@ -14,6 +14,8 @@
     <string name="settings_km_basic_modifier_sticky_desc">Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.</string>
     <string name="settings_km_basic_modifier_chord">Momentary and long-press chord (default)</string>
     <string name="settings_km_basic_modifier_chord_desc">Short tap sends that modifier key once to the target. Long-press a modifier, keep your finger down, then tap other keys to chord (e.g. long-press Shift and tap 1 for !). Release the modifier to stop.</string>
+    <string name="settings_km_basic_chord_sustain_title">Hold modifier on target while chording</string>
+    <string name="settings_km_basic_chord_sustain_desc">Sends a real modifier-down to the connected device when you long-press, and keeps it applied after each chorded key until you lift your finger. Turn off only if your host misbehaves with sustained modifiers.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>

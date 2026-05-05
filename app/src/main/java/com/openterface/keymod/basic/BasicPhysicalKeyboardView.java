@@ -76,18 +76,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private View chordHeldView;
     private View chordLongPressAnchor;
     private int chordLongPressPendingMask;
+    /** Extended HID code for the modifier key being chord-held (for fallback send). */
+    private int chordActiveExtKey;
     private boolean chordLongPressActivated;
-    private final Runnable chordLongPressRunnable =
-            () -> {
-                if (chordLongPressAnchor == null) {
-                    return;
-                }
-                chordLongPressActivated = true;
-                chordHeldModMask = chordLongPressPendingMask;
-                chordHeldView = chordLongPressAnchor;
-                chordHeldView.setSelected(true);
-                keyPreview.dismiss();
-            };
+    /** True while finger is on modifier after long-press engaged (until UP/CANCEL). */
+    private boolean chordSustainFingerDown;
+    /** True after we sent a sustained modifier-down to the host (needs release on UP / clear). */
+    private boolean chordHostHoldSent;
+    private final Runnable chordLongPressRunnable = this::onChordLongPressThreshold;
 
     private final SharedPreferences.OnSharedPreferenceChangeListener kmBasicPrefListener =
             (sharedPreferences, key) -> {
@@ -177,6 +173,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     private void clearChordHoldState() {
         handler.removeCallbacks(chordLongPressRunnable);
+        if (chordHostHoldSent) {
+            MainActivity ma = mainActivity;
+            if (ma != null) {
+                KeyboardHidTransport.sendAllKeysReleased(
+                        port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+            }
+            chordHostHoldSent = false;
+        }
+        chordSustainFingerDown = false;
         chordLongPressAnchor = null;
         chordLongPressActivated = false;
         chordHeldModMask = 0;
@@ -184,6 +189,43 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             chordHeldView.setSelected(false);
             chordHeldView = null;
         }
+    }
+
+    private void onChordLongPressThreshold() {
+        if (chordLongPressAnchor == null) {
+            return;
+        }
+        chordLongPressActivated = true;
+        chordHeldModMask = chordLongPressPendingMask;
+        chordHeldView = chordLongPressAnchor;
+        chordHeldView.setSelected(true);
+        chordSustainFingerDown = true;
+        if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())) {
+            MainActivity ma = mainActivity;
+            if (ma != null) {
+                if (chordHeldModMask != 0) {
+                    KeyboardHidTransport.sendKeyReport(
+                            port,
+                            ma.getBluetoothService(),
+                            ma.isBluetoothServiceBound(),
+                            chordHeldModMask,
+                            0);
+                } else {
+                    KeyboardHidTransport.sendKeyReport(
+                            port,
+                            ma.getBluetoothService(),
+                            ma.isBluetoothServiceBound(),
+                            0,
+                            chordActiveExtKey);
+                }
+                chordHostHoldSent = true;
+            } else {
+                chordHostHoldSent = false;
+            }
+        } else {
+            chordHostHoldSent = false;
+        }
+        keyPreview.dismiss();
     }
 
     /** Sticky latched shift, or chord mode with Shift long-held. */
@@ -222,6 +264,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     v.setPressed(true);
                     BasicKeyFeedback.performKeyHaptic(v);
                     chordLongPressActivated = false;
+                    chordActiveExtKey = extendedKeyCode;
                     chordLongPressAnchor = v;
                     chordLongPressPendingMask = holdModMask;
                     handler.removeCallbacks(chordLongPressRunnable);
@@ -245,6 +288,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     v.setPressed(false);
                     keyPreview.dismiss();
                     if (chordLongPressActivated) {
+                        if (chordHostHoldSent) {
+                            MainActivity maUp = mainActivity;
+                            if (maUp != null) {
+                                KeyboardHidTransport.sendAllKeysReleased(
+                                        port,
+                                        maUp.getBluetoothService(),
+                                        maUp.isBluetoothServiceBound());
+                            }
+                            chordHostHoldSent = false;
+                        }
+                        chordSustainFingerDown = false;
                         chordHeldModMask = 0;
                         if (chordHeldView != null) {
                             chordHeldView.setSelected(false);
@@ -262,6 +316,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     v.setPressed(false);
                     keyPreview.dismiss();
                     if (chordLongPressActivated) {
+                        if (chordHostHoldSent) {
+                            MainActivity maCancel = mainActivity;
+                            if (maCancel != null) {
+                                KeyboardHidTransport.sendAllKeysReleased(
+                                        port,
+                                        maCancel.getBluetoothService(),
+                                        maCancel.isBluetoothServiceBound());
+                            }
+                            chordHostHoldSent = false;
+                        }
+                        chordSustainFingerDown = false;
                         chordHeldModMask = 0;
                         if (chordHeldView != null) {
                             chordHeldView.setSelected(false);
@@ -382,10 +447,32 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 mods,
                 hidCode);
         handler.postDelayed(
-                () -> KeyboardHidTransport.sendAllKeysReleased(
-                        port,
-                        ma.getBluetoothService(),
-                        ma.isBluetoothServiceBound()),
+                () -> {
+                    KeyboardHidTransport.sendAllKeysReleased(
+                            port,
+                            ma.getBluetoothService(),
+                            ma.isBluetoothServiceBound());
+                    if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())
+                            && chordSustainFingerDown
+                            && chordLongPressActivated) {
+                        if (chordHeldModMask != 0) {
+                            KeyboardHidTransport.sendKeyReport(
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound(),
+                                    chordHeldModMask,
+                                    0);
+                        } else if (chordActiveExtKey != 0) {
+                            KeyboardHidTransport.sendKeyReport(
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound(),
+                                    0,
+                                    chordActiveExtKey);
+                        }
+                        chordHostHoldSent = true;
+                    }
+                },
                 30);
     }
 

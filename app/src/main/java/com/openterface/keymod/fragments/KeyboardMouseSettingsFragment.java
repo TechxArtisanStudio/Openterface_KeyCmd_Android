@@ -10,6 +10,7 @@ import android.widget.RadioGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
@@ -23,6 +24,8 @@ public class KeyboardMouseSettingsFragment extends Fragment {
 
     private SharedPreferences prefs;
     private boolean loading;
+    private View sustainCard;
+    private SwitchCompat sustainSwitch;
 
     @Nullable
     @Override
@@ -32,6 +35,8 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         RadioButton sticky = view.findViewById(R.id.km_basic_modifier_sticky);
         RadioButton chord = view.findViewById(R.id.km_basic_modifier_chord);
+        sustainCard = view.findViewById(R.id.km_basic_chord_sustain_card);
+        sustainSwitch = view.findViewById(R.id.km_basic_chord_sustain_switch);
 
         loading = true;
         if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
@@ -40,10 +45,14 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         } else {
             sticky.setChecked(true);
         }
+        sustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
         loading = false;
 
-        ((RadioGroup) view.findViewById(R.id.km_basic_modifier_behavior_group))
-                .setOnCheckedChangeListener((group, checkedId) -> {
+        updateSustainCardVisibility(chord.isChecked());
+
+        RadioGroup behaviorGroup = view.findViewById(R.id.km_basic_modifier_behavior_group);
+        behaviorGroup.setOnCheckedChangeListener(
+                (group, checkedId) -> {
                     if (loading) {
                         return;
                     }
@@ -52,8 +61,19 @@ public class KeyboardMouseSettingsFragment extends Fragment {
                                     ? KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD
                                     : KmBasicKeyboardPrefs.VALUE_STICKY;
                     prefs.edit().putString(KmBasicKeyboardPrefs.PREF_KEY, value).apply();
+                    updateSustainCardVisibility(checkedId == R.id.km_basic_modifier_chord);
                 });
 
+        sustainSwitch.setOnCheckedChangeListener(
+                (buttonView, isChecked) ->
+                        prefs.edit().putBoolean(KmBasicKeyboardPrefs.PREF_CHORD_SUSTAIN_HID, isChecked).apply());
+
         return view;
+    }
+
+    private void updateSustainCardVisibility(boolean chordModeSelected) {
+        if (sustainCard != null) {
+            sustainCard.setVisibility(chordModeSelected ? View.VISIBLE : View.GONE);
+        }
     }
 }
