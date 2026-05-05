@@ -32,4 +32,15 @@
         android:duplicateParentState="true"
         android:textColor="@color/basic_key_hint_color"
         android:visibility="gone" />
+
+    <!-- Icon-only keys (e.g. KM Basic Windows row); hidden when using label+hint. -->
+    <ImageView
+        android:id="@+id/basic_key_icon"
+        android:layout_width="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_height="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        android:duplicateParentState="true"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
 </FrameLayout>

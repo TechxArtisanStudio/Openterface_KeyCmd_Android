@@ -20,6 +20,10 @@
     <string name="settings_km_basic_long_press_repeat_desc">After a short delay, sends many quick press-and-release cycles—similar to auto-repeat when holding a physical key for typing.</string>
     <string name="settings_km_basic_long_press_hold">Hold key down on the target</string>
     <string name="settings_km_basic_long_press_hold_desc">Sends one key-down when you press and releases when you lift your finger. Better for games or apps that expect a real held key instead of repeated taps.</string>
+    <!-- KM Basic full keyboard bottom row: accessibility for icon keys (Windows target) / Linux GUI label -->
+    <string name="km_basic_cd_windows_modifier">Windows key</string>
+    <string name="km_basic_cd_application_key">Application key</string>
+    <string name="km_basic_key_sup">Sup</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>

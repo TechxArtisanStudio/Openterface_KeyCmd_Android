@@ -621,18 +621,47 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private View inflateKey(LinearLayout row, String label, @Nullable String hint, float weight) {
+        return inflateKey(row, label, hint, weight, 0, 0);
+    }
+
+    /**
+     * @param iconContentDescRes used when {@code iconRes != 0} for accessibility; ignored when no
+     *     icon.
+     */
+    private View inflateKey(
+            LinearLayout row,
+            String label,
+            @Nullable String hint,
+            float weight,
+            @DrawableRes int iconRes,
+            @StringRes int iconContentDescRes) {
         View v = LayoutInflater.from(getContext()).inflate(R.layout.basic_key_button, row, false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
         applyKeyCellMargins(lp, getContext());
         v.setLayoutParams(lp);
         TextView lab = v.findViewById(R.id.basic_key_label);
         TextView h = v.findViewById(R.id.basic_key_hint);
-        lab.setText(label);
-        if (hint != null && !hint.isEmpty()) {
-            h.setText(hint);
-            h.setVisibility(VISIBLE);
-        } else {
+        ImageView icon = v.findViewById(R.id.basic_key_icon);
+        if (iconRes != 0) {
+            lab.setVisibility(GONE);
             h.setVisibility(GONE);
+            icon.setVisibility(VISIBLE);
+            icon.setImageResource(iconRes);
+            icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.text_primary)));
+            String cd = getContext().getString(iconContentDescRes);
+            icon.setContentDescription(cd);
+            v.setContentDescription(cd);
+        } else {
+            icon.setVisibility(GONE);
+            lab.setVisibility(VISIBLE);
+            lab.setText(label);
+            if (hint != null && !hint.isEmpty()) {
+                h.setText(hint);
+                h.setVisibility(VISIBLE);
+            } else {
+                h.setVisibility(GONE);
+            }
+            v.setContentDescription(null);
         }
         row.addView(v);
         return v;
@@ -898,20 +927,53 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     private void addWinBottomRow(LinearLayout row) {
-        String[] labels = {"Ctrl", "Win", "Alt", "Space", "Alt", "App", "Ctrl"};
+        MainActivity ma = mainActivity;
+        String os = ma != null ? ma.getTargetOs().toLowerCase(Locale.US) : "windows";
+        boolean isWindows = "windows".equals(os);
+        boolean isLinux = "linux".equals(os);
+        String guiLabel =
+                isLinux
+                        ? getContext().getString(R.string.km_basic_key_sup)
+                        : getContext().getString(R.string.Win);
+
+        String[] labels = {"Ctrl", guiLabel, "Alt", "Space", "Alt", "App", "Ctrl"};
         float[] w = {1f, 1f, 1f, 3f, 1f, 1f, 1f};
         View k0 = inflateKey(row, labels[0], null, w[0]);
         wireBottomModifier(
                 k0, "ctrl", HID_EXT_LCTRL, parseMod("Ctrl"), parseMod("Ctrl"), () -> labels[0]);
-        View k1 = inflateKey(row, labels[1], null, w[1]);
-        wireBottomModifier(k1, "win", HID_EXT_LGUI, parseMod("Win"), parseMod("Win"), () -> labels[1]);
+        View k1 =
+                isWindows
+                        ? inflateKey(
+                                row,
+                                "",
+                                null,
+                                w[1],
+                                R.drawable.ic_os_windows,
+                                R.string.km_basic_cd_windows_modifier)
+                        : inflateKey(row, labels[1], null, w[1]);
+        wireBottomModifier(
+                k1,
+                "win",
+                HID_EXT_LGUI,
+                parseMod("Win"),
+                parseMod("Win"),
+                () -> (isLinux ? getContext().getString(R.string.km_basic_key_sup) : getContext().getString(R.string.Win)));
         View k2 = inflateKey(row, labels[2], null, w[2]);
         wireBottomModifier(k2, "alt", HID_EXT_LALT, parseMod("Alt"), parseMod("Alt"), () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
         wireKeyedRepeatOrHold(k3, 0x2C, false, false, () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
         wireBottomModifier(k4, "alt", HID_EXT_RALT, parseMod("AltR"), parseMod("AltR"), () -> labels[4]);
-        View k5 = inflateKey(row, labels[5], null, w[5]);
+        View k5 =
+                isWindows
+                        ? inflateKey(
+                                row,
+                                "",
+                                null,
+                                w[5],
+                                R.drawable.ic_list_alt_24,
+                                R.string.km_basic_cd_application_key)
+                        : inflateKey(row, labels[5], null, w[5]);
         wireKeyedRepeatOrHold(k5, 0x65, false, false, () -> labels[5]);
         View k6 = inflateKey(row, labels[6], null, w[6]);
         wireBottomModifier(
