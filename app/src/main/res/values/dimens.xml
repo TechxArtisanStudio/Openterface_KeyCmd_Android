@@ -70,6 +70,8 @@
     <dimen name="basic_key_preview_gap">6dp</dimen>
     <dimen name="basic_key_preview_screen_margin">6dp</dimen>
     <dimen name="basic_key_preview_elevation">10dp</dimen>
+    <!-- F1..F12: preview shifts right at F1, left at F12 (finger clears); Esc unchanged. -->
+    <dimen name="basic_key_preview_f_row_max_shift">26dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
     <dimen name="compose_shortcut_strip_height">120dp</dimen>
     

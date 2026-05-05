@@ -75,6 +75,7 @@ public final class BasicKeyPreview {
         anchor.getWindowVisibleDisplayFrame(visible);
 
         int popupX = anchorLeft + (anchorW - pw) / 2;
+        popupX += readPreviewOffsetX(anchor);
         popupX = Math.max(visible.left + margin, Math.min(popupX, visible.right - pw - margin));
 
         int aboveY = anchorTop - ph - gap;
@@ -90,5 +91,14 @@ public final class BasicKeyPreview {
         }
 
         win.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY);
+    }
+
+    /** Horizontal px offset from key-centered position; F-row sets {@code R.id.basic_key_preview_offset_x} on the key. */
+    private static int readPreviewOffsetX(View anchor) {
+        Object tag = anchor.getTag(R.id.basic_key_preview_offset_x);
+        if (tag instanceof Integer) {
+            return (Integer) tag;
+        }
+        return 0;
     }
 }

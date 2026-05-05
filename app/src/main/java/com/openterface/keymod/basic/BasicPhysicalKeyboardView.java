@@ -23,6 +23,8 @@ import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.target.CH9329MSKBMap;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
 
@@ -48,6 +50,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private View shiftKeyLeft;
     @Nullable
     private View shiftKeyRight;
+    @Nullable
+    private View capsKeyView;
+
+    private final List<View> ctrlModifierKeys = new ArrayList<>(2);
+    private final List<View> altModifierKeys = new ArrayList<>(2);
+    private final List<View> winModifierKeys = new ArrayList<>(2);
 
     public BasicPhysicalKeyboardView(Context context) {
         super(context);
@@ -76,6 +84,10 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         keyPreview.dismiss();
         shiftKeyLeft = null;
         shiftKeyRight = null;
+        capsKeyView = null;
+        ctrlModifierKeys.clear();
+        altModifierKeys.clear();
+        winModifierKeys.clear();
         mainActivity = activity;
         port = usbPort;
         removeAllViews();
@@ -88,6 +100,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         addRowQwerty2();
         addRowQwerty3();
         addRowBottom();
+        refreshStickyModifierVisuals();
     }
 
     private int parseMod(String name) {
@@ -187,13 +200,58 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         }
     }
 
-    private void applyShiftKeyVisualState() {
+    private void refreshStickyModifierVisuals() {
         if (shiftKeyLeft != null) {
             shiftKeyLeft.setSelected(stickyShift);
         }
         if (shiftKeyRight != null) {
             shiftKeyRight.setSelected(stickyShift);
         }
+        setSelectedOnModifierKeys(ctrlModifierKeys, stickyCtrl);
+        setSelectedOnModifierKeys(altModifierKeys, stickyAlt);
+        setSelectedOnModifierKeys(winModifierKeys, stickyWin);
+        if (capsKeyView != null) {
+            capsKeyView.setSelected(capsLock);
+        }
+    }
+
+    private static void setSelectedOnModifierKeys(List<View> keys, boolean selected) {
+        for (int i = 0, n = keys.size(); i < n; i++) {
+            keys.get(i).setSelected(selected);
+        }
+    }
+
+    /** Same drawable/states as Shift: latched modifier uses {@code state_selected}. */
+    private void styleStickyModifierKeySurface(View v) {
+        v.setBackgroundResource(R.drawable.basic_shift_key_background);
+    }
+
+    private void registerStickyModifierKey(String which, View v) {
+        styleStickyModifierKeySurface(v);
+        switch (which) {
+            case "ctrl":
+                ctrlModifierKeys.add(v);
+                break;
+            case "alt":
+                altModifierKeys.add(v);
+                break;
+            case "win":
+                winModifierKeys.add(v);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void wireStickyModifierTap(View v, String which, Supplier<String> previewText) {
+        registerStickyModifierKey(which, v);
+        wireTap(
+                v,
+                () -> {
+                    tapModifierToggle(which);
+                    refreshStickyModifierVisuals();
+                },
+                previewText);
     }
 
     private static void applyKeyCellMargins(LinearLayout.LayoutParams lp, Context context) {
@@ -266,10 +324,18 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = new String[] {
                 "Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"
         };
+        int maxShiftPx =
+                getResources().getDimensionPixelSize(R.dimen.basic_key_preview_f_row_max_shift);
         for (int i = 0; i < labels.length; i++) {
             View k = inflateKey(row, labels[i], null, 1f);
             int code = codes[i];
             final String lab = labels[i];
+            // F1..F12: shift preview away from finger (right at F1 → left at F12); Esc stays centered.
+            if (i >= 1) {
+                float t = (i - 1) / 11f;
+                int offsetXp = (int) (maxShiftPx * (1f - 2f * t));
+                k.setTag(R.id.basic_key_preview_offset_x, offsetXp);
+            }
             wireRepeatableTap(k, () -> tapKey(code, false, false), () -> lab);
         }
     }
@@ -317,7 +383,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             View k = inflateKey(row, labels[idx], hints[idx], w[idx]);
             if (i == 0) {
-                wireTap(k, () -> tapModifierToggle("caps"), () -> "Caps");
+                styleStickyModifierKeySurface(k);
+                capsKeyView = k;
+                wireTap(
+                        k,
+                        () -> {
+                            tapModifierToggle("caps");
+                            refreshStickyModifierVisuals();
+                        },
+                        () -> "Caps");
             } else if (i == labels.length - 1) {
                 wireRepeatableTap(k, () -> tapKey(codes[idx], false, false), () -> "Enter");
             } else {
@@ -339,7 +413,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             View k = inflateKey(row, labels[idx], hints[idx], w[idx]);
             if (i == 0 || i == labels.length - 1) {
-                k.setBackgroundResource(R.drawable.basic_shift_key_background);
+                styleStickyModifierKeySurface(k);
                 if (i == 0) {
                     shiftKeyLeft = k;
                 } else {
@@ -349,7 +423,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         k,
                         () -> {
                             tapModifierToggle("shift");
-                            applyShiftKeyVisualState();
+                            refreshStickyModifierVisuals();
                         },
                         () -> "Shift");
             } else {
@@ -359,7 +433,6 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         () -> previewQwertyRowKey(labels[idx], hints[idx]));
             }
         }
-        applyShiftKeyVisualState();
     }
 
     private void addRowBottom() {
@@ -424,17 +497,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = {"Ctrl", "\u2325", "\u2318", "Space", "\u2318", "\u2325"};
         float[] w = {1f, 1f, 1f, 3f, 1f, 1f};
         View k0 = inflateKey(row, labels[0], null, w[0]);
-        wireTap(k0, () -> tapModifierToggle("ctrl"), () -> labels[0]);
+        wireStickyModifierTap(k0, "ctrl", () -> labels[0]);
         View k1 = inflateKey(row, labels[1], null, w[1]);
-        wireTap(k1, () -> tapModifierToggle("alt"), () -> labels[1]);
+        wireStickyModifierTap(k1, "alt", () -> labels[1]);
         View k2 = inflateKey(row, labels[2], null, w[2]);
-        wireTap(k2, () -> tapModifierToggle("win"), () -> labels[2]);
+        wireStickyModifierTap(k2, "win", () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
         wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
-        wireTap(k4, () -> tapModifierToggle("win"), () -> labels[4]);
+        wireStickyModifierTap(k4, "win", () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
-        wireTap(k5, () -> tapModifierToggle("alt"), () -> labels[5]);
+        wireStickyModifierTap(k5, "alt", () -> labels[5]);
         row.addView(createArrowCluster(4f));
     }
 
@@ -442,19 +515,19 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         String[] labels = {"Ctrl", "Win", "Alt", "Space", "Alt", "App", "Ctrl"};
         float[] w = {1f, 1f, 1f, 3f, 1f, 1f, 1f};
         View k0 = inflateKey(row, labels[0], null, w[0]);
-        wireTap(k0, () -> tapModifierToggle("ctrl"), () -> labels[0]);
+        wireStickyModifierTap(k0, "ctrl", () -> labels[0]);
         View k1 = inflateKey(row, labels[1], null, w[1]);
-        wireTap(k1, () -> tapModifierToggle("win"), () -> labels[1]);
+        wireStickyModifierTap(k1, "win", () -> labels[1]);
         View k2 = inflateKey(row, labels[2], null, w[2]);
-        wireTap(k2, () -> tapModifierToggle("alt"), () -> labels[2]);
+        wireStickyModifierTap(k2, "alt", () -> labels[2]);
         View k3 = inflateKey(row, labels[3], null, w[3]);
         wireRepeatableTap(k3, () -> tapKey(0x2C, false, false), () -> labels[3]);
         View k4 = inflateKey(row, labels[4], null, w[4]);
-        wireTap(k4, () -> tapModifierToggle("alt"), () -> labels[4]);
+        wireStickyModifierTap(k4, "alt", () -> labels[4]);
         View k5 = inflateKey(row, labels[5], null, w[5]);
         wireRepeatableTap(k5, () -> tapKey(0x65, false, false), () -> labels[5]);
         View k6 = inflateKey(row, labels[6], null, w[6]);
-        wireTap(k6, () -> tapModifierToggle("ctrl"), () -> labels[6]);
+        wireStickyModifierTap(k6, "ctrl", () -> labels[6]);
         row.addView(createArrowCluster(4f));
     }
 

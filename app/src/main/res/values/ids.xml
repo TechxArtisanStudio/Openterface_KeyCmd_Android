@@ -6,4 +6,6 @@
     <item name="tag_custom_keyboard_pending_alternates" type="id"/>
     <item name="tag_ime_text_forwarder" type="id"/>
     <item name="tag_shortcut_hub_row_flash_animator" type="id"/>
+    <!-- KM Basic key preview: horizontal px offset from center (see BasicPhysicalKeyboardView F-row). -->
+    <item name="basic_key_preview_offset_x" type="id"/>
 </resources>
