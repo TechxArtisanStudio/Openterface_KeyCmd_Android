@@ -1,21 +1,45 @@
 package com.openterface.keymod.gamepad;
 
+import androidx.annotation.Nullable;
+
 public final class GamepadLayoutPresetConstants {
 
     private GamepadLayoutPresetConstants() {}
 
     public static final String DOCUMENT_FORMAT = "openterface.gamepad.layout.v1";
     public static final int SCHEMA_VERSION_V1 = 1;
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION_V2 = 2;
+    public static final int SCHEMA_VERSION_V3 = 3;
+    /**
+     * Current preset schema: v3 fields plus optional {@code SHOULDER}/{@code TRIGGER} modules,
+     * {@code faceButtonTemplate}, {@code gyroEnabled}, stick/trigger metadata.
+     */
+    public static final int SCHEMA_VERSION = 4;
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
-    /** Left stick only: connected retro cross (WASD-style); same key fields as {@link #MODULE_TYPE_STICK_KEY}. */
-    public static final String MODULE_TYPE_WASD_CROSS = "WASD_CROSS";
+    /**
+     * Digital directional pad on {@code stick_left} only; same direction key fields as {@link #MODULE_TYPE_STICK_KEY}.
+     * Requires {@link GamepadLayoutPresetDocument.GamepadModule#dpadVariant}.
+     */
+    public static final String MODULE_TYPE_DPAD = "DPAD";
+    public static final String DPAD_VARIANT_CROSS = "cross";
+    public static final String DPAD_VARIANT_DISC = "disc";
+    public static final String DPAD_VARIANT_SPLIT = "split";
+    public static final String DPAD_VARIANT_FLOATING = "floating";
+    public static final String DPAD_VARIANT_CLICKY = "clicky";
+    public static final String DPAD_VARIANT_PIVOT = "pivot";
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
     /** Physical mouse buttons (HID mouse report), not keyboard keys. */
     public static final String MODULE_TYPE_MOUSE_BUTTON = "MOUSE_BUTTON";
+    /** Digital shoulder / bumper (e.g. L1/R1); uses {@code hidKey}. */
+    public static final String MODULE_TYPE_SHOULDER = "SHOULDER";
+    /**
+     * Trigger module: {@code hidKey} for digital edge; optional {@code triggerAnalog} and {@code triggerVariant}
+     * for UI copy / future analog simulation.
+     */
+    public static final String MODULE_TYPE_TRIGGER = "TRIGGER";
 
     /** Optional third stick: same STICK_KEY behavior as left stick, distinct module id. */
     public static final String STICK_KEY_EXTRA_ID = "stick_key_extra";
@@ -24,8 +48,15 @@ public final class GamepadLayoutPresetConstants {
     public static final String MOUSE_BTN_MIDDLE_ID = "mouse_btn_m";
     public static final String MOUSE_BTN_RIGHT_ID = "mouse_btn_r";
 
+    public static final String SHOULDER_L_ID = "shoulder_l";
+    public static final String SHOULDER_R_ID = "shoulder_r";
+    public static final String TRIGGER_L_ID = "trigger_l";
+    public static final String TRIGGER_R_ID = "trigger_r";
+
     public static final int MAX_STICK_MODULES = 3;
     public static final int MAX_MOUSE_BUTTON_MODULES = 3;
+    public static final int MAX_SHOULDER_MODULES = 2;
+    public static final int MAX_TRIGGER_MODULES = 2;
 
     public static final String DEFAULT_PRESET_ID = "preset_default";
 
@@ -37,4 +68,111 @@ public final class GamepadLayoutPresetConstants {
     public static final String BUILT_IN_TWO_BUTTON_PRESET_ID = "preset_two_buttons";
 
     public static final int MAX_BUTTON_MODULES = 20;
+
+    /** Default stick positions: PlayStation-style horizontal pair. */
+    public static final String STICK_LAYOUT_SYMMETRICAL = "symmetrical";
+    /** Xbox / Switch Pro–style offset sticks. */
+    public static final String STICK_LAYOUT_OFFSET = "offset";
+    /** Alias of {@link #STICK_LAYOUT_SYMMETRICAL} (parallel sticks). */
+    public static final String STICK_LAYOUT_PARALLEL = "parallel";
+
+    /** Optional hint for face button cluster geometry (templates). */
+    public static final String FACE_TEMPLATE_NINTENDO_DIAMOND = "nintendo_diamond";
+    public static final String FACE_TEMPLATE_XBOX_ABXY = "xbox_abxy";
+    public static final String FACE_TEMPLATE_PLAYSTATION_SYMBOLS = "playstation_symbols";
+
+    /** Thumb cap look (draw-only for most values). */
+    public static final String STICK_VISUAL_DEFAULT = "default";
+    public static final String STICK_VISUAL_CONCAVE = "concave";
+    public static final String STICK_VISUAL_CONVEX = "convex";
+    public static final String STICK_VISUAL_LOW_PROFILE = "low_profile";
+    public static final String STICK_VISUAL_C_STICK = "c_stick";
+    /** Cosmetic / educational label only. */
+    public static final String STICK_VISUAL_HALL_EFFECT = "hall_effect";
+
+    public static final String TRIGGER_VARIANT_DIGITAL = "digital";
+    public static final String TRIGGER_VARIANT_ANALOG = "analog";
+    public static final String TRIGGER_VARIANT_HAIR = "hair";
+    public static final String TRIGGER_VARIANT_ADAPTIVE = "adaptive";
+
+    public static boolean isAllowedDpadVariant(@Nullable String v) {
+        return DPAD_VARIANT_CROSS.equals(v)
+                || DPAD_VARIANT_DISC.equals(v)
+                || DPAD_VARIANT_SPLIT.equals(v)
+                || DPAD_VARIANT_FLOATING.equals(v)
+                || DPAD_VARIANT_CLICKY.equals(v)
+                || DPAD_VARIANT_PIVOT.equals(v);
+    }
+
+    public static boolean isAllowedFaceButtonTemplate(@Nullable String t) {
+        if (t == null || t.trim().isEmpty()) {
+            return true;
+        }
+        String x = t.trim();
+        return FACE_TEMPLATE_NINTENDO_DIAMOND.equals(x)
+                || FACE_TEMPLATE_XBOX_ABXY.equals(x)
+                || FACE_TEMPLATE_PLAYSTATION_SYMBOLS.equals(x);
+    }
+
+    public static boolean isAllowedStickVisualVariant(@Nullable String v) {
+        if (v == null || v.trim().isEmpty()) {
+            return true;
+        }
+        String x = v.trim().toLowerCase(java.util.Locale.ROOT);
+        return STICK_VISUAL_DEFAULT.equals(x)
+                || STICK_VISUAL_CONCAVE.equals(x)
+                || STICK_VISUAL_CONVEX.equals(x)
+                || STICK_VISUAL_LOW_PROFILE.equals(x)
+                || STICK_VISUAL_C_STICK.equals(x)
+                || STICK_VISUAL_HALL_EFFECT.equals(x);
+    }
+
+    public static boolean isAllowedTriggerVariant(@Nullable String v) {
+        if (v == null || v.trim().isEmpty()) {
+            return true;
+        }
+        String x = v.trim().toLowerCase(java.util.Locale.ROOT);
+        return TRIGGER_VARIANT_DIGITAL.equals(x)
+                || TRIGGER_VARIANT_ANALOG.equals(x)
+                || TRIGGER_VARIANT_HAIR.equals(x)
+                || TRIGGER_VARIANT_ADAPTIVE.equals(x);
+    }
+
+    /**
+     * Split D-pad only: gap between the inner corners of the four segments (dead zone in the middle),
+     * as a fraction of the pad radius ({@code half}). JSON {@code null} uses {@link #DPAD_SPLIT_GAP_RATIO_DEFAULT}.
+     */
+    public static final float DPAD_SPLIT_GAP_RATIO_MIN = 0.05f;
+    public static final float DPAD_SPLIT_GAP_RATIO_MAX = 0.38f;
+    public static final float DPAD_SPLIT_GAP_RATIO_DEFAULT = 0.14f;
+
+    public static float clampDpadSplitGapRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return DPAD_SPLIT_GAP_RATIO_DEFAULT;
+        }
+        return Math.max(DPAD_SPLIT_GAP_RATIO_MIN, Math.min(DPAD_SPLIT_GAP_RATIO_MAX, v));
+    }
+
+    /**
+     * Split D-pad only: distance from layout center to the <b>outer</b> edge of each segment, as a fraction of
+     * {@code half} (same basis as {@link #DPAD_SPLIT_GAP_RATIO_DEFAULT}). {@code 1.0} matches the classic layout
+     * (keys reach the module edge). Smaller values pull keys toward the center.
+     */
+    public static final float DPAD_SPLIT_OUTER_REACH_RATIO_MIN = 0.28f;
+    public static final float DPAD_SPLIT_OUTER_REACH_RATIO_MAX = 1.0f;
+    public static final float DPAD_SPLIT_OUTER_REACH_RATIO_DEFAULT = 1.0f;
+
+    public static float clampDpadSplitOuterReachRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return DPAD_SPLIT_OUTER_REACH_RATIO_DEFAULT;
+        }
+        return Math.max(DPAD_SPLIT_OUTER_REACH_RATIO_MIN,
+                Math.min(DPAD_SPLIT_OUTER_REACH_RATIO_MAX, v));
+    }
+
+    /** Minimum {@link #clampDpadSplitOuterReachRatio} allowed for a given (clamped) gap ratio so pads stay usable. */
+    public static float minOuterReachRatioForGapRatio(float gapRatioClamped) {
+        return Math.min(DPAD_SPLIT_OUTER_REACH_RATIO_MAX,
+                Math.max(DPAD_SPLIT_OUTER_REACH_RATIO_MIN, gapRatioClamped * 0.5f + 0.10f));
+    }
 }

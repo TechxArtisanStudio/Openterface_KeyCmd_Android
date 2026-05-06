@@ -64,7 +64,7 @@ public final class GamepadLayoutPresetApplier {
         List<GamepadLayoutPresetDocument.GamepadModule> modules = doc.modules;
         GamepadLayoutPresetDocument.GamepadModule stick = require(modules, "stick_left");
         if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
-                || GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(stick.type)) {
+                || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(stick.type)) {
             ed.putString(GamepadPreferenceKeys.STICK_MODE, "key");
             ed.putInt(GamepadPreferenceKeys.STICK_UP, stick.stickUpKey);
             ed.putInt(GamepadPreferenceKeys.STICK_LEFT, stick.stickLeftKey);

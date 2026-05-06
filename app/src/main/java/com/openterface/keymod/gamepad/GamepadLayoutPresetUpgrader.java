@@ -14,8 +14,46 @@ public final class GamepadLayoutPresetUpgrader {
         if (d.schemaVersion >= GamepadLayoutPresetConstants.SCHEMA_VERSION) {
             return;
         }
-        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V1) {
+        if (d.schemaVersion < GamepadLayoutPresetConstants.SCHEMA_VERSION_V2) {
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V2;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V2) {
+            migrateV2ToV3(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V3;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V3) {
+            migrateV3ToV4(d);
             d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
+        }
+    }
+
+    /**
+     * v2 → v3: {@code WASD_CROSS} → {@code DPAD} + {@code dpadVariant=cross}; default missing DPAD variants.
+     */
+    private static void migrateV2ToV3(GamepadLayoutPresetDocument d) {
+        if (d.modules == null) {
+            return;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : d.modules) {
+            if (m == null || m.type == null) {
+                continue;
+            }
+            if ("WASD_CROSS".equals(m.type)) {
+                m.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+                m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+            }
+            if (GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)
+                    && (m.dpadVariant == null || m.dpadVariant.trim().isEmpty())) {
+                m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+            }
+        }
+    }
+
+    /** v3 → v4: optional new fields; schema bump only. */
+    private static void migrateV3ToV4(GamepadLayoutPresetDocument d) {
+        if (d.layout != null && d.layout.faceButtonTemplate != null
+                && d.layout.faceButtonTemplate.trim().isEmpty()) {
+            d.layout.faceButtonTemplate = null;
         }
     }
 

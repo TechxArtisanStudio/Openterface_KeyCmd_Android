@@ -1,6 +1,6 @@
 # Openterface KM FAQ — Keyboard output and strip profiles
 
-Common questions about what Openterface KM can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold).
+Common questions about what Openterface KM can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold). A short **gamepad preset glossary** appears at the end.
 
 ---
 
@@ -92,6 +92,18 @@ Changing this option **rebuilds** the Basic keyboard layout so the new behavior 
 ## GamePad Mod: can I move the touchpad and use the stick (WASD) at the same time?
 
 **Yes.** Use **one finger on the touchpad** for the cursor and **another finger on the stick** (or face buttons). The layout treats those as separate pointers so mouse movement and stick or keys can run together.
+
+---
+
+## Gamepad preset glossary (quick)
+
+- **D-pad** — preset type **DPAD** (left slot only); variants include cross, **split** (four separate hit targets), disc, pivot, floating, clicky (extra haptic).
+- **Analog stick** — **STICK_MOUSE** or **STICK_KEY**; optional **stickVisualVariant** changes cap art (concave / convex / low-profile / C-stick); Hall-effect is label-only.
+- **Face buttons** — **BUTTON** modules; **faceButtonTemplate** can snap Nintendo, Xbox, or PlayStation-style clusters.
+- **Shoulders / triggers** — **SHOULDER** / **TRIGGER** modules with **hidKey**; **triggerVariant** is mainly documentation (`digital`, `analog`, `hair`, `adaptive`).
+- **Gyro** — **layout.gyroEnabled**: tilt drives small mouse deltas while the gamepad screen is active and connected.
+
+For full detail see **Gamepad Mode → Preset vocabulary** in [USER_GUIDE.md](USER_GUIDE.md).
 
 ---
 

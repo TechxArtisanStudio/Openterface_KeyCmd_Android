@@ -12,12 +12,24 @@
         android:padding="20dp">
 
         <TextView
+            android:id="@+id/stick_config_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Stick Configuration"
+            android:text="@string/gamepad_stick_config_title"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/stick_config_dpad_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_stick_config_dpad_hint"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:lineSpacingExtra="2dp"
+            android:visibility="gone"
             android:layout_marginBottom="16dp" />
 
         <!-- Mode Selection -->
@@ -53,13 +65,133 @@
                 android:buttonTint="@color/primary" />
 
             <RadioButton
-                android:id="@+id/stick_mode_wasd_cross"
+                android:id="@+id/stick_mode_dpad_cross"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_stick_mode_wasd_cross"
+                android:text="@string/gamepad_stick_mode_dpad_cross"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/primary" />
+
+            <RadioButton
+                android:id="@+id/stick_mode_dpad_split"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_stick_mode_dpad_split"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/primary" />
         </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/dpad_split_gap_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_split_gap_title"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_split_gap_summary"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_split_gap_tight"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginEnd="8dp" />
+
+                <SeekBar
+                    android:id="@+id/dpad_split_gap_seek"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="50" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_split_gap_wide"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/dpad_split_outer_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_split_outer_title"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_split_outer_summary"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_split_outer_near"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginEnd="8dp" />
+
+                <SeekBar
+                    android:id="@+id/dpad_split_outer_seek"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="100" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_split_outer_far"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- D-Pad Key Mapping Section -->
         <LinearLayout

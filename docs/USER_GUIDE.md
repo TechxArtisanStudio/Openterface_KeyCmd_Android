@@ -152,6 +152,21 @@ Virtual game controller with:
 
 > ⚠️ Gamepad HID protocol is under active development. Basic button support is available.
 
+### Preset vocabulary (schema v4)
+
+Shareable layouts use JSON with a **schema version** (currently **v4**). Useful terms:
+
+| Everyday term | In presets / code |
+|---------------|---------------------|
+| D-pad, directional pad | Module type **DPAD** on the left slot; **`dpadVariant`** selects cross, split segments, disc, pivot, floating look, or clicky haptics |
+| Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer); optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
+| Face / ABXY / symbol buttons | **BUTTON** modules; optional **`layout.faceButtonTemplate`** (`nintendo_diamond`, `xbox_abxy`, `playstation_symbols`) sets anchors and labels |
+| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents analog vs digital vs hair vs adaptive (adaptive is UI copy only here) |
+| Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
+| Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
+
+**Engineering synonyms (no extra modules):** hat switch (HID jargon for a D-pad–like switch), silicone dome / tact switch, gimbal, housing — these describe physical hardware, not separate on-screen modules.
+
 ---
 
 ## ⚡ Shortcuts Mode

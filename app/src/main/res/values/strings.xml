@@ -770,7 +770,8 @@ by TechxArtisan</string>
     <string name="gamepad_add_extra_button">Extra button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
     <string name="gamepad_add_arrow_stick">Arrow stick (extra)</string>
-    <string name="gamepad_add_wasd_cross_left">Retro cross — left WASD</string>
+    <!-- Left-thumb / stick_left slot only; shape (cross, split, …) is set in Configure control. -->
+    <string name="gamepad_add_dpad_cross_left">D-pad (left thumb area)</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">Re-add left mouse button (L)</string>
@@ -786,9 +787,24 @@ by TechxArtisan</string>
     <string name="gamepad_component_mouse_button">Mouse button</string>
     <string name="gamepad_component_arrow_stick">Arrow stick</string>
     <string name="gamepad_component_left_stick">Left stick</string>
+    <string name="gamepad_component_left_dpad">Left D-pad</string>
+    <string name="gamepad_menu_configure_stick">Configure control…</string>
+    <string name="gamepad_stick_config_title">Stick configuration</string>
+    <string name="gamepad_stick_config_title_left">Left control</string>
+    <string name="gamepad_stick_config_title_right">Right stick</string>
+    <string name="gamepad_stick_config_dpad_hint">For the left slot: pick D-pad (split segments) for four separate pads, or D-pad (cross) for one connected cross. With split selected, use Split spacing for the middle gap, and Distance to keys to move segments toward the center or the outer edge. Analog and key ring are also here. Extra styles (disc, pivot, floating, clicky) are supported in preset JSON.</string>
     <string name="gamepad_stick_mode_analog">Analog (mouse)</string>
     <string name="gamepad_stick_mode_key">Key mapping (virtual stick)</string>
-    <string name="gamepad_stick_mode_wasd_cross">Retro cross (connected WASD)</string>
+    <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>
+    <string name="gamepad_stick_mode_dpad_split">D-pad (split segments)</string>
+    <string name="gamepad_dpad_split_gap_title">Split spacing</string>
+    <string name="gamepad_dpad_split_gap_summary">How far the four pads sit from the center (wider = more space between segments).</string>
+    <string name="gamepad_dpad_split_gap_tight">Tight</string>
+    <string name="gamepad_dpad_split_gap_wide">Wide</string>
+    <string name="gamepad_dpad_split_outer_title">Distance to keys</string>
+    <string name="gamepad_dpad_split_outer_summary">How far each segment sits from the center toward the edge of the pad (independent of split spacing).</string>
+    <string name="gamepad_dpad_split_outer_near">Near center</string>
+    <string name="gamepad_dpad_split_outer_far">To edge</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>
