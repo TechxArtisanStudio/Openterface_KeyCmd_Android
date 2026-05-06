@@ -24,28 +24,6 @@ public final class GamepadLayoutDocEditor {
         return find(doc, GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID) != null;
     }
 
-    public static int countSticks(GamepadLayoutPresetDocument doc) {
-        int c = 0;
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            if (m != null && (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
-                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)
-                    || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type))) {
-                c++;
-            }
-        }
-        return c;
-    }
-
-    public static int countButtons(GamepadLayoutPresetDocument doc) {
-        int c = 0;
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
-                c++;
-            }
-        }
-        return c;
-    }
-
     public static void addStickRight(GamepadLayoutPresetDocument doc) {
         if (hasStickRight(doc)) {
             return;
@@ -64,10 +42,6 @@ public final class GamepadLayoutDocEditor {
         doc.modules.add(m);
     }
 
-    /**
-     * Adds a third {@link GamepadLayoutPresetConstants#MODULE_TYPE_STICK_KEY} module (arrow keys by default),
-     * only if fewer than {@link GamepadLayoutPresetConstants#MAX_STICK_MODULES} sticks exist and the slot is free.
-     */
     /**
      * Sets {@code stick_left} to {@link GamepadLayoutPresetConstants#MODULE_TYPE_DPAD} with
      * {@link GamepadLayoutPresetConstants#DPAD_VARIANT_CROSS}. Fills missing direction keys with default WASD HID usages.
@@ -96,24 +70,37 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
+    /**
+     * Adds {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} when missing; otherwise appends another
+     * {@code STICK_KEY} with id {@code stick_aux_1}, {@code stick_aux_2}, …
+     */
     public static void addStickKeyExtra(GamepadLayoutPresetDocument doc) {
         if (doc == null || doc.modules == null) {
             return;
         }
-        if (countSticks(doc) >= GamepadLayoutPresetConstants.MAX_STICK_MODULES) {
-            return;
-        }
-        if (hasStickKeyExtra(doc)) {
+        if (!hasStickKeyExtra(doc)) {
+            GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+            m.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
+            m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+            m.zIndex = nextZ(doc);
+            m.scale = 1.0f;
+            m.anchorX = 0.5f;
+            m.anchorY = 0.72f;
+            // HID arrow keys (same usages as d-pad arrows in GamepadView)
+            m.stickUpKey = 82;
+            m.stickLeftKey = 80;
+            m.stickDownKey = 81;
+            m.stickRightKey = 79;
+            doc.modules.add(m);
             return;
         }
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-        m.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
+        m.id = GamepadLayoutDocumentStore.nextStickAuxModuleId(doc);
         m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
         m.zIndex = nextZ(doc);
         m.scale = 1.0f;
         m.anchorX = 0.5f;
         m.anchorY = 0.72f;
-        // HID arrow keys (same usages as d-pad arrows in GamepadView)
         m.stickUpKey = 82;
         m.stickLeftKey = 80;
         m.stickDownKey = 81;
@@ -122,9 +109,6 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static void addButton(GamepadLayoutPresetDocument doc) {
-        if (countButtons(doc) >= GamepadLayoutPresetConstants.MAX_BUTTON_MODULES) {
-            return;
-        }
         String id = GamepadLayoutDocumentStore.nextButtonModuleId(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
         m.id = id;

@@ -14,9 +14,11 @@ import com.openterface.keymod.GamepadLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Loads/saves the active {@link GamepadLayoutPresetDocument} in default SharedPreferences.
@@ -161,6 +163,26 @@ public final class GamepadLayoutDocumentStore {
             }
         }
         return "button_" + (maxNum + 1);
+    }
+
+    /**
+     * Next unused id {@code stick_aux_1}, {@code stick_aux_2}, … for additional {@code STICK_KEY} modules
+     * after {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} is taken.
+     */
+    public static String nextStickAuxModuleId(GamepadLayoutPresetDocument doc) {
+        Set<String> taken = new HashSet<>();
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && m.id != null) {
+                taken.add(m.id);
+            }
+        }
+        for (int i = 1; i < 1_000_000; i++) {
+            String id = "stick_aux_" + i;
+            if (!taken.contains(id)) {
+                return id;
+            }
+        }
+        throw new IllegalStateException("No free stick_aux_* id");
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {

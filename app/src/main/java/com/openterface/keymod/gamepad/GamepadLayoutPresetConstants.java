@@ -18,8 +18,8 @@ public final class GamepadLayoutPresetConstants {
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
     /**
-     * Digital directional pad on {@code stick_left} only; same direction key fields as {@link #MODULE_TYPE_STICK_KEY}.
-     * Requires {@link GamepadLayoutPresetDocument.GamepadModule#dpadVariant}.
+     * Digital directional pad on any stick-shaped module id ({@link #isStickModuleId(String)}); same direction key
+     * fields as {@link #MODULE_TYPE_STICK_KEY}. Requires {@link GamepadLayoutPresetDocument.GamepadModule#dpadVariant}.
      */
     public static final String MODULE_TYPE_DPAD = "DPAD";
     public static final String DPAD_VARIANT_CROSS = "cross";
@@ -53,7 +53,6 @@ public final class GamepadLayoutPresetConstants {
     public static final String TRIGGER_L_ID = "trigger_l";
     public static final String TRIGGER_R_ID = "trigger_r";
 
-    public static final int MAX_STICK_MODULES = 3;
     public static final int MAX_MOUSE_BUTTON_MODULES = 3;
     public static final int MAX_SHOULDER_MODULES = 2;
     public static final int MAX_TRIGGER_MODULES = 2;
@@ -75,7 +74,13 @@ public final class GamepadLayoutPresetConstants {
                 || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId);
     }
 
-    public static final int MAX_BUTTON_MODULES = 20;
+    /**
+     * Stick-like module ids: {@code stick_} plus lowercase letters, digits, and underscores
+     * (e.g. {@code stick_left}, {@code stick_right}, {@code stick_key_extra}, {@code stick_aux_1}).
+     */
+    public static boolean isStickModuleId(@Nullable String id) {
+        return id != null && id.matches("stick_[a-z0-9_]+");
+    }
 
     /**
      * BUTTON only: corner radius of the face shape as a fraction of half-width (same as legacy circle when {@code 1}).

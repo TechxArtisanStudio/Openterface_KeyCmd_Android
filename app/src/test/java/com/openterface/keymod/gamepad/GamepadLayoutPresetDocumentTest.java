@@ -89,12 +89,31 @@ public class GamepadLayoutPresetDocumentTest {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void validateRejectsDpadOnRightStick() {
+    @Test
+    public void validateAcceptsDpadOnRightStick() {
         GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouseAndExtra();
-        GamepadLayoutPresetDocument.GamepadModule right = doc.modules.get(1);
+        GamepadLayoutPresetDocument.GamepadModule right = findModule(doc, "stick_right");
+        assertNotNull(right);
         right.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
         right.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateAcceptsStickOtherId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule extra = new GamepadLayoutPresetDocument.GamepadModule();
+        extra.id = "stick_other";
+        extra.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        extra.zIndex = 5;
+        extra.scale = 1f;
+        extra.anchorX = 0.5f;
+        extra.anchorY = 0.6f;
+        extra.stickUpKey = 82;
+        extra.stickLeftKey = 80;
+        extra.stickDownKey = 81;
+        extra.stickRightKey = 79;
+        doc.modules.add(extra);
         GamepadLayoutPresetDocument.validateOrThrow(doc);
     }
 
@@ -169,7 +188,7 @@ public class GamepadLayoutPresetDocumentTest {
     public void validateRejectsUnknownStickId() {
         GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouseAndExtra();
         GamepadLayoutPresetDocument.GamepadModule rogue = new GamepadLayoutPresetDocument.GamepadModule();
-        rogue.id = "stick_other";
+        rogue.id = "joystick_1";
         rogue.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
         rogue.zIndex = 99;
         rogue.scale = 1f;
@@ -184,7 +203,7 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void validateRejectsFourthStick() {
+    public void validateRejectsDuplicateStickModuleId() {
         GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouseAndExtra();
         GamepadLayoutPresetDocument.GamepadModule dup = new GamepadLayoutPresetDocument.GamepadModule();
         dup.id = "stick_left";
