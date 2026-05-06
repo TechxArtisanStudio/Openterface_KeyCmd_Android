@@ -128,6 +128,22 @@
         <item name="strokeWidth">1dp</item>
     </style>
 
+    <!-- Gamepad stick / button module configuration dialogs -->
+    <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Section" parent="TextAppearance.MaterialComponents.Subtitle2">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
     <!-- KM Basic IME compose: same surface tier as keys; theme text/hint for day/night + accent themes.
          Explicit parent avoids AAPT inferring non-existent Widget.KeyMod.BasicCompose / Widget.KeyMod. -->
     <style name="Widget.KeyMod.BasicComposeEditor" parent="@android:style/Widget.EditText">

@@ -830,6 +830,17 @@ by TechxArtisan</string>
     <string name="gamepad_button_corner_summary">Square uses sharp corners; round matches the classic circular face button.</string>
     <string name="gamepad_button_corner_square">Square</string>
     <string name="gamepad_button_corner_round">Round</string>
+    <string name="gamepad_button_config_title_placeholder">Button</string>
+    <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
+    <string name="gamepad_button_config_size">Button size</string>
+    <string name="gamepad_stick_config_section_mode">Mode</string>
+    <string name="gamepad_stick_config_size_label">Stick size</string>
+    <string name="gamepad_config_slider_small">Small</string>
+    <string name="gamepad_config_slider_large">Large</string>
+    <string name="gamepad_config_reset">Reset</string>
+    <string name="gamepad_config_done">Done</string>
+    <string name="gamepad_key_picker_title">Select key</string>
+    <string name="gamepad_stick_direction_keys_label">Direction keys (tap to change)</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>

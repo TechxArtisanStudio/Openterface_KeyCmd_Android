@@ -1,6 +1,6 @@
 package com.openterface.fragment;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -40,6 +40,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -53,6 +54,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
@@ -1529,7 +1531,7 @@ public class GamepadFragment extends Fragment {
 
     private void showStickConfigDialog() {
         loadStickModuleIntoEditorState(stickConfigModuleId);
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stick_config, null);
         builder.setView(dialogView);
 
@@ -1852,7 +1854,7 @@ public class GamepadFragment extends Fragment {
         final int defaultKey = "button_a".equals(moduleId) ? DEFAULT_BUTTON_A
                 : "button_b".equals(moduleId) ? DEFAULT_BUTTON_B : 40;
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_button_config, null);
         builder.setView(dialogView);
 
@@ -1865,7 +1867,7 @@ public class GamepadFragment extends Fragment {
         final int[] selectedKey = { currentKey };
         final int[] selectedModifiers = { currentModifiers };
 
-        final Button keyLabel = dialogView.findViewById(R.id.button_key_label);
+        final MaterialButton keyLabel = dialogView.findViewById(R.id.button_key_label);
         updateButtonLabel(keyLabel, currentKey, currentModifiers);
 
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
@@ -1905,52 +1907,16 @@ public class GamepadFragment extends Fragment {
             });
         }
 
-        LinearLayout modifierRow = new LinearLayout(requireContext());
-        modifierRow.setOrientation(LinearLayout.HORIZONTAL);
-        modifierRow.setGravity(android.view.Gravity.CENTER);
-        android.widget.CheckBox[] modifierChecks = new android.widget.CheckBox[MODIFIER_KEYS.length];
-        for (int i = 0; i < MODIFIER_KEYS.length; i++) {
-            android.widget.CheckBox cb = new android.widget.CheckBox(requireContext());
-            cb.setText(MODIFIER_KEYS[i][0]);
-            cb.setTextColor(0xFFFFFFFF);
-            cb.setButtonTintList(android.content.res.ColorStateList.valueOf(0xFF4CAF50));
-            int bit = modifierBit(Integer.parseInt(MODIFIER_KEYS[i][1]));
-            cb.setChecked((currentModifiers & bit) != 0);
-            cb.setOnCheckedChangeListener((v, isChecked) -> {
-                if (isChecked) {
-                    selectedModifiers[0] |= bit;
-                } else {
-                    selectedModifiers[0] &= ~bit;
-                }
-                updateButtonLabel(keyLabel, selectedKey[0], selectedModifiers[0]);
-            });
-            modifierChecks[i] = cb;
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(dp(4), 0, dp(4), dp(12));
-            modifierRow.addView(cb, lp);
-        }
-
-        LinearLayout parent = (LinearLayout) keyLabel.getParent();
-        parent.addView(modifierRow, parent.indexOfChild(keyLabel));
-
         keyLabel.setOnClickListener(v -> showKeyPickerWithModifiers(keyLabel, selectedKey[0], selectedModifiers[0], (key, mod) -> {
             selectedKey[0] = key;
             selectedModifiers[0] = mod;
             updateButtonLabel(keyLabel, key, mod);
-            for (int i = 0; i < MODIFIER_KEYS.length; i++) {
-                int bit = modifierBit(Integer.parseInt(MODIFIER_KEYS[i][1]));
-                modifierChecks[i].setChecked((mod & bit) != 0);
-            }
         }));
 
         dialogView.findViewById(R.id.btn_reset).setOnClickListener(v -> {
             selectedKey[0] = defaultKey;
             selectedModifiers[0] = 0;
             updateButtonLabel(keyLabel, defaultKey, 0);
-            for (android.widget.CheckBox cb : modifierChecks) {
-                cb.setChecked(false);
-            }
             buttonCornerNorm[0] = GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_DEFAULT;
             m.buttonCornerRadiusNorm = buttonCornerNorm[0];
             if (cornerSeek != null) {
@@ -2006,8 +1972,13 @@ public class GamepadFragment extends Fragment {
     }
 
     private void buildKeyPickerDialog(int initialKeyCode, int initialModifiers, final KeySelectedListener listener) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Select Key");
+        final int colorPrimary = ContextCompat.getColor(requireContext(), R.color.primary);
+        final int colorUnsel = ContextCompat.getColor(requireContext(), R.color.gray_600);
+        final int colorOnPrimary = ContextCompat.getColor(requireContext(), R.color.white);
+        final int colorTextSecondary = ContextCompat.getColor(requireContext(), R.color.text_secondary);
+        final int colorStrokeAccent = ContextCompat.getColor(requireContext(), R.color.theme_accent_orange_container);
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
 
         final int[] allKeyCodes = new int[KEY_OPTIONS.length];
         final Button[] allButtons = new Button[KEY_OPTIONS.length];
@@ -2015,10 +1986,23 @@ public class GamepadFragment extends Fragment {
         final int[] selectedModifiers = { initialModifiers };
         final String[] selectedLabel = { keyCodeToLabel(initialKeyCode) };
 
+        LinearLayout shell = new LinearLayout(requireContext());
+        shell.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        shell.setPadding(pad, pad, pad, pad);
+        shell.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.gamepad_config_dialog_surface));
+
+        TextView pickerTitle = new TextView(requireContext());
+        pickerTitle.setText(R.string.gamepad_key_picker_title);
+        pickerTitle.setTextAppearance(requireContext(), R.style.TextAppearance_KeyMod_GamepadConfig_Title);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        titleLp.bottomMargin = dp(10);
+        shell.addView(pickerTitle, titleLp);
+
         LinearLayout container = new LinearLayout(requireContext());
         container.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        container.setPadding(pad, pad, pad, dp(8));
+        container.setPadding(0, 0, 0, 0);
 
         // Modifier checkboxes at the top
         LinearLayout modifierRow = new LinearLayout(requireContext());
@@ -2029,8 +2013,8 @@ public class GamepadFragment extends Fragment {
         for (int i = 0; i < MODIFIER_KEYS.length; i++) {
             android.widget.CheckBox cb = new android.widget.CheckBox(requireContext());
             cb.setText(MODIFIER_KEYS[i][0]);
-            cb.setTextColor(0xFFAAAAAA);
-            cb.setButtonTintList(android.content.res.ColorStateList.valueOf(0xFF4CAF50));
+            cb.setTextColor(colorTextSecondary);
+            cb.setButtonTintList(android.content.res.ColorStateList.valueOf(colorPrimary));
             int bit = modifierBit(Integer.parseInt(MODIFIER_KEYS[i][1]));
             cb.setChecked((initialModifiers & bit) != 0);
             cb.setOnCheckedChangeListener((v, isChecked) -> {
@@ -2051,7 +2035,7 @@ public class GamepadFragment extends Fragment {
         // Number section: two rows (normal 1-9 and numpad Num1-Num9)
         TextView numLabel = new TextView(requireContext());
         numLabel.setText("Number");
-        numLabel.setTextColor(0xFFAAAAAA);
+        numLabel.setTextColor(colorTextSecondary);
         numLabel.setTextSize(12);
         LinearLayout.LayoutParams numLabelLp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -2094,9 +2078,9 @@ public class GamepadFragment extends Fragment {
             // Normal number button
             Button normalBtn = new Button(requireContext());
             normalBtn.setText(String.valueOf(num));
-            normalBtn.setTextColor(0xFFFFFFFF);
+            normalBtn.setTextColor(colorOnPrimary);
             android.graphics.drawable.GradientDrawable normalBg = new android.graphics.drawable.GradientDrawable();
-            normalBg.setColor((initialNumIdx == n && !initialIsNumpad) ? 0xFF4CAF50 : 0xFF444444);
+            normalBg.setColor((initialNumIdx == n && !initialIsNumpad) ? colorPrimary : colorUnsel);
             normalBg.setCornerRadius(dp(6));
             normalBtn.setBackground(normalBg);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(40), 1);
@@ -2109,12 +2093,12 @@ public class GamepadFragment extends Fragment {
             // Numpad number button
             Button numpadBtn = new Button(requireContext());
             numpadBtn.setText("Num" + (n + 1));
-            numpadBtn.setTextColor(0xFFFFFFFF);
+            numpadBtn.setTextColor(colorOnPrimary);
             android.graphics.drawable.GradientDrawable numpadBg = new android.graphics.drawable.GradientDrawable();
-            numpadBg.setColor((initialNumIdx == n && initialIsNumpad) ? 0xFF4CAF50 : 0xFF444444);
+            numpadBg.setColor((initialNumIdx == n && initialIsNumpad) ? colorPrimary : colorUnsel);
             numpadBg.setCornerRadius(dp(6));
             numpadBg.setStroke((initialNumIdx == n && initialIsNumpad) ? dp(2) : 0,
-                (initialNumIdx == n && initialIsNumpad) ? 0xFF81C784 : 0x00000000);
+                (initialNumIdx == n && initialIsNumpad) ? colorStrokeAccent : 0x00000000);
             numpadBtn.setBackground(numpadBg);
             LinearLayout.LayoutParams numpadLp = new LinearLayout.LayoutParams(0, dp(40), 1);
             numpadLp.setMargins(dp(4), 0, dp(2), 0);
@@ -2131,7 +2115,7 @@ public class GamepadFragment extends Fragment {
                 for (int k = 0; k < allButtons.length; k++) {
                     if (allButtons[k] == null) continue;
                     ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
-                        .setColor(0xFF444444);
+                        .setColor(colorUnsel);
                 }
             });
             numpadBtn.setOnClickListener(v -> {
@@ -2142,7 +2126,7 @@ public class GamepadFragment extends Fragment {
                 for (int k = 0; k < allButtons.length; k++) {
                     if (allButtons[k] == null) continue;
                     ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
-                        .setColor(0xFF444444);
+                        .setColor(colorUnsel);
                 }
             });
 
@@ -2166,12 +2150,12 @@ public class GamepadFragment extends Fragment {
                 final int idx = i + j;
                 Button btn = new Button(requireContext());
                 btn.setText(opt[0]);
-                btn.setTextColor(0xFFFFFFFF);
+                btn.setTextColor(colorOnPrimary);
                 android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                 final int keyCode = Integer.parseInt(opt[1]);
                 allKeyCodes[idx] = keyCode;
                 boolean isSelected = keyCode == initialKeyCode && selectedModifiers[0] == initialModifiers;
-                bg.setColor(isSelected ? 0xFF4CAF50 : 0xFF444444);
+                bg.setColor(isSelected ? colorPrimary : colorUnsel);
                 bg.setCornerRadius(dp(6));
                 btn.setBackground(bg);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1);
@@ -2187,19 +2171,19 @@ public class GamepadFragment extends Fragment {
                         if (allButtons[k] == null) continue;
                         android.graphics.drawable.GradientDrawable b =
                             (android.graphics.drawable.GradientDrawable) allButtons[k].getBackground();
-                        b.setColor(allKeyCodes[k] == keyCode ? 0xFF4CAF50 : 0xFF444444);
+                        b.setColor(allKeyCodes[k] == keyCode ? colorPrimary : colorUnsel);
                     }
                     // Deselect all number buttons
                     for (int k = 0; k < normalNumBtns.length; k++) {
                         android.graphics.drawable.GradientDrawable nb =
                             (android.graphics.drawable.GradientDrawable) normalNumBtns[k].getBackground();
-                        nb.setColor(0xFF444444);
+                        nb.setColor(colorUnsel);
                         nb.setStroke(0, 0x00000000);
                     }
                     for (int k = 0; k < numpadNumBtns.length; k++) {
                         android.graphics.drawable.GradientDrawable nb =
                             (android.graphics.drawable.GradientDrawable) numpadNumBtns[k].getBackground();
-                        nb.setColor(0xFF444444);
+                        nb.setColor(colorUnsel);
                         nb.setStroke(0, 0x00000000);
                     }
                 });
@@ -2209,11 +2193,13 @@ public class GamepadFragment extends Fragment {
         }
         container.addView(grid);
 
+        shell.addView(container);
+
         ScrollView scrollView = new ScrollView(requireContext());
-        scrollView.addView(container);
+        scrollView.addView(shell);
         builder.setView(scrollView);
 
-        builder.setPositiveButton("OK", (d, w) -> {
+        builder.setPositiveButton(android.R.string.ok, (d, w) -> {
             // Append modifier labels to the key label for display
             String displayLabel = selectedLabel[0];
             if (selectedModifiers[0] != 0) {
@@ -2232,19 +2218,22 @@ public class GamepadFragment extends Fragment {
     }
 
     private void updateNumButtons(Button[] normalBtns, Button[] numpadBtns, int num, boolean isNormal) {
+        int sel = ContextCompat.getColor(requireContext(), R.color.primary);
+        int unsel = ContextCompat.getColor(requireContext(), R.color.gray_600);
+        int stroke = ContextCompat.getColor(requireContext(), R.color.theme_accent_orange_container);
         for (int i = 0; i < normalBtns.length; i++) {
             boolean isSelected = (i + 1) == num && isNormal;
             android.graphics.drawable.GradientDrawable bg =
                 (android.graphics.drawable.GradientDrawable) normalBtns[i].getBackground();
-            bg.setColor(isSelected ? 0xFF4CAF50 : 0xFF444444);
+            bg.setColor(isSelected ? sel : unsel);
             bg.setStroke(0, 0x00000000);
         }
         for (int i = 0; i < numpadBtns.length; i++) {
             boolean isSelected = (i + 1) == num && !isNormal;
             android.graphics.drawable.GradientDrawable bg =
                 (android.graphics.drawable.GradientDrawable) numpadBtns[i].getBackground();
-            bg.setColor(isSelected ? 0xFF4CAF50 : 0xFF444444);
-            bg.setStroke(isSelected ? dp(2) : 0, isSelected ? 0xFF81C784 : 0x00000000);
+            bg.setColor(isSelected ? sel : unsel);
+            bg.setStroke(isSelected ? dp(2) : 0, isSelected ? stroke : 0x00000000);
         }
     }
 
