@@ -1,6 +1,6 @@
-# Openterface KM Android - User Guide
+# KeyMod Android - User Guide
 
-> **Openterface KM** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
+> **KeyMod** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### 2. Choose Your Connection
 
-Openterface KM supports two connection methods:
+KeyMod supports two connection methods:
 
 | Method | How | Notes |
 |--------|-----|-------|
@@ -259,7 +259,7 @@ Access via the **⚙️ gear icon** on the main screen. Four tabs:
 
 ## 📐 Orientation
 
-Openterface KM supports both portrait and landscape modes:
+KeyMod supports both portrait and landscape modes:
 - **Portrait** (2×3 grid) — thumb-friendly for phones
 - **Landscape** (3×2 grid) — desktop-style for tablets
 
@@ -275,7 +275,7 @@ The app auto-rotates when you turn your device.
 - For Bluetooth: ensure device is discoverable
 
 ### USB permission denied
-- Go to Android **Settings → Apps → Openterface KM → Permissions**
+- Go to Android **Settings → Apps → KeyMod → Permissions**
 - Enable USB access
 - Re-launch the app
 
@@ -302,10 +302,10 @@ cd Openterface_KeyMod_Android
 ./gradlew assembleDebug
 
 # APK output
-ls app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
+ls app/build/outputs/apk/debug/KeyMod-debug.apk
 
 # Install on device
-adb install -r app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
+adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
 ```
 
 ---
@@ -325,7 +325,7 @@ adb install -r app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
 
 ### HID Protocol (CH9329)
 
-Openterface KM communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
+KeyMod communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
 
 - **Keyboard**: 5-byte header + 8-byte data + 1-byte checksum (14 bytes total)
 - **Mouse**: 5-byte header + 5-byte data + 1-byte checksum (11 bytes total)
