@@ -26,6 +26,8 @@ import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.content.res.ColorStateList;
+import android.widget.ImageView;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
@@ -58,7 +60,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.ImageViewCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
@@ -2072,7 +2076,7 @@ public class GamepadFragment extends Fragment {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
 
         final int[] allKeyCodes = new int[KEY_OPTIONS.length];
-        final Button[] allButtons = new Button[KEY_OPTIONS.length];
+        final View[] allKeyCells = new View[KEY_OPTIONS.length];
         final int[] selectedKeyCode = { initialKeyCode };
         final int[] selectedModifiers = { initialModifiers };
         final String[] selectedLabel = { keyCodeToLabel(initialKeyCode) };
@@ -2207,11 +2211,9 @@ public class GamepadFragment extends Fragment {
                 updateNumButtons(normalNumBtns, numpadNumBtns, num, true, colorPrimary, colorUnsel, colorStrokeAccent,
                         colorOnPrimary, colorOnSurface);
                 // Deselect all character key buttons
-                for (int k = 0; k < allButtons.length; k++) {
-                    if (allButtons[k] == null) continue;
-                    ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
-                        .setColor(colorUnsel);
-                    allButtons[k].setTextColor(colorOnSurface);
+                for (int k = 0; k < allKeyCells.length; k++) {
+                    if (allKeyCells[k] == null) continue;
+                    applyKeyPickerCellStyle(allKeyCells[k], false, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
                 }
             });
             numpadBtn.setOnClickListener(v -> {
@@ -2220,11 +2222,9 @@ public class GamepadFragment extends Fragment {
                 updateNumButtons(normalNumBtns, numpadNumBtns, num, false, colorPrimary, colorUnsel, colorStrokeAccent,
                         colorOnPrimary, colorOnSurface);
                 // Deselect all character key buttons
-                for (int k = 0; k < allButtons.length; k++) {
-                    if (allButtons[k] == null) continue;
-                    ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
-                        .setColor(colorUnsel);
-                    allButtons[k].setTextColor(colorOnSurface);
+                for (int k = 0; k < allKeyCells.length; k++) {
+                    if (allKeyCells[k] == null) continue;
+                    applyKeyPickerCellStyle(allKeyCells[k], false, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
                 }
             });
 
@@ -2246,32 +2246,51 @@ public class GamepadFragment extends Fragment {
                 if (i + j >= KEY_OPTIONS.length) break;
                 String[] opt = KEY_OPTIONS[i + j];
                 final int idx = i + j;
-                Button btn = new Button(requireContext());
-                btn.setText(opt[0]);
                 final int keyCode = Integer.parseInt(opt[1]);
                 allKeyCodes[idx] = keyCode;
                 boolean isSelected = keyCode == initialKeyCode && selectedModifiers[0] == initialModifiers;
-                btn.setTextColor(isSelected ? colorOnPrimary : colorOnSurface);
                 android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                 bg.setColor(isSelected ? colorPrimary : colorUnsel);
                 bg.setCornerRadius(dp(6));
-                btn.setBackground(bg);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1);
                 int dp8 = dp(8);
                 params.setMargins(dp8, dp8, dp8, dp8);
-                btn.setLayoutParams(params);
-                allButtons[idx] = btn;
 
-                btn.setOnClickListener(v -> {
+                View cell;
+                int arrowRes = gamepadKeyPickerArrowIconRes(keyCode);
+                if (arrowRes != 0) {
+                    AppCompatImageButton ib = new AppCompatImageButton(requireContext());
+                    android.graphics.drawable.Drawable icon =
+                            ContextCompat.getDrawable(requireContext(), arrowRes);
+                    if (icon != null) {
+                        icon = icon.mutate();
+                    }
+                    ib.setImageDrawable(icon);
+                    ib.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+                    ib.setBackground(bg);
+                    ib.setPadding(dp(6), dp(6), dp(6), dp(6));
+                    ib.setContentDescription(gamepadKeyPickerArrowContentDescription(keyCode));
+                    ImageViewCompat.setImageTintList(ib,
+                            ColorStateList.valueOf(isSelected ? colorOnPrimary : colorOnSurface));
+                    ib.setLayoutParams(params);
+                    cell = ib;
+                } else {
+                    Button btn = new Button(requireContext());
+                    btn.setText(opt[0]);
+                    btn.setTextColor(isSelected ? colorOnPrimary : colorOnSurface);
+                    btn.setBackground(bg);
+                    btn.setLayoutParams(params);
+                    cell = btn;
+                }
+                allKeyCells[idx] = cell;
+
+                cell.setOnClickListener(v -> {
                     selectedKeyCode[0] = keyCode;
                     selectedLabel[0] = opt[0];
-                    for (int k = 0; k < allButtons.length; k++) {
-                        if (allButtons[k] == null) continue;
-                        android.graphics.drawable.GradientDrawable b =
-                            (android.graphics.drawable.GradientDrawable) allButtons[k].getBackground();
+                    for (int k = 0; k < allKeyCells.length; k++) {
+                        if (allKeyCells[k] == null) continue;
                         boolean sel = allKeyCodes[k] == keyCode;
-                        b.setColor(sel ? colorPrimary : colorUnsel);
-                        allButtons[k].setTextColor(sel ? colorOnPrimary : colorOnSurface);
+                        applyKeyPickerCellStyle(allKeyCells[k], sel, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
                     }
                     // Deselect all number buttons
                     for (int k = 0; k < normalNumBtns.length; k++) {
@@ -2289,7 +2308,7 @@ public class GamepadFragment extends Fragment {
                         numpadNumBtns[k].setTextColor(colorOnSurface);
                     }
                 });
-                row.addView(btn);
+                row.addView(cell);
             }
             grid.addView(row);
         }
@@ -2403,6 +2422,51 @@ public class GamepadFragment extends Fragment {
             bg.setColor(isSelected ? sel : unsel);
             bg.setStroke(isSelected ? dp(2) : 0, isSelected ? stroke : 0x00000000);
             numpadBtns[i].setTextColor(isSelected ? onSelText : onUnselText);
+        }
+    }
+
+    private static int gamepadKeyPickerArrowIconRes(int keyCode) {
+        switch (keyCode) {
+            case 82:
+                return R.drawable.keyboard_arrow_up_24;
+            case 81:
+                return R.drawable.keyboard_arrow_down_24;
+            case 80:
+                return R.drawable.keyboard_arrow_left_24;
+            case 79:
+                return R.drawable.keyboard_arrow_right_24;
+            default:
+                return 0;
+        }
+    }
+
+    private String gamepadKeyPickerArrowContentDescription(int keyCode) {
+        switch (keyCode) {
+            case 82:
+                return getString(R.string.gamepad_key_picker_cd_arrow_up);
+            case 81:
+                return getString(R.string.gamepad_key_picker_cd_arrow_down);
+            case 80:
+                return getString(R.string.gamepad_key_picker_cd_arrow_left);
+            case 79:
+                return getString(R.string.gamepad_key_picker_cd_arrow_right);
+            default:
+                return "";
+        }
+    }
+
+    private static void applyKeyPickerCellStyle(View v, boolean selected,
+            int colorPrimary, int colorUnsel, int colorOnPrimary, int colorOnSurface) {
+        android.graphics.drawable.Drawable d = v.getBackground();
+        if (d instanceof android.graphics.drawable.GradientDrawable) {
+            ((android.graphics.drawable.GradientDrawable) d)
+                    .setColor(selected ? colorPrimary : colorUnsel);
+        }
+        if (v instanceof Button) {
+            ((Button) v).setTextColor(selected ? colorOnPrimary : colorOnSurface);
+        } else if (v instanceof AppCompatImageButton) {
+            ImageViewCompat.setImageTintList((ImageView) v,
+                    ColorStateList.valueOf(selected ? colorOnPrimary : colorOnSurface));
         }
     }
 

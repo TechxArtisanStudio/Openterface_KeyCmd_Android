@@ -844,6 +844,10 @@ by TechxArtisan</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>
     <string name="gamepad_key_picker_save">Save</string>
+    <string name="gamepad_key_picker_cd_arrow_up">Up arrow key</string>
+    <string name="gamepad_key_picker_cd_arrow_down">Down arrow key</string>
+    <string name="gamepad_key_picker_cd_arrow_left">Left arrow key</string>
+    <string name="gamepad_key_picker_cd_arrow_right">Right arrow key</string>
     <string name="gamepad_stick_direction_keys_label">Direction keys (tap to change)</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
