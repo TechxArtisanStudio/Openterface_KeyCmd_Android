@@ -560,6 +560,13 @@ public class GamepadView extends View {
                         GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? lfL : null,
                         GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? rtL : null);
                 dynamicHitTestOrder.add(m.id);
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(m.type)) {
+                String upL = componentDisplayLabels.getOrDefault("stick_up", "W");
+                String dnL = componentDisplayLabels.getOrDefault("stick_down", "S");
+                String lfL = componentDisplayLabels.getOrDefault("stick_left", "A");
+                String rtL = componentDisplayLabels.getOrDefault("stick_right", "D");
+                drawRetroWasdCrossForModule(canvas, x, y, 180f, m.scale, m.id, upL, dnL, lfL, rtL);
+                dynamicHitTestOrder.add(m.id);
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
                 FaceStyle fs = faceStyleForModuleId(m.id);
                 String disp = resolveButtonDisplayLabel(m);
@@ -749,6 +756,98 @@ public class GamepadView extends View {
             l3Paint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.62f, l3Paint);
         }
+    }
+
+    /**
+     * Flat connected D-pad cross for {@link GamepadLayoutPresetConstants#MODULE_TYPE_WASD_CROSS}.
+     * Touch handling still uses the same circular clamp as sticks; there is no on-screen stick cap.
+     */
+    private void drawRetroWasdCrossForModule(Canvas canvas, float cx, float cy, float baseRadius, float moduleScale,
+                                             String boundsId, String upLabel, String downLabel,
+                                             String leftLabel, String rightLabel) {
+        float half = baseRadius * stickSizeScale * moduleScale;
+        float density = getResources().getDisplayMetrics().density;
+        RectF bounds = new RectF(cx - half, cy - half, cx + half, cy + half);
+        componentBounds.put(boundsId, bounds);
+
+        float barHalf = half * 0.36f;
+        float corner = Math.min(11f * density, barHalf * 0.55f);
+        RectF vert = new RectF(cx - barHalf, cy - half, cx + barHalf, cy + half);
+        RectF horiz = new RectF(cx - half, cy - barHalf, cx + half, cy + barHalf);
+
+        Path armV = new Path();
+        armV.addRoundRect(vert, corner, corner, Path.Direction.CW);
+        Path armH = new Path();
+        armH.addRoundRect(horiz, corner, corner, Path.Direction.CW);
+        Path cross = new Path();
+        cross.op(armV, armH, Path.Op.UNION);
+
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.Blur.NORMAL));
+        retroShadowPaint.setColor(0x48000000);
+        canvas.save();
+        canvas.translate(0, 2.5f * density);
+        canvas.drawPath(cross, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+        canvas.restore();
+
+        Shader bodyGrad = new LinearGradient(cx - half, cy - half, cx + half, cy + half,
+                Color.parseColor("#4A474E"), Color.parseColor("#2E2C32"), Shader.TileMode.CLAMP);
+        retroDpadFillPaint.setStyle(Paint.Style.FILL);
+        retroDpadFillPaint.setShader(bodyGrad);
+        canvas.drawPath(cross, retroDpadFillPaint);
+        retroDpadFillPaint.setShader(null);
+
+        int pressTint = applyAlphaInt(themeAccentPrimary, 115);
+        retroGlossPaint.setShader(null);
+        retroGlossPaint.setColor(pressTint);
+        if (activeStickDirections.contains(boundsId + "_up")) {
+            canvas.drawRect(cx - barHalf, cy - half, cx + barHalf, cy, retroGlossPaint);
+        }
+        if (activeStickDirections.contains(boundsId + "_down")) {
+            canvas.drawRect(cx - barHalf, cy, cx + barHalf, cy + half, retroGlossPaint);
+        }
+        if (activeStickDirections.contains(boundsId + "_left")) {
+            canvas.drawRect(cx - half, cy - barHalf, cx, cy + barHalf, retroGlossPaint);
+        }
+        if (activeStickDirections.contains(boundsId + "_right")) {
+            canvas.drawRect(cx, cy - barHalf, cx + half, cy + barHalf, retroGlossPaint);
+        }
+
+        retroRingPaint.setShader(null);
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.8f * density));
+        retroRingPaint.setColor(0xFF1C1A1F);
+        canvas.drawPath(cross, retroRingPaint);
+        retroRingPaint.setStrokeWidth(Math.max(1f, 1.1f * density));
+        retroRingPaint.setColor(0x66FFFFFF);
+        canvas.save();
+        canvas.translate(0, -0.6f * density);
+        canvas.drawPath(cross, retroRingPaint);
+        canvas.restore();
+
+        float hub = Math.min(barHalf * 0.95f, half * 0.22f);
+        retroBodyPaint.setShader(null);
+        retroBodyPaint.setColor(0xFF232128);
+        canvas.drawRoundRect(cx - hub, cy - hub, cx + hub, cy + hub, corner * 0.35f, corner * 0.35f, retroBodyPaint);
+
+        Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dirPaint.setTextAlign(Paint.Align.CENTER);
+        dirPaint.setFakeBoldText(true);
+        dirPaint.setTextSize(half * 0.30f);
+        dirPaint.setTypeface(retroLabelTypeface);
+        int activeLabel = Color.parseColor("#F5F2EA");
+        int dim = Color.parseColor("#8C8894");
+        float labelLift = half * 0.02f;
+        dirPaint.setShadowLayer(1.5f, 0f, 1f, 0x66000000);
+        dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? activeLabel : dim);
+        canvas.drawText(upLabel != null ? upLabel : "W", cx, cy - half * 0.58f + labelLift, dirPaint);
+        dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? activeLabel : dim);
+        canvas.drawText(downLabel != null ? downLabel : "S", cx, cy + half * 0.72f + labelLift, dirPaint);
+        dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? activeLabel : dim);
+        canvas.drawText(leftLabel != null ? leftLabel : "A", cx - half * 0.64f, cy + half * 0.14f + labelLift, dirPaint);
+        dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? activeLabel : dim);
+        canvas.drawText(rightLabel != null ? rightLabel : "D", cx + half * 0.64f, cy + half * 0.14f + labelLift, dirPaint);
+        dirPaint.clearShadowLayer();
     }
 
     private void drawXboxLayout(Canvas canvas) {

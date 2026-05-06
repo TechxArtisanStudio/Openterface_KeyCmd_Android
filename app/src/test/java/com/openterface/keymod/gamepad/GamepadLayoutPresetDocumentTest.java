@@ -18,6 +18,21 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsWasdCrossLeftStick() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).type = GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsWasdCrossOnRightStick() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouseAndExtra();
+        GamepadLayoutPresetDocument.GamepadModule right = doc.modules.get(1);
+        right.type = GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
     public void roundTripJson() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         String json = GamepadLayoutPresetDocument.toJsonPretty(doc);

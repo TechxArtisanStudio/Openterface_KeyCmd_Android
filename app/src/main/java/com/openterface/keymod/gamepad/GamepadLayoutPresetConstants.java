@@ -9,6 +9,8 @@ public final class GamepadLayoutPresetConstants {
     public static final int SCHEMA_VERSION = 2;
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
+    /** Left stick only: connected retro cross (WASD-style); same key fields as {@link #MODULE_TYPE_STICK_KEY}. */
+    public static final String MODULE_TYPE_WASD_CROSS = "WASD_CROSS";
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";

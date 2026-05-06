@@ -33,24 +33,30 @@
             android:id="@+id/stick_mode_group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:layout_marginBottom="20dp">
 
             <RadioButton
                 android:id="@+id/stick_mode_analog"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Analog (Mouse)"
+                android:text="@string/gamepad_stick_mode_analog"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/primary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_key"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Key Mapping"
+                android:text="@string/gamepad_stick_mode_key"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/primary" />
+
+            <RadioButton
+                android:id="@+id/stick_mode_wasd_cross"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_stick_mode_wasd_cross"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/primary" />
         </RadioGroup>

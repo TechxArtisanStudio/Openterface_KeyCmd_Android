@@ -770,6 +770,7 @@ by TechxArtisan</string>
     <string name="gamepad_add_extra_button">Extra button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
     <string name="gamepad_add_arrow_stick">Arrow stick (extra)</string>
+    <string name="gamepad_add_wasd_cross_left">Retro cross — left WASD</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">Re-add left mouse button (L)</string>
@@ -785,6 +786,9 @@ by TechxArtisan</string>
     <string name="gamepad_component_mouse_button">Mouse button</string>
     <string name="gamepad_component_arrow_stick">Arrow stick</string>
     <string name="gamepad_component_left_stick">Left stick</string>
+    <string name="gamepad_stick_mode_analog">Analog (mouse)</string>
+    <string name="gamepad_stick_mode_key">Key mapping (virtual stick)</string>
+    <string name="gamepad_stick_mode_wasd_cross">Retro cross (connected WASD)</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>

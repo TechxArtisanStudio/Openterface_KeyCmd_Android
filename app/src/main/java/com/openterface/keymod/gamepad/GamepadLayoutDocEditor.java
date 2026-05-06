@@ -28,7 +28,8 @@ public final class GamepadLayoutDocEditor {
         int c = 0;
         for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
             if (m != null && (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
-                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type))) {
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(m.type))) {
                 c++;
             }
         }
@@ -67,6 +68,33 @@ public final class GamepadLayoutDocEditor {
      * Adds a third {@link GamepadLayoutPresetConstants#MODULE_TYPE_STICK_KEY} module (arrow keys by default),
      * only if fewer than {@link GamepadLayoutPresetConstants#MAX_STICK_MODULES} sticks exist and the slot is free.
      */
+    /**
+     * Sets {@code stick_left} to {@link GamepadLayoutPresetConstants#MODULE_TYPE_WASD_CROSS}
+     * (retro connected cross). Fills missing direction keys with default WASD HID usages.
+     */
+    public static void setLeftStickWasdCross(GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return;
+        }
+        GamepadLayoutPresetDocument.GamepadModule left = find(doc, "stick_left");
+        if (left == null) {
+            return;
+        }
+        left.type = GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS;
+        if (left.stickUpKey == null) {
+            left.stickUpKey = 26;
+        }
+        if (left.stickLeftKey == null) {
+            left.stickLeftKey = 4;
+        }
+        if (left.stickDownKey == null) {
+            left.stickDownKey = 22;
+        }
+        if (left.stickRightKey == null) {
+            left.stickRightKey = 7;
+        }
+    }
+
     public static void addStickKeyExtra(GamepadLayoutPresetDocument doc) {
         if (doc == null || doc.modules == null) {
             return;

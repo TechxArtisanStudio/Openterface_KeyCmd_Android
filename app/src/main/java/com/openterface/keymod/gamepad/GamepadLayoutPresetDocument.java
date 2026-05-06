@@ -56,7 +56,7 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Float heightNorm;
         /** BUTTON: optional short label shown on the control. */
         @Nullable public String displayLabel;
-        /** STICK_*: HID key codes for virtual D-pad on analog ring. */
+        /** STICK_* / WASD_CROSS: HID key codes for virtual D-pad (stick or connected cross). */
         @Nullable public Integer stickUpKey;
         @Nullable public Integer stickLeftKey;
         @Nullable public Integer stickDownKey;
@@ -131,13 +131,15 @@ public class GamepadLayoutPresetDocument {
             throw new IllegalArgumentException("Missing module id=stick_left");
         }
         if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
-                && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(stick.type)) {
-            throw new IllegalArgumentException("stick_left must be STICK_KEY or STICK_MOUSE");
+                && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(stick.type)
+                && !GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(stick.type)) {
+            throw new IllegalArgumentException("stick_left must be STICK_KEY, WASD_CROSS, or STICK_MOUSE");
         }
-        if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)) {
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
+                || GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(stick.type)) {
             if (stick.stickUpKey == null || stick.stickLeftKey == null
                     || stick.stickDownKey == null || stick.stickRightKey == null) {
-                throw new IllegalArgumentException("STICK_KEY requires stickUp/Left/Down/Right key codes");
+                throw new IllegalArgumentException("STICK_KEY/WASD_CROSS requires stickUp/Left/Down/Right key codes");
             }
         }
         GamepadModule btnA = findModule(d.modules, "button_a");
@@ -169,11 +171,16 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("Module " + m.id + ": anchor must be in [0,1]");
             }
             if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
-                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)
+                    || GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(m.type)) {
                 stickCount++;
                 if (!"stick_left".equals(m.id) && !"stick_right".equals(m.id)
                         && !GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
                     throw new IllegalArgumentException("Unknown stick module id: " + m.id);
+                }
+                if (GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(m.type)
+                        && !"stick_left".equals(m.id)) {
+                    throw new IllegalArgumentException("WASD_CROSS is only valid for stick_left");
                 }
                 if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)
                         && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)) {
@@ -182,10 +189,11 @@ public class GamepadLayoutPresetDocument {
                 if ("stick_left".equals(m.id)) {
                     hasStickLeft = true;
                 }
-                if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                if ((GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                        || GamepadLayoutPresetConstants.MODULE_TYPE_WASD_CROSS.equals(m.type))
                         && (m.stickUpKey == null || m.stickLeftKey == null
                         || m.stickDownKey == null || m.stickRightKey == null)) {
-                    throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY needs four direction keys");
+                    throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY/WASD_CROSS needs four direction keys");
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
                 buttonCount++;
