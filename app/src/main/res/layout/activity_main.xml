@@ -48,124 +48,130 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- App Title (between menu and scrollable header end cluster) -->
-                <TextView
-                    android:id="@+id/app_title"
+                <!-- Title + mode slots consume flex space; Target OS + connection stay trailing (KM Pro). -->
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="@dimen/spacing_small"
-                    android:layout_marginEnd="@dimen/spacing_small"
-                    android:text="@string/app_name"
-                    android:textSize="@dimen/header_title_size"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:ellipsize="end"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <HorizontalScrollView
-                    android:id="@+id/header_end_scroll"
-                    android:layout_width="@dimen/header_end_scroll_width"
-                    android:layout_height="wrap_content"
-                    android:scrollbars="none"
-                    android:fillViewport="false"
-                    android:overScrollMode="ifContentScrolls">
+                    <TextView
+                        android:id="@+id/app_title"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/spacing_small"
+                        android:layout_marginEnd="@dimen/spacing_small"
+                        android:text="@string/app_name"
+                        android:textSize="@dimen/header_title_size"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
 
-                    <!-- Target OS + connection (right side) -->
-                    <LinearLayout
-                        android:id="@+id/header_end_cluster"
+                    <HorizontalScrollView
+                        android:id="@+id/header_end_scroll"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="end"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:scrollbars="none"
+                        android:fillViewport="false"
+                        android:overScrollMode="ifContentScrolls">
+
+                        <LinearLayout
+                            android:id="@+id/header_mode_slots_container"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="2dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <ImageButton
+                                android:id="@+id/header_mode_slot_1"
+                                android:layout_width="@dimen/header_icon_size"
+                                android:layout_height="@dimen/header_icon_size"
+                                android:src="@drawable/keyboard_mouse"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/top_mode_label_keyboard_mouse"
+                                android:padding="@dimen/button_icon_padding"
+                                android:tint="@color/text_secondary" />
+
+                            <ImageButton
+                                android:id="@+id/header_mode_slot_2"
+                                android:layout_width="@dimen/header_icon_size"
+                                android:layout_height="@dimen/header_icon_size"
+                                android:src="@drawable/ic_presentation"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/presentation_mode"
+                                android:padding="@dimen/button_icon_padding"
+                                android:tint="@color/text_secondary" />
+
+                            <ImageButton
+                                android:id="@+id/header_mode_slot_3"
+                                android:layout_width="@dimen/header_icon_size"
+                                android:layout_height="@dimen/header_icon_size"
+                                android:src="@drawable/macros"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/top_mode_label_macros"
+                                android:padding="@dimen/button_icon_padding"
+                                android:tint="@color/text_secondary" />
+                        </LinearLayout>
+                    </HorizontalScrollView>
+                </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/header_mode_slots_container"
+                    android:id="@+id/header_right_cluster"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="2dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
                     <ImageButton
-                        android:id="@+id/header_mode_slot_1"
+                        android:id="@+id/target_os_header_button"
                         android:layout_width="@dimen/header_icon_size"
                         android:layout_height="@dimen/header_icon_size"
-                        android:src="@drawable/keyboard_mouse"
+                        android:layout_marginEnd="2dp"
+                        android:src="@drawable/ic_os_macos"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/top_mode_label_keyboard_mouse"
+                        android:contentDescription="@string/target_os_header_cd"
                         android:padding="@dimen/button_icon_padding"
-                        android:tint="@color/text_secondary" />
+                        android:tint="@color/text_secondary"/>
 
-                    <ImageButton
-                        android:id="@+id/header_mode_slot_2"
-                        android:layout_width="@dimen/header_icon_size"
-                        android:layout_height="@dimen/header_icon_size"
-                        android:src="@drawable/ic_presentation"
+                    <LinearLayout
+                        android:id="@+id/connection_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/presentation_mode"
-                        android:padding="@dimen/button_icon_padding"
-                        android:tint="@color/text_secondary" />
+                        android:minWidth="@dimen/header_icon_size"
+                        android:minHeight="@dimen/header_icon_size"
+                        android:padding="4dp">
 
-                    <ImageButton
-                        android:id="@+id/header_mode_slot_3"
-                        android:layout_width="@dimen/header_icon_size"
-                        android:layout_height="@dimen/header_icon_size"
-                        android:src="@drawable/macros"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/top_mode_label_macros"
-                        android:padding="@dimen/button_icon_padding"
-                        android:tint="@color/text_secondary" />
-                </LinearLayout>
+                        <ImageView
+                            android:id="@+id/connection_button"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_bluetooth"
+                            android:tint="@color/text_secondary"
+                            android:contentDescription="@string/connection"/>
 
-                <ImageButton
-                    android:id="@+id/target_os_header_button"
-                    android:layout_width="@dimen/header_icon_size"
-                    android:layout_height="@dimen/header_icon_size"
-                    android:layout_marginEnd="2dp"
-                    android:src="@drawable/ic_os_macos"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/target_os_header_cd"
-                    android:padding="@dimen/button_icon_padding"
-                    android:tint="@color/text_secondary"/>
-
-                        <LinearLayout
-                            android:id="@+id/connection_container"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:gravity="center"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:minWidth="@dimen/header_icon_size"
-                            android:minHeight="@dimen/header_icon_size"
-                            android:padding="4dp">
-
-                    <ImageView
-                        android:id="@+id/connection_button"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:src="@drawable/ic_bluetooth"
-                        android:tint="@color/text_secondary"
-                        android:contentDescription="@string/connection"/>
-
-                    <ImageView
-                        android:id="@+id/signal_bars"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginTop="1dp"
-                        android:src="@drawable/signal_cellular_alt_off_24px"
-                        android:tint="@color/primary"
-                        android:visibility="gone"
-                        android:contentDescription="Signal strength"/>
-
-                        </LinearLayout>
+                        <ImageView
+                            android:id="@+id/signal_bars"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginTop="1dp"
+                            android:src="@drawable/signal_cellular_alt_off_24px"
+                            android:tint="@color/primary"
+                            android:visibility="gone"
+                            android:contentDescription="Signal strength"/>
 
                     </LinearLayout>
-                </HorizontalScrollView>
+
+                </LinearLayout>
             </LinearLayout>
 
         </RelativeLayout>

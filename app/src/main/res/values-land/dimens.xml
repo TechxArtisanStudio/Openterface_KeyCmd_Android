@@ -3,7 +3,6 @@
     <!-- Compact header in landscape to free vertical space for Keyboard & Mouse / split -->
     <dimen name="header_height">44dp</dimen>
     <dimen name="header_padding">4dp</dimen>
-    <dimen name="header_end_scroll_width">232dp</dimen>
     <dimen name="header_title_size">16sp</dimen>
     <dimen name="keyboard_outer_padding_top">4dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">6dp</dimen>

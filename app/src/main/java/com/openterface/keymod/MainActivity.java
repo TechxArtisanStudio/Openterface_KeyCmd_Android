@@ -40,9 +40,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
@@ -125,6 +127,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navPresentation;
     private ImageButton targetOsHeaderButton;
     private HorizontalScrollView headerEndScroll;
+    @Nullable
+    private View headerRightCluster;
     private final ImageButton[] headerModeSlotButtons = new ImageButton[3];
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
@@ -513,10 +517,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
         headerEndScroll = findViewById(R.id.header_end_scroll);
+        headerRightCluster = findViewById(R.id.header_right_cluster);
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
             updateTargetOsHeaderIcon();
         }
+        applyHeaderRightClusterNavInsets();
         applyHeaderEndScrollLayoutForOrientation();
         setupHeaderModeSlotButtons();
 
@@ -746,11 +752,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             return;
         }
         ViewGroup.LayoutParams lp = headerEndScroll.getLayoutParams();
-        if (lp == null) {
-            return;
+        if (lp != null && lp.width != ViewGroup.LayoutParams.WRAP_CONTENT) {
+            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            headerEndScroll.setLayoutParams(lp);
         }
-        lp.width = getResources().getDimensionPixelSize(R.dimen.header_end_scroll_width);
-        headerEndScroll.setLayoutParams(lp);
         headerEndScroll.post(() -> {
             boolean isLandscape =
                     getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -760,10 +765,45 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         });
     }
 
+    /**
+     * In landscape, 3-button nav can sit on the physical end; pad the Target OS + connection cluster
+     * so it stays clear of system bars (same max merge as {@link com.openterface.fragment.BasicComposeFragment}).
+     */
+    private void applyHeaderRightClusterNavInsets() {
+        if (headerRightCluster == null) {
+            return;
+        }
+        final int baseStart = ViewCompat.getPaddingStart(headerRightCluster);
+        final int baseTop = headerRightCluster.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(headerRightCluster);
+        final int baseBottom = headerRightCluster.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(
+                headerRightCluster,
+                (v, windowInsets) -> {
+                    boolean landscape =
+                            getResources().getConfiguration().orientation
+                                    == Configuration.ORIENTATION_LANDSCAPE;
+                    int endPad = baseEnd;
+                    if (landscape) {
+                        Insets bars =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                        Insets cut =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                        endPad = baseEnd + Math.max(bars.right, cut.right);
+                    }
+                    ViewCompat.setPaddingRelative(v, baseStart, baseTop, endPad, baseBottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(headerRightCluster);
+    }
+
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         applyHeaderEndScrollLayoutForOrientation();
+        if (headerRightCluster != null) {
+            ViewCompat.requestApplyInsets(headerRightCluster);
+        }
         applyAppChromeForHostFragment();
     }
 

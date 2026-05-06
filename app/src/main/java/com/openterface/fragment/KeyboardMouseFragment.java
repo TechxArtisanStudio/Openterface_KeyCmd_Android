@@ -119,6 +119,10 @@ public final class KeyboardMouseFragment extends Fragment {
      * insets. Scoped this way so we do not shrink the keyboard area or affect other activities.
      * Avoids merging displayCutout into top (can over-pad on some devices when combined with
      * statusBars).
+     *
+     * <p>In landscape, pads the trailing end with {@code max(navigationBars, displayCutout)} on the
+     * end axis so Target OS + connection stay clear of side system navigation (same merge as
+     * {@link com.openterface.fragment.BasicComposeFragment#setupBasicComposeImeInsets}).
      */
     private void applyKmBasicChromeTopInset(@Nullable View chromeInsetContainer) {
         if (chromeInsetContainer == null) {
@@ -137,7 +141,18 @@ public final class KeyboardMouseFragment extends Fragment {
                     int statusTop =
                             windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
                     int topPad = baseTop + (statusTop > 0 ? statusTop : minTop);
-                    ViewCompat.setPaddingRelative(v, baseStart, topPad, baseEnd, baseBottom);
+                    boolean landscape =
+                            v.getResources().getConfiguration().orientation
+                                    == Configuration.ORIENTATION_LANDSCAPE;
+                    int endPad = baseEnd;
+                    if (landscape) {
+                        Insets bars =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                        Insets cut =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                        endPad = baseEnd + Math.max(bars.right, cut.right);
+                    }
+                    ViewCompat.setPaddingRelative(v, baseStart, topPad, endPad, baseBottom);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(chromeInsetContainer);

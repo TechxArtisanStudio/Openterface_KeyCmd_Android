@@ -12,7 +12,6 @@
     <dimen name="header_padding">8dp</dimen>
     <dimen name="header_elevation">4dp</dimen>
     <dimen name="header_icon_size">40dp</dimen>
-    <dimen name="header_end_scroll_width">156dp</dimen>
     <dimen name="header_title_size">18sp</dimen>
     
     <!-- Buttons -->
