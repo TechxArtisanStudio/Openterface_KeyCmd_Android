@@ -565,4 +565,849 @@ por TechxArtisan</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Toque para hacer clic con el botón derecho.\nDeslícese con dos dedos para desplazarse.</string>
     <string name="touch_pad_compact_initial">TouchPad\nBotones: arriba (sin arrastrar)\nToque: inactivo</string>
     <string name="touch_pad_info_content_description">Mostrar ayuda con gestos del panel táctil</string>
+
+    <!-- Missing keys filled from English defaults (please localize) -->
+    <string name="bt_device_name_unknown"><![CDATA[Unknown
+    ]]></string>
+    <string name="bt_distance_cm"><![CDATA[%1$d cm
+    ]]></string>
+    <string name="bt_distance_m_many"><![CDATA[%1$.0f m
+    
+    
+    ]]></string>
+    <string name="bt_distance_m_one"><![CDATA[%1$.1f m
+    ]]></string>
+    <string name="bt_header_new_devices_scan"><![CDATA[New devices (scan)
+    ]]></string>
+    <string name="bt_header_paired_devices"><![CDATA[Paired devices
+    ]]></string>
+    <string name="bt_last_used_date"><![CDATA[Last used: %1$s
+    ]]></string>
+    <string name="bt_last_used_days_ago"><![CDATA[Last used: %1$d days ago
+    ]]></string>
+    <string name="bt_last_used_hours_ago"><![CDATA[Last used: %1$d hr ago
+    ]]></string>
+    <string name="bt_last_used_just_now"><![CDATA[Last used: just now
+    ]]></string>
+    <string name="bt_last_used_minutes_ago"><![CDATA[Last used: %1$d min ago
+    ]]></string>
+    <string name="bt_open_system_settings"><![CDATA[Open settings
+    ]]></string>
+    <string name="bt_paired_connected_rssi"><![CDATA[Connected · %1$d dBm
+    ]]></string>
+    <string name="bt_paired_in_range_rssi"><![CDATA[In range · %1$d dBm
+    ]]></string>
+    <string name="bt_paired_last_and_rssi"><![CDATA[%1$s · %2$d dBm
+    ]]></string>
+    <string name="bt_paired_saved_not_in_range"><![CDATA[Saved (not in range)
+    ]]></string>
+    <string name="bt_permission_dialog_message"><![CDATA[Bluetooth permissions are needed to scan and connect to devices. Please grant them in Settings.
+    ]]></string>
+    <string name="bt_permission_dialog_title"><![CDATA[Permissions required
+    ]]></string>
+    <string name="bt_scanned_device_detail"><![CDATA[%1$s · %2$d dBm · ~%3$s
+    ]]></string>
+    <string name="bt_signal_excellent"><![CDATA[Excellent
+    ]]></string>
+    <string name="bt_signal_good"><![CDATA[Good
+    ]]></string>
+    <string name="bt_signal_weak"><![CDATA[Weak
+    ]]></string>
+    <string name="bt_toast_already_connected_one_device"><![CDATA[Already connected to a device
+    ]]></string>
+    <string name="bt_toast_bt_disabled"><![CDATA[Bluetooth disabled
+    ]]></string>
+    <string name="bt_toast_bt_enabled"><![CDATA[Bluetooth enabled
+    ]]></string>
+    <string name="bt_toast_bt_not_enabled"><![CDATA[Bluetooth not enabled
+    ]]></string>
+    <string name="bt_toast_bt_not_supported"><![CDATA[Bluetooth not supported on this device
+    ]]></string>
+    <string name="bt_toast_bt_permissions_required"><![CDATA[Bluetooth permissions required
+    ]]></string>
+    <string name="bt_toast_connecting_to"><![CDATA[Connecting to %1$s…
+    ]]></string>
+    <string name="bt_toast_device_already_connected"><![CDATA[Device is already connected
+    ]]></string>
+    <string name="bt_toast_enable_bluetooth_first"><![CDATA[Please enable Bluetooth first
+    ]]></string>
+    <string name="bt_toast_only_saved_can_forget"><![CDATA[Only saved devices can be forgotten
+    ]]></string>
+    <string name="bt_toast_permissions_denied"><![CDATA[Bluetooth permissions denied
+    ]]></string>
+    <string name="bt_toast_scan_already_in_progress"><![CDATA[Scan already in progress
+    ]]></string>
+    <string name="bt_toast_scan_finished"><![CDATA[Scan finished
+    ]]></string>
+    <string name="bt_toast_scanning_started"><![CDATA[Scanning for Bluetooth devices…
+    ]]></string>
+    <string name="bt_toast_scanning_unavailable"><![CDATA[Bluetooth scanning not available
+    ]]></string>
+    <string name="bt_toast_select_supported_device"><![CDATA[Please select a supported Openterface device
+    ]]></string>
+    <string name="bt_toast_service_unavailable"><![CDATA[Bluetooth service not available
+    ]]></string>
+    <string name="compose_redo_clear"><![CDATA[Redo clear
+    ]]></string>
+    <string name="connection_medium_bluetooth"><![CDATA[Bluetooth
+    ]]></string>
+    <string name="connection_medium_usb"><![CDATA[USB
+    ]]></string>
+    <string name="connection_signal_strength_cd"><![CDATA[Signal strength
+    ]]></string>
+    <string name="connection_status_connected_line"><![CDATA[%1$s — %2$s
+    ]]></string>
+    <string name="connection_toast_bt_dialog_error"><![CDATA[Could not open Bluetooth: %1$s
+    ]]></string>
+    <string name="connection_toast_bt_permission_denied"><![CDATA[Bluetooth permission is required to scan and connect. You can grant it in system Settings.
+
+    ]]></string>
+    <string name="connection_toast_bt_permission_granted"><![CDATA[Bluetooth permission granted
+    ]]></string>
+    <string name="connection_toast_requesting_bt_permissions"><![CDATA[Requesting Bluetooth permissions…
+    ]]></string>
+    <string name="connection_toast_usb_connected"><![CDATA[USB connected
+    ]]></string>
+    <string name="connection_toast_usb_disconnected"><![CDATA[USB disconnected
+    ]]></string>
+    <string name="gamepad_add_arrow_stick"><![CDATA[Arrow stick
+    
+    ]]></string>
+    <string name="gamepad_add_dpad_cross_left"><![CDATA[D-Pad
+    ]]></string>
+    <string name="gamepad_add_extra_button"><![CDATA[Button
+    ]]></string>
+    <string name="gamepad_add_module_title"><![CDATA[Add module
+    ]]></string>
+    <string name="gamepad_add_touchpad"><![CDATA[Touchpad
+    ]]></string>
+    <string name="gamepad_arrow_stick_mouse_sensitivity_summary"><![CDATA[How fast the cursor moves for this stick. Used only when mapping is set to mouse direction (relative pointer).
+    ]]></string>
+    <string name="gamepad_arrow_stick_mouse_sensitivity_title"><![CDATA[Pointer sensitivity
+    ]]></string>
+    <string name="gamepad_bg_pick_gallery"><![CDATA[Pick from gallery
+    ]]></string>
+    <string name="gamepad_bg_remove"><![CDATA[Remove background
+    ]]></string>
+    <string name="gamepad_button_config_mapped_key"><![CDATA[Mapped key (tap to change)
+    ]]></string>
+    <string name="gamepad_button_config_size"><![CDATA[Button size
+    ]]></string>
+    <string name="gamepad_button_config_title_placeholder"><![CDATA[Button
+    ]]></string>
+    <string name="gamepad_button_corner_round"><![CDATA[Round
+    ]]></string>
+    <string name="gamepad_button_corner_square"><![CDATA[Square
+    ]]></string>
+    <string name="gamepad_button_corner_summary"><![CDATA[Square uses sharp corners; round matches the classic circular face button.
+    ]]></string>
+    <string name="gamepad_button_corner_title"><![CDATA[Button shape
+    ]]></string>
+    <string name="gamepad_component_arrow_stick"><![CDATA[Arrow stick
+    ]]></string>
+    <string name="gamepad_component_button_a"><![CDATA[Button A
+    ]]></string>
+    <string name="gamepad_component_button_b"><![CDATA[Button B
+    ]]></string>
+    <string name="gamepad_component_left_dpad"><![CDATA[Left D-pad
+    ]]></string>
+    <string name="gamepad_component_left_stick"><![CDATA[Left stick
+    ]]></string>
+    <string name="gamepad_component_mouse_button"><![CDATA[Mouse button
+    ]]></string>
+    <string name="gamepad_component_right_stick"><![CDATA[Right stick
+    ]]></string>
+    <string name="gamepad_component_touchpad"><![CDATA[Touchpad
+    ]]></string>
+    <string name="gamepad_config_done"><![CDATA[Done
+    ]]></string>
+    <string name="gamepad_config_reset"><![CDATA[Reset
+    ]]></string>
+    <string name="gamepad_config_slider_faster"><![CDATA[Faster
+    ]]></string>
+    <string name="gamepad_config_slider_large"><![CDATA[Large
+    ]]></string>
+    <string name="gamepad_config_slider_slower"><![CDATA[Slower
+    ]]></string>
+    <string name="gamepad_config_slider_small"><![CDATA[Small
+    ]]></string>
+    <string name="gamepad_customize_cd"><![CDATA[Customize layout
+    ]]></string>
+    <string name="gamepad_cycle_next_preset_cd"><![CDATA[Next layout
+    ]]></string>
+    <string name="gamepad_dpad_split_gap_summary"><![CDATA[Size of the empty diamond in the middle (wider = more space between the inner corners of the four pads). Pad thickness stays fixed.
+    ]]></string>
+    <string name="gamepad_dpad_split_gap_tight"><![CDATA[Tight
+    ]]></string>
+    <string name="gamepad_dpad_split_gap_title"><![CDATA[Split spacing
+    ]]></string>
+    <string name="gamepad_dpad_split_gap_wide"><![CDATA[Wide
+    ]]></string>
+    <string name="gamepad_dpad_split_outer_far"><![CDATA[To edge
+    ]]></string>
+    <string name="gamepad_dpad_split_outer_near"><![CDATA[Near center
+    ]]></string>
+    <string name="gamepad_dpad_split_outer_summary"><![CDATA[How far the outer corners of the pads sit toward the module edge (near center vs to edge). Pad size stays fixed. If you move this inward while split spacing is very wide, spacing may tighten automatically so the layout stays valid.
+    ]]></string>
+    <string name="gamepad_dpad_split_outer_title"><![CDATA[Distance to keys
+    ]]></string>
+    <string name="gamepad_edit_canvas_menu_title"><![CDATA[Background & modules
+    ]]></string>
+    <string name="gamepad_edit_done"><![CDATA[Done
+    ]]></string>
+    <string name="gamepad_edit_mode_off"><![CDATA[Edit
+    ]]></string>
+    <string name="gamepad_edit_mode_on"><![CDATA[Editing
+    ]]></string>
+    <string name="gamepad_edit_session_title"><![CDATA[Move modules
+    ]]></string>
+    <string name="gamepad_key_picker_title"><![CDATA[Select key
+    ]]></string>
+    <string name="gamepad_menu_add_touchpad_mouse_l"><![CDATA[Re-add left mouse button (L)
+    ]]></string>
+    <string name="gamepad_menu_add_touchpad_mouse_m"><![CDATA[Re-add middle mouse button (M)
+    ]]></string>
+    <string name="gamepad_menu_add_touchpad_mouse_r"><![CDATA[Re-add right mouse button (R)
+    ]]></string>
+    <string name="gamepad_menu_configure_stick"><![CDATA[Configure control…
+    ]]></string>
+    <string name="gamepad_menu_edit_keys"><![CDATA[Edit key mapping
+    ]]></string>
+    <string name="gamepad_menu_mouse_btn_module_size"><![CDATA[Button size…
+    ]]></string>
+    <string name="gamepad_menu_move"><![CDATA[Move
+    ]]></string>
+    <string name="gamepad_menu_remove"><![CDATA[Remove
+    ]]></string>
+    <string name="gamepad_menu_touchpad_mouse_btn_size"><![CDATA[All touchpad mouse buttons size…
+    ]]></string>
+    <string name="gamepad_menu_touchpad_resize"><![CDATA[Touchpad size…
+    ]]></string>
+    <string name="gamepad_mouse_btn_module_size_title"><![CDATA[Mouse button size
+    ]]></string>
+    <string name="gamepad_mouse_btn_size_pct"><![CDATA[Size (%)
+    ]]></string>
+    <string name="gamepad_preset_action_failed"><![CDATA[Could not complete action
+    ]]></string>
+    <string name="gamepad_preset_created"><![CDATA[Layout created
+    ]]></string>
+    <string name="gamepad_preset_cycled_toast"><![CDATA[Layout: %1$s
+    ]]></string>
+    <string name="gamepad_preset_delete_confirm"><![CDATA[Delete
+    ]]></string>
+    <string name="gamepad_preset_delete_message"><![CDATA[This removes the layout from this device. Built-in layouts cannot be deleted.
+    ]]></string>
+    <string name="gamepad_preset_delete_title"><![CDATA[Delete layout?
+    ]]></string>
+    <string name="gamepad_preset_duplicated"><![CDATA[Layout duplicated
+    ]]></string>
+    <string name="gamepad_preset_menu_delete"><![CDATA[Delete
+    ]]></string>
+    <string name="gamepad_preset_menu_duplicate"><![CDATA[Duplicate
+    ]]></string>
+    <string name="gamepad_preset_menu_rename"><![CDATA[Rename
+    ]]></string>
+    <string name="gamepad_preset_menu_share"><![CDATA[Share JSON…
+    ]]></string>
+    <string name="gamepad_preset_name_required"><![CDATA[Enter a name
+    ]]></string>
+    <string name="gamepad_preset_new_hint"><![CDATA[Layout name
+    ]]></string>
+    <string name="gamepad_preset_new_title"><![CDATA[New layout
+    ]]></string>
+    <string name="gamepad_preset_rename_hint"><![CDATA[Display name
+    ]]></string>
+    <string name="gamepad_preset_rename_title"><![CDATA[Rename layout
+    ]]></string>
+    <string name="gamepad_preset_row_menu_cd"><![CDATA[Layout options
+    ]]></string>
+    <string name="gamepad_presets_activated"><![CDATA[Preset applied
+    ]]></string>
+    <string name="gamepad_presets_add_module"><![CDATA[Add module…
+    ]]></string>
+    <string name="gamepad_presets_button"><![CDATA[Preset
+    ]]></string>
+    <string name="gamepad_presets_export_failed"><![CDATA[Export failed
+    ]]></string>
+    <string name="gamepad_presets_export_failed_detail"><![CDATA[Export failed: %1$s
+    ]]></string>
+    <string name="gamepad_presets_export_share"><![CDATA[Export current (share)…
+    ]]></string>
+    <string name="gamepad_presets_import"><![CDATA[Import from file…
+    ]]></string>
+    <string name="gamepad_presets_import_fail"><![CDATA[Could not import: %1$s
+    ]]></string>
+    <string name="gamepad_presets_import_ok"><![CDATA[Preset imported
+    ]]></string>
+    <string name="gamepad_presets_new_layout"><![CDATA[New layout from current
+    ]]></string>
+    <string name="gamepad_presets_share_chooser"><![CDATA[Share gamepad preset
+    ]]></string>
+    <string name="gamepad_presets_sheet_title"><![CDATA[Layouts
+    ]]></string>
+    <string name="gamepad_presets_title"><![CDATA[Gamepad presets
+    ]]></string>
+    <string name="gamepad_stick_config_dpad_hint"><![CDATA[Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Analog and key ring are here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).
+    ]]></string>
+    <string name="gamepad_stick_config_section_mode"><![CDATA[Mode
+    ]]></string>
+    <string name="gamepad_stick_config_size_label"><![CDATA[Stick size
+    ]]></string>
+    <string name="gamepad_stick_config_title"><![CDATA[Stick configuration
+    ]]></string>
+    <string name="gamepad_stick_config_title_left"><![CDATA[Left control
+    ]]></string>
+    <string name="gamepad_stick_config_title_right"><![CDATA[Right stick
+    ]]></string>
+    <string name="gamepad_stick_direction_keys_label"><![CDATA[Direction keys (tap to change)
+    ]]></string>
+    <string name="gamepad_stick_mode_analog"><![CDATA[Analog (mouse)
+    ]]></string>
+    <string name="gamepad_stick_mode_dpad_cross"><![CDATA[D-pad (cross, digital)
+    ]]></string>
+    <string name="gamepad_stick_mode_dpad_split"><![CDATA[D-pad (split segments)
+    ]]></string>
+    <string name="gamepad_stick_mode_key"><![CDATA[Key mapping (virtual stick)
+    ]]></string>
+    <string name="gamepad_touchpad_height_pct"><![CDATA[Height (%)
+    ]]></string>
+    <string name="gamepad_touchpad_mouse_btn_size_title"><![CDATA[Touchpad mouse buttons (all)
+    ]]></string>
+    <string name="gamepad_touchpad_size_title"><![CDATA[Touchpad size
+    ]]></string>
+    <string name="gamepad_touchpad_width_pct"><![CDATA[Width (%)
+    ]]></string>
+    <string name="kb_basic_compose_hint"><![CDATA[Type text, then Send (ASCII-friendly for HID).
+    ]]></string>
+    <string name="kb_basic_numpad_00"><![CDATA[00
+    ]]></string>
+    <string name="kb_basic_numpad_del"><![CDATA[Del
+    ]]></string>
+    <string name="kb_basic_numpad_end"><![CDATA[End
+    ]]></string>
+    <string name="kb_basic_numpad_enter"><![CDATA[Enter
+    ]]></string>
+    <string name="kb_basic_numpad_enter_desc"><![CDATA[Numpad enter
+    ]]></string>
+    <string name="kb_basic_numpad_esc"><![CDATA[ESC
+    ]]></string>
+    <string name="kb_basic_numpad_home"><![CDATA[Home
+    ]]></string>
+    <string name="kb_basic_numpad_ins"><![CDATA[Ins
+    ]]></string>
+    <string name="kb_basic_numpad_nav_bksp"><![CDATA[BKSP
+    ]]></string>
+    <string name="kb_basic_numpad_nav_del"><![CDATA[DEL
+    ]]></string>
+    <string name="kb_basic_numpad_nav_down"><![CDATA[Down
+    ]]></string>
+    <string name="kb_basic_numpad_nav_left"><![CDATA[Left
+    ]]></string>
+    <string name="kb_basic_numpad_nav_right"><![CDATA[Right
+    ]]></string>
+    <string name="kb_basic_numpad_nav_up"><![CDATA[UP
+    ]]></string>
+    <string name="kb_basic_numpad_num_lock"><![CDATA[Num Lk
+    ]]></string>
+    <string name="kb_basic_numpad_pause"><![CDATA[Pause
+    ]]></string>
+    <string name="kb_basic_numpad_pg_dn"><![CDATA[Pg Dn
+    ]]></string>
+    <string name="kb_basic_numpad_pg_up"><![CDATA[Pg Up
+    ]]></string>
+    <string name="kb_basic_numpad_plus_desc"><![CDATA[Numpad add
+    ]]></string>
+    <string name="kb_basic_numpad_prt_sc"><![CDATA[Prt Sc
+    ]]></string>
+    <string name="kb_basic_numpad_scr_lk"><![CDATA[Scr Lk
+    ]]></string>
+    <string name="kb_basic_numpad_tab"><![CDATA[TAB
+    ]]></string>
+    <string name="kb_basic_numpad_zero_desc"><![CDATA[Numpad 0
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_left_a11y"><![CDATA[Left mouse button
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_left_label"><![CDATA[L
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_middle_a11y"><![CDATA[Middle mouse button
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_middle_label"><![CDATA[M
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_right_a11y"><![CDATA[Right mouse button
+    ]]></string>
+    <string name="kb_basic_touchpad_mouse_right_label"><![CDATA[R
+    ]]></string>
+    <string name="kb_basic_touchpad_scroll_area_a11y"><![CDATA[Mouse wheel scroll strip
+    ]]></string>
+    <string name="kb_mouse_placeholder_compose"><![CDATA[Compose as its own screen is coming soon. Use Keyboard & Mouse Pro for compose and IME workflows.
+    ]]></string>
+    <string name="kb_mouse_placeholder_generic"><![CDATA[This section is not available yet.
+    ]]></string>
+    <string name="kb_mouse_placeholder_numpad"><![CDATA[Num pad as its own screen is coming soon. Use Keyboard & Mouse Pro for keypad and strips.
+    ]]></string>
+    <string name="kb_mouse_placeholder_touchpad"><![CDATA[Dedicated touchpad view is coming soon. Use Keyboard & Mouse Pro for touchpad and keyboard together.
+    ]]></string>
+    <string name="kb_mouse_sub_compose"><![CDATA[Compose
+    ]]></string>
+    <string name="kb_mouse_sub_ime"><![CDATA[IME
+    ]]></string>
+    <string name="kb_mouse_sub_keyboard"><![CDATA[Keyboard
+    ]]></string>
+    <string name="kb_mouse_sub_numpad"><![CDATA[NumPad
+    ]]></string>
+    <string name="kb_mouse_sub_touchpad"><![CDATA[Touchpad
+    ]]></string>
+    <string name="km_basic_cd_application_key"><![CDATA[Application key
+    ]]></string>
+    <string name="km_basic_cd_windows_modifier"><![CDATA[Windows key
+    ]]></string>
+    <string name="km_basic_hold_lock_popup_lock_cd"><![CDATA[Lock hold on target
+    
+    ]]></string>
+    <string name="km_basic_key_sup"><![CDATA[Sup
+
+    ]]></string>
+    <string name="nav_menu_close_cd"><![CDATA[Close menu
+    ]]></string>
+    <string name="profile_builtin_default_description"><![CDATA[Common shortcuts for any app
+    ]]></string>
+    <string name="profile_builtin_default_name"><![CDATA[Default
+    ]]></string>
+    <string name="rows23_hid_again"><![CDATA[Again
+    ]]></string>
+    <string name="rows23_hid_copy"><![CDATA[Copy (HID)
+    ]]></string>
+    <string name="rows23_hid_cut"><![CDATA[Cut (HID)
+    ]]></string>
+    <string name="rows23_hid_execute"><![CDATA[Execute
+    ]]></string>
+    <string name="rows23_hid_find"><![CDATA[Find
+    ]]></string>
+    <string name="rows23_hid_group_digits"><![CDATA[Digits
+    ]]></string>
+    <string name="rows23_hid_group_document"><![CDATA[Document and power
+    ]]></string>
+    <string name="rows23_hid_group_function"><![CDATA[Function keys
+    ]]></string>
+    <string name="rows23_hid_group_letters"><![CDATA[Letters
+    ]]></string>
+    <string name="rows23_hid_group_locks"><![CDATA[Lock keys
+    ]]></string>
+    <string name="rows23_hid_group_modifiers_as_key"><![CDATA[Modifier keys (as key)
+    ]]></string>
+    <string name="rows23_hid_group_navigation"><![CDATA[Navigation and editing
+    ]]></string>
+    <string name="rows23_hid_group_numpad"><![CDATA[Numpad
+    ]]></string>
+    <string name="rows23_hid_group_punctuation"><![CDATA[Punctuation
+    ]]></string>
+    <string name="rows23_hid_group_strip_special"><![CDATA[Strip / device
+    ]]></string>
+    <string name="rows23_hid_help"><![CDATA[Help
+    ]]></string>
+    <string name="rows23_hid_lalt"><![CDATA[Left Alt
+    ]]></string>
+    <string name="rows23_hid_lctrl"><![CDATA[Left Ctrl
+    ]]></string>
+    <string name="rows23_hid_lgui"><![CDATA[Left Win / Cmd
+    ]]></string>
+    <string name="rows23_hid_local_fn"><![CDATA[Local Fn
+    ]]></string>
+    <string name="rows23_hid_lshift"><![CDATA[Left Shift
+    ]]></string>
+    <string name="rows23_hid_menu"><![CDATA[Menu
+    ]]></string>
+    <string name="rows23_hid_numpad_0"><![CDATA[Num 0
+    ]]></string>
+    <string name="rows23_hid_numpad_digit"><![CDATA[Num %1$d
+    ]]></string>
+    <string name="rows23_hid_numpad_dot"><![CDATA[Num .
+    ]]></string>
+    <string name="rows23_hid_numpad_equals"><![CDATA[Num =
+    ]]></string>
+    <string name="rows23_hid_paste"><![CDATA[Paste (HID)
+    ]]></string>
+    <string name="rows23_hid_ph1"><![CDATA[PH1
+    ]]></string>
+    <string name="rows23_hid_power"><![CDATA[Power
+    ]]></string>
+    <string name="rows23_hid_ralt"><![CDATA[Right Alt
+    ]]></string>
+    <string name="rows23_hid_rctrl"><![CDATA[Right Ctrl
+    ]]></string>
+    <string name="rows23_hid_rgui"><![CDATA[Right Win / Cmd
+    ]]></string>
+    <string name="rows23_hid_rshift"><![CDATA[Right Shift
+    ]]></string>
+    <string name="rows23_hid_select"><![CDATA[Select
+    ]]></string>
+    <string name="rows23_hid_stop"><![CDATA[Stop
+    ]]></string>
+    <string name="rows23_hid_undo"><![CDATA[Undo (HID)
+    ]]></string>
+    <string name="rows23_hid_unknown"><![CDATA[HID %1$d
+
+    
+    ]]></string>
+    <string name="rows23_slot_editor_cancel"><![CDATA[Cancel
+    ]]></string>
+    <string name="rows23_slot_editor_error_key"><![CDATA[Pick a key event
+    ]]></string>
+    <string name="rows23_slot_editor_error_name"><![CDATA[Enter a name
+    ]]></string>
+    <string name="rows23_slot_editor_factory_cap"><![CDATA[Factory cap
+    ]]></string>
+    <string name="rows23_slot_editor_factory_event"><![CDATA[Factory event
+    ]]></string>
+    <string name="rows23_slot_editor_icon_section"><![CDATA[Icon
+    ]]></string>
+    <string name="rows23_slot_editor_icon_tab_emoji"><![CDATA[Emoji
+    ]]></string>
+    <string name="rows23_slot_editor_icon_tab_none"><![CDATA[None
+    ]]></string>
+    <string name="rows23_slot_editor_icon_tab_vector"><![CDATA[Icons
+    ]]></string>
+    <string name="rows23_slot_editor_key_preview"><![CDATA[Selected: %1$s
+    ]]></string>
+    <string name="rows23_slot_editor_key_section"><![CDATA[Key event
+    ]]></string>
+    <string name="rows23_slot_editor_name_hint"><![CDATA[Name
+    ]]></string>
+    <string name="rows23_slot_editor_persistence_label"><![CDATA[Persistence key
+    ]]></string>
+    <string name="rows23_slot_editor_reset"><![CDATA[Reset to factory
+    ]]></string>
+    <string name="rows23_slot_editor_reset_done"><![CDATA[Slot reset to factory
+    ]]></string>
+    <string name="rows23_slot_editor_save"><![CDATA[Save
+    ]]></string>
+    <string name="rows23_slot_editor_saved"><![CDATA[Saved: %1$s
+    ]]></string>
+    <string name="rows23_slot_editor_slot_summary"><![CDATA[Page %1$d · Row %2$d · Col %3$d · %4$s
+    ]]></string>
+    <string name="rows23_slot_editor_title_edit"><![CDATA[Edit key
+    ]]></string>
+    <string name="rows23_slot_editor_title_new"><![CDATA[New key
+    ]]></string>
+    <string name="settings_ai_api_key"><![CDATA[API key
+    ]]></string>
+    <string name="settings_ai_api_key_hint"><![CDATA[Enter API key
+    ]]></string>
+    <string name="settings_ai_api_key_hint_for_provider"><![CDATA[Enter API key for %1$s
+    ]]></string>
+    <string name="settings_ai_command_target_os"><![CDATA[Target OS
+    ]]></string>
+    <string name="settings_ai_enable_summary"><![CDATA[AI checks intent and processes voice input
+    ]]></string>
+    <string name="settings_ai_enable_title"><![CDATA[Enable AI features
+    ]]></string>
+    <string name="settings_ai_endpoint_hint"><![CDATA[https://api.openai.com/v1
+    ]]></string>
+    <string name="settings_ai_endpoint_url"><![CDATA[Endpoint URL
+    ]]></string>
+    <string name="settings_ai_model"><![CDATA[Model
+    ]]></string>
+    <string name="settings_ai_prompt_editable"><![CDATA[editable
+    ]]></string>
+    <string name="settings_ai_prompt_read_only"><![CDATA[read-only
+    ]]></string>
+    <string name="settings_ai_provider"><![CDATA[Provider
+    ]]></string>
+    <string name="settings_ai_role_label"><![CDATA[Role
+    ]]></string>
+    <string name="settings_ai_section_api"><![CDATA[AI API configuration
+    ]]></string>
+    <string name="settings_ai_section_features"><![CDATA[AI features
+    ]]></string>
+    <string name="settings_ai_section_mode"><![CDATA[AI mode
+    ]]></string>
+    <string name="settings_ai_supported_providers_body"><![CDATA[• OpenAI (GPT-4o, GPT-4, GPT-3.5)\n• Anthropic (Claude 3.5, Claude 3)\n• Google Gemini (2.0, 1.5)\n• Mistral AI\n• Groq (Llama 3, Mixtral)\n• Alibaba Qwen\n• DeepSeek\n• Custom (any OpenAI-compatible API)
+    ]]></string>
+    <string name="settings_ai_supported_providers_title"><![CDATA[ℹ️ Supported providers
+    ]]></string>
+    <string name="settings_ai_system_prompt"><![CDATA[System prompt
+    ]]></string>
+    <string name="settings_ai_system_prompt_hint"><![CDATA[System prompt will appear here…
+    ]]></string>
+    <string name="settings_ai_test_connection"><![CDATA[Test connection
+    ]]></string>
+    <string name="settings_ai_toast_enter_api_key"><![CDATA[Please enter API key
+    ]]></string>
+    <string name="settings_ai_toast_enter_endpoint"><![CDATA[Please enter endpoint URL
+    ]]></string>
+    <string name="settings_ai_toast_success"><![CDATA[AI connection successful!
+    ]]></string>
+    <string name="settings_ai_toast_testing"><![CDATA[Testing AI connection…
+    ]]></string>
+    <string name="settings_general_section_display"><![CDATA[Display
+    ]]></string>
+    <string name="settings_general_section_feedback"><![CDATA[Feedback
+    ]]></string>
+    <string name="settings_general_section_theme"><![CDATA[Theme
+    ]]></string>
+    <string name="settings_haptic_feedback"><![CDATA[Haptic feedback
+    ]]></string>
+    <string name="settings_history_cancel"><![CDATA[Cancel
+    ]]></string>
+    <string name="settings_history_clear_all"><![CDATA[Clear all
+    ]]></string>
+    <string name="settings_history_clear_confirm"><![CDATA[Clear
+    ]]></string>
+    <string name="settings_history_clear_message"><![CDATA[Are you sure you want to clear all history?
+    ]]></string>
+    <string name="settings_history_clear_title"><![CDATA[Clear history
+    ]]></string>
+    <string name="settings_history_cleared_toast"><![CDATA[History cleared
+    ]]></string>
+    <string name="settings_history_empty"><![CDATA[No history yet
+    ]]></string>
+    <string name="settings_history_no_retry_toast"><![CDATA[No history to retry
+    ]]></string>
+    <string name="settings_history_retry"><![CDATA[Retry
+    ]]></string>
+    <string name="settings_history_retry_soon_toast"><![CDATA[Retry is not available yet
+    ]]></string>
+    <string name="settings_history_selected_toast"><![CDATA[Selected: %1$s
+
+    
+    ]]></string>
+    <string name="settings_history_title"><![CDATA[AI request history
+    ]]></string>
+    <string name="settings_keep_screen_on"><![CDATA[Keep screen on
+    ]]></string>
+    <string name="settings_km_basic_chord_sustain_desc"><![CDATA[Sends a real modifier-down to the connected device when you long-press, and keeps it applied after each chorded key until you lift your finger. Turn off only if your host misbehaves with sustained modifiers.
+    ]]></string>
+    <string name="settings_km_basic_chord_sustain_title"><![CDATA[Hold modifier on target while chording
+    ]]></string>
+    <string name="settings_km_basic_long_press_hold"><![CDATA[Hold key down on the target
+    ]]></string>
+    <string name="settings_km_basic_long_press_hold_desc"><![CDATA[Sends one key-down when you press and releases when you lift your finger. Better for games or apps that expect a real held key instead of repeated taps.
+    ]]></string>
+    <string name="settings_km_basic_long_press_repeat"><![CDATA[Repeat key presses while held (default)
+    ]]></string>
+    <string name="settings_km_basic_long_press_repeat_desc"><![CDATA[After a short delay, sends many quick press-and-release cycles—similar to auto-repeat when holding a physical key for typing.
+    ]]></string>
+    <string name="settings_km_basic_modifier_chord"><![CDATA[Momentary and long-press chord (default)
+    ]]></string>
+    <string name="settings_km_basic_modifier_chord_desc"><![CDATA[Short tap sends that modifier key once to the target. Long-press a modifier, keep your finger down, then tap other keys to chord (e.g. long-press Shift and tap 1 for !). Release the modifier to stop.
+    ]]></string>
+    <string name="settings_km_basic_modifier_sticky"><![CDATA[Sticky modifiers
+    ]]></string>
+    <string name="settings_km_basic_modifier_sticky_desc"><![CDATA[Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.
+    ]]></string>
+    <string name="settings_km_basic_section_summary"><![CDATA[Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.
+    ]]></string>
+    <string name="settings_km_basic_section_title"><![CDATA[KM Basic keyboard
+    ]]></string>
+    <string name="settings_km_basic_strip_scroll_sensitivity"><![CDATA[Vertical scroll strip sensitivity
+    ]]></string>
+    <string name="settings_km_basic_strip_scroll_sensitivity_desc"><![CDATA[How fast content scrolls when you drag the strip beside the touchpad. Independent from General → touchpad two-finger scroll sensitivity.
+    ]]></string>
+    <string name="settings_km_basic_touchpad_section_summary"><![CDATA[Touchpad sub-mode in Keyboard & Mouse (Basic): the vertical strip at the right edge for page scroll.
+    ]]></string>
+    <string name="settings_km_basic_touchpad_section_title"><![CDATA[KM Basic touchpad
+    ]]></string>
+    <string name="settings_lock_orientation_landscape"><![CDATA[Lock orientation (landscape)
+    ]]></string>
+    <string name="settings_speed_fast"><![CDATA[Fast
+    ]]></string>
+    <string name="settings_speed_slow"><![CDATA[Slow
+    ]]></string>
+    <string name="settings_tab_keyboard_mouse"><![CDATA[Keyboard & Mouse
+
+    
+    ]]></string>
+    <string name="settings_theme_color_family"><![CDATA[Color family
+    ]]></string>
+    <string name="settings_theme_follow_system"><![CDATA[Follow system dark/light mode
+    ]]></string>
+    <string name="settings_theme_mode_dark"><![CDATA[Dark
+    ]]></string>
+    <string name="settings_theme_mode_light"><![CDATA[Light
+    ]]></string>
+    <string name="settings_touchpad_scroll_sensitivity"><![CDATA[Touchpad scroll sensitivity
+    ]]></string>
+    <string name="settings_voice_api_key_hint"><![CDATA[Enter Whisper API key
+    ]]></string>
+    <string name="settings_voice_api_key_label"><![CDATA[API key
+    ]]></string>
+    <string name="settings_voice_engine_system"><![CDATA[System voice input
+    ]]></string>
+    <string name="settings_voice_engine_whisper"><![CDATA[Whisper API
+    ]]></string>
+    <string name="settings_voice_input_section"><![CDATA[Voice input settings
+    ]]></string>
+    <string name="settings_voice_language"><![CDATA[Language
+    ]]></string>
+    <string name="settings_voice_language_chinese"><![CDATA[Chinese
+    ]]></string>
+    <string name="settings_voice_language_english"><![CDATA[English
+    ]]></string>
+    <string name="settings_voice_language_french"><![CDATA[French
+    ]]></string>
+    <string name="settings_voice_language_german"><![CDATA[German
+    ]]></string>
+    <string name="settings_voice_language_japanese"><![CDATA[Japanese
+    ]]></string>
+    <string name="settings_voice_language_spanish"><![CDATA[Spanish
+    ]]></string>
+    <string name="settings_voice_sensitivity"><![CDATA[Sensitivity
+    ]]></string>
+    <string name="settings_voice_speech_engine"><![CDATA[Speech engine
+    ]]></string>
+    <string name="settings_voice_test_connection"><![CDATA[Test connection
+    ]]></string>
+    <string name="settings_voice_toast_enter_api_key"><![CDATA[Please enter API key
+    ]]></string>
+    <string name="settings_voice_toast_success"><![CDATA[Connection successful!
+
+    
+    ]]></string>
+    <string name="settings_voice_toast_testing"><![CDATA[Testing connection…
+    ]]></string>
+    <string name="settings_voice_whisper_section"><![CDATA[Whisper API configuration
+    ]]></string>
+    <string name="shortcut_hub_cd_edit_shortcut"><![CDATA[Edit shortcut
+    ]]></string>
+    <string name="shortcut_hub_cd_edit_strip_slot"><![CDATA[Customize this key
+    ]]></string>
+    <string name="shortcut_hub_cd_reset_strip_profile"><![CDATA[Reset Rows 2–3 strip profile to factory layout
+    ]]></string>
+    <string name="shortcut_hub_cd_share_profile"><![CDATA[Share profile JSON
+    ]]></string>
+    <string name="shortcut_hub_cd_share_strip_profile"><![CDATA[Share strip profile JSON
+    ]]></string>
+    <string name="shortcut_hub_create_strip_profile"><![CDATA[Create
+    ]]></string>
+    <string name="shortcut_hub_empty_strip_profiles"><![CDATA[No strip profiles.
+    ]]></string>
+    <string name="shortcut_hub_import_strip_profile"><![CDATA[Import
+    ]]></string>
+    <string name="shortcut_hub_page3_info_body"><![CDATA[In Keyboard & Mouse mode, swipe the fixed rows to page 3.\n\n• Row 2: tap activates the Row 1 app profile for that slot. Long-press to pick which profile is bound (same flow as the profile slot picker).\n• Row 3: tap activates the Rows 2–3 strip profile. Long-press to pick which strip profile each slot shows.\n\nEditing strip key caps and slot overrides for pages 0–2 stays under Rows 2–3 · Strip.
+    ]]></string>
+    <string name="shortcut_hub_page3_info_title"><![CDATA[Page 3 on the keyboard strip
+    ]]></string>
+    <string name="shortcut_hub_reset_default"><![CDATA[Reset
+    ]]></string>
+    <string name="shortcut_hub_reset_default_message"><![CDATA[This restores the Default shortcut catalog (General tab) and Favorites to a fresh install. Other profiles are not changed.
+    ]]></string>
+    <string name="shortcut_hub_reset_default_title"><![CDATA[Reset Default profile?
+    ]]></string>
+    <string name="shortcut_hub_reset_default_toast"><![CDATA[Default profile was reset
+    ]]></string>
+    <string name="shortcut_hub_run_shortcut"><![CDATA[Run shortcut
+    ]]></string>
+    <string name="shortcut_hub_share_profile_chooser"><![CDATA[Share profile
+    ]]></string>
+    <string name="shortcut_hub_share_strip_profile_chooser"><![CDATA[Share strip profile
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_override_id"><![CDATA[Override shortcut id: %1$s
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_override_named"><![CDATA[Override: %1$s
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_page0_subtitle"><![CDATA[Default caps: digits and symbols when local Fn is off; F-keys when local Fn is on. Columns are Base and Fn HID slots (not the latch).
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_page0_title"><![CDATA[Page 0 — F-keys
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_swap_empty"><![CDATA[Swapped those two keys (no shortcuts assigned). Factory caps in this list do not move—only assignments do.
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_swap_need_target"><![CDATA[Drop on another slot to swap assignments.
+    ]]></string>
+    <string name="shortcut_hub_strip_catalog_swap_success"><![CDATA[Swapped shortcut assignments.
+    ]]></string>
+    <string name="shortcut_hub_strip_clear_base"><![CDATA[Clear base override
+    ]]></string>
+    <string name="shortcut_hub_strip_clear_fn"><![CDATA[Clear Fn override
+    ]]></string>
+    <string name="shortcut_hub_strip_delete_profile_title"><![CDATA[Delete strip profile?
+    ]]></string>
+    <string name="shortcut_hub_strip_edit_base"><![CDATA[Edit base (Fn off)
+    ]]></string>
+    <string name="shortcut_hub_strip_edit_fn"><![CDATA[Edit Fn overlay
+    ]]></string>
+    <string name="shortcut_hub_strip_enter_name"><![CDATA[Strip profile name
+    ]]></string>
+    <string name="shortcut_hub_strip_grid_fn_layer"><![CDATA[Fn layer
+    ]]></string>
+    <string name="shortcut_hub_strip_grid_fn_on_hint"><![CDATA[Fn on: %1$s
+    ]]></string>
+    <string name="shortcut_hub_strip_grid_layer_base"><![CDATA[Base
+    ]]></string>
+    <string name="shortcut_hub_strip_grid_layer_fn"><![CDATA[Fn
+    ]]></string>
+    <string name="shortcut_hub_strip_import_failed"><![CDATA[Import failed: %1$s
+    ]]></string>
+    <string name="shortcut_hub_strip_import_ok"><![CDATA[Strip profile imported
+    ]]></string>
+    <string name="shortcut_hub_strip_paste_json_hint"><![CDATA[Paste Rows 2–3 strip profile JSON
+    ]]></string>
+    <string name="shortcut_hub_strip_profile_factory_layout"><![CDATA[Factory strip layout
+    ]]></string>
+    <string name="shortcut_hub_strip_profile_slot_count"><![CDATA[%1$d slot overrides
+    ]]></string>
+    <string name="shortcut_hub_strip_reset"><![CDATA[Reset
+    ]]></string>
+    <string name="shortcut_hub_strip_reset_profile_message"><![CDATA[All custom keys and slot assignments for \"%s\" will be removed. The strip will match the factory layout again. This cannot be undone.
+    ]]></string>
+    <string name="shortcut_hub_strip_reset_profile_title"><![CDATA[Reset strip profile?
+    ]]></string>
+    <string name="shortcut_hub_strip_reset_profile_toast"><![CDATA[Strip profile reset to factory layout
+    ]]></string>
+    <string name="shortcut_hub_strip_set_active"><![CDATA[Set as active strip
+    ]]></string>
+    <string name="shortcut_hub_strip_share"><![CDATA[Share
+    ]]></string>
+    <string name="shortcut_hub_strip_slot_actions_title"><![CDATA[Slot
+    ]]></string>
+    <string name="shortcut_hub_strip_slot_drag_handle_cd"><![CDATA[Drag to swap this slot assignment with another slot
+    ]]></string>
+    <string name="shortcut_hub_strip_slot_status_custom"><![CDATA[Custom
+    ]]></string>
+    <string name="shortcut_hub_strip_slot_status_default"><![CDATA[Default
+    ]]></string>
+    <string name="shortcut_hub_tab_app_profiles"><![CDATA[Row 1 · Profiles
+    ]]></string>
+    <string name="shortcut_hub_tab_fixed_strip"><![CDATA[Rows 2–3 · Strip
+    ]]></string>
+    <string name="shortcut_hub_tab_page3_strip"><![CDATA[Page 3 · Hub keys
+    ]]></string>
+    <string name="strip_edition_dialog_message"><![CDATA[Edit Rows 2–3 strip profiles and slot overrides in Shortcut Hub (Rows 2–3 · Strip tab).\n\nSlot overrides on active strip: %1$d
+    ]]></string>
+    <string name="strip_edition_dialog_title"><![CDATA[Strip layout
+    ]]></string>
+    <string name="strip_edition_open_shortcut_hub"><![CDATA[Open Shortcut Hub
+    ]]></string>
+    <string name="top_mode_label_keyboard_mouse_pro"><![CDATA[Keyboard & Mouse Pro
+    ]]></string>
+    <string name="top_rows23_strip_slot_picker_title"><![CDATA[Choose Rows 2–3 strip profile for this slot
+    ]]></string>
+    <string name="top_rows23_strip_slot_unassigned"><![CDATA[Unassigned
+    ]]></string>
+    <string name="touch_pad_brand_content_description"><![CDATA[Openterface
+    ]]></string>
+    <string-array name="settings_ai_provider_names">
+        <item>OpenAI</item>
+        <item>Anthropic</item>
+        <item>Google Gemini</item>
+        <item>Mistral AI</item>
+        <item>Groq</item>
+        <item>Alibaba (Qwen)</item>
+        <item>DeepSeek</item>
+        <item>Custom</item>
+    </string-array>
+    <string-array name="settings_ai_role_names">
+        <item>Text refinement</item>
+        <item>Command assistant</item>
+        <item>Custom</item>
+    </string-array>
+    <string-array name="theme_color_family_names">
+        <item>Orange</item>
+        <item>Blue</item>
+        <item>Green</item>
+        <item>Pink</item>
+        <item>Purple</item>
+        <item>Red</item>
+        <item>Teal</item>
+        <item>Indigo</item>
+    </string-array>
 </resources>
