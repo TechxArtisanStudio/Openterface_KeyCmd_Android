@@ -851,7 +851,7 @@ public class GamepadFragment extends Fragment {
         });
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        recycler.setHasFixedSize(true);
+        // Do not call setHasFixedSize(true): layout uses wrap_content height (lint InvalidSetHasFixedSize).
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
