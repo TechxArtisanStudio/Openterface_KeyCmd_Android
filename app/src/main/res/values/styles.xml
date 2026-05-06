@@ -128,20 +128,15 @@
         <item name="strokeWidth">1dp</item>
     </style>
 
-    <!-- Gamepad stick / button module configuration dialogs -->
-    <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.MaterialComponents.Headline6">
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">20sp</item>
-        <item name="android:textStyle">bold</item>
+    <!-- Gamepad stick / button module configuration dialogs (aligned with gamepad presets bottom sheet) -->
+    <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
-    <style name="TextAppearance.KeyMod.GamepadConfig.Section" parent="TextAppearance.MaterialComponents.Subtitle2">
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:textSize">14sp</item>
-        <item name="android:textStyle">bold</item>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Section" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
-    <style name="TextAppearance.KeyMod.GamepadConfig.Caption" parent="TextAppearance.MaterialComponents.Caption">
-        <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:textSize">12sp</item>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Caption" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
     <!-- KM Basic IME compose: same surface tier as keys; theme text/hint for day/night + accent themes.

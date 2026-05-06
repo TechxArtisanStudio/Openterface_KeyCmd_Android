@@ -3,6 +3,8 @@
     <!-- Dark mode overrides -->
     <color name="background_light">#FF1C1C1E</color>
     <color name="card_unselected_bg">#FF2C2C2E</color>
+    <!-- Dialog cards: match elevated surface (was hard-coded white from day values). -->
+    <color name="card_background">#FF2C2C2E</color>
     <color name="header_background">#FF1C1C1E</color>
     <color name="footer_background">#FF1C1C1E</color>
     <color name="sidebar_background">#FF1C1C1E</color>

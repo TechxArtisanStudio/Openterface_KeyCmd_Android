@@ -789,7 +789,6 @@
     <string name="gamepad_menu_configure_stick">配置控制…</string>
     <string name="gamepad_menu_edit_keys">编辑按键映射</string>
     <string name="gamepad_menu_mouse_btn_module_size">按键大小…</string>
-    <string name="gamepad_menu_move">移动</string>
     <string name="gamepad_menu_remove">移除</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">所有触控板鼠标键大小…</string>
     <string name="gamepad_menu_touchpad_resize">触控板大小…</string>

@@ -843,14 +843,15 @@ by TechxArtisan</string>
     <string name="gamepad_config_reset">Reset</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>
+    <string name="gamepad_key_picker_save">Save</string>
     <string name="gamepad_stick_direction_keys_label">Direction keys (tap to change)</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>
     <string name="gamepad_component_touchpad">Touchpad</string>
-    <string name="gamepad_menu_move">Move</string>
     <string name="gamepad_menu_edit_keys">Edit key mapping</string>
     <string name="gamepad_menu_remove">Remove</string>
+    <string name="gamepad_module_remove_confirm_message">Remove this control from the layout?</string>
     <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
     <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>

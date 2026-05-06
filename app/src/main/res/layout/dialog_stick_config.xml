@@ -4,26 +4,17 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:fillViewport="true"
-    android:background="@color/background_light"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="20dp">
-
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="3dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/divider"
-        app:cardBackgroundColor="@color/card_background">
+    android:background="?attr/colorSurface"
+    android:paddingHorizontal="@dimen/spacing_medium"
+    android:paddingTop="@dimen/spacing_medium"
+    android:paddingBottom="@dimen/spacing_medium"
+    android:clipToPadding="false">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingBottom="@dimen/spacing_small">
 
         <TextView
             android:id="@+id/stick_config_title"
@@ -64,32 +55,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_analog"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_key"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_dpad_cross"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_dpad_cross"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_dpad_split"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_dpad_split"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
         </RadioGroup>
 
         <!-- Arrow stick: mouse-direction sensitivity (STICK_MOUSE only) -->
@@ -135,8 +126,8 @@
                     android:layout_weight="1"
                     android:max="150"
                     android:progress="50"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -189,8 +180,8 @@
                     android:layout_weight="1"
                     android:max="100"
                     android:progress="50"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -243,8 +234,8 @@
                     android:layout_weight="1"
                     android:max="100"
                     android:progress="100"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -391,8 +382,8 @@
                 android:layout_weight="1"
                 android:max="200"
                 android:progress="100"
-                android:progressTint="@color/primary"
-                android:thumbTint="@color/primary" />
+                android:progressTint="?attr/colorPrimary"
+                android:thumbTint="?attr/colorPrimary" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -402,36 +393,36 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium" />
+
         <!-- Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="end">
+            android:gravity="end"
+            android:layout_marginTop="@dimen/spacing_small">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/stick_reset_btn"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_config_reset"
-                android:textColor="@color/primary"
-                app:strokeColor="@color/primary"
-                app:strokeWidth="1dp"
-                app:cornerRadius="10dp"
-                android:layout_marginEnd="8dp" />
+                android:textAllCaps="false"
+                android:layout_marginEnd="@dimen/spacing_small" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/stick_done_btn"
-                style="@style/Widget.MaterialComponents.Button"
+                style="@style/Widget.Material3.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_config_done"
-                android:textColor="@android:color/white"
-                app:backgroundTint="@color/primary"
-                app:cornerRadius="10dp" />
+                android:textAllCaps="false" />
         </LinearLayout>
 
     </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 </ScrollView>

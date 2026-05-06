@@ -23,12 +23,14 @@ import java.util.Locale;
 import java.util.Map;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
-import android.widget.ScrollView;
+import androidx.core.widget.NestedScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -40,11 +42,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -1284,6 +1288,58 @@ public class GamepadFragment extends Fragment {
         return componentId;
     }
 
+    /** Confirms then removes a module and dismisses {@code parentDialog} if non-null. */
+    private void confirmRemoveGamepadModule(
+            @NonNull String moduleId,
+            @Nullable DialogInterface parentDialog) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(R.string.gamepad_module_remove_confirm_message)
+                .setPositiveButton(R.string.gamepad_menu_remove, (d2, w2) -> {
+                    GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
+                    faceButtonPressed.remove(moduleId);
+                    applyLayoutDocFromMemory();
+                    if (parentDialog != null) {
+                        parentDialog.dismiss();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void handleLongPressMenuChoice(
+            String choice,
+            String componentId,
+            String moduleId,
+            boolean hasKeyMapping) {
+        if (choice.equals(getString(R.string.gamepad_menu_touchpad_resize))) {
+            showTouchpadResizeDialog();
+        } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_mouse_btn_size))) {
+            showTouchpadMouseButtonsLayoutSizeDialog();
+        } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_l))) {
+            if (GamepadLayoutDocEditor.addTouchpadMouseButtonLeft(layoutDoc)) {
+                applyLayoutDocFromMemory();
+            }
+        } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_m))) {
+            if (GamepadLayoutDocEditor.addTouchpadMouseButtonMiddle(layoutDoc)) {
+                applyLayoutDocFromMemory();
+            }
+        } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_r))) {
+            if (GamepadLayoutDocEditor.addTouchpadMouseButtonRight(layoutDoc)) {
+                applyLayoutDocFromMemory();
+            }
+        } else if (choice.equals(getString(R.string.gamepad_menu_mouse_btn_module_size))) {
+            showMouseButtonModuleSizeDialog(componentId);
+        } else if (choice.equals(getString(R.string.gamepad_menu_configure_stick))) {
+            showConfigDialog(moduleId);
+        } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
+            showConfigDialog(moduleId);
+        } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
+            GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
+            faceButtonPressed.remove(moduleId);
+            applyLayoutDocFromMemory();
+        }
+    }
+
     private void showLongPressMenu(String componentId) {
         final String moduleId = resolveLongPressMenuModuleId(componentId);
         String componentName;
@@ -1330,7 +1386,6 @@ public class GamepadFragment extends Fragment {
                 || GamepadLayoutPresetConstants.isArrowStickModuleId(moduleId);
 
         ArrayList<String> opts = new ArrayList<>();
-        opts.add(getString(R.string.gamepad_menu_move));
         if ("touchpad_1".equals(componentId)) {
             opts.add(getString(R.string.gamepad_menu_touchpad_resize));
             opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
@@ -1361,41 +1416,30 @@ public class GamepadFragment extends Fragment {
             opts.add(getString(R.string.gamepad_menu_remove));
         }
 
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
-        builder.setTitle(componentName);
-        builder.setItems(opts.toArray(new String[0]), (dialog, which) -> {
-            String choice = opts.get(which);
-            if (choice.equals(getString(R.string.gamepad_menu_move))) {
-                enterMoveMode(moduleId);
-            } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_resize))) {
-                showTouchpadResizeDialog();
-            } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_mouse_btn_size))) {
-                showTouchpadMouseButtonsLayoutSizeDialog();
-            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_l))) {
-                if (GamepadLayoutDocEditor.addTouchpadMouseButtonLeft(layoutDoc)) {
-                    applyLayoutDocFromMemory();
-                }
-            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_m))) {
-                if (GamepadLayoutDocEditor.addTouchpadMouseButtonMiddle(layoutDoc)) {
-                    applyLayoutDocFromMemory();
-                }
-            } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_r))) {
-                if (GamepadLayoutDocEditor.addTouchpadMouseButtonRight(layoutDoc)) {
-                    applyLayoutDocFromMemory();
-                }
-            } else if (choice.equals(getString(R.string.gamepad_menu_mouse_btn_module_size))) {
-                showMouseButtonModuleSizeDialog(componentId);
-            } else if (choice.equals(getString(R.string.gamepad_menu_configure_stick))) {
-                showConfigDialog(moduleId);
-            } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
-                showConfigDialog(moduleId);
-            } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
-                GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
-                faceButtonPressed.remove(moduleId);
-                applyLayoutDocFromMemory();
-            }
-        });
-        builder.show();
+        if (opts.isEmpty()) {
+            return;
+        }
+
+        final String configureStick = getString(R.string.gamepad_menu_configure_stick);
+        final String editKeys = getString(R.string.gamepad_menu_edit_keys);
+        final String removeLabel = getString(R.string.gamepad_menu_remove);
+
+        if (opts.size() == 1) {
+            handleLongPressMenuChoice(opts.get(0), componentId, moduleId, hasKeyMapping);
+            return;
+        }
+        if (opts.size() == 2 && opts.contains(removeLabel)
+                && (opts.contains(configureStick) || opts.contains(editKeys))) {
+            showConfigDialog(moduleId);
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(componentName)
+                .setItems(opts.toArray(new String[0]), (dialog, which) ->
+                        handleLongPressMenuChoice(
+                                opts.get(which), componentId, moduleId, hasKeyMapping))
+                .show();
     }
 
     private void showTouchpadResizeDialog() {
@@ -1428,7 +1472,7 @@ public class GamepadFragment extends Fragment {
         root.addView(hTitle);
         root.addView(hSeek);
 
-        new AlertDialog.Builder(ctx)
+        new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_size_title)
                 .setView(root)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -1462,7 +1506,7 @@ public class GamepadFragment extends Fragment {
         root.addView(title);
         root.addView(seek);
 
-        new AlertDialog.Builder(ctx)
+        new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_mouse_btn_size_title)
                 .setView(root)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -1494,7 +1538,7 @@ public class GamepadFragment extends Fragment {
         root.addView(title);
         root.addView(seek);
 
-        new AlertDialog.Builder(ctx)
+        new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_mouse_btn_module_size_title)
                 .setView(root)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -1523,28 +1567,6 @@ public class GamepadFragment extends Fragment {
         Log.d(TAG, "Exited layout edit / move session");
     }
 
-    private void enterMoveMode(String componentId) {
-        if (gamepadView != null) {
-            gamepadView.setEditMode(true);
-            if (editModeMaterialButton != null) {
-                editModeMaterialButton.setChecked(true);
-            }
-            View v = getView();
-            if (v != null) {
-                View toggleRow = v.findViewById(R.id.toggle_row);
-                View sessionBar = v.findViewById(R.id.gamepad_edit_session_bar);
-                if (toggleRow != null) {
-                    toggleRow.setVisibility(View.GONE);
-                }
-                if (sessionBar != null) {
-                    sessionBar.setVisibility(View.VISIBLE);
-                }
-            }
-            gamepadView.invalidate();
-            Toast.makeText(requireContext(), R.string.gamepad_toast_edit_layout_hint, Toast.LENGTH_LONG).show();
-        }
-    }
-
     private void showConfigDialog(String componentId) {
         if (componentId != null && componentId.startsWith("stick_")) {
             stickConfigModuleId = componentId;
@@ -1559,6 +1581,10 @@ public class GamepadFragment extends Fragment {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stick_config, null);
         builder.setView(dialogView);
+        if (GamepadLayoutDocEditor.canRemove(stickConfigModuleId)) {
+            builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
+                    confirmRemoveGamepadModule(stickConfigModuleId, d));
+        }
 
         final AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -1910,6 +1936,10 @@ public class GamepadFragment extends Fragment {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_button_config, null);
         builder.setView(dialogView);
+        if (GamepadLayoutDocEditor.canRemove(moduleId)) {
+            builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
+                    confirmRemoveGamepadModule(moduleId, d));
+        }
 
         final AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -2025,11 +2055,19 @@ public class GamepadFragment extends Fragment {
     }
 
     private void buildKeyPickerDialog(int initialKeyCode, int initialModifiers, final KeySelectedListener listener) {
-        final int colorPrimary = ContextCompat.getColor(requireContext(), R.color.primary);
-        final int colorUnsel = ContextCompat.getColor(requireContext(), R.color.gray_600);
-        final int colorOnPrimary = ContextCompat.getColor(requireContext(), R.color.white);
-        final int colorTextSecondary = ContextCompat.getColor(requireContext(), R.color.text_secondary);
-        final int colorStrokeAccent = ContextCompat.getColor(requireContext(), R.color.theme_accent_orange_container);
+        android.content.Context ctx = requireContext();
+        final int colorPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
+                ContextCompat.getColor(ctx, R.color.primary));
+        final int colorUnsel = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurfaceVariant,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+        final int colorOnPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnPrimary,
+                ContextCompat.getColor(ctx, R.color.white));
+        final int colorOnSurface = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurface,
+                ContextCompat.getColor(ctx, R.color.text_primary));
+        final int colorTextSecondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ContextCompat.getColor(ctx, R.color.text_secondary));
+        final int colorStrokeAccent = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimaryContainer,
+                ContextCompat.getColor(ctx, R.color.theme_accent_orange_container));
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
 
@@ -2039,11 +2077,14 @@ public class GamepadFragment extends Fragment {
         final int[] selectedModifiers = { initialModifiers };
         final String[] selectedLabel = { keyCodeToLabel(initialKeyCode) };
 
+        int pad = dp(16);
+        LinearLayout root = new LinearLayout(requireContext());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        root.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.gamepad_config_dialog_surface));
+
         LinearLayout shell = new LinearLayout(requireContext());
         shell.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        shell.setPadding(pad, pad, pad, pad);
-        shell.setBackground(ContextCompat.getDrawable(requireContext(), R.drawable.gamepad_config_dialog_surface));
 
         TextView pickerTitle = new TextView(requireContext());
         pickerTitle.setText(R.string.gamepad_key_picker_title);
@@ -2131,7 +2172,7 @@ public class GamepadFragment extends Fragment {
             // Normal number button
             Button normalBtn = new Button(requireContext());
             normalBtn.setText(String.valueOf(num));
-            normalBtn.setTextColor(colorOnPrimary);
+            normalBtn.setTextColor((initialNumIdx == n && !initialIsNumpad) ? colorOnPrimary : colorOnSurface);
             android.graphics.drawable.GradientDrawable normalBg = new android.graphics.drawable.GradientDrawable();
             normalBg.setColor((initialNumIdx == n && !initialIsNumpad) ? colorPrimary : colorUnsel);
             normalBg.setCornerRadius(dp(6));
@@ -2146,7 +2187,7 @@ public class GamepadFragment extends Fragment {
             // Numpad number button
             Button numpadBtn = new Button(requireContext());
             numpadBtn.setText("Num" + (n + 1));
-            numpadBtn.setTextColor(colorOnPrimary);
+            numpadBtn.setTextColor((initialNumIdx == n && initialIsNumpad) ? colorOnPrimary : colorOnSurface);
             android.graphics.drawable.GradientDrawable numpadBg = new android.graphics.drawable.GradientDrawable();
             numpadBg.setColor((initialNumIdx == n && initialIsNumpad) ? colorPrimary : colorUnsel);
             numpadBg.setCornerRadius(dp(6));
@@ -2163,23 +2204,27 @@ public class GamepadFragment extends Fragment {
             normalBtn.setOnClickListener(v -> {
                 selectedKeyCode[0] = normalCode;
                 selectedLabel[0] = String.valueOf(num);
-                updateNumButtons(normalNumBtns, numpadNumBtns, num, true);
+                updateNumButtons(normalNumBtns, numpadNumBtns, num, true, colorPrimary, colorUnsel, colorStrokeAccent,
+                        colorOnPrimary, colorOnSurface);
                 // Deselect all character key buttons
                 for (int k = 0; k < allButtons.length; k++) {
                     if (allButtons[k] == null) continue;
                     ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
                         .setColor(colorUnsel);
+                    allButtons[k].setTextColor(colorOnSurface);
                 }
             });
             numpadBtn.setOnClickListener(v -> {
                 selectedKeyCode[0] = numpadCode;
                 selectedLabel[0] = "Num" + num;
-                updateNumButtons(normalNumBtns, numpadNumBtns, num, false);
+                updateNumButtons(normalNumBtns, numpadNumBtns, num, false, colorPrimary, colorUnsel, colorStrokeAccent,
+                        colorOnPrimary, colorOnSurface);
                 // Deselect all character key buttons
                 for (int k = 0; k < allButtons.length; k++) {
                     if (allButtons[k] == null) continue;
                     ((android.graphics.drawable.GradientDrawable) allButtons[k].getBackground())
                         .setColor(colorUnsel);
+                    allButtons[k].setTextColor(colorOnSurface);
                 }
             });
 
@@ -2203,11 +2248,11 @@ public class GamepadFragment extends Fragment {
                 final int idx = i + j;
                 Button btn = new Button(requireContext());
                 btn.setText(opt[0]);
-                btn.setTextColor(colorOnPrimary);
-                android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                 final int keyCode = Integer.parseInt(opt[1]);
                 allKeyCodes[idx] = keyCode;
                 boolean isSelected = keyCode == initialKeyCode && selectedModifiers[0] == initialModifiers;
+                btn.setTextColor(isSelected ? colorOnPrimary : colorOnSurface);
+                android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                 bg.setColor(isSelected ? colorPrimary : colorUnsel);
                 bg.setCornerRadius(dp(6));
                 btn.setBackground(bg);
@@ -2224,7 +2269,9 @@ public class GamepadFragment extends Fragment {
                         if (allButtons[k] == null) continue;
                         android.graphics.drawable.GradientDrawable b =
                             (android.graphics.drawable.GradientDrawable) allButtons[k].getBackground();
-                        b.setColor(allKeyCodes[k] == keyCode ? colorPrimary : colorUnsel);
+                        boolean sel = allKeyCodes[k] == keyCode;
+                        b.setColor(sel ? colorPrimary : colorUnsel);
+                        allButtons[k].setTextColor(sel ? colorOnPrimary : colorOnSurface);
                     }
                     // Deselect all number buttons
                     for (int k = 0; k < normalNumBtns.length; k++) {
@@ -2232,12 +2279,14 @@ public class GamepadFragment extends Fragment {
                             (android.graphics.drawable.GradientDrawable) normalNumBtns[k].getBackground();
                         nb.setColor(colorUnsel);
                         nb.setStroke(0, 0x00000000);
+                        normalNumBtns[k].setTextColor(colorOnSurface);
                     }
                     for (int k = 0; k < numpadNumBtns.length; k++) {
                         android.graphics.drawable.GradientDrawable nb =
                             (android.graphics.drawable.GradientDrawable) numpadNumBtns[k].getBackground();
                         nb.setColor(colorUnsel);
                         nb.setStroke(0, 0x00000000);
+                        numpadNumBtns[k].setTextColor(colorOnSurface);
                     }
                 });
                 row.addView(btn);
@@ -2248,21 +2297,88 @@ public class GamepadFragment extends Fragment {
 
         shell.addView(container);
 
-        ScrollView scrollView = new ScrollView(requireContext());
+        NestedScrollView scrollView = new NestedScrollView(requireContext());
+        scrollView.setFillViewport(false);
+        scrollView.setClipToPadding(true);
         scrollView.addView(shell);
-        builder.setView(scrollView);
 
-        builder.setPositiveButton(android.R.string.ok, (d, w) -> {
-            // Append modifier labels to the key label for display
+        View scrollDivider = new View(requireContext());
+        scrollDivider.setBackgroundColor(MaterialColors.getColor(ctx,
+                com.google.android.material.R.attr.colorOutlineVariant,
+                ContextCompat.getColor(ctx, R.color.divider)));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(1));
+        divLp.setMargins(0, dp(12), 0, dp(8));
+
+        LinearLayout footer = new LinearLayout(requireContext());
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(android.view.Gravity.END);
+        LinearLayout.LayoutParams footerLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+
+        MaterialButton cancelBtn = new MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        cancelBtn.setText(android.R.string.cancel);
+        cancelBtn.setAllCaps(false);
+        LinearLayout.LayoutParams cancelLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+
+        MaterialButton saveBtn = new MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.materialButtonStyle);
+        saveBtn.setText(R.string.gamepad_key_picker_save);
+        saveBtn.setAllCaps(false);
+        LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        saveLp.setMarginStart(dp(8));
+
+        footer.addView(cancelBtn, cancelLp);
+        footer.addView(saveBtn, saveLp);
+
+        LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        root.addView(scrollView, scrollLp);
+        root.addView(scrollDivider, divLp);
+        root.addView(footer, footerLp);
+
+        builder.setView(root);
+
+        final AlertDialog dialog = builder.create();
+        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+        saveBtn.setOnClickListener(v -> {
             String displayLabel = selectedLabel[0];
             if (selectedModifiers[0] != 0) {
                 displayLabel = keyCodeToLabel(selectedKeyCode[0]);
             }
             listener.onKeySelected(new KeyInfo(selectedKeyCode[0], displayLabel, selectedModifiers[0]));
+            dialog.dismiss();
         });
 
-        AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        dialog.setOnShowListener(d -> {
+            Window win = dialog.getWindow();
+            if (win != null) {
+                android.view.WindowManager.LayoutParams attrs = win.getAttributes();
+                attrs.dimAmount = 0.55f;
+                win.setAttributes(attrs);
+            }
+            scrollView.post(() -> {
+                int screenH = ctx.getResources().getDisplayMetrics().heightPixels;
+                int reservedFooter = dp(110);
+                int maxScrollH = Math.max(dp(200), (int) (screenH * 0.72f) - reservedFooter);
+                int wPx = scrollView.getWidth();
+                if (wPx <= 0) {
+                    wPx = ctx.getResources().getDisplayMetrics().widthPixels - dp(32);
+                }
+                int wSpec = MeasureSpec.makeMeasureSpec(wPx, MeasureSpec.EXACTLY);
+                int hSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+                shell.measure(wSpec, hSpec);
+                if (shell.getMeasuredHeight() > maxScrollH) {
+                    ViewGroup.LayoutParams lp = scrollView.getLayoutParams();
+                    lp.height = maxScrollH;
+                    scrollView.setLayoutParams(lp);
+                }
+            });
+        });
         dialog.show();
     }
 
@@ -2270,16 +2386,15 @@ public class GamepadFragment extends Fragment {
         return (int) (dp * requireContext().getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    private void updateNumButtons(Button[] normalBtns, Button[] numpadBtns, int num, boolean isNormal) {
-        int sel = ContextCompat.getColor(requireContext(), R.color.primary);
-        int unsel = ContextCompat.getColor(requireContext(), R.color.gray_600);
-        int stroke = ContextCompat.getColor(requireContext(), R.color.theme_accent_orange_container);
+    private void updateNumButtons(Button[] normalBtns, Button[] numpadBtns, int num, boolean isNormal,
+            int sel, int unsel, int stroke, int onSelText, int onUnselText) {
         for (int i = 0; i < normalBtns.length; i++) {
             boolean isSelected = (i + 1) == num && isNormal;
             android.graphics.drawable.GradientDrawable bg =
                 (android.graphics.drawable.GradientDrawable) normalBtns[i].getBackground();
             bg.setColor(isSelected ? sel : unsel);
             bg.setStroke(0, 0x00000000);
+            normalBtns[i].setTextColor(isSelected ? onSelText : onUnselText);
         }
         for (int i = 0; i < numpadBtns.length; i++) {
             boolean isSelected = (i + 1) == num && !isNormal;
@@ -2287,6 +2402,7 @@ public class GamepadFragment extends Fragment {
                 (android.graphics.drawable.GradientDrawable) numpadBtns[i].getBackground();
             bg.setColor(isSelected ? sel : unsel);
             bg.setStroke(isSelected ? dp(2) : 0, isSelected ? stroke : 0x00000000);
+            numpadBtns[i].setTextColor(isSelected ? onSelText : onUnselText);
         }
     }
 
