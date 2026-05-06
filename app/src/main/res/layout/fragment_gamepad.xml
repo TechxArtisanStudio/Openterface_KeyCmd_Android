@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_light">
@@ -11,6 +12,44 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Slim bar while repositioning modules (move mode) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/gamepad_edit_session_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginHorizontal="@dimen/spacing_small"
+        android:layout_marginTop="@dimen/gamepad_toolbar_margin_top"
+        android:visibility="gone"
+        app:cardCornerRadius="@dimen/gamepad_toolbar_corner_radius"
+        app:cardElevation="4dp"
+        app:contentPadding="@dimen/spacing_small"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/gamepad_edit_session_done"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_edit_done"
+                android:textAllCaps="false" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:layout_weight="1"
+                android:text="@string/gamepad_edit_session_title"
+                android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- Control toggles row (center top) -->
     <LinearLayout
         android:id="@+id/toggle_row"
@@ -18,58 +57,63 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="@dimen/gamepad_toolbar_margin_top"
-        android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingHorizontal="@dimen/gamepad_toolbar_padding_h">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/edit_mode_toggle"
             style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="wrap_content"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
             android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:minWidth="@dimen/gamepad_toolbar_edit_min_width"
             android:checkable="true"
             android:checked="false"
-            android:text="@string/gamepad_edit_mode_off"
-            android:textAllCaps="false"
-            android:textSize="13sp"
-            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius" />
+            android:contentDescription="@string/gamepad_customize_cd"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
+            app:icon="@drawable/ic_edit"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/gamepad_presets_btn"
+            android:id="@+id/gamepad_active_preset_chip"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="@dimen/gamepad_toolbar_button_min_height"
             android:layout_marginStart="@dimen/spacing_small"
-            android:minWidth="@dimen/gamepad_toolbar_preset_min_width"
-            android:text="@string/gamepad_presets_button"
+            android:ellipsize="end"
+            android:maxWidth="@dimen/gamepad_preset_chip_max_width"
+            android:maxLines="1"
             android:textAllCaps="false"
             android:textSize="13sp"
-            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius" />
+            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
+            app:icon="@drawable/ic_expand_more_24"
+            app:iconGravity="end"
+            app:iconPadding="4dp"
+            app:iconSize="18dp"
+            app:iconTint="?android:attr/textColorSecondary"
+            tools:text="Default" />
 
-        <TextView
-            android:id="@+id/gamepad_active_preset_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_presets_btn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
             android:layout_marginStart="@dimen/spacing_small"
-            android:maxWidth="@dimen/gamepad_preset_name_max_width"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:contentDescription="@string/gamepad_cycle_next_preset_cd"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
+            app:icon="@drawable/ic_swap_horiz_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="?android:attr/textColorSecondary" />
     </LinearLayout>
-
-    <!-- Done button for edit mode (hidden by default) -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/edit_done_btn"
-        style="@style/Widget.Material3.Button.TonalButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="24dp"
-        android:text="@string/gamepad_edit_done"
-        android:textAllCaps="false"
-        android:visibility="gone"
-        app:cornerRadius="@dimen/gamepad_toolbar_corner_radius" />
 
 </FrameLayout>

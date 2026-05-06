@@ -36,4 +36,16 @@ public final class GamepadPreferenceKeys {
 
     /** Optional multiplier for right-stick mouse (preset layout). */
     public static final String RIGHT_STICK_MOUSE_GAIN = "gamepad_right_stick_mouse_gain";
+
+    /**
+     * Customize mode: long-press duration before module / empty-area menu (ms). Applied via
+     * {@code GamepadView#setEditLongPressConfig} (clamped 250–1200). Default 600.
+     */
+    public static final String EDIT_LONG_PRESS_MS = "gamepad_edit_long_press_ms";
+
+    /**
+     * Customize mode: finger movement in dp that cancels a pending long-press. Default 10dp
+     * (converted to px when applied). Lower = stricter (easier to trigger menu while dragging).
+     */
+    public static final String EDIT_LONG_PRESS_CANCEL_DP = "gamepad_edit_long_press_cancel_dp";
 }

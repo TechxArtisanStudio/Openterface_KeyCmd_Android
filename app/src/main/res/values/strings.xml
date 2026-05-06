@@ -750,6 +750,27 @@ by TechxArtisan</string>
     <string name="gamepad_edit_mode_off">Edit</string>
     <string name="gamepad_edit_mode_on">Editing</string>
     <string name="gamepad_edit_done">Done</string>
+    <string name="gamepad_customize_cd">Customize layout</string>
+    <string name="gamepad_cycle_next_preset_cd">Next layout</string>
+    <string name="gamepad_edit_session_title">Move modules</string>
+    <string name="gamepad_presets_sheet_title">Layouts</string>
+    <string name="gamepad_presets_new_layout">New layout from current</string>
+    <string name="gamepad_preset_row_menu_cd">Layout options</string>
+    <string name="gamepad_preset_menu_rename">Rename</string>
+    <string name="gamepad_preset_menu_duplicate">Duplicate</string>
+    <string name="gamepad_preset_menu_share">Share JSON…</string>
+    <string name="gamepad_preset_menu_delete">Delete</string>
+    <string name="gamepad_preset_rename_title">Rename layout</string>
+    <string name="gamepad_preset_rename_hint">Display name</string>
+    <string name="gamepad_preset_new_title">New layout</string>
+    <string name="gamepad_preset_new_hint">Layout name</string>
+    <string name="gamepad_preset_name_required">Enter a name</string>
+    <string name="gamepad_preset_created">Layout created</string>
+    <string name="gamepad_preset_duplicated">Layout duplicated</string>
+    <string name="gamepad_preset_action_failed">Could not complete action</string>
+    <string name="gamepad_preset_delete_title">Delete layout?</string>
+    <string name="gamepad_preset_delete_message">This removes the layout from this device. Built-in layouts cannot be deleted.</string>
+    <string name="gamepad_preset_delete_confirm">Delete</string>
     <string name="gamepad_edit_canvas_menu_title">Background &amp; modules</string>
     <string name="gamepad_bg_pick_gallery">Pick from gallery</string>
     <string name="gamepad_bg_remove">Remove background</string>
@@ -792,17 +813,17 @@ by TechxArtisan</string>
     <string name="gamepad_stick_config_title">Stick configuration</string>
     <string name="gamepad_stick_config_title_left">Left control</string>
     <string name="gamepad_stick_config_title_right">Right stick</string>
-    <string name="gamepad_stick_config_dpad_hint">For the left slot: pick D-pad (split segments) for four separate pads, or D-pad (cross) for one connected cross. With split selected, use Split spacing for the middle gap, and Distance to keys to move segments toward the center or the outer edge. Analog and key ring are also here. Extra styles (disc, pivot, floating, clicky) are supported in preset JSON.</string>
+    <string name="gamepad_stick_config_dpad_hint">Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Analog and key ring are here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).</string>
     <string name="gamepad_stick_mode_analog">Analog (mouse)</string>
     <string name="gamepad_stick_mode_key">Key mapping (virtual stick)</string>
     <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>
     <string name="gamepad_stick_mode_dpad_split">D-pad (split segments)</string>
     <string name="gamepad_dpad_split_gap_title">Split spacing</string>
-    <string name="gamepad_dpad_split_gap_summary">How far the four pads sit from the center (wider = more space between segments).</string>
+    <string name="gamepad_dpad_split_gap_summary">Size of the empty diamond in the middle (wider = more space between the inner corners of the four pads). Pad thickness stays fixed.</string>
     <string name="gamepad_dpad_split_gap_tight">Tight</string>
     <string name="gamepad_dpad_split_gap_wide">Wide</string>
     <string name="gamepad_dpad_split_outer_title">Distance to keys</string>
-    <string name="gamepad_dpad_split_outer_summary">How far each segment sits from the center toward the edge of the pad (independent of split spacing).</string>
+    <string name="gamepad_dpad_split_outer_summary">How far the outer corners of the pads sit toward the module edge (near center vs to edge). Pad size stays fixed. If you move this inward while split spacing is very wide, spacing may tighten automatically so the layout stays valid.</string>
     <string name="gamepad_dpad_split_outer_near">Near center</string>
     <string name="gamepad_dpad_split_outer_far">To edge</string>
     <string name="gamepad_component_right_stick">Right stick</string>

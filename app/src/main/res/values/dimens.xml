@@ -46,6 +46,7 @@
     <dimen name="gamepad_toolbar_edit_min_width">72dp</dimen>
     <dimen name="gamepad_toolbar_preset_min_width">76dp</dimen>
     <dimen name="gamepad_preset_name_max_width">140dp</dimen>
+    <dimen name="gamepad_preset_chip_max_width">220dp</dimen>
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>

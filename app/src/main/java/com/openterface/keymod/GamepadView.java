@@ -14,6 +14,7 @@ import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -87,10 +88,10 @@ public class GamepadView extends View {
     private float   stickOffsetX       = 0;
     private float   stickOffsetY       = 0;
 
-    // Long press detection
-    private static final long LONG_PRESS_THRESHOLD = 600; // ms
-    private static final float LONG_PRESS_MOVE_THRESHOLD = 15; // pixels
-    private Handler longPressHandler = new Handler();
+    // Long press detection (defaults; override via {@link #setEditLongPressConfig})
+    private long longPressThresholdMs = 600L;
+    private float longPressMoveThresholdPx = 15f;
+    private final Handler longPressHandler = new Handler(Looper.getMainLooper());
     private Runnable longPressRunnable;
     private String longPressComponentId = null;
     private float longPressDownX = 0;
@@ -759,7 +760,9 @@ public class GamepadView extends View {
                                           String boundsId, String shortLabel,
                                           String upLabel, String downLabel, String leftLabel, String rightLabel,
                                           @androidx.annotation.Nullable String stickVisualVariant) {
-        float scaledRadius = baseRadius * stickSizeScale * moduleScale;
+        // Preset modules carry size in {@code moduleScale}; legacy SIMPLE uses global {@link #stickSizeScale}.
+        float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
+        float scaledRadius = baseRadius * globalStickMul * moduleScale;
         float density = getResources().getDisplayMetrics().density;
         RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
         componentBounds.put(boundsId, bounds);
@@ -867,7 +870,8 @@ public class GamepadView extends View {
                                    String leftLabel, String rightLabel, @Nullable Float dpadSplitGapRatio,
                                    @Nullable Float dpadSplitOuterReachRatio) {
         float density = getResources().getDisplayMetrics().density;
-        GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, stickSizeScale, moduleScale,
+        float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
+        GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, globalStickMul, moduleScale,
                 boundsId, dpadVariant, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, themeAccentPrimary,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
@@ -1181,7 +1185,7 @@ public class GamepadView extends View {
                                 longPressListener.onComponentLongPress(longPressComponentId);
                             }
                         };
-                        longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_THRESHOLD);
+                        longPressHandler.postDelayed(longPressRunnable, longPressThresholdMs);
                     }
 
                     if (isDpadComponent(componentId)) {
@@ -1220,7 +1224,7 @@ public class GamepadView extends View {
                         }
                     };
                     longPressRunnable = emptyAreaRunnable;
-                    longPressHandler.postDelayed(emptyAreaRunnable, LONG_PRESS_THRESHOLD);
+                    longPressHandler.postDelayed(emptyAreaRunnable, longPressThresholdMs);
                 }
                 return true;
             }
@@ -1268,7 +1272,7 @@ public class GamepadView extends View {
                         float my = event.getY(i);
                         float dx = mx - longPressDownX;
                         float dy = my - longPressDownY;
-                        if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD) {
+                        if (Math.sqrt(dx * dx + dy * dy) > longPressMoveThresholdPx) {
                             longPressHandler.removeCallbacks(longPressRunnable);
                             longPressCancelled = true;
                         }
@@ -1517,7 +1521,7 @@ public class GamepadView extends View {
                                 longPressListener.onComponentLongPress(longPressComponentId);
                             }
                         };
-                        longPressHandler.postDelayed(longPressRunnable, LONG_PRESS_THRESHOLD);
+                        longPressHandler.postDelayed(longPressRunnable, longPressThresholdMs);
                     }
                     if (isDpadComponent(componentId)) {
                         if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
@@ -1557,7 +1561,7 @@ public class GamepadView extends View {
                         }
                     };
                     longPressRunnable = emptyAreaRunnable;
-                    longPressHandler.postDelayed(emptyAreaRunnable, LONG_PRESS_THRESHOLD);
+                    longPressHandler.postDelayed(emptyAreaRunnable, longPressThresholdMs);
                 }
                 return true;
             }
@@ -1614,7 +1618,7 @@ public class GamepadView extends View {
                         float my = event.getY(i);
                         float dx = mx - longPressDownX;
                         float dy = my - longPressDownY;
-                        if (Math.sqrt(dx * dx + dy * dy) > LONG_PRESS_MOVE_THRESHOLD) {
+                        if (Math.sqrt(dx * dx + dy * dy) > longPressMoveThresholdPx) {
                             longPressHandler.removeCallbacks(longPressRunnable);
                             longPressCancelled = true;
                         }
@@ -2032,6 +2036,16 @@ public class GamepadView extends View {
     public void setShowTwoButtons(boolean show) {
         this.showTwoButtons = show;
         invalidate();
+    }
+
+    /**
+     * Tunes customize-mode long-press before module / empty-area menus. Values are clamped for safety.
+     * Persisted keys: {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_MS},
+     * {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_CANCEL_DP}.
+     */
+    public void setEditLongPressConfig(long thresholdMs, float moveCancelPx) {
+        longPressThresholdMs = Math.max(250L, Math.min(1200L, thresholdMs));
+        longPressMoveThresholdPx = Math.max(8f, Math.min(80f, moveCancelPx));
     }
 
     public void setLongPressEnabled(boolean enabled) {

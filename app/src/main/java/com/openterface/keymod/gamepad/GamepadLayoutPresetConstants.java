@@ -67,6 +67,14 @@ public final class GamepadLayoutPresetConstants {
      */
     public static final String BUILT_IN_TWO_BUTTON_PRESET_ID = "preset_two_buttons";
 
+    /**
+     * Presets that must not be removed from the store (user may still rename for display).
+     */
+    public static boolean isPresetDeletionProtected(@Nullable String presetId) {
+        return DEFAULT_PRESET_ID.equals(presetId)
+                || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId);
+    }
+
     public static final int MAX_BUTTON_MODULES = 20;
 
     /** Default stick positions: PlayStation-style horizontal pair. */
@@ -162,6 +170,15 @@ public final class GamepadLayoutPresetConstants {
     public static final float DPAD_SPLIT_OUTER_REACH_RATIO_MAX = 1.0f;
     public static final float DPAD_SPLIT_OUTER_REACH_RATIO_DEFAULT = 1.0f;
 
+    /**
+     * Split pads: fixed along-axis thickness as a fraction of {@code half} (does not shrink when outer reach changes).
+     */
+    public static final float DPAD_SPLIT_SEGMENT_DEPTH_NORM = 0.52f;
+    /**
+     * Split pads: fixed cross-axis span as a fraction of {@code half} (width of up/down pads, height of left/right).
+     */
+    public static final float DPAD_SPLIT_SEGMENT_BREADTH_NORM = 0.44f;
+
     public static float clampDpadSplitOuterReachRatio(@Nullable Float v) {
         if (v == null || v.isNaN() || v.isInfinite()) {
             return DPAD_SPLIT_OUTER_REACH_RATIO_DEFAULT;
@@ -170,9 +187,42 @@ public final class GamepadLayoutPresetConstants {
                 Math.min(DPAD_SPLIT_OUTER_REACH_RATIO_MAX, v));
     }
 
-    /** Minimum {@link #clampDpadSplitOuterReachRatio} allowed for a given (clamped) gap ratio so pads stay usable. */
+    /**
+     * Minimum outer-reach ratio for a given gap so fixed-size segments fit between inner gap and outer edge
+     * ({@code outer * half >= inner + depth + margin}).
+     */
     public static float minOuterReachRatioForGapRatio(float gapRatioClamped) {
+        float need = gapRatioClamped * 0.5f + DPAD_SPLIT_SEGMENT_DEPTH_NORM + 0.02f;
         return Math.min(DPAD_SPLIT_OUTER_REACH_RATIO_MAX,
-                Math.max(DPAD_SPLIT_OUTER_REACH_RATIO_MIN, gapRatioClamped * 0.5f + 0.10f));
+                Math.max(DPAD_SPLIT_OUTER_REACH_RATIO_MIN, need));
+    }
+
+    /**
+     * Largest split gap ratio in {@code [}{@link #DPAD_SPLIT_GAP_RATIO_MIN}, {@code upperBoundGapRatio}{@code ]}
+     * whose {@link #minOuterReachRatioForGapRatio} is at most {@code outerReachRatio} (after clamping both).
+     * Used when the user pulls “distance to keys” inward: shrink the center gap first instead of only pushing
+     * outer reach back out.
+     */
+    public static float largestGapRatioUpToOuterReach(float outerReachRatio, float upperBoundGapRatio) {
+        float o = clampDpadSplitOuterReachRatio(outerReachRatio);
+        float upper = clampDpadSplitGapRatio(upperBoundGapRatio);
+        float gMin = DPAD_SPLIT_GAP_RATIO_MIN;
+        if (minOuterReachRatioForGapRatio(upper) <= o) {
+            return upper;
+        }
+        if (minOuterReachRatioForGapRatio(gMin) > o) {
+            return gMin;
+        }
+        float lo = gMin;
+        float hi = upper;
+        for (int i = 0; i < 24; i++) {
+            float mid = (lo + hi) * 0.5f;
+            if (minOuterReachRatioForGapRatio(mid) <= o) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        return clampDpadSplitGapRatio(lo);
     }
 }

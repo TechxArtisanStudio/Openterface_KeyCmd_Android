@@ -41,26 +41,50 @@ public final class GamepadDpadVariantArt {
         return GamepadLayoutPresetConstants.DPAD_VARIANT_SPLIT.equals(normalizeVariant(variant));
     }
 
-    public static void registerSplitDpadHitRects(
+    /**
+     * Places split D-pad hit rects. Segment <b>size</b> is fixed ({@link GamepadLayoutPresetConstants#DPAD_SPLIT_SEGMENT_DEPTH_NORM}
+     * / {@link GamepadLayoutPresetConstants#DPAD_SPLIT_SEGMENT_BREADTH_NORM}); {@code outerReachRatio} only slides the
+     * cluster in/out along each axis (outer edge distance from center = {@code half * outerReachRatio}).
+     */
+    /** @return outer distance in px from center to segment outer edge (after geometry clamp). */
+    public static float registerSplitDpadHitRects(
             float cx, float cy, float half, float gapRatio, float outerReachRatio,
             @NonNull java.util.Map<String, RectF> componentBounds,
             @NonNull List<String> hitOrder) {
-        float gap = half * gapRatio;
-        float inner = gap * 0.5f;
-        float outer = half * outerReachRatio;
-        float minPad = half * 0.10f;
-        if (outer <= inner + minPad) {
-            outer = inner + minPad;
-        }
-        float w = (outer - inner) * 0.48f;
-        componentBounds.put("dpad_up", new RectF(cx - w * 0.5f, cy - outer, cx + w * 0.5f, cy - inner));
-        componentBounds.put("dpad_down", new RectF(cx - w * 0.5f, cy + inner, cx + w * 0.5f, cy + outer));
-        componentBounds.put("dpad_left", new RectF(cx - outer, cy - w * 0.5f, cx - inner, cy + w * 0.5f));
-        componentBounds.put("dpad_right", new RectF(cx + inner, cy - w * 0.5f, cx + outer, cy + w * 0.5f));
+        float outerDist = placeSplitDpadRects(cx, cy, half, gapRatio, outerReachRatio, componentBounds);
         hitOrder.add("dpad_up");
         hitOrder.add("dpad_down");
         hitOrder.add("dpad_left");
         hitOrder.add("dpad_right");
+        return outerDist;
+    }
+
+    /** Writes {@code dpad_up/down/left/right} into {@code componentBounds}; returns outer distance in px for labels. */
+    private static float placeSplitDpadRects(
+            float cx, float cy, float half, float gapRatio, float outerReachRatio,
+            @NonNull java.util.Map<String, RectF> componentBounds) {
+        float gap = half * gapRatio;
+        float inner = gap * 0.5f;
+        float padDepth = half * GamepadLayoutPresetConstants.DPAD_SPLIT_SEGMENT_DEPTH_NORM;
+        float padBreadth = half * GamepadLayoutPresetConstants.DPAD_SPLIT_SEGMENT_BREADTH_NORM;
+        float outerDist = half * outerReachRatio;
+        float minRequired = inner + padDepth + 0.02f * half;
+        if (outerDist < minRequired) {
+            outerDist = minRequired;
+        }
+        componentBounds.put("dpad_up", new RectF(
+                cx - padBreadth * 0.5f, cy - outerDist,
+                cx + padBreadth * 0.5f, cy - outerDist + padDepth));
+        componentBounds.put("dpad_down", new RectF(
+                cx - padBreadth * 0.5f, cy + outerDist - padDepth,
+                cx + padBreadth * 0.5f, cy + outerDist));
+        componentBounds.put("dpad_left", new RectF(
+                cx - outerDist, cy - padBreadth * 0.5f,
+                cx - outerDist + padDepth, cy + padBreadth * 0.5f));
+        componentBounds.put("dpad_right", new RectF(
+                cx + outerDist - padDepth, cy - padBreadth * 0.5f,
+                cx + outerDist, cy + padBreadth * 0.5f));
+        return outerDist;
     }
 
     public static void draw(
@@ -146,19 +170,14 @@ public final class GamepadDpadVariantArt {
             Paint retroDpadFillPaint, Paint retroRingPaint, Paint retroGlossPaint, Paint retroShadowPaint,
             Typeface labelTypeface, java.util.Map<String, RectF> componentBounds, List<String> hitOrder,
             float gapRatio, float outerReachRatio) {
-        registerSplitDpadHitRects(cx, cy, half, gapRatio, outerReachRatio, componentBounds, hitOrder);
-        float gap = half * gapRatio;
-        float inner = gap * 0.5f;
-        float outer = half * outerReachRatio;
-        float minPad = half * 0.10f;
-        if (outer <= inner + minPad) {
-            outer = inner + minPad;
+        float outerDist = registerSplitDpadHitRects(cx, cy, half, gapRatio, outerReachRatio, componentBounds, hitOrder);
+        RectF up = componentBounds.get("dpad_up");
+        RectF dn = componentBounds.get("dpad_down");
+        RectF lf = componentBounds.get("dpad_left");
+        RectF rt = componentBounds.get("dpad_right");
+        if (up == null || dn == null || lf == null || rt == null) {
+            return;
         }
-        float w = (outer - inner) * 0.48f;
-        RectF up = new RectF(cx - w * 0.5f, cy - outer, cx + w * 0.5f, cy - inner);
-        RectF dn = new RectF(cx - w * 0.5f, cy + inner, cx + w * 0.5f, cy + outer);
-        RectF lf = new RectF(cx - outer, cy - w * 0.5f, cx - inner, cy + w * 0.5f);
-        RectF rt = new RectF(cx + inner, cy - w * 0.5f, cx + outer, cy + w * 0.5f);
         int pressTint = applyAlphaInt(themeAccentPrimary, 88);
         drawSplitPad(canvas, up, density, boundsId + "_up", activeStickDirections, pressTint,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint);
@@ -168,7 +187,7 @@ public final class GamepadDpadVariantArt {
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint);
         drawSplitPad(canvas, rt, density, boundsId + "_right", activeStickDirections, pressTint,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint);
-        float labelR = Math.max(outer, half * 0.35f);
+        float labelR = Math.max(outerDist, half * 0.35f);
         drawDirectionLabels(canvas, cx, cy, labelR, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, labelTypeface);
     }

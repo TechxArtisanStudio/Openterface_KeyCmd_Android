@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="52dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="@dimen/spacing_medium"
+    android:paddingVertical="@dimen/spacing_small">
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/preset_row_check"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@null"
+        android:visibility="invisible"
+        app:srcCompat="@drawable/ic_check"
+        app:tint="?attr/colorPrimary" />
+
+    <TextView
+        android:id="@+id/preset_row_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/spacing_small"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/preset_row_overflow"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/gamepad_preset_row_menu_cd"
+        app:srcCompat="@drawable/ic_menu"
+        app:tint="?android:attr/textColorSecondary" />
+</LinearLayout>
