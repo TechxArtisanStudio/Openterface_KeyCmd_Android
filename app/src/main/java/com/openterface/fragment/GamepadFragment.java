@@ -25,6 +25,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.view.Window;
 import android.content.res.ColorStateList;
 import android.widget.ImageView;
@@ -61,6 +63,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageButton;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.core.content.FileProvider;
@@ -211,6 +216,12 @@ public class GamepadFragment extends Fragment {
     private MaterialButton activePresetChipButton;
     @Nullable
     private MaterialButton editModeMaterialButton;
+    @Nullable
+    private ImageButton gamepadChromeMenu;
+    @Nullable
+    private LinearLayout gamepadChromeConnectionWrap;
+    @Nullable
+    private ImageView gamepadChromeConnectionIcon;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -286,6 +297,9 @@ public class GamepadFragment extends Fragment {
             sessionDone.setOnClickListener(v -> exitLayoutEditSession());
         }
 
+        wireGamepadEmbeddedChrome(view);
+        applyGamepadToolbarTopInsets(view);
+
         setupListeners();
         updateActivePresetNameUi();
         applyGamepadEditTouchPreferences();
@@ -300,6 +314,7 @@ public class GamepadFragment extends Fragment {
         requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         updateGyroListenerRegistration();
         applyGamepadEditTouchPreferences();
+        refreshGamepadEmbeddedChrome();
     }
 
     @Override
@@ -309,6 +324,85 @@ public class GamepadFragment extends Fragment {
         }
         super.onPause();
         requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+    }
+
+    private void wireGamepadEmbeddedChrome(@NonNull View root) {
+        gamepadChromeMenu = root.findViewById(R.id.gamepad_chrome_menu);
+        gamepadChromeConnectionWrap = root.findViewById(R.id.gamepad_chrome_connection_wrap);
+        gamepadChromeConnectionIcon = root.findViewById(R.id.gamepad_chrome_connection_icon);
+        if (gamepadChromeMenu != null) {
+            gamepadChromeMenu.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openDrawerForBasic();
+                        }
+                    });
+        }
+        if (gamepadChromeConnectionWrap != null) {
+            gamepadChromeConnectionWrap.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.showConnectionDialogFromBasic();
+                        }
+                    });
+        }
+        refreshGamepadEmbeddedChrome();
+    }
+
+    private void applyGamepadToolbarTopInsets(@NonNull View root) {
+        View chromeBar = root.findViewById(R.id.gamepad_chrome_bar);
+        View toggleRow = root.findViewById(R.id.toggle_row);
+        View editBar = root.findViewById(R.id.gamepad_edit_session_bar);
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    int top =
+                            bars.top
+                                    + getResources()
+                                            .getDimensionPixelSize(R.dimen.gamepad_toolbar_margin_top);
+                    setFrameLayoutTopMargin(chromeBar, top);
+                    setFrameLayoutTopMargin(toggleRow, top);
+                    setFrameLayoutTopMargin(editBar, top);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private static void setFrameLayoutTopMargin(@Nullable View child, int topMargin) {
+        if (child == null) {
+            return;
+        }
+        ViewGroup.LayoutParams lp = child.getLayoutParams();
+        if (lp instanceof FrameLayout.LayoutParams) {
+            ((FrameLayout.LayoutParams) lp).topMargin = topMargin;
+            child.setLayoutParams(lp);
+        }
+    }
+
+    /** Called from {@link MainActivity#notifyBasicChromeFragments()} when connection state changes. */
+    public void refreshGamepadEmbeddedChrome() {
+        if (gamepadChromeConnectionIcon == null) {
+            return;
+        }
+        MainActivity ma = mainActivity();
+        if (ma == null) {
+            return;
+        }
+        ConnectionManager cm = ma.getConnectionManager();
+        if (cm != null) {
+            ma.applyBasicConnectionIcon(
+                    gamepadChromeConnectionIcon,
+                    cm.getCurrentConnectionType(),
+                    cm.getCurrentConnectionState());
+        }
+    }
+
+    @Nullable
+    private MainActivity mainActivity() {
+        return getActivity() instanceof MainActivity ? (MainActivity) getActivity() : null;
     }
 
     private void setupListeners() {

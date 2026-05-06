@@ -551,13 +551,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     private void applyAppChromeForHostFragment() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        boolean basicHost = f instanceof KeyboardMouseFragment;
+        boolean hideAppHeader = f instanceof KeyboardMouseFragment || f instanceof GamepadFragment;
         if (headerLayout != null) {
-            headerLayout.setVisibility(basicHost ? View.GONE : View.VISIBLE);
+            headerLayout.setVisibility(hideAppHeader ? View.GONE : View.VISIBLE);
         }
         TextView appTitle = findViewById(R.id.app_title);
         if (appTitle != null) {
-            if (basicHost) {
+            if (hideAppHeader) {
                 appTitle.setVisibility(View.VISIBLE);
             } else {
                 // Keyboard & Mouse Pro: brand lives on the touchpad footer; keep header uncluttered.
@@ -645,6 +645,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (f instanceof KeyboardMouseFragment) {
             ((KeyboardMouseFragment) f).refreshBasicEmbeddedChrome();
+        } else if (f instanceof GamepadFragment) {
+            ((GamepadFragment) f).refreshGamepadEmbeddedChrome();
         }
     }
 
