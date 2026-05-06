@@ -103,6 +103,11 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Boolean triggerAnalog;
         /** TRIGGER: {@link GamepadLayoutPresetConstants#TRIGGER_VARIANT_DIGITAL} and siblings (UI / future use). */
         @Nullable public String triggerVariant;
+        /**
+         * STICK_MOUSE only: pointer movement gain {@code [0.25, 4]}. Null uses {@link LayoutGlobals#rightStickMouseGain}
+         * or built-in default.
+         */
+        @Nullable public Float stickMouseSensitivity;
     }
 
     public static boolean looksLikeDocument(String json) {
@@ -139,10 +144,8 @@ public class GamepadLayoutPresetDocument {
         if (!GamepadLayoutPresetConstants.DOCUMENT_FORMAT.equals(d.format)) {
             throw new IllegalArgumentException("Unknown format: " + d.format);
         }
-        if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION
-                && d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION_V1
-                && d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION_V2
-                && d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION_V3) {
+        if (d.schemaVersion < GamepadLayoutPresetConstants.SCHEMA_VERSION_V1
+                || d.schemaVersion > GamepadLayoutPresetConstants.SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported schemaVersion: " + d.schemaVersion);
         }
         if (d.layout == null) {
@@ -307,8 +310,18 @@ public class GamepadLayoutPresetDocument {
                     }
                 }
                 if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)) {
-                    throw new IllegalArgumentException("stick_key_extra must be STICK_KEY");
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                    throw new IllegalArgumentException("stick_key_extra must be STICK_KEY or STICK_MOUSE");
+                }
+                if (m.stickMouseSensitivity != null) {
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickMouseSensitivity only on STICK_MOUSE");
+                    }
+                    float s = m.stickMouseSensitivity;
+                    if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.25f || s > 4.0f) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickMouseSensitivity must be in [0.25, 4]");
+                    }
                 }
                 if ("stick_left".equals(m.id)) {
                     hasStickLeft = true;

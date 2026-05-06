@@ -614,14 +614,16 @@ public class GamepadView extends View {
             dnL = componentDisplayLabels.getOrDefault("stick_r_down", "K");
             lfL = componentDisplayLabels.getOrDefault("stick_r_left", "J");
             rtL = componentDisplayLabels.getOrDefault("stick_r_right", "L");
-        } else if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
-            upL = componentDisplayLabels.getOrDefault("stick_e_up", "\u2191");
-            dnL = componentDisplayLabels.getOrDefault("stick_e_down", "\u2193");
-            lfL = componentDisplayLabels.getOrDefault("stick_e_left", "\u2190");
-            rtL = componentDisplayLabels.getOrDefault("stick_e_right", "\u2192");
+        } else if (GamepadLayoutPresetConstants.isArrowStickModuleId(m.id)) {
+            String p = m.id + "_";
+            upL = componentDisplayLabels.getOrDefault(p + "up", "\u2191");
+            dnL = componentDisplayLabels.getOrDefault(p + "down", "\u2193");
+            lfL = componentDisplayLabels.getOrDefault(p + "left", "\u2190");
+            rtL = componentDisplayLabels.getOrDefault(p + "right", "\u2192");
         }
         String shortLabel = "stick_left".equals(m.id) ? "L"
-                : (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id) ? "E" : "R");
+                : (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id) ? "E"
+                : (GamepadLayoutPresetConstants.isArrowStickModuleId(m.id) ? "+" : "R"));
         drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? dnL : null,
@@ -2144,11 +2146,13 @@ public class GamepadView extends View {
         if ("l".equals(s)) {
             out.add("stick_l");
             out.add("stick_left");
-        } else         if ("r".equals(s)) {
+        } else if ("r".equals(s)) {
             out.add("stick_r");
             out.add("stick_right");
         } else if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(s)) {
             out.add(GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID);
+        } else if (s.startsWith("stick_")) {
+            out.add(s);
         } else {
             out.add("stick_" + s);
         }

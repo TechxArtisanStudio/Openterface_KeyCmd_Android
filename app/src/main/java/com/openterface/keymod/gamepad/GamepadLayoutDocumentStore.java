@@ -166,8 +166,8 @@ public final class GamepadLayoutDocumentStore {
     }
 
     /**
-     * Next unused id {@code stick_aux_1}, {@code stick_aux_2}, … for additional {@code STICK_KEY} modules
-     * after {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} is taken.
+     * Next unused id {@code stick_aux_1}, {@code stick_aux_2}, … for additional arrow sticks after
+     * {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} is taken (type is STICK_KEY by default; can be changed in UI).
      */
     public static String nextStickAuxModuleId(GamepadLayoutPresetDocument doc) {
         Set<String> taken = new HashSet<>();

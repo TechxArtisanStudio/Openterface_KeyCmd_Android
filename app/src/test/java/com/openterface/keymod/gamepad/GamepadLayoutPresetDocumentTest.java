@@ -243,6 +243,67 @@ public class GamepadLayoutPresetDocumentTest {
         assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
     }
 
+    @Test
+    public void upgradeV4RenamesStickRightToArrowStickId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V4;
+        GamepadLayoutPresetDocument.GamepadModule right = new GamepadLayoutPresetDocument.GamepadModule();
+        right.id = "stick_right";
+        right.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE;
+        right.zIndex = 2;
+        right.scale = 1f;
+        right.anchorX = 0.75f;
+        right.anchorY = 0.5f;
+        right.stickUpKey = 12;
+        right.stickLeftKey = 13;
+        right.stickDownKey = 14;
+        right.stickRightKey = 15;
+        doc.modules.add(right);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+        GamepadLayoutPresetDocument.GamepadModule arrow = findModule(doc, GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID);
+        assertNotNull(arrow);
+        assertEquals(GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE, arrow.type);
+    }
+
+    @Test
+    public void validateAcceptsArrowStickMouseWithSensitivity() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule extra = new GamepadLayoutPresetDocument.GamepadModule();
+        extra.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
+        extra.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE;
+        extra.zIndex = 3;
+        extra.scale = 1f;
+        extra.anchorX = 0.5f;
+        extra.anchorY = 0.72f;
+        extra.stickUpKey = 82;
+        extra.stickLeftKey = 80;
+        extra.stickDownKey = 81;
+        extra.stickRightKey = 79;
+        extra.stickMouseSensitivity = 1.5f;
+        doc.modules.add(extra);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsStickMouseSensitivityOnStickKey() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule extra = new GamepadLayoutPresetDocument.GamepadModule();
+        extra.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
+        extra.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        extra.zIndex = 3;
+        extra.scale = 1f;
+        extra.anchorX = 0.5f;
+        extra.anchorY = 0.72f;
+        extra.stickUpKey = 82;
+        extra.stickLeftKey = 80;
+        extra.stickDownKey = 81;
+        extra.stickRightKey = 79;
+        extra.stickMouseSensitivity = 1.5f;
+        doc.modules.add(extra);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void validateRejectsInvalidFaceButtonTemplate() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();

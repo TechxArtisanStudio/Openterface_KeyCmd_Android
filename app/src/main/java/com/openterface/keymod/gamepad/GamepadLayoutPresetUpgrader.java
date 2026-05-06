@@ -23,6 +23,10 @@ public final class GamepadLayoutPresetUpgrader {
         }
         if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V3) {
             migrateV3ToV4(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V4;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V4) {
+            migrateV4ToV5(d);
             d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
         }
     }
@@ -54,6 +58,32 @@ public final class GamepadLayoutPresetUpgrader {
         if (d.layout != null && d.layout.faceButtonTemplate != null
                 && d.layout.faceButtonTemplate.trim().isEmpty()) {
             d.layout.faceButtonTemplate = null;
+        }
+    }
+
+    /**
+     * v4 → v5: legacy optional {@code stick_right} merges into the arrow stick slot {@code stick_key_extra}
+     * when that id is not already used (add-module UI no longer creates {@code stick_right}).
+     */
+    private static void migrateV4ToV5(GamepadLayoutPresetDocument d) {
+        if (d.modules == null) {
+            return;
+        }
+        boolean hasArrowSlot = false;
+        GamepadLayoutPresetDocument.GamepadModule stickRight = null;
+        for (GamepadLayoutPresetDocument.GamepadModule m : d.modules) {
+            if (m == null || m.id == null) {
+                continue;
+            }
+            if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
+                hasArrowSlot = true;
+            }
+            if ("stick_right".equals(m.id)) {
+                stickRight = m;
+            }
+        }
+        if (stickRight != null && !hasArrowSlot) {
+            stickRight.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
         }
     }
 

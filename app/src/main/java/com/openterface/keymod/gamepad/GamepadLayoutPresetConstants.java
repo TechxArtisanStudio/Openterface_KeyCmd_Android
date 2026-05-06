@@ -10,11 +10,13 @@ public final class GamepadLayoutPresetConstants {
     public static final int SCHEMA_VERSION_V1 = 1;
     public static final int SCHEMA_VERSION_V2 = 2;
     public static final int SCHEMA_VERSION_V3 = 3;
+    /** v4: shoulder/trigger modules, face templates, gyro flag, stick metadata. */
+    public static final int SCHEMA_VERSION_V4 = 4;
     /**
-     * Current preset schema: v3 fields plus optional {@code SHOULDER}/{@code TRIGGER} modules,
-     * {@code faceButtonTemplate}, {@code gyroEnabled}, stick/trigger metadata.
+     * Current preset schema: v4 plus optional {@code stickMouseSensitivity} on {@code STICK_MOUSE} sticks;
+     * v5 migrates legacy {@code stick_right} into {@link #STICK_KEY_EXTRA_ID} when the arrow slot is free.
      */
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
     /**
@@ -41,7 +43,9 @@ public final class GamepadLayoutPresetConstants {
      */
     public static final String MODULE_TYPE_TRIGGER = "TRIGGER";
 
-    /** Optional third stick: same STICK_KEY behavior as left stick, distinct module id. */
+    /**
+     * Optional arrow stick module id (key or mouse direction); additional slots use {@code stick_aux_*}.
+     */
     public static final String STICK_KEY_EXTRA_ID = "stick_key_extra";
 
     public static final String MOUSE_BTN_LEFT_ID = "mouse_btn_l";
@@ -80,6 +84,11 @@ public final class GamepadLayoutPresetConstants {
      */
     public static boolean isStickModuleId(@Nullable String id) {
         return id != null && id.matches("stick_[a-z0-9_]+");
+    }
+
+    /** Arrow stick slot: {@link #STICK_KEY_EXTRA_ID} or {@code stick_aux_1}, {@code stick_aux_2}, … */
+    public static boolean isArrowStickModuleId(@Nullable String id) {
+        return STICK_KEY_EXTRA_ID.equals(id) || (id != null && id.startsWith("stick_aux_"));
     }
 
     /**

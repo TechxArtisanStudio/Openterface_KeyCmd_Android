@@ -787,10 +787,9 @@ by TechxArtisan</string>
     <string name="gamepad_presets_export_failed_detail">Export failed: %1$s</string>
     <string name="gamepad_presets_add_module">Add module…</string>
     <string name="gamepad_add_module_title">Add module</string>
-    <string name="gamepad_add_right_stick">Right stick (mouse)</string>
     <string name="gamepad_add_extra_button">Extra button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
-    <string name="gamepad_add_arrow_stick">Arrow stick (extra)</string>
+    <string name="gamepad_add_arrow_stick">Arrow stick</string>
     <!-- Left-thumb / stick_left slot only; shape (cross, split, …) is set in Configure control. -->
     <string name="gamepad_add_dpad_cross_left">D-pad (left thumb area)</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
@@ -837,6 +836,10 @@ by TechxArtisan</string>
     <string name="gamepad_stick_config_size_label">Stick size</string>
     <string name="gamepad_config_slider_small">Small</string>
     <string name="gamepad_config_slider_large">Large</string>
+    <string name="gamepad_config_slider_slower">Slower</string>
+    <string name="gamepad_config_slider_faster">Faster</string>
+    <string name="gamepad_arrow_stick_mouse_sensitivity_title">Pointer sensitivity</string>
+    <string name="gamepad_arrow_stick_mouse_sensitivity_summary">How fast the cursor moves for this stick. Used only when mapping is set to mouse direction (relative pointer).</string>
     <string name="gamepad_config_reset">Reset</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>
