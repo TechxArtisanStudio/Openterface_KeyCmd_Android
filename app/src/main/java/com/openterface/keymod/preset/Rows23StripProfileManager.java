@@ -2,7 +2,6 @@ package com.openterface.keymod.preset;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -11,6 +10,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.ShortcutProfileManager;
+import com.openterface.keymod.util.TopRows23StripProfileSlotPrefs;
 import com.openterface.keymod.ShortcutProfileManager.Shortcut;
 import com.openterface.keymod.ShortcutProfileManager.ShortcutProfile;
 
@@ -31,7 +31,6 @@ import java.util.TimeZone;
  */
 public class Rows23StripProfileManager {
 
-    private static final String TAG = "Rows23StripProfMgr";
     private static final String PREFS = "StripProfiles_v1";
     private static final String KEY_PROFILES_JSON = "profiles_json";
     private static final String KEY_ACTIVE_ID = "active_strip_profile_id";
@@ -41,6 +40,11 @@ public class Rows23StripProfileManager {
     private static final String DEFAULT_STRIP_B_P2R2C2_PAREN = "default_builtin_strip_b_p2r2c2_paren";
     private static final String DEFAULT_STRIP_F_P2R2C1_GRAVE = "default_builtin_strip_f_p2r2c1_grave";
     private static final String DEFAULT_STRIP_F_P2R2C2_TILDE = "default_builtin_strip_f_p2r2c2_tilde";
+
+    private static final String PERSONAL_STRIP_B_P2R2C1_PAREN = "builtin_personal_strip_b_p2r2c1_paren";
+    private static final String PERSONAL_STRIP_B_P2R2C2_PAREN = "builtin_personal_strip_b_p2r2c2_paren";
+    private static final String PERSONAL_STRIP_F_P2R2C1_GRAVE = "builtin_personal_strip_f_p2r2c1_grave";
+    private static final String PERSONAL_STRIP_F_P2R2C2_TILDE = "builtin_personal_strip_f_p2r2c2_tilde";
 
     /** Legacy ids (grave on base) — rebind to paren base slots when still present. */
     private static final String LEGACY_STRIP_B_P2R2C1_GRAVE = "default_builtin_strip_b_p2r2c1_grave";
@@ -107,36 +111,90 @@ public class Rows23StripProfileManager {
             }
         }
         boolean remapped = migrateAllProfileSlotMapsToCanonicalKeys();
-        boolean punct = ensureDefaultStripProfilePage2PunctSlotsIfEmpty();
-        boolean builtInsP2 = upgradeBuiltInStripProfilesIfPage2Row2LayoutStale();
-        if (remapped || punct || builtInsP2) {
+        boolean purged = purgeRemovedThematicStripProfiles();
+        TopRows23StripProfileSlotPrefs.migrateRemovedThematicStripProfilePrefs(appContext);
+        TopRows23StripProfileSlotPrefs.migrateStripSlots3456StoredDefaultToUnassignedOnce(appContext);
+        boolean punct = ensureFactoryStripProfilesPage2PunctSlots();
+        boolean mineLabel = ensureMineStripProfileDisplayName();
+        if (remapped || purged || punct || mineLabel) {
             save();
         }
     }
 
-    /**
-     * Page 2 row 2: base caps are "(" / ")" (HID 0x26/0x27 + Shift); Fn layer is "`" / "~" (0x35).
-     * Seeds {@code b-p…} / {@code f-p…} on Default and repairs bindings that no longer match.
-     */
-    private boolean ensureDefaultStripProfilePage2PunctSlotsIfEmpty() {
-        Rows23StripProfile def = getProfileById(Rows23StripProfileConstants.DEFAULT_PROFILE_ID);
-        if (def == null || def.slotMap == null || def.shortcuts == null) {
+    /** Canonical short UI label for {@link Rows23StripProfileConstants#PERSONAL_PROFILE_ID}. */
+    private static final String MINE_STRIP_PROFILE_DISPLAY_NAME = "Mine";
+
+    private boolean ensureMineStripProfileDisplayName() {
+        Rows23StripProfile p = getProfileById(Rows23StripProfileConstants.PERSONAL_PROFILE_ID);
+        if (p == null) {
             return false;
         }
+        if (!MINE_STRIP_PROFILE_DISPLAY_NAME.equals(p.name)) {
+            p.name = MINE_STRIP_PROFILE_DISPLAY_NAME;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Drops removed themed built-ins from storage so only Default, Mine ({@code strip_personal}), and user profiles
+     * remain. Fixes active profile id and page-3 quick-toggle prefs when they still referenced
+     * a removed id.
+     */
+    private boolean purgeRemovedThematicStripProfiles() {
+        boolean changed = profiles.removeIf(p -> p != null
+                && Rows23StripProfileConstants.isLegacyRemovedThematicStripId(p.id));
+        if (Rows23StripProfileConstants.isLegacyRemovedThematicStripId(activeProfileId)) {
+            activeProfileId = Rows23StripProfileConstants.DEFAULT_PROFILE_ID;
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * Page 2 row 2: base caps are "(" / ")" (HID 0x26/0x27 + Shift); Fn layer is "`" / "~" (0x35).
+     * Seeds {@code b-p…} / {@code f-p…} on the Default and Mine ({@code strip_personal}) factory profiles and repairs
+     * bindings that no longer match.
+     */
+    private boolean ensureFactoryStripProfilesPage2PunctSlots() {
         boolean changed = false;
-        changed |= migrateLegacyDefaultPage2BaseGraveIds(def);
-        upsertDefaultPage2ParenShortcut(def, DEFAULT_STRIP_B_P2R2C1_PAREN, false);
-        upsertDefaultPage2ParenShortcut(def, DEFAULT_STRIP_B_P2R2C2_PAREN, true);
-        upsertDefaultPage2GraveTildeShortcut(def, DEFAULT_STRIP_F_P2R2C1_GRAVE, false);
-        upsertDefaultPage2GraveTildeShortcut(def, DEFAULT_STRIP_F_P2R2C2_TILDE, true);
-        changed |= bindDefaultPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 0, false),
-                DEFAULT_STRIP_B_P2R2C1_PAREN, 0);
-        changed |= bindDefaultPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 1, false),
-                DEFAULT_STRIP_B_P2R2C2_PAREN, 1);
-        changed |= bindDefaultPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 0, true),
-                DEFAULT_STRIP_F_P2R2C1_GRAVE, 0);
-        changed |= bindDefaultPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 1, true),
-                DEFAULT_STRIP_F_P2R2C2_TILDE, 1);
+        Rows23StripProfile def = getProfileById(Rows23StripProfileConstants.DEFAULT_PROFILE_ID);
+        if (def != null && def.slotMap != null && def.shortcuts != null) {
+            changed |= migrateLegacyDefaultPage2BaseGraveIds(def);
+            changed |= ensurePage2ParenGraveBindingsForProfile(
+                    def,
+                    DEFAULT_STRIP_B_P2R2C1_PAREN,
+                    DEFAULT_STRIP_B_P2R2C2_PAREN,
+                    DEFAULT_STRIP_F_P2R2C1_GRAVE,
+                    DEFAULT_STRIP_F_P2R2C2_TILDE);
+        }
+        Rows23StripProfile personal = getProfileById(Rows23StripProfileConstants.PERSONAL_PROFILE_ID);
+        if (personal != null && personal.slotMap != null && personal.shortcuts != null) {
+            changed |= ensurePage2ParenGraveBindingsForProfile(
+                    personal,
+                    PERSONAL_STRIP_B_P2R2C1_PAREN,
+                    PERSONAL_STRIP_B_P2R2C2_PAREN,
+                    PERSONAL_STRIP_F_P2R2C1_GRAVE,
+                    PERSONAL_STRIP_F_P2R2C2_TILDE);
+        }
+        return changed;
+    }
+
+    private static boolean ensurePage2ParenGraveBindingsForProfile(
+            @NonNull Rows23StripProfile def,
+            @NonNull String parenOpenId,
+            @NonNull String parenCloseId,
+            @NonNull String graveId,
+            @NonNull String tildeId) {
+        boolean changed = false;
+        upsertPage2ParenShortcut(def, parenOpenId, false);
+        upsertPage2ParenShortcut(def, parenCloseId, true);
+        upsertPage2GraveTildeShortcut(def, graveId, false);
+        upsertPage2GraveTildeShortcut(def, tildeId, true);
+        changed |= bindPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 0, false), parenOpenId, 0);
+        changed |= bindPage2BaseParenSlot(def, StripSlotMapStore.slotKey(2, 2, 1, false), parenCloseId, 1);
+        changed |= bindPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 0, true), graveId, 0);
+        changed |= bindPage2FnGraveSlot(def, StripSlotMapStore.slotKey(2, 2, 1, true), tildeId, 1);
         return changed;
     }
 
@@ -203,7 +261,7 @@ public class Rows23StripProfileManager {
         return null;
     }
 
-    private static void upsertDefaultPage2ParenShortcut(
+    private static void upsertPage2ParenShortcut(
             @NonNull Rows23StripProfile def, @NonNull String shortcutId, boolean closing) {
         Shortcut s = findShortcutById(def, shortcutId);
         if (s == null) {
@@ -219,7 +277,7 @@ public class Rows23StripProfileManager {
         s.icon = "";
     }
 
-    private static void upsertDefaultPage2GraveTildeShortcut(
+    private static void upsertPage2GraveTildeShortcut(
             @NonNull Rows23StripProfile def, @NonNull String shortcutId, boolean tilde) {
         Shortcut s = findShortcutById(def, shortcutId);
         if (s == null) {
@@ -235,7 +293,7 @@ public class Rows23StripProfileManager {
         s.icon = "";
     }
 
-    private static boolean bindDefaultPage2BaseParenSlot(
+    private static boolean bindPage2BaseParenSlot(
             @NonNull Rows23StripProfile def,
             @NonNull String slotKey,
             @NonNull String builtinShortcutId,
@@ -261,7 +319,7 @@ public class Rows23StripProfileManager {
         return false;
     }
 
-    private static boolean bindDefaultPage2FnGraveSlot(
+    private static boolean bindPage2FnGraveSlot(
             @NonNull Rows23StripProfile def,
             @NonNull String slotKey,
             @NonNull String builtinShortcutId,
@@ -288,118 +346,15 @@ public class Rows23StripProfileManager {
     }
 
     /**
-     * Replaces persisted "Symbols ★" / "Math ∑" when page 2 row 2 no longer matches factory
-     * (base Shift+9/0 with non-ASCII display glyphs; Fn "`" / "~"), or when an older copy still
-     * stores ASCII "(" in the base label for those slots.
-     */
-    private boolean upgradeBuiltInStripProfilesIfPage2Row2LayoutStale() {
-        boolean changed = false;
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.SYMBOLS_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildSymbolsProfile());
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.MATH_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildMathProfile());
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.BOX_LINES_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildBoxLinesProfile());
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.LATIN_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildLatinProfile());
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.ARROWS_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildArrowsProfile());
-        changed |= replaceBuiltInProfileIfPage2Row2LayoutStale(
-                Rows23StripProfileConstants.CURRENCY_PROFILE_ID,
-                Rows23StripProfileBuiltins.buildCurrencyProfile());
-        return changed;
-    }
-
-    private boolean replaceBuiltInProfileIfPage2Row2LayoutStale(
-            @NonNull String profileId, @NonNull Rows23StripProfile fresh) {
-        for (int i = 0; i < profiles.size(); i++) {
-            Rows23StripProfile cur = profiles.get(i);
-            if (!profileId.equals(cur.id)) {
-                continue;
-            }
-            Shortcut b0 = resolveSlotShortcut(cur, 2, 2, 0, false);
-            Shortcut b1 = resolveSlotShortcut(cur, 2, 2, 1, false);
-            Shortcut fnGrave = resolveSlotShortcut(cur, 2, 2, 0, true);
-            Shortcut fnTilde = resolveSlotShortcut(cur, 2, 2, 1, true);
-            boolean hidOk = isPage2ParenBaseHid(b0, 0) && isPage2ParenBaseHid(b1, 1)
-                    && isPage2GraveOrTildeHid(fnGrave, 0) && isPage2GraveOrTildeHid(fnTilde, 1);
-            if (hidOk && !needsBuiltInParenDisplayGlyphRefresh(profileId, b0)) {
-                return false;
-            }
-            profiles.set(i, fresh);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * When Symbols/Math switched to non-ASCII display glyphs for page 2 row 2 cols 1–2 (same HID as
-     * "(" / ")"), persisted copies that still store ASCII "(" in {@link Shortcut#label} must be
-     * replaced even though {@link #isPage2ParenBaseHid} already passes.
-     */
-    private static boolean needsBuiltInParenDisplayGlyphRefresh(
-            @NonNull String profileId, @Nullable Shortcut b0) {
-        if (b0 == null || b0.label == null) {
-            return false;
-        }
-        if (!Rows23StripProfileConstants.SYMBOLS_PROFILE_ID.equals(profileId)
-                && !Rows23StripProfileConstants.MATH_PROFILE_ID.equals(profileId)) {
-            return false;
-        }
-        return "(".equals(b0.label.trim());
-    }
-
-    @Nullable
-    private static Shortcut resolveSlotShortcut(
-            @NonNull Rows23StripProfile p, int page, int row, int col0, boolean fnLayer) {
-        if (p.slotMap == null || p.shortcuts == null) {
-            return null;
-        }
-        String sk = StripSlotMapStore.slotKey(page, row, col0, fnLayer);
-        String sid = p.slotMap.get(sk);
-        if (sid == null || sid.trim().isEmpty()) {
-            return null;
-        }
-        return findShortcutById(p, sid.trim());
-    }
-
-    /**
-     * Seeds non-deletable built-ins ("Symbols ★", "Math ∑") if they are missing from the in-memory
-     * profile list. Called from {@link #load()} (so storage tampering can't permanently remove
-     * them) and from {@link #migrateFromLegacyIfNeeded()} (so first launch gets all three built-ins
-     * alongside the seeded "Default").
+     * Seeds non-deletable Mine strip profile if missing. Default is created by legacy migration.
+     * Called from {@link #load()} and {@link #migrateFromLegacyIfNeeded()}.
      *
      * @return true if any built-in was added (caller decides whether to {@link #save()}).
      */
     private boolean ensureBuiltInProfiles() {
         boolean changed = false;
-        if (getProfileById(Rows23StripProfileConstants.SYMBOLS_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildSymbolsProfile());
-            changed = true;
-        }
-        if (getProfileById(Rows23StripProfileConstants.MATH_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildMathProfile());
-            changed = true;
-        }
-        if (getProfileById(Rows23StripProfileConstants.BOX_LINES_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildBoxLinesProfile());
-            changed = true;
-        }
-        if (getProfileById(Rows23StripProfileConstants.LATIN_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildLatinProfile());
-            changed = true;
-        }
-        if (getProfileById(Rows23StripProfileConstants.ARROWS_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildArrowsProfile());
-            changed = true;
-        }
-        if (getProfileById(Rows23StripProfileConstants.CURRENCY_PROFILE_ID) == null) {
-            profiles.add(Rows23StripProfileBuiltins.buildCurrencyProfile());
+        if (getProfileById(Rows23StripProfileConstants.PERSONAL_PROFILE_ID) == null) {
+            profiles.add(Rows23StripProfileBuiltins.buildPersonalStripProfile());
             changed = true;
         }
         return changed;

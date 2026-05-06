@@ -22,6 +22,7 @@ public final class TopModeShortcutPrefs {
     /** Order matches {@code nav_menu.xml}: Keyboard & Mouse, Presentation, then the rest. */
     private static final String[] SELECTABLE_MODES = {
             LaunchPanelActivity.MODE_KEYBOARD_MOUSE,
+            LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO,
             LaunchPanelActivity.MODE_PRESENTATION,
             LaunchPanelActivity.MODE_GAMEPAD,
             LaunchPanelActivity.MODE_SHORTCUTS,
@@ -112,6 +113,9 @@ public final class TopModeShortcutPrefs {
             case LaunchPanelActivity.MODE_VOICE:
                 return R.string.settings_tab_voice;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
+                return R.string.top_mode_label_keyboard_mouse;
+            case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
+                return R.string.top_mode_label_keyboard_mouse_pro;
             default:
                 return R.string.top_mode_label_keyboard_mouse;
         }
@@ -131,6 +135,9 @@ public final class TopModeShortcutPrefs {
             case LaunchPanelActivity.MODE_VOICE:
                 return R.drawable.voice;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
+                return R.drawable.keyboard_mouse;
+            case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
+                return R.drawable.keyboard_mouse_pro;
             default:
                 return R.drawable.keyboard_mouse;
         }

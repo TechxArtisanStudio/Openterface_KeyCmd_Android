@@ -20,7 +20,9 @@ import java.io.Reader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -287,6 +289,197 @@ public class GamepadLayoutPresetRepository {
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
+    }
+
+    /**
+     * Updates display name in index and in the preset JSON on disk.
+     *
+     * @return null on success, or error message.
+     */
+    @Nullable
+    public String renamePreset(@Nullable String id, @Nullable String newDisplayName) {
+        if (id == null || id.isEmpty()) {
+            return "Invalid preset";
+        }
+        if (newDisplayName == null || newDisplayName.trim().isEmpty()) {
+            return "Name required";
+        }
+        String trimmed = newDisplayName.trim();
+        List<PresetRef> idx = readIndex();
+        boolean found = false;
+        for (PresetRef r : idx) {
+            if (r != null && id.equals(r.id)) {
+                r.displayName = trimmed;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return "Preset not found";
+        }
+        GamepadLayoutPresetDocument doc = loadDocument(id);
+        if (doc == null) {
+            return "Preset not found";
+        }
+        if (doc.meta == null) {
+            doc.meta = new GamepadLayoutPresetDocument.Meta();
+        }
+        doc.meta.displayName = trimmed;
+        try {
+            writeFile(id, doc);
+        } catch (IOException e) {
+            return e.getMessage();
+        }
+        saveIndex(idx);
+        return null;
+    }
+
+    public static final class DuplicateResult {
+        @Nullable public final String newId;
+        @Nullable public final String error;
+
+        DuplicateResult(@Nullable String newId, @Nullable String error) {
+            this.newId = newId;
+            this.error = error;
+        }
+
+        public boolean isSuccess() {
+            return error == null && newId != null;
+        }
+    }
+
+    /**
+     * Deep-copies a preset to a new id. Display name becomes {@code "<name> (copy)"} based on index or meta.
+     */
+    @NonNull
+    public DuplicateResult duplicatePreset(@Nullable String id) {
+        if (id == null || id.isEmpty()) {
+            return new DuplicateResult(null, "Invalid preset");
+        }
+        GamepadLayoutPresetDocument src = loadDocument(id);
+        if (src == null) {
+            return new DuplicateResult(null, "Preset not found");
+        }
+        String baseLabel = id;
+        for (PresetRef r : readIndex()) {
+            if (r != null && id.equals(r.id)) {
+                if (r.displayName != null && !r.displayName.isEmpty()) {
+                    baseLabel = r.displayName;
+                }
+                break;
+            }
+        }
+        if (src.meta != null && src.meta.displayName != null && !src.meta.displayName.trim().isEmpty()) {
+            baseLabel = src.meta.displayName.trim();
+        }
+        String newId = "preset_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        GamepadLayoutPresetDocument copy = gson.fromJson(gson.toJson(src), GamepadLayoutPresetDocument.class);
+        if (copy == null) {
+            return new DuplicateResult(null, "Copy failed");
+        }
+        if (copy.meta == null) {
+            copy.meta = new GamepadLayoutPresetDocument.Meta();
+        }
+        copy.meta.id = newId;
+        String copyName = baseLabel + " (copy)";
+        copy.meta.displayName = copyName;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(copy);
+            writeFile(newId, copy);
+        } catch (Exception e) {
+            return new DuplicateResult(null, e.getMessage() != null ? e.getMessage() : "Write failed");
+        }
+        List<PresetRef> idx = readIndex();
+        idx.add(new PresetRef(newId, copyName));
+        saveIndex(idx);
+        return new DuplicateResult(newId, null);
+    }
+
+    /**
+     * Removes a user preset from disk and index. Built-in presets cannot be removed.
+     *
+     * @return null on success, or error message.
+     */
+    @Nullable
+    public String deletePreset(@Nullable String id) {
+        if (id == null || id.isEmpty()) {
+            return "Invalid preset";
+        }
+        if (GamepadLayoutPresetConstants.isPresetDeletionProtected(id)) {
+            return "Cannot delete built-in layout";
+        }
+        List<PresetRef> idx = readIndex();
+        boolean removed = false;
+        List<PresetRef> next = new ArrayList<>();
+        for (PresetRef r : idx) {
+            if (r == null || r.id == null) {
+                continue;
+            }
+            if (id.equals(r.id)) {
+                removed = true;
+                continue;
+            }
+            next.add(r);
+        }
+        if (!removed) {
+            return "Preset not found";
+        }
+        File f = presetFile(id);
+        if (f.isFile() && !f.delete()) {
+            return "Could not delete file";
+        }
+        saveIndex(next);
+        String active = getActivePresetId();
+        if (id.equals(active)) {
+            String fallback = GamepadLayoutPresetConstants.DEFAULT_PRESET_ID;
+            if (!presetFile(fallback).isFile()) {
+                fallback = GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID;
+            }
+            return activateAndApply(fallback);
+        }
+        return null;
+    }
+
+    /**
+     * Reorders presets in the index. Must contain exactly the same ids as the current index (one each).
+     *
+     * @return null on success, or error message.
+     */
+    @Nullable
+    public String reorderPresets(@Nullable List<String> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) {
+            return "Invalid order";
+        }
+        List<PresetRef> current = readIndex();
+        if (orderedIds.size() != current.size()) {
+            return "Count mismatch";
+        }
+        Set<String> expected = new HashSet<>();
+        for (PresetRef r : current) {
+            if (r != null && r.id != null) {
+                expected.add(r.id);
+            }
+        }
+        Set<String> got = new HashSet<>();
+        for (String s : orderedIds) {
+            if (s == null || s.isEmpty() || !expected.contains(s) || !got.add(s)) {
+                return "Invalid order";
+            }
+        }
+        if (got.size() != expected.size()) {
+            return "Invalid order";
+        }
+        List<PresetRef> byId = new ArrayList<>();
+        for (String id : orderedIds) {
+            for (PresetRef r : current) {
+                if (r != null && id.equals(r.id)) {
+                    byId.add(r);
+                    break;
+                }
+            }
+        }
+        saveIndex(byId);
+        return null;
     }
 
     public static class PresetRef {

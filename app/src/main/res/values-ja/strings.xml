@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">Openterface KM</string>
     <string name="settings_title">設定</string>
     <string name="settings_tab_general">一般的な</string>
     <string name="settings_tab_voice">声</string>
@@ -422,14 +422,35 @@ TechxArtisan により</string>
     <string name="top_mode_label_gamepad">ゲームパッド</string>
     <string name="gamepad_toast_edit_layout_hint">コンポーネントをドラッグして配置し、終わったら「完了」をタップします。</string>
     <string name="gamepad_toast_image_load_failed">画像を読み込めませんでした</string>
+    <string name="gamepad_customize_cd">レイアウトをカスタマイズ</string>
+    <string name="gamepad_cycle_next_preset_cd">次のレイアウト</string>
+    <string name="gamepad_edit_session_title">モジュールを移動</string>
+    <string name="gamepad_presets_sheet_title">レイアウト</string>
+    <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
+    <string name="gamepad_preset_row_menu_cd">レイアウトのオプション</string>
+    <string name="gamepad_preset_menu_rename">名前を変更</string>
+    <string name="gamepad_preset_menu_duplicate">複製</string>
+    <string name="gamepad_preset_menu_share">JSON を共有…</string>
+    <string name="gamepad_preset_menu_delete">削除</string>
+    <string name="gamepad_preset_rename_title">レイアウトの名前を変更</string>
+    <string name="gamepad_preset_rename_hint">表示名</string>
+    <string name="gamepad_preset_new_title">新しいレイアウト</string>
+    <string name="gamepad_preset_new_hint">レイアウト名</string>
+    <string name="gamepad_preset_name_required">名前を入力してください</string>
+    <string name="gamepad_preset_created">レイアウトを作成しました</string>
+    <string name="gamepad_preset_duplicated">レイアウトを複製しました</string>
+    <string name="gamepad_preset_action_failed">操作に失敗しました</string>
+    <string name="gamepad_preset_delete_title">レイアウトを削除しますか？</string>
+    <string name="gamepad_preset_delete_message">この端末からレイアウトが削除されます。組み込みレイアウトは削除できません。</string>
+    <string name="gamepad_preset_delete_confirm">削除</string>
     <string name="top_mode_label_shortcuts">ショートカットハブ</string>
     <string name="top_mode_label_macros">マクロ</string>
     <string name="top_shortcut_display_mode_cd_name">ショートカット ストリップ: ショートカット名を表示します。タップするとアイコンに切り替わります。</string>
     <string name="top_shortcut_display_mode_cd_icon">ショートカット ストリップ: アイコンを表示します。タップしてコンボテキストに切り替えます。</string>
     <string name="top_shortcut_display_mode_cd_chord">ショートカット ストリップ: コンボ キーを表示します (例: Alt+X)。タップすると名前に切り替わります。</string>
     <string name="ime_capture_hint">ここに長いテキストを入力して編集します。[送信] をタップして、接続されているデバイスに送信します。</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod キーボード (システム IME の場合はタップ)</string>
-    <string name="top_shortcut_ime_toggle_system">システム IME (KeyMod キーボードの場合はタップ)</string>
+    <string name="top_shortcut_ime_toggle_keymod">Openterface KM キーボード (システム IME の場合はタップ)</string>
+    <string name="top_shortcut_ime_toggle_system">システム IME (Openterface KM キーボードの場合はタップ)</string>
     <string name="top_shortcut_ime_toggle_keymod_short">内蔵</string>
     <string name="top_shortcut_ime_toggle_system_short">システムIME</string>
     <string name="top_strip_modifier_long_press_lock_hint">ヒント: モディファイアをロックするには、このキーを長押しします。</string>

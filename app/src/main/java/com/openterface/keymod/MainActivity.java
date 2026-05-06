@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PorterDuff;
@@ -20,6 +21,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.annotation.SuppressLint;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -32,6 +34,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -48,6 +52,7 @@ import androidx.fragment.app.FragmentTransaction;
 import com.openterface.fragment.CompositeFragment;
 import com.openterface.fragment.GamepadFragment;
 import com.openterface.fragment.KeyboardFragment;
+import com.openterface.fragment.KeyboardMouseFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
@@ -87,7 +92,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private ImageView signalBars;
     private ImageButton menuButton;
     private DrawerLayout drawerLayout;
+    private View headerLayout;
+    private final FragmentManager.FragmentLifecycleCallbacks chromeFragmentCallbacks =
+            new FragmentManager.FragmentLifecycleCallbacks() {
+                @Override
+                public void onFragmentResumed(@NonNull FragmentManager fm, @NonNull Fragment f) {
+                    if (f.getId() == R.id.fragment_container) {
+                        applyAppChromeForHostFragment();
+                    }
+                }
+            };
     private String currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+    @Nullable
+    private String pendingKbMouseSubmode;
     private View drawerImeRestoreTarget;
     private boolean restoreImeAfterDrawerClose;
     private DrawerCloseReason drawerCloseReason = DrawerCloseReason.NONE;
@@ -100,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     // Sidebar nav item views
     private LinearLayout navKeyboardMouse;
+    private LinearLayout navKeyboardMousePro;
     private LinearLayout navGamepad;
     private LinearLayout navShortcuts;
     private LinearLayout navMacros;
@@ -152,6 +170,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                                 updateFragmentsWithPort(null);
                             }
                         }
+                        notifyBasicChromeFragments();
                     });
                 }
 
@@ -197,6 +216,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             listener.onTargetOsChanged(os);
         }
         updateTargetOsHeaderIcon();
+        notifyBasicChromeFragments();
     }
     
     // Old button bar components (now hidden but kept for backward compatibility)
@@ -309,6 +329,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         ThemeManager.applyTheme(this);
         appliedThemeResId = ThemeManager.getSelectedThemeResId(this);
         super.onCreate(savedInstanceState);
+        Intent launchIntent = getIntent();
+        String earlyLaunchMode = launchIntent.getStringExtra("launch_mode");
+        String earlyKbSub = launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -336,13 +362,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
 
         // Handle launch mode from LaunchPanelActivity
+        pendingKbMouseSubmode = getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
         String launchMode = getIntent().getStringExtra("launch_mode");
         if (launchMode != null) {
             handleLaunchMode(launchMode);
         } else {
-            // Default to Composite mode
             currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
-            showCompositeFragment();
+            showKeyboardMouseFragment(consumePendingKbMouseSubmode());
         }
         
         // Note: Bluetooth auto-connect will be initialized after service is bound
@@ -370,8 +396,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         registerUsbReceiversIfNeeded();
         // Don't auto-setup USB here, ConnectionManager handles it
         
-        // Re-apply immersive mode
-        setImmersiveMode();
+        applyAppChromeForHostFragment();
         refreshHeaderModeSlotButtons();
     }
     
@@ -379,7 +404,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            setImmersiveMode();
+            updateImmersiveForTopFragment();
         }
     }
     
@@ -440,6 +465,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     @Override
     protected void onDestroy() {
+        getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(chromeFragmentCallbacks);
         if (connectionManager != null) {
             connectionManager.removeConnectionStateListener(connectionStateListener);
         }
@@ -462,8 +488,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void initializeUIComponents() {
-        // Set immersive mode
-        setImmersiveMode();
+        updateImmersiveForTopFragment();
 
         // Initialize new header buttons
         connectionButton = findViewById(R.id.connection_button);
@@ -475,7 +500,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         
         // Initialize drawer layout and nav items
         drawerLayout = findViewById(R.id.drawer_layout);
+        headerLayout = findViewById(R.id.header_layout);
+        getSupportFragmentManager().registerFragmentLifecycleCallbacks(chromeFragmentCallbacks, false);
         navKeyboardMouse = findViewById(R.id.nav_keyboard_mouse);
+        navKeyboardMousePro = findViewById(R.id.nav_keyboard_mouse_pro);
         navGamepad = findViewById(R.id.nav_gamepad);
         navShortcuts = findViewById(R.id.nav_shortcuts);
         navMacros = findViewById(R.id.nav_macros);
@@ -513,6 +541,112 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (shortcut != null) shortcutDrawable = shortcut.getCompoundDrawables()[1];
 
         setupButtonListeners();
+    }
+
+    private void applyAppChromeForHostFragment() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        boolean basicHost = f instanceof KeyboardMouseFragment;
+        if (headerLayout != null) {
+            headerLayout.setVisibility(basicHost ? View.GONE : View.VISIBLE);
+        }
+        TextView appTitle = findViewById(R.id.app_title);
+        if (appTitle != null) {
+            if (basicHost) {
+                appTitle.setVisibility(View.VISIBLE);
+            } else {
+                // Keyboard & Mouse Pro: brand lives on the touchpad footer; keep header uncluttered.
+                appTitle.setVisibility(f instanceof CompositeFragment ? View.GONE : View.VISIBLE);
+            }
+        }
+        updateImmersiveForTopFragment();
+    }
+
+    /**
+     * Fullscreen immersive + {@code LAYOUT_HIDE_NAVIGATION} makes the decor measure into the gesture
+     * / nav region; weighted keyboard rows then leave a dead band in portrait. KM Basic turns that off
+     * so {@code fragment_basic_keyboard} gets a stable {@code MATCH_PARENT} height.
+     */
+    @SuppressLint("deprecation")
+    private void updateImmersiveForTopFragment() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        boolean basicHost = f instanceof KeyboardMouseFragment;
+        View decorView = getWindow().getDecorView();
+        if (basicHost) {
+            decorView.setSystemUiVisibility(0);
+        } else {
+            setImmersiveMode();
+        }
+    }
+
+    public void openDrawerForBasic() {
+        if (drawerLayout == null) {
+            return;
+        }
+        snapshotImeBeforeOpeningDrawer();
+        drawerLayout.openDrawer(GravityCompat.START);
+    }
+
+    public DrawerLayout getDrawerLayout() {
+        return drawerLayout;
+    }
+
+    public boolean isBluetoothServiceBound() {
+        return isServiceBound;
+    }
+
+    public void showTargetOsPickerDialogFromBasic() {
+        showTargetOsPickerDialog();
+    }
+
+    public void showConnectionDialogFromBasic() {
+        showConnectionDialog();
+    }
+
+    public void applyBasicTargetOsIcon(@Nullable ImageButton button) {
+        if (button == null) {
+            return;
+        }
+        String targetOs = getTargetOs();
+        int iconRes;
+        int nameRes;
+        if ("windows".equals(targetOs)) {
+            iconRes = R.drawable.ic_os_windows;
+            nameRes = R.string.target_os_windows;
+        } else if ("linux".equals(targetOs)) {
+            iconRes = R.drawable.ic_os_linux;
+            nameRes = R.string.target_os_linux;
+        } else {
+            iconRes = R.drawable.ic_os_macos;
+            nameRes = R.string.target_os_macos;
+        }
+        button.setImageResource(iconRes);
+        button.setContentDescription(getString(R.string.target_os_header_cd_selected, getString(nameRes)));
+        button.setColorFilter(headerNeutralActionTint(), PorterDuff.Mode.SRC_IN);
+    }
+
+    public void applyBasicConnectionIcon(
+            @Nullable ImageView icon,
+            ConnectionManager.ConnectionType type,
+            ConnectionManager.ConnectionState state) {
+        if (icon == null) {
+            return;
+        }
+        int tint = headerConnectionClusterTint(state);
+        if (state == ConnectionManager.ConnectionState.CONNECTING) {
+            icon.setImageResource(R.drawable.bluetooth_searching_24px);
+        } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
+            icon.setImageResource(R.drawable.bluetooth_connected_24px);
+        } else {
+            icon.setImageResource(R.drawable.bluetooth_24px);
+        }
+        icon.setColorFilter(tint, PorterDuff.Mode.SRC_IN);
+    }
+
+    public void notifyBasicChromeFragments() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof KeyboardMouseFragment) {
+            ((KeyboardMouseFragment) f).refreshBasicEmbeddedChrome();
+        }
     }
 
     private void setupDrawerImeBehavior() {
@@ -630,6 +764,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         applyHeaderEndScrollLayoutForOrientation();
+        applyAppChromeForHostFragment();
     }
 
     private void setupHeaderModeSlotButtons() {
@@ -831,6 +966,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 if (signalBars != null) signalBars.setVisibility(View.GONE);
                 break;
         }
+        notifyBasicChromeFragments();
     }
 
     private void showConnectionDialog() {
@@ -900,6 +1036,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (navKeyboardMouse != null) {
             navKeyboardMouse.setOnClickListener(v -> {
                 currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+                updateNavSelection();
+                showKeyboardMouseFragment(null);
+                markDrawerCloseAsNavigation();
+                drawerLayout.closeDrawer(GravityCompat.START);
+            });
+        }
+        if (navKeyboardMousePro != null) {
+            navKeyboardMousePro.setOnClickListener(v -> {
+                currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO;
                 updateNavSelection();
                 showCompositeFragment();
                 markDrawerCloseAsNavigation();
@@ -980,7 +1125,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
 
         if (keyBoardMouse != null) {
-            setOnClickListener(keyBoardMouse, keyBoardMouseDrawable, this::showCompositeFragment);
+            setOnClickListener(keyBoardMouse, keyBoardMouseDrawable, () -> {
+                currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO;
+                updateNavSelection();
+                showCompositeFragment();
+            });
         }
 
         if (mouse != null) {
@@ -1063,7 +1212,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void updateNavSelection() {
-        if (navKeyboardMouse != null) navKeyboardMouse.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE));
+        if (navKeyboardMouse != null) {
+            navKeyboardMouse.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE));
+        }
+        if (navKeyboardMousePro != null) {
+            navKeyboardMousePro.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO));
+        }
         if (navGamepad != null) navGamepad.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_GAMEPAD));
         if (navShortcuts != null) navShortcuts.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_SHORTCUTS));
         if (navMacros != null) navMacros.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_MACROS));
@@ -1131,11 +1285,52 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         transaction.commit();
     }
 
+    private void showKeyboardMouseFragment(@Nullable String initialSubmode) {
+        if (initialSubmodeImpliesFullKeyboard(initialSubmode)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(
+                R.id.fragment_container,
+                KeyboardMouseFragment.newInstance(port, initialSubmode));
+        transaction.commit();
+    }
+
+    /**
+     * {@code launch_mode == null} matches the onCreate branch that defaults to KM Basic; extras can
+     * still request numpad/compose without {@code launch_mode}.
+     */
+    private static boolean shouldLockLandscapeForKmBasicKeyboardIntent(
+            @Nullable String launchMode, @Nullable String kbInitialSubmode) {
+        if (LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(launchMode)) {
+            return !KeyboardMouseFragment.SUBMODE_NUMPAD.equals(kbInitialSubmode)
+                    && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode);
+        }
+        if (launchMode == null) {
+            return kbInitialSubmode == null
+                    || KeyboardMouseFragment.SUBMODE_KEYBOARD.equals(kbInitialSubmode);
+        }
+        return false;
+    }
+
+    private static boolean initialSubmodeImpliesFullKeyboard(@Nullable String initialSubmode) {
+        return initialSubmode == null
+                || KeyboardMouseFragment.SUBMODE_KEYBOARD.equals(initialSubmode);
+    }
+
     private void showCompositeFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
         transaction.replace(R.id.fragment_container, CompositeFragment.newInstance(port));
         transaction.commit();
+    }
+
+    @Nullable
+    private String consumePendingKbMouseSubmode() {
+        String s = pendingKbMouseSubmode;
+        pendingKbMouseSubmode = null;
+        return s;
     }
 
     private void showGamepadFragment() {
@@ -1204,39 +1399,56 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * Handle launch mode from LaunchPanelActivity
      */
     private void handleLaunchMode(String mode) {
+        if (LaunchPanelActivity.MODE_NUMPAD.equals(mode)) {
+            currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+            updateNavSelection();
+            consumePendingKbMouseSubmode();
+            showKeyboardMouseFragment(KeyboardMouseFragment.SUBMODE_NUMPAD);
+            return;
+        }
+        if (LaunchPanelActivity.MODE_COMPOSE.equals(mode)) {
+            currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+            updateNavSelection();
+            consumePendingKbMouseSubmode();
+            showKeyboardMouseFragment(KeyboardMouseFragment.SUBMODE_COMPOSE);
+            return;
+        }
+
         currentNavMode = mode;
         updateNavSelection();
         switch (mode) {
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
+                showKeyboardMouseFragment(consumePendingKbMouseSubmode());
+                break;
+            case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
+                consumePendingKbMouseSubmode();
                 showCompositeFragment();
                 break;
             case LaunchPanelActivity.MODE_GAMEPAD:
+                consumePendingKbMouseSubmode();
                 showGamepadFragment();
                 break;
-            case LaunchPanelActivity.MODE_NUMPAD:
-                currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
-                updateNavSelection();
-                showCompositeFragment();
-                break;
             case LaunchPanelActivity.MODE_SHORTCUTS:
+                consumePendingKbMouseSubmode();
                 showShortcutHubFragment();
                 break;
             case LaunchPanelActivity.MODE_MACROS:
+                consumePendingKbMouseSubmode();
                 showMacrosFragment();
                 break;
             case LaunchPanelActivity.MODE_VOICE:
+                consumePendingKbMouseSubmode();
                 showVoiceInputFragment();
                 break;
-            case LaunchPanelActivity.MODE_COMPOSE:
-                currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
-                updateNavSelection();
-                showCompositeFragment();
-                break;
             case LaunchPanelActivity.MODE_PRESENTATION:
+                consumePendingKbMouseSubmode();
                 showPresentationFragment();
                 break;
             default:
-                showCompositeFragment();
+                currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+                updateNavSelection();
+                consumePendingKbMouseSubmode();
+                showKeyboardMouseFragment(null);
                 break;
         }
     }
@@ -1257,6 +1469,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             if (keyboardView != null) {
                 keyboardView.setPort(newPort);
             }
+        } else if (currentFragment instanceof KeyboardMouseFragment) {
+            ((KeyboardMouseFragment) currentFragment).onPortChanged(newPort);
         } else if (currentFragment instanceof MouseFragment) {
             ((MouseFragment) currentFragment).setPort(newPort);
         }
@@ -1399,12 +1613,16 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
         overlay.setSteps(new TutorialOverlay.Step[]{
             new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.menu_button}; }
+                public int[] targetViewIds() {
+                    return new int[]{R.id.menu_button, R.id.basic_km_menu_button};
+                }
                 public String description() { return getString(R.string.tutorial_desc_menu); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
             },
             new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.connection_container}; }
+                public int[] targetViewIds() {
+                    return new int[]{R.id.connection_container, R.id.basic_km_connection};
+                }
                 public String description() { return getString(R.string.tutorial_desc_bluetooth_header); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
             },
@@ -1419,7 +1637,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 public int delayMs() { return 400; }
             },
             new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.target_os_header_button}; }
+                public int[] targetViewIds() {
+                    return new int[]{R.id.target_os_header_button, R.id.basic_km_target_os};
+                }
                 public String description() { return getString(R.string.tutorial_desc_target_os); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {

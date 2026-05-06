@@ -33,6 +33,11 @@
     <dimen name="fragment_padding">8dp</dimen>
     <dimen name="fragment_margin">8dp</dimen>
 
+    <!-- KM Basic: keep tab chrome clear of status bar / cutout (used with WindowInsets; floor when insets are 0). -->
+    <dimen name="km_basic_chrome_min_top_padding">12dp</dimen>
+    <!-- KM Basic compose: min editor height in portrait (NestedScrollView allows shrinking when IME shows). -->
+    <dimen name="basic_compose_editor_min_height">120dp</dimen>
+
     <!-- Gamepad toolbar -->
     <dimen name="gamepad_toolbar_margin_top">8dp</dimen>
     <dimen name="gamepad_toolbar_padding_h">4dp</dimen>
@@ -41,9 +46,35 @@
     <dimen name="gamepad_toolbar_edit_min_width">72dp</dimen>
     <dimen name="gamepad_toolbar_preset_min_width">76dp</dimen>
     <dimen name="gamepad_preset_name_max_width">140dp</dimen>
+    <dimen name="gamepad_preset_chip_max_width">220dp</dimen>
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>
+    <!-- KM Basic physical keyboard: horizontal inset so edge keys are easier to tap -->
+    <dimen name="basic_keyboard_content_inset">18dp</dimen>
+    <!-- End (LTR: right); defaults same as start; landscape can override for a slimmer nav margin. -->
+    <dimen name="basic_keyboard_content_inset_end">18dp</dimen>
+    <!-- Bottom (portrait: below Space row); separate so it can be tighter than start/end. -->
+    <dimen name="basic_keyboard_content_inset_bottom">12dp</dimen>
+    <!-- KM Basic touchpad: comfort gap under L/M/R; combined with nav insets in code (see fragment). -->
+    <dimen name="basic_touchpad_content_inset_bottom">10dp</dimen>
+    <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
+    <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
+    <dimen name="basic_keyboard_key_margin_v">2dp</dimen>
+    <dimen name="basic_keyboard_arrow_icon_size">22dp</dimen>
+    <!-- KM Basic: floating label above/below key on press -->
+    <dimen name="basic_key_preview_corner_radius">9dp</dimen>
+    <dimen name="basic_key_preview_padding_h">16dp</dimen>
+    <dimen name="basic_key_preview_padding_v">12dp</dimen>
+    <dimen name="basic_key_preview_min_size">44dp</dimen>
+    <dimen name="basic_key_preview_text_size">24sp</dimen>
+    <dimen name="basic_key_preview_gap">6dp</dimen>
+    <dimen name="basic_key_preview_screen_margin">6dp</dimen>
+    <dimen name="basic_key_preview_elevation">10dp</dimen>
+    <!-- F1..F12: fixed component of horizontal preview shift (see BasicKeyPreview + key width scaling). -->
+    <dimen name="basic_key_preview_f_row_max_shift">42dp</dimen>
+    <!-- F-row: nudge preview further above the key when shown above (thumb clearance). -->
+    <dimen name="basic_key_preview_f_row_extra_up">12dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
     <dimen name="compose_shortcut_strip_height">120dp</dimen>
     

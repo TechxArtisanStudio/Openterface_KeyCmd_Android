@@ -6,9 +6,19 @@
             <corners android:radius="9dp" />
         </shape>
     </item>
-    <item android:state_pressed="false">
+    <!-- KM Basic: locked mouse strip / latched keys use state_selected -->
+    <item android:state_selected="true">
         <shape android:shape="rectangle">
-            <solid android:color="@color/key_bg_normal" />
+            <stroke
+                android:width="2dp"
+                android:color="?attr/colorPrimary" />
+            <solid android:color="?attr/colorPrimaryContainer" />
+            <corners android:radius="9dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurfaceContainerHighest" />
             <corners android:radius="9dp" />
         </shape>
     </item>

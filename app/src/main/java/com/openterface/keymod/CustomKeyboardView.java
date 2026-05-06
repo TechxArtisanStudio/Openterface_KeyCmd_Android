@@ -67,7 +67,10 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.hid.Ch9329PacketUtil;
+import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
+import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
@@ -196,7 +199,7 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_TOP_MODE_SLOT_1 = 0xF007;
     private static final int KEY_TOP_MODE_SLOT_2 = 0xF008;
     private static final int KEY_TOP_MODE_SLOT_3 = 0xF009;
-    /** PH1: toggle system IME capture vs KeyMod HID keyboard. */
+    /** PH1: toggle system IME capture vs Openterface KM HID keyboard. */
     private static final int KEY_IME_TOGGLE = 0xF00A;
     private static final int KEY_TOP_SHORTCUT_DISPLAY_TOGGLE = 0xF00B;
     /** Local Fn latch for fixed top rows 2-3 only. */
@@ -933,7 +936,10 @@ public class CustomKeyboardView extends LinearLayout {
         }
         Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
         String sid = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(ctx, slot, mgr);
-        return sid != null && sid.equals(mgr.getActiveProfileId());
+        if (sid == null || sid.trim().isEmpty()) {
+            return false;
+        }
+        return sid.equals(mgr.getActiveProfileId());
     }
 
     private boolean isTopProfileSlotActive(Key key) {
@@ -1281,17 +1287,20 @@ public class CustomKeyboardView extends LinearLayout {
         if (profiles.isEmpty()) {
             return;
         }
-        CharSequence[] labels = new CharSequence[profiles.size()];
-        String[] ids = new String[profiles.size()];
-        for (int i = 0; i < profiles.size(); i++) {
+        int n = profiles.size();
+        CharSequence[] labels = new CharSequence[n + 1];
+        String[] ids = new String[n + 1];
+        labels[0] = act.getString(R.string.top_rows23_strip_slot_unassigned);
+        ids[0] = TopRows23StripProfileSlotPrefs.STRIP_PROFILE_SLOT_UNASSIGNED;
+        for (int i = 0; i < n; i++) {
             Rows23StripProfile p = profiles.get(i);
-            labels[i] = p.name != null ? p.name : (p.id != null ? p.id : "");
-            ids[i] = p.id != null ? p.id : "";
+            labels[i + 1] = p.name != null ? p.name : (p.id != null ? p.id : "");
+            ids[i + 1] = p.id != null ? p.id : "";
         }
         String current = TopRows23StripProfileSlotPrefs.getStripProfileIdForSlot(appCtx, slotIndex1Based);
-        int checked = 0;
+        int checked = -1;
         for (int i = 0; i < ids.length; i++) {
-            if (ids[i].equals(current)) {
+            if (ids[i].equals(current) || (ids[i].isEmpty() && (current == null || current.trim().isEmpty()))) {
                 checked = i;
                 break;
             }
@@ -1697,7 +1706,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Splits {@code keyAlternates} on commas without regex quirks; ignores empty segments.
+     * Splits {@code keyAlternates} on commas without regex quirks.
+     * Empty segments are kept so token indices align with picker slots (Up…Right, then corners).
      */
     private static List<String> splitAlternatesTokens(String alternates) {
         if (TextUtils.isEmpty(alternates)) {
@@ -1707,17 +1717,11 @@ public class CustomKeyboardView extends LinearLayout {
         int start = 0;
         for (int i = 0; i < alternates.length(); i++) {
             if (alternates.charAt(i) == ',') {
-                String t = alternates.substring(start, i).trim();
-                if (!t.isEmpty()) {
-                    out.add(t);
-                }
+                out.add(alternates.substring(start, i).trim());
                 start = i + 1;
             }
         }
-        String last = alternates.substring(start).trim();
-        if (!last.isEmpty()) {
-            out.add(last);
-        }
+        out.add(alternates.substring(start).trim());
         return out;
     }
 
@@ -3745,11 +3749,15 @@ public class CustomKeyboardView extends LinearLayout {
             Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
             String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
                     ctx, slotIndex1Based, mgr);
-            Rows23StripProfile p = mgr.getProfileById(id);
-            if (p != null && p.name != null && !p.name.trim().isEmpty()) {
-                fullName = p.name.trim();
+            if (id == null || id.trim().isEmpty()) {
+                fullName = "";
             } else {
-                fullName = "?";
+                Rows23StripProfile p = mgr.getProfileById(id);
+                if (p != null && p.name != null && !p.name.trim().isEmpty()) {
+                    fullName = p.name.trim();
+                } else {
+                    fullName = "?";
+                }
             }
         }
         String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
@@ -3825,7 +3833,7 @@ public class CustomKeyboardView extends LinearLayout {
     /**
      * Any page-2 row-2/3 strip slot follows {@link #fixedTopLocalFnLocked} so {@link #buildFixedTopRowsPage2()}
      * (which swaps physical caps per latch) and {@link #applyStripSlotOverrides} read the same layer
-     * (b-p2… when off, f-p2… when on). Without this, Rows 2–3 strip profiles (Math ∑, Symbols ★) only
+     * (b-p2… when off, f-p2… when on). Without this, Rows 2–3 strip profile overrides only
      * see the base layer slot map and Fn-layer glyphs are never rendered.
      */
     private static boolean isPage2Rows23DualLayerStripSlot(@Nullable Key k) {
@@ -3978,7 +3986,7 @@ public class CustomKeyboardView extends LinearLayout {
      * True when {@code raw} should be rendered through the {@link Key#customIconGlyph} centered-glyph
      * path instead of as a drawable resource name. Excludes pure printable-ASCII punctuation so plain
      * caps such as "(", ")", "*", "?" stay on the standard chord-text path (with strip cap typography),
-     * even when a profile (e.g. Symbols ★, Math ∑) populates {@code shortcut.icon} with that punctuation.
+     * even when a strip shortcut populates {@code shortcut.icon} with that punctuation.
      */
     private boolean isEmojiIcon(String raw) {
         if (raw == null) {
@@ -4468,7 +4476,7 @@ public class CustomKeyboardView extends LinearLayout {
                     iconTextButton.setGravity(Gravity.CENTER);
                     if (fixedRowsSlice) {
                         // Tight padding so autosize can use most of the cell; dingbat / math glyphs
-                        // (Symbols ★ / Math ∑ profiles) then approach drawable-icon visual weight.
+                        // in custom strip shortcuts then approach drawable-icon visual weight.
                         int glyphPad = dpToPx(1);
                         iconTextButton.setPadding(glyphPad, glyphPad, glyphPad, glyphPad);
                         TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
@@ -6494,18 +6502,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public static byte[] hexStringToByteArray(String ByteData) {
-        if (ByteData.length() % 2 != 0) {
-            throw new IllegalArgumentException("Hex string must have an even length");
-        }
-
-        int len = ByteData.length();
-        byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(ByteData.charAt(i), 16) << 4)
-                    + Character.digit(ByteData.charAt(i + 1), 16));
-        }
-        Log.d(TAG, "Data: " + Arrays.toString(data));
-        return data;
+        return Ch9329PacketUtil.hexStringToByteArray(ByteData);
     }
 
     public void setPort(UsbSerialPort port) {
@@ -6514,16 +6511,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public static String makeChecksum(String data) {
-        int total = 0;
-
-        for (int i = 0; i < data.length(); i += 2) {
-            String byteStr = data.substring(i, Math.min(i + 2, data.length()));
-            total += Integer.parseInt(byteStr, 16);
-        }
-
-        int mod = total % 256;
-
-        return String.format("%02X", mod);
+        return Ch9329PacketUtil.makeChecksum(data);
     }
 
     public void sendReleaseData() {
@@ -6585,7 +6573,7 @@ public class CustomKeyboardView extends LinearLayout {
                 Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
                 String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
                         ctx, stripProfileSlot, mgr);
-                if (mgr.getProfileById(id) != null) {
+                if (id != null && !id.trim().isEmpty() && mgr.getProfileById(id) != null) {
                     mgr.setActiveProfileId(id);
                 }
                 refreshProfileSlotStrip();
@@ -6859,17 +6847,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyboardAllKeysReleasedSync() {
-        final String releasePacket = "57AB00020800000000000000000C";
-        byte[] bytes = hexStringToByteArray(releasePacket);
-        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            bluetoothService.sendData(bytes);
-        } else if (port != null) {
-            try {
-                port.write(bytes, 20);
-            } catch (IOException e) {
-                Log.e(TAG, "Keyboard release write failed: " + e.getMessage());
-            }
-        }
+        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
     }
 
     private boolean isBackspaceKey(Key key) {
@@ -6923,24 +6901,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyData(int modifiers, int keyCode) {
-        String sendKBData = String.format("57AB000208%02X00%02X0000000000", modifiers, keyCode);
-        sendKBData += makeChecksum(sendKBData);
-
-        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            byte[] sendKBDataBytes = hexStringToByteArray(sendKBData);
-            bluetoothService.sendData(sendKBDataBytes);
-            Log.d(TAG, "Sent Bluetooth data: " + sendKBData);
-        } else if (port != null) {
-            try {
-                byte[] sendKBDataBytes = hexStringToByteArray(sendKBData);
-                port.write(sendKBDataBytes, 20);
-                Log.d(TAG, "Sent USB data: " + sendKBData);
-            } catch (IOException e) {
-                Log.e(TAG, "Error sending USB data: " + e.getMessage());
-            }
-        } else {
-            Log.w(TAG, "No connection available (Bluetooth or USB)");
-        }
+        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, modifiers, keyCode);
     }
 
     private void startRepeatingDelete(Key key) {
@@ -7351,31 +7312,11 @@ public class CustomKeyboardView extends LinearLayout {
         imeCaptureToolbar.requestLayout();
     }
 
-    private static boolean imeCaptureTextContainsNonAscii(String s) {
-        for (int i = 0; i < s.length(); ) {
-            int cp = s.codePointAt(i);
-            if (cp > 127) {
-                return true;
-            }
-            i += Character.charCount(cp);
-        }
-        return false;
-    }
-
     @Nullable
     private Integer resolveImeCaptureSendBlockedReason(
             @Nullable ConnectionManager connectionManager,
             String text) {
-        if (connectionManager == null || !connectionManager.isConnected()) {
-            return R.string.compose_no_connection;
-        }
-        if (text.isEmpty()) {
-            return R.string.compose_empty;
-        }
-        if (imeCaptureTextContainsNonAscii(text)) {
-            return R.string.compose_ascii_warning;
-        }
-        return null;
+        return ImeComposeSendGate.resolveSendBlockedReasonResId(connectionManager, text);
     }
 
     private void updateImeCaptureToolbarState() {

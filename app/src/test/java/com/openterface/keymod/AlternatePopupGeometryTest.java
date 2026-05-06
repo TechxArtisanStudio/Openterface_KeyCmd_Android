@@ -41,6 +41,15 @@ public class AlternatePopupGeometryTest {
         assertEquals(AlternatePopupGeometry.SLOT_UP, r);
     }
 
+    /** KM Basic hold-lock popup only enables the up cell (same geometry as full alternates). */
+    @Test
+    public void straightUp_selectsSlotUp_whenOnlyUpOccupied() {
+        boolean[] o = new boolean[AlternatePopupGeometry.SLOT_COUNT];
+        o[AlternatePopupGeometry.SLOT_UP] = true;
+        int r = pick(0f, -80f, o);
+        assertEquals(AlternatePopupGeometry.SLOT_UP, r);
+    }
+
     @Test
     public void straightDown_selectsSlotDown() {
         int r = pick(0f, 80f, allOn());

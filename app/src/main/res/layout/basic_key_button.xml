@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Primary label is full-cell centered; shift/symbol hint overlays top-end (no vertical split).
+     Stacked hint+label used to steal height on compact rows (e.g. KM Basic number row at 1:1:2…). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:clickable="false"
+    android:focusable="false"
+    android:background="@drawable/key_background">
+
+    <TextView
+        android:id="@+id/basic_key_label"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:textSize="16sp"
+        android:duplicateParentState="true"
+        android:textColor="@color/basic_key_label_color"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/basic_key_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:paddingTop="2dp"
+        android:paddingEnd="4dp"
+        android:textSize="12sp"
+        android:includeFontPadding="false"
+        android:duplicateParentState="true"
+        android:textColor="@color/basic_key_hint_color"
+        android:visibility="gone" />
+
+    <!-- Icon-only keys (e.g. KM Basic Windows row); hidden when using label+hint. -->
+    <ImageView
+        android:id="@+id/basic_key_icon"
+        android:layout_width="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_height="@dimen/basic_keyboard_arrow_icon_size"
+        android:layout_gravity="center"
+        android:contentDescription="@null"
+        android:duplicateParentState="true"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+</FrameLayout>

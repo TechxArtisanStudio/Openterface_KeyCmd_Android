@@ -84,6 +84,39 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/nav_keyboard_mouse_pro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:background="@drawable/nav_item_background_selector"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:id="@+id/nav_icon_keyboard_mouse_pro"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/keyboard_mouse_pro"
+            android:tint="?attr/colorPrimary" />
+
+        <TextView
+            android:id="@+id/nav_text_keyboard_mouse_pro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/top_mode_label_keyboard_mouse_pro"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:layout_marginStart="12dp" />
+
+    </LinearLayout>
+
     <!-- Presentation Mode -->
     <LinearLayout
         android:id="@+id/nav_presentation"
@@ -304,6 +337,23 @@
         android:drawablePadding="@dimen/spacing_small"
         style="?android:attr/borderlessButtonStyle" />
 
+    <ImageView
+        android:id="@+id/nav_brand_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="13dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="6dp"
+        android:maxWidth="200dp"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:alpha="0.88"
+        android:src="@drawable/ic_openterface_wordmark"
+        android:tint="@color/text_secondary"
+        android:contentDescription="@string/touch_pad_brand_content_description"
+        android:focusable="false"
+        android:importantForAccessibility="yes" />
+
     <!-- Version Info -->
     <TextView
         android:id="@+id/version_text"
@@ -314,7 +364,7 @@
         android:textColor="@color/text_secondary"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="4dp"
+        android:paddingTop="0dp"
         android:paddingBottom="16dp"
         android:gravity="center" />
 

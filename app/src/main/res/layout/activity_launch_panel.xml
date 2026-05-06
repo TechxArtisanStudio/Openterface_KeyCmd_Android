@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/launch_panel_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_light">
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="28dp" />
 
     <!-- Header -->
     <LinearLayout
@@ -38,9 +35,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
                 android:layout_marginTop="4dp"
+                android:maxWidth="280dp"
                 android:adjustViewBounds="true"
                 android:contentDescription="@string/app_name"
-                android:src="@drawable/ic_op_keymod_wordmark"
+                android:src="@drawable/ic_openterface_wordmark"
                 android:tint="@color/launch_panel_brand_tint" />
 
         </LinearLayout>
@@ -117,6 +115,55 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/top_mode_label_keyboard_mouse"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/card_text_color"
+                    android:gravity="center"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="2dp" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <!-- Keyboard & Mouse Pro (composite / advanced) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/keyboard_mouse_pro_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_margin="8dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="112dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingTop="10dp"
+                android:paddingBottom="14dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:background="@drawable/card_background_selector">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/keyboard_mouse_pro"
+                    android:contentDescription="@string/top_mode_label_keyboard_mouse_pro"
+                    android:tint="@color/card_icon_tint" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_keyboard_mouse_pro"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"

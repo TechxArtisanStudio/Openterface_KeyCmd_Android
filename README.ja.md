@@ -1,4 +1,4 @@
-# KeyMod（Android）
+# Openterface KM（Android）
 
 <p align="center"><strong>README の言語</strong> · <em>GitHub のリポジトリトップでは既定でルートの README.md（英語）が表示されます</em></p>
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**KeyMod** は [Openterface KeyMod](https://openterface.com/) 向けの Android コンパニオンアプリです。KVM 風のハードウェアブリッジを通じ、スマートフォンから **USB** または **Bluetooth** でホスト PC を操作します。本リポジトリは Java/Android 実装（`com.openterface.keymod`）です。
+**Openterface KM** は [Openterface](https://openterface.com/) 向けの Android コンパニオンアプリです。KVM 風のハードウェアブリッジを通じ、スマートフォンから **USB** または **Bluetooth** でホスト PC を操作します。本リポジトリは Java/Android 実装（`com.openterface.keymod`）です。
 
 - **要件:** Android 8.0 以上（API 26）。USB 経由で使う場合は USB OTG が必要です。  
 - **ドキュメント:** 接続手順・モード・ショートカットは [docs/USER_GUIDE.md](docs/USER_GUIDE.md)（英語）を参照してください。  

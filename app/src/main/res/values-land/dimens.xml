@@ -7,9 +7,16 @@
     <dimen name="header_title_size">16sp</dimen>
     <dimen name="keyboard_outer_padding_top">4dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">6dp</dimen>
+    <!-- End/bottom add navigation bar insets in code; keep modest bases for comfort / IME. -->
+    <dimen name="basic_keyboard_content_inset">10dp</dimen>
+    <dimen name="basic_keyboard_content_inset_end">6dp</dimen>
+    <dimen name="basic_keyboard_content_inset_bottom">6dp</dimen>
+    <dimen name="basic_touchpad_content_inset_bottom">6dp</dimen>
 
     <!-- Split + narrow center column: cap hint width so wrap matches portrait-style bubble -->
     <dimen name="touchpad_help_overlay_max_width_split">256dp</dimen>
 
     <dimen name="compose_shortcut_strip_height">108dp</dimen>
+    <!-- KM Basic compose: shorter min height in landscape; column layout uses width for text. -->
+    <dimen name="basic_compose_editor_min_height">72dp</dimen>
 </resources>

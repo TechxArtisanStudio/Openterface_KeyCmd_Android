@@ -16,35 +16,38 @@ public final class Rows23StripProfileConstants {
     /** Non-deletable built-in profile; migrated from legacy global slot map + strip catalog. */
     public static final String DEFAULT_PROFILE_ID = "strip_default";
 
-    /** Non-deletable built-in: thematic emoji glyph showcase across all strip slots. */
-    public static final String SYMBOLS_PROFILE_ID = "strip_symbols";
-
-    /** Non-deletable built-in: math/science glyph theme across all strip slots. */
-    public static final String MATH_PROFILE_ID = "strip_math";
+    /**
+     * Non-deletable built-in: same factory starting point as {@link #DEFAULT_PROFILE_ID} (empty
+     * overrides + page 2 paren / grave–tilde slots). Shown in UI as {@code Mine}.
+     */
+    public static final String PERSONAL_PROFILE_ID = "strip_personal";
 
     /**
-     * Non-deletable built-in: box-drawing &amp; block elements for terminal table layouts.
-     * Caps render the codepoint glyph and presses dispatch via {@code HidTextKeystrokeSender}'s
-     * per-OS Unicode Hex Input alt-code path.
+     * Themed strip presets removed in favor of HID-first Default / Mine; still recognized when
+     * cleaning persisted profiles and page-3 quick-toggle prefs.
      */
-    public static final String BOX_LINES_PROFILE_ID = "strip_boxlines";
+    private static final String[] LEGACY_REMOVED_THEMATIC_STRIP_IDS = new String[]{
+            "strip_symbols",
+            "strip_math",
+            "strip_boxlines",
+            "strip_latin",
+            "strip_arrows",
+            "strip_currency",
+    };
 
-    /** Non-deletable built-in: Latin-1 supplement letters, fractions, and units. */
-    public static final String LATIN_PROFILE_ID = "strip_latin";
-
-    /** Non-deletable built-in: arrows and geometric shapes. */
-    public static final String ARROWS_PROFILE_ID = "strip_arrows";
-
-    /** Non-deletable built-in: currencies and decorative punctuation. */
-    public static final String CURRENCY_PROFILE_ID = "strip_currency";
+    public static boolean isLegacyRemovedThematicStripId(@Nullable String id) {
+        if (id == null) {
+            return false;
+        }
+        for (String legacy : LEGACY_REMOVED_THEMATIC_STRIP_IDS) {
+            if (legacy.equals(id)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static boolean isBuiltInProfileId(@Nullable String id) {
-        return DEFAULT_PROFILE_ID.equals(id)
-                || SYMBOLS_PROFILE_ID.equals(id)
-                || MATH_PROFILE_ID.equals(id)
-                || BOX_LINES_PROFILE_ID.equals(id)
-                || LATIN_PROFILE_ID.equals(id)
-                || ARROWS_PROFILE_ID.equals(id)
-                || CURRENCY_PROFILE_ID.equals(id);
+        return DEFAULT_PROFILE_ID.equals(id) || PERSONAL_PROFILE_ID.equals(id);
     }
 }

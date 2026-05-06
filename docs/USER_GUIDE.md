@@ -1,6 +1,6 @@
-# KeyMod Android - User Guide
+# Openterface KM Android - User Guide
 
-> **KeyMod** is a companion Android app for the [Openterface KeyMod](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a hardware KVM (Keyboard-Video-Mouse) device that lets you control any computer from your phone via USB or Bluetooth.
+> **Openterface KM** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
 
 ---
 
@@ -16,20 +16,21 @@
 
 ### 2. Choose Your Connection
 
-KeyMod supports two connection methods:
+Openterface KM supports two connection methods:
 
 | Method | How | Notes |
 |--------|-----|-------|
-| **USB** | Connect phone to KeyMod device via USB-C | Most reliable, lowest latency |
-| **Bluetooth (BLE)** | Pair with KeyMod device via Bluetooth | Wireless convenience |
+| **USB** | Connect phone to your Openterface hardware via USB-C | Most reliable, lowest latency |
+| **Bluetooth (BLE)** | Pair with your Openterface hardware via Bluetooth | Wireless convenience |
 
 ### 3. Select a Mode
 
-On the **Welcome & Guide** screen (first launch or side menu), tap one of six mode cards:
+On the **Welcome & Guide** screen (first launch or side menu), pick your primary mode. Side navigation matches the same choices.
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard** | Full virtual keyboard with all keys |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / IME / Num pad, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
 | ⚡ **Shortcuts** | Pre-built keyboard shortcuts (Ctrl+C, Win+L, etc.) |
@@ -42,7 +43,7 @@ On the **Welcome & Guide** screen (first launch or side menu), tap one of six mo
 
 ### USB Connection
 
-1. Connect your phone to the KeyMod device via USB-C cable
+1. Connect your phone to your Openterface hardware via USB-C cable
 2. Open the app → tap the **connection icon** (top-right) or go to **Settings → General**
 3. Tap **USB Connection**
 4. Accept the USB permission dialog when prompted
@@ -53,7 +54,7 @@ On the **Welcome & Guide** screen (first launch or side menu), tap one of six mo
 1. Turn on Bluetooth on your phone
 2. Open the app → tap the **connection icon**
 3. Tap **Bluetooth Connection**
-4. Select your KeyMod device from the scan results
+4. Select your Openterface hardware from the scan results
 5. Status changes to ✅ **Connected**
 
 ### Auto-Connect
@@ -63,6 +64,15 @@ Enable **Auto-connect on startup** in the connection dialog to automatically rec
 ---
 
 ## ⌨️ Keyboard Mode
+
+### KM Basic modifier behavior (Settings)
+
+On **Settings → Keyboard & Mouse**, choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the **Keyboard & Mouse (Basic)** full keyboard:
+
+- **Momentary and long-press chord (default):** A short tap sends that modifier once to the target computer. **Long-press** a modifier and keep your finger on it, then tap other keys to chord (for example long-press **Shift** and tap `1` for `!`). Release the modifier key to stop chording. With **Hold modifier on target while chording** (on by default), the app sends a sustained modifier-down to the target and reapplies it after each chorded key; turn it off in the same settings screen only if the host misbehaves.
+- **Sticky modifiers:** Tap a modifier once to latch it (highlighted keys show what is on). Tap again to turn off. Tap **Shift**, then a number or symbol key, for characters such as `!` and `@`.
+
+Changing this setting rebuilds the Basic keyboard; any latched modifiers are cleared.
 
 ### Layout
 
@@ -118,7 +128,7 @@ On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row
 
 On **Page 2** of the fixed strip (**Shortcut Hub**), **local Fn** toggles two full punctuation rows (strip display modes use the row‑1 DISPLAY key after Create, not the fixed strip).
 
-On that page, the **small top‑right corner hints** show the **other local‑Fn latch cap for the same strip column** (slot‑symmetric with the Shortcut Hub strip catalog), not decorative alternate glyphs from Symbols/Math strip skins.
+On that page, the **small top‑right corner hints** show the **other local‑Fn latch cap for the same strip column** (slot‑symmetric with the Shortcut Hub strip catalog), not alternate glyphs from a decorative strip skin.
 
 - **Fn off — upper row:** **`(`**, **`)`**, **`[`**, **`]`**, **`:`**, **`#`**, **`@`**
 - **Fn off — lower row:** **`/`**, **`\`**, **`|`**, **`?`**, **`-`**, **`_`**, **`Fn`** (toggle)
@@ -141,6 +151,21 @@ Virtual game controller with:
 - **Start / Select** buttons
 
 > ⚠️ Gamepad HID protocol is under active development. Basic button support is available.
+
+### Preset vocabulary (schema v4)
+
+Shareable layouts use JSON with a **schema version** (currently **v4**). Useful terms:
+
+| Everyday term | In presets / code |
+|---------------|---------------------|
+| D-pad, directional pad | Module type **DPAD** on the left slot; **`dpadVariant`** selects cross, split segments, disc, pivot, floating look, or clicky haptics |
+| Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer); optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
+| Face / ABXY / symbol buttons | **BUTTON** modules; optional **`layout.faceButtonTemplate`** (`nintendo_diamond`, `xbox_abxy`, `playstation_symbols`) sets anchors and labels |
+| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents analog vs digital vs hair vs adaptive (adaptive is UI copy only here) |
+| Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
+| Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
+
+**Engineering synonyms (no extra modules):** hat switch (HID jargon for a D-pad–like switch), silicone dome / tact switch, gimbal, housing — these describe physical hardware, not separate on-screen modules.
 
 ---
 
@@ -234,7 +259,7 @@ Access via the **⚙️ gear icon** on the main screen. Four tabs:
 
 ## 📐 Orientation
 
-KeyMod supports both portrait and landscape modes:
+Openterface KM supports both portrait and landscape modes:
 - **Portrait** (2×3 grid) — thumb-friendly for phones
 - **Landscape** (3×2 grid) — desktop-style for tablets
 
@@ -250,19 +275,19 @@ The app auto-rotates when you turn your device.
 - For Bluetooth: ensure device is discoverable
 
 ### USB permission denied
-- Go to Android **Settings → Apps → KeyMod → Permissions**
+- Go to Android **Settings → Apps → Openterface KM → Permissions**
 - Enable USB access
 - Re-launch the app
 
 ### Keys not sending
 - Verify connection status is **Connected**
 - Try switching modes and back
-- Check if the KeyMod device is powered on
+- Check if the Openterface hardware is powered on
 
 ### Bluetooth won't pair
 - Turn Bluetooth off and on
 - Forget the device and re-pair
-- Ensure KeyMod device is in pairing mode
+- Ensure the Openterface hardware is in pairing mode
 
 ---
 
@@ -277,10 +302,10 @@ cd Openterface_KeyMod_Android
 ./gradlew assembleDebug
 
 # APK output
-ls app/build/outputs/apk/debug/KeyMod-debug.apk
+ls app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
 
 # Install on device
-adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
+adb install -r app/build/outputs/apk/debug/OpenterfaceKM-debug.apk
 ```
 
 ---
@@ -300,7 +325,7 @@ adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
 
 ### HID Protocol (CH9329)
 
-KeyMod communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
+Openterface KM communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
 
 - **Keyboard**: 5-byte header + 8-byte data + 1-byte checksum (14 bytes total)
 - **Mouse**: 5-byte header + 5-byte data + 1-byte checksum (11 bytes total)

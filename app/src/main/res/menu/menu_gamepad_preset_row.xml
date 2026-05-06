@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/gamepad_preset_rename"
+        android:title="@string/gamepad_preset_menu_rename" />
+    <item
+        android:id="@+id/gamepad_preset_duplicate"
+        android:title="@string/gamepad_preset_menu_duplicate" />
+    <item
+        android:id="@+id/gamepad_preset_share"
+        android:title="@string/gamepad_preset_menu_share" />
+    <item
+        android:id="@+id/gamepad_preset_delete"
+        android:title="@string/gamepad_preset_menu_delete" />
+</menu>

@@ -46,6 +46,11 @@ public class CH9329MSKBMap {
         DataLen.put("Shift", "02");
         DataLen.put("Alt", "04");
         DataLen.put("Win", "08");
+        // USB HID keyboard boot modifier byte: right-hand column (distinct from left bits above).
+        DataLen.put("CtrlR", "10");
+        DataLen.put("ShiftR", "20");
+        DataLen.put("AltR", "40");
+        DataLen.put("WinR", "80");
 
         return DataLen;
     }
@@ -274,6 +279,7 @@ public class CH9329MSKBMap {
         keyCodeMap.put("NUMPAD_9", "61");
         keyCodeMap.put("NUMPAD_0", "62");
         keyCodeMap.put("NUMPAD_DOT", "63");
+        keyCodeMap.put("NUMPAD_EQUALS", "67");
 
         //release keyboard data
         keyCodeMap.put("release", "57AB00020800000000000000000C");

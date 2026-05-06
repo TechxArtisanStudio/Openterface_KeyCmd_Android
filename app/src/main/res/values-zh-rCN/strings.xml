@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">Openterface KM</string>
     <string name="settings_title">设置</string>
     <string name="settings_tab_general">常规</string>
     <string name="settings_tab_voice">语音</string>
@@ -378,7 +378,7 @@
     <string name="bt_last_used_days_ago">上次使用：%1$d 天前</string>
     <string name="bt_last_used_date">上次使用：%1$s</string>
     <string name="bt_device_name_unknown">未知</string>
-    <string name="bt_toast_select_supported_device">请选择 Openterface 或 KeyMod 设备</string>
+    <string name="bt_toast_select_supported_device">请选择受支持的 Openterface 设备</string>
     <string name="bt_toast_only_saved_can_forget">仅已保存的设备可忘记</string>
     <string name="bt_toast_scan_already_in_progress">扫描正在进行中</string>
     <string name="bt_toast_enable_bluetooth_first">请先开启蓝牙</string>
@@ -575,14 +575,35 @@
     <string name="top_mode_label_gamepad">游戏手柄</string>
     <string name="gamepad_toast_edit_layout_hint">拖动组件以调整位置，完成后点按「完成」。</string>
     <string name="gamepad_toast_image_load_failed">图片加载失败</string>
+    <string name="gamepad_customize_cd">自定义布局</string>
+    <string name="gamepad_cycle_next_preset_cd">下一个布局</string>
+    <string name="gamepad_edit_session_title">移动模块</string>
+    <string name="gamepad_presets_sheet_title">布局列表</string>
+    <string name="gamepad_presets_new_layout">从当前布局新建</string>
+    <string name="gamepad_preset_row_menu_cd">布局选项</string>
+    <string name="gamepad_preset_menu_rename">重命名</string>
+    <string name="gamepad_preset_menu_duplicate">复制</string>
+    <string name="gamepad_preset_menu_share">分享 JSON…</string>
+    <string name="gamepad_preset_menu_delete">删除</string>
+    <string name="gamepad_preset_rename_title">重命名布局</string>
+    <string name="gamepad_preset_rename_hint">显示名称</string>
+    <string name="gamepad_preset_new_title">新建布局</string>
+    <string name="gamepad_preset_new_hint">布局名称</string>
+    <string name="gamepad_preset_name_required">请输入名称</string>
+    <string name="gamepad_preset_created">已创建布局</string>
+    <string name="gamepad_preset_duplicated">已复制布局</string>
+    <string name="gamepad_preset_action_failed">操作失败</string>
+    <string name="gamepad_preset_delete_title">删除布局？</string>
+    <string name="gamepad_preset_delete_message">将从本机移除此布局。内置布局不可删除。</string>
+    <string name="gamepad_preset_delete_confirm">删除</string>
     <string name="top_mode_label_shortcuts">快捷方式中心</string>
     <string name="top_mode_label_macros">宏</string>
     <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>
     <string name="top_shortcut_display_mode_cd_icon">Shortcut strip: showing icons. Tap to switch to combo text.</string>
     <string name="top_shortcut_display_mode_cd_chord">Shortcut strip: showing combo keys (e.g. Alt+X). Tap to switch to names.</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>
+    <string name="top_shortcut_ime_toggle_keymod">Openterface KM 键盘（点按切换系统输入法）</string>
+    <string name="top_shortcut_ime_toggle_system">系统输入法（点按切换 Openterface KM 键盘）</string>
     <string name="top_shortcut_ime_toggle_keymod_short">Built-in</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Tip: Long-press this key to lock the modifier.</string>

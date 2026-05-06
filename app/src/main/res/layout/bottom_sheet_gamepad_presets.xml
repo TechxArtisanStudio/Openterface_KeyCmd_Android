@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingBottom="@dimen/spacing_medium">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:layout_marginBottom="@dimen/spacing_small"
+        android:background="@drawable/bottom_sheet_drag_handle_bg" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/spacing_medium"
+        android:paddingBottom="@dimen/spacing_small"
+        android:text="@string/gamepad_presets_sheet_title"
+        android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/gamepad_presets_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:maxHeight="320dp"
+        android:nestedScrollingEnabled="true"
+        android:overScrollMode="never"
+        android:scrollbars="vertical" />
+
+    <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/gamepad_presets_new_layout"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/spacing_medium"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:text="@string/gamepad_presets_new_layout"
+        android:textAllCaps="false" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/gamepad_presets_import_btn"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/spacing_medium"
+        android:text="@string/gamepad_presets_import"
+        android:textAllCaps="false" />
+</LinearLayout>

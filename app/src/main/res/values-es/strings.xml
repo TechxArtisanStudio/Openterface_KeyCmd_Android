@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">Openterface KM</string>
     <string name="settings_title">Configuración</string>
     <string name="settings_tab_general">General</string>
     <string name="settings_tab_voice">Voz</string>
@@ -430,8 +430,8 @@ por TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Banda de acceso directo: muestra íconos. Toque para cambiar al texto combinado.</string>
     <string name="top_shortcut_display_mode_cd_chord">Banda de acceso directo: muestra teclas combinadas (por ejemplo, Alt+X). Toque para cambiar a nombres.</string>
     <string name="ime_capture_hint">Escriba y edite texto largo aquí: toque Enviar para enviarlo al dispositivo conectado</string>
-    <string name="top_shortcut_ime_toggle_keymod">Teclado KeyMod (toque para IME del sistema)</string>
-    <string name="top_shortcut_ime_toggle_system">IME del sistema (toque para teclado KeyMod)</string>
+    <string name="top_shortcut_ime_toggle_keymod">Teclado Openterface KM (toque para IME del sistema)</string>
+    <string name="top_shortcut_ime_toggle_system">IME del sistema (toque para teclado Openterface KM)</string>
     <string name="top_shortcut_ime_toggle_keymod_short">Integrado</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Consejo: mantenga presionada esta tecla para bloquear el modificador.</string>

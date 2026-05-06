@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Landscape: same structure as portrait — editor uses full width; Clear / Redo / Send sit in one row
+  directly above the IME inset zone (keyboard), like Pro IME compose toolbar placement.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/basic_compose_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:attr/colorBackground"
+    android:paddingStart="12dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/basic_compose_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="6dp"
+        android:text="@string/kb_basic_compose_hint"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="13sp" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:scrollbars="vertical">
+
+        <EditText
+            android:id="@+id/basic_compose_editor"
+            style="@style/Widget.KeyMod.BasicComposeEditor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/basic_compose_editor_min_height"
+            android:imeOptions="flagNoExtractUi"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="1"
+            android:scrollbars="vertical" />
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/basic_compose_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_clear"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/compose_clear"
+            android:text=""
+            app:icon="@drawable/ic_compose_clear_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_redo"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/compose_redo_clear"
+            android:text=""
+            app:icon="@drawable/ic_compose_undo_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_send"
+            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:contentDescription="@string/compose_send"
+            android:text=""
+            app:icon="@drawable/ic_compose_send_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+    </LinearLayout>
+</LinearLayout>

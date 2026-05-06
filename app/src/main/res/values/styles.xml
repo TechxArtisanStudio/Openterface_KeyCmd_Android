@@ -80,4 +80,79 @@
         <item name="cornerRadius">12dp</item>
     </style>
 
+    <style name="KbMouseSubmodeTab">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+        <item name="android:paddingVertical">8dp</item>
+        <item name="android:layout_marginEnd">6dp</item>
+        <item name="android:background">@drawable/nav_item_background_selector</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <style name="Widget.KeyMod.BasicNumpadCell" parent="@android:style/Widget.TextView">
+        <item name="android:background">@drawable/key_background</item>
+        <item name="android:textColor">@color/basic_key_label_color</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_margin">4dp</item>
+    </style>
+
+    <!-- Numpad direction keys: flat name avoids dotted-style implicit parent; icon + tint in layout. -->
+    <style name="KeyModBasicNumpadIconCell">
+        <item name="android:background">@drawable/key_background</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:padding">4dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <style name="Widget.KeyMod.BasicTouchpadMouseButton" parent="Widget.KeyMod.BasicNumpadCell">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Widget.KeyMod.BasicComposeActionButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="cornerRadius">10dp</item>
+        <item name="strokeColor">?attr/colorOutline</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <!-- Gamepad stick / button module configuration dialogs -->
+    <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Section" parent="TextAppearance.MaterialComponents.Subtitle2">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.KeyMod.GamepadConfig.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- KM Basic IME compose: same surface tier as keys; theme text/hint for day/night + accent themes.
+         Explicit parent avoids AAPT inferring non-existent Widget.KeyMod.BasicCompose / Widget.KeyMod. -->
+    <style name="Widget.KeyMod.BasicComposeEditor" parent="@android:style/Widget.EditText">
+        <item name="android:background">@drawable/basic_compose_editor_background</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textColorHint">?attr/colorOnSurfaceVariant</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:gravity">top|start</item>
+    </style>
+
 </resources>
