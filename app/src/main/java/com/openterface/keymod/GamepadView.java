@@ -177,6 +177,19 @@ public class GamepadView extends View {
     private static final FaceStyle FACE_Y = new FaceStyle(0xFFF7E89F, 0xFFC9A640, 0xFF4D3A04);
     private static final FaceStyle FACE_PS_SQUARE = new FaceStyle(0xFFE1D5F5, 0xFF9575CD, 0xFF311B92);
     private static final FaceStyle FACE_NEUTRAL = new FaceStyle(0xFFE0E0E0, 0xFF9E9E9E, 0xFF424242);
+    /** Primary face action (e.g. button_a / Enter): muted sage, flat-friendly. */
+    private static final FaceStyle FACE_PRIMARY_ACTION = new FaceStyle(0xFF4A6B5C, 0xFF2D4339, 0xFFE8F2ED);
+    /** Secondary face action (e.g. button_b / Esc): warm stone, not loud yellow/red. */
+    private static final FaceStyle FACE_SECONDARY_ACTION = new FaceStyle(0xFF6D625C, 0xFF423A36, 0xFFF2EBE7);
+    /** Touchpad-adjacent mouse buttons L/M/R: cool graphite. */
+    private static final FaceStyle FACE_MOUSE_ORBIT = new FaceStyle(0xFF5A5A62, 0xFF35353C, 0xFFECEEF2);
+    /** Extra generic face buttons: muted cool tones (not candy primaries). */
+    private static final FaceStyle[] FACE_EXTRA_CYCLE = {
+            new FaceStyle(0xFF5B6B78, 0xFF3A4450, 0xFFE8EBF0),
+            new FaceStyle(0xFF6A5B6E, 0xFF453D4A, 0xFFF3EAF4),
+            new FaceStyle(0xFF5C6865, 0xFF3A4542, 0xFFE9F1EE),
+            new FaceStyle(0xFF686075, 0xFF443E4C, 0xFFF1EDF6),
+    };
 
     private int themeAccentPrimary = 0xFFF57C00;
     private final Paint retroShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -422,56 +435,77 @@ public class GamepadView extends View {
     }
 
     private FaceStyle faceStyleForModuleId(String moduleId) {
-        if (moduleId != null && moduleId.startsWith("mouse_btn_")) {
+        if (moduleId == null) {
             return FACE_NEUTRAL;
         }
+        if ("button_a".equals(moduleId)) {
+            return FACE_PRIMARY_ACTION;
+        }
+        if ("button_b".equals(moduleId)) {
+            return FACE_SECONDARY_ACTION;
+        }
+        if (moduleId.startsWith("mouse_btn_")) {
+            return FACE_MOUSE_ORBIT;
+        }
         int h = Math.abs(moduleId.hashCode());
-        FaceStyle[] cycle = new FaceStyle[]{FACE_A, FACE_B, FACE_X, FACE_Y};
-        return cycle[h % cycle.length];
+        return FACE_EXTRA_CYCLE[h % FACE_EXTRA_CYCLE.length];
     }
 
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
                                      boolean pressed, String text) {
-        float shadowDy = r * 0.07f;
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(3f, r * 0.14f), BlurMaskFilter.Blur.NORMAL));
-        retroShadowPaint.setColor(0x66000000);
-        canvas.drawCircle(cx, cy + shadowDy * 0.5f, r * 0.96f, retroShadowPaint);
+        float shadowDy = r * 0.05f;
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(2.5f, r * 0.10f), BlurMaskFilter.Blur.NORMAL));
+        retroShadowPaint.setColor(0x40000000);
+        canvas.drawCircle(cx, cy + shadowDy * 0.45f, r * 0.97f, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
 
-        int body = pressed ? darkenArgb(style.body, 0.9f) : style.body;
-        Shader lg = new LinearGradient(cx - r, cy - r, cx + r, cy + r, body, style.rim, Shader.TileMode.CLAMP);
+        int body = pressed ? darkenArgb(style.body, 0.88f) : style.body;
+        int rimTone = darkenArgb(style.rim, pressed ? 0.92f : 1f);
+        Shader lg = new LinearGradient(cx, cy - r, cx, cy + r, lightenArgb(body, 0.08f), rimTone, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(lg);
         canvas.drawCircle(cx, cy, r, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
-        retroRingPaint.setStrokeWidth(Math.max(2f, r * 0.07f));
-        retroRingPaint.setColor(pressed ? themeAccentPrimary : applyAlphaInt(style.rim, 230));
-        canvas.drawCircle(cx, cy, r * 0.995f, retroRingPaint);
+        retroRingPaint.setStrokeWidth(Math.max(1.25f, r * 0.045f));
+        retroRingPaint.setColor(applyAlphaInt(0xFF000000, pressed ? 55 : 40));
+        canvas.drawCircle(cx, cy, r * 0.998f, retroRingPaint);
         if (pressed) {
-            retroRingPaint.setStrokeWidth(Math.max(2.5f, r * 0.05f));
-            retroRingPaint.setColor(applyAlphaInt(themeAccentPrimary, 190));
-            canvas.drawCircle(cx, cy, r * 1.06f, retroRingPaint);
+            retroRingPaint.setStrokeWidth(Math.max(1.5f, r * 0.038f));
+            retroRingPaint.setColor(applyAlphaInt(themeAccentPrimary, 210));
+            canvas.drawCircle(cx, cy, r * 1.015f, retroRingPaint);
         }
 
-        float glossR = r * 0.9f;
-        Shader rg = new RadialGradient(cx - r * 0.28f, cy - r * 0.32f, glossR,
-                0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+        float glossR = r * 0.88f;
+        Shader rg = new RadialGradient(cx - r * 0.22f, cy - r * 0.26f, glossR,
+                0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
         retroGlossPaint.setShader(rg);
-        canvas.drawCircle(cx, cy, r * 0.92f, retroGlossPaint);
+        canvas.drawCircle(cx, cy, r * 0.9f, retroGlossPaint);
         retroGlossPaint.setShader(null);
 
         if (text != null && !text.isEmpty()) {
-            float textScale = text.length() > 6 ? 0.4f : text.length() > 4 ? 0.5f : 0.6f;
+            float textScale = text.length() > 6 ? 0.4f : text.length() > 4 ? 0.5f : 0.56f;
             retroTextPaint.setColor(style.label);
             retroTextPaint.setTextAlign(Paint.Align.CENTER);
             retroTextPaint.setTextSize(r * textScale);
             retroTextPaint.setFakeBoldText(true);
             retroTextPaint.setTypeface(retroLabelTypeface);
-            retroTextPaint.setShadowLayer(2f, 0f, 1f, 0x33000000);
-            canvas.drawText(text, cx, cy + r * 0.32f, retroTextPaint);
+            retroTextPaint.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 35));
+            canvas.drawText(text, cx, cy + r * 0.30f, retroTextPaint);
             retroTextPaint.clearShadowLayer();
         }
+    }
+
+    /** Slightly lift RGB toward white for a subtle top-lit body (0 = no change). */
+    private static int lightenArgb(int color, float amount) {
+        if (amount <= 0f) {
+            return color;
+        }
+        int a = Color.alpha(color);
+        int r = (int) Math.min(255, Color.red(color) + 255f * amount);
+        int g = (int) Math.min(255, Color.green(color) + 255f * amount);
+        int b = (int) Math.min(255, Color.blue(color) + 255f * amount);
+        return Color.argb(a, r, g, b);
     }
 
     private void drawEditModeOutlines(Canvas canvas) {
@@ -616,47 +650,53 @@ public class GamepadView extends View {
 
     private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh) {
         float density = getResources().getDisplayMetrics().density;
-        float corner = 12f * density;
-        float borderW = 1.5f * density;
+        float corner = 10f * density;
+        float borderW = 1f * density;
         RectF bounds = new RectF(cx - ww / 2f, cy - hh / 2f, cx + ww / 2f, cy + hh / 2f);
         componentBounds.put(id, bounds);
 
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.Blur.NORMAL));
-        retroShadowPaint.setColor(0x33000000);
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3.5f * density, BlurMaskFilter.Blur.NORMAL));
+        retroShadowPaint.setColor(0x38000000);
         RectF shadowBounds = new RectF(bounds);
-        shadowBounds.offset(0, 2f * density);
+        shadowBounds.offset(0, 1.5f * density);
         canvas.drawRoundRect(shadowBounds, corner, corner, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
 
-        Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.left, bounds.bottom,
-                Color.parseColor("#F8F4F0"), Color.parseColor("#EDE6DF"), Shader.TileMode.CLAMP);
+        Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
+                Color.parseColor("#EEF0F4"), Color.parseColor("#D8DCE3"), Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(surface);
         canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
-        retroGlossPaint.setColor(0x33D9D2CC);
-        float step = 16f * density;
-        for (float px = bounds.left + step * 0.5f; px < bounds.right; px += step) {
-            for (float py = bounds.top + step * 0.5f; py < bounds.bottom; py += step) {
-                canvas.drawCircle(px, py, 1.1f * density, retroGlossPaint);
+        retroGlossPaint.setShader(null);
+        retroGlossPaint.setColor(0x14000000);
+        float step = 20f * density;
+        for (float px = bounds.left + step; px < bounds.right - step * 0.25f; px += step) {
+            for (float py = bounds.top + step; py < bounds.bottom - step * 0.25f; py += step) {
+                canvas.drawCircle(px, py, 0.65f * density, retroGlossPaint);
             }
         }
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(borderW);
-        retroRingPaint.setColor(Color.parseColor("#C9C2BB"));
+        retroRingPaint.setColor(Color.parseColor("#A7ADB8"));
         retroRingPaint.setShader(null);
         canvas.drawRoundRect(bounds, corner, corner, retroRingPaint);
+        retroRingPaint.setColor(0x55FFFFFF);
+        retroRingPaint.setStrokeWidth(Math.max(0.75f, 0.65f * density));
+        RectF inset = new RectF(bounds);
+        float insetPx = 0.8f * density;
+        inset.inset(insetPx, insetPx);
+        float ir = Math.max(corner - insetPx, 2f * density);
+        canvas.drawRoundRect(inset, ir, ir, retroRingPaint);
 
-        retroTextPaint.setColor(Color.parseColor("#757575"));
+        retroTextPaint.setColor(Color.parseColor("#5C6169"));
         retroTextPaint.setTextAlign(Paint.Align.CENTER);
-        retroTextPaint.setTextSize(Math.min(ww, hh) * 0.11f);
+        retroTextPaint.setTextSize(Math.min(ww, hh) * 0.095f);
         retroTextPaint.setFakeBoldText(true);
-        retroTextPaint.setLetterSpacing(0.08f);
+        retroTextPaint.setLetterSpacing(0.12f);
         retroTextPaint.setTypeface(retroLabelTypeface);
-        retroTextPaint.setShadowLayer(1f, 0f, 0.5f, 0x22FFFFFF);
-        canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.35f, retroTextPaint);
-        retroTextPaint.clearShadowLayer();
+        canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
         retroTextPaint.setLetterSpacing(0f);
     }
 
@@ -672,16 +712,16 @@ public class GamepadView extends View {
         componentBounds.put(boundsId, bounds);
 
         float hx = cx;
-        float hy = cy - scaledRadius * 0.18f;
+        float hy = cy - scaledRadius * 0.14f;
         Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
-                Color.parseColor("#5C5660"), Color.parseColor("#3E3A45"), Shader.TileMode.CLAMP);
+                Color.parseColor("#5E5E66"), Color.parseColor("#38383F"), Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(outer);
         canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
-        retroRingPaint.setStrokeWidth(Math.max(2.5f, 2.5f * density));
-        retroRingPaint.setColor(Color.parseColor("#9B92A8"));
+        retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.75f * density));
+        retroRingPaint.setColor(Color.parseColor("#6A6A74"));
         canvas.drawCircle(cx, cy, scaledRadius * 0.995f, retroRingPaint);
 
         float innerCx = cx;
@@ -701,36 +741,41 @@ public class GamepadView extends View {
 
         boolean centerTap = boundsId.equals(activeStickId)
                 && Math.abs(ox) < scaledRadius * 0.15f && Math.abs(oy) < scaledRadius * 0.15f;
-        float capR = scaledRadius * 0.58f;
+        float capR = scaledRadius * 0.54f;
         Shader capShader;
         if (centerTap) {
-            capShader = new RadialGradient(innerCx - capR * 0.25f, innerCy - capR * 0.28f, capR * 1.1f,
-                    applyAlphaInt(themeAccentPrimary, 240),
-                    darkenArgb(themeAccentPrimary, 0.55f),
+            capShader = new RadialGradient(innerCx - capR * 0.2f, innerCy - capR * 0.22f, capR * 1.05f,
+                    applyAlphaInt(themeAccentPrimary, 185),
+                    darkenArgb(themeAccentPrimary, 0.58f),
                     Shader.TileMode.CLAMP);
         } else {
-            capShader = new RadialGradient(innerCx - capR * 0.35f, innerCy - capR * 0.38f, capR * 1.05f,
-                    Color.parseColor("#B7AEC0"), Color.parseColor("#6E6575"), Shader.TileMode.CLAMP);
+            capShader = new RadialGradient(innerCx - capR * 0.22f, innerCy - capR * 0.24f, capR * 1.02f,
+                    Color.parseColor("#8E8C98"), Color.parseColor("#4F4D56"), Shader.TileMode.CLAMP);
         }
         retroBodyPaint.setShader(capShader);
         canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
-        Shader spec = new RadialGradient(innerCx - capR * 0.35f, innerCy - capR * 0.35f, capR * 0.45f,
-                0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+        Shader spec = new RadialGradient(innerCx - capR * 0.28f, innerCy - capR * 0.28f, capR * 0.42f,
+                0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
         retroGlossPaint.setShader(spec);
-        canvas.drawCircle(innerCx, innerCy, capR * 0.92f, retroGlossPaint);
+        canvas.drawCircle(innerCx, innerCy, capR * 0.93f, retroGlossPaint);
         retroGlossPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(Math.max(1f, 1.1f * density));
+        retroRingPaint.setColor(applyAlphaInt(0xFF000000, 45));
+        canvas.drawCircle(innerCx, innerCy, capR * 0.99f, retroRingPaint);
 
         if (upLabel != null) {
             Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             dirPaint.setTextAlign(Paint.Align.CENTER);
             dirPaint.setFakeBoldText(true);
-            dirPaint.setTextSize(scaledRadius * 0.22f);
+            dirPaint.setTextSize(scaledRadius * 0.21f);
             dirPaint.setTypeface(retroLabelTypeface);
-            dirPaint.setShadowLayer(1.5f, 0f, 1f, 0x44000000);
-            int accent = themeAccentPrimary;
-            int dim = Color.WHITE;
+            dirPaint.setShadowLayer(1f, 0f, 0.75f, 0x55000000);
+            int accent = Color.parseColor("#FFFEFB");
+            int dim = Color.parseColor("#9A96A3");
             dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? accent : dim);
             canvas.drawText(upLabel, cx, cy - scaledRadius * 0.65f, dirPaint);
             dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? accent : dim);
@@ -742,19 +787,19 @@ public class GamepadView extends View {
             dirPaint.clearShadowLayer();
         } else {
             Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            labelPaint.setColor(Color.WHITE);
-            labelPaint.setTextSize(baseRadius * moduleScale * 0.5f);
+            labelPaint.setColor(Color.parseColor("#F2F1F5"));
+            labelPaint.setTextSize(baseRadius * moduleScale * 0.48f);
             labelPaint.setTextAlign(Paint.Align.CENTER);
             labelPaint.setFakeBoldText(true);
             labelPaint.setTypeface(retroLabelTypeface);
-            labelPaint.setShadowLayer(2f, 0f, 1f, 0x44000000);
-            canvas.drawText(shortLabel, cx, cy + baseRadius * moduleScale * 0.3f, labelPaint);
+            labelPaint.setShadowLayer(1.25f, 0f, 0.75f, 0x50000000);
+            canvas.drawText(shortLabel, cx, cy + baseRadius * moduleScale * 0.28f, labelPaint);
             labelPaint.clearShadowLayer();
             Paint l3Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            l3Paint.setColor(Color.parseColor("#D0CCD6"));
-            l3Paint.setTextSize(baseRadius * moduleScale * 0.25f);
+            l3Paint.setColor(Color.parseColor("#A8A4B0"));
+            l3Paint.setTextSize(baseRadius * moduleScale * 0.22f);
             l3Paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.62f, l3Paint);
+            canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.58f, l3Paint);
         }
     }
 
@@ -791,13 +836,13 @@ public class GamepadView extends View {
         canvas.restore();
 
         Shader bodyGrad = new LinearGradient(cx - half, cy - half, cx + half, cy + half,
-                Color.parseColor("#4A474E"), Color.parseColor("#2E2C32"), Shader.TileMode.CLAMP);
+                Color.parseColor("#4E4E56"), Color.parseColor("#303036"), Shader.TileMode.CLAMP);
         retroDpadFillPaint.setStyle(Paint.Style.FILL);
         retroDpadFillPaint.setShader(bodyGrad);
         canvas.drawPath(cross, retroDpadFillPaint);
         retroDpadFillPaint.setShader(null);
 
-        int pressTint = applyAlphaInt(themeAccentPrimary, 115);
+        int pressTint = applyAlphaInt(themeAccentPrimary, 88);
         retroGlossPaint.setShader(null);
         retroGlossPaint.setColor(pressTint);
         if (activeStickDirections.contains(boundsId + "_up")) {
