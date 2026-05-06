@@ -353,6 +353,8 @@
             </LinearLayout>
         </LinearLayout>
 
+        <include layout="@layout/include_gamepad_module_color_section" />
+
         <!-- Stick Size Slider -->
         <TextView
             android:layout_width="wrap_content"

@@ -129,6 +129,25 @@ public class GamepadLayoutPresetDocumentTest {
         assertEquals("stick_left", parsed.modules.get(0).id);
     }
 
+    @Test
+    public void roundTripJsonPreservesModuleAccentArgb() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).moduleAccentArgb = 0xFFE91E63;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertNotNull(parsed.modules.get(0).moduleAccentArgb);
+        assertEquals(0xFFE91E63, (int) parsed.modules.get(0).moduleAccentArgb);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsModuleAccentTooTransparent() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).moduleAccentArgb = 0x10000000;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void validateRejectsWrongFormat() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();

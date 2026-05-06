@@ -428,6 +428,7 @@ TechxArtisan により</string>
     <string name="gamepad_presets_sheet_title">レイアウト</string>
     <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
     <string name="gamepad_preset_row_menu_cd">レイアウトのオプション</string>
+    <string name="gamepad_preset_row_share_cd">レイアウトを共有</string>
     <string name="gamepad_preset_menu_rename">名前を変更</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>
     <string name="gamepad_preset_menu_share">JSON を共有…</string>

@@ -27,6 +27,8 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     public interface Listener {
         void onActivatePreset(@NonNull String id);
 
+        void onSharePreset(@NonNull String id);
+
         void onOverflow(@NonNull String id, @NonNull View anchor);
     }
 
@@ -131,6 +133,11 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
                 listener.onActivatePreset(row.id);
             }
         });
+        h.share.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onSharePreset(row.id);
+            }
+        });
         h.overflow.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onOverflow(row.id, h.overflow);
@@ -146,12 +153,14 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     static final class VH extends RecyclerView.ViewHolder {
         final AppCompatImageView check;
         final TextView title;
+        final AppCompatImageButton share;
         final AppCompatImageButton overflow;
 
         VH(@NonNull View itemView) {
             super(itemView);
             check = itemView.findViewById(R.id.preset_row_check);
             title = itemView.findViewById(R.id.preset_row_title);
+            share = itemView.findViewById(R.id.preset_row_share);
             overflow = itemView.findViewById(R.id.preset_row_overflow);
         }
     }

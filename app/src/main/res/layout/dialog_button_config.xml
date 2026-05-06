@@ -25,6 +25,8 @@
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
                 android:layout_marginBottom="8dp" />
 
+            <include layout="@layout/include_gamepad_module_color_section" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

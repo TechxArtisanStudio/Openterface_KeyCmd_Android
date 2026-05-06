@@ -30,6 +30,15 @@
         android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
 
     <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/preset_row_share"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/gamepad_preset_row_share_cd"
+        app:srcCompat="@drawable/share_24"
+        app:tint="?android:attr/textColorSecondary" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/preset_row_overflow"
         style="@style/Widget.Material3.Button.IconButton"
         android:layout_width="48dp"

@@ -818,6 +818,8 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_preset_row_menu_cd"><![CDATA[Layout options
     ]]></string>
+    <string name="gamepad_preset_row_share_cd"><![CDATA[Partager la mise en page
+    ]]></string>
     <string name="gamepad_presets_activated"><![CDATA[Preset applied
     ]]></string>
     <string name="gamepad_presets_add_module"><![CDATA[Add module…

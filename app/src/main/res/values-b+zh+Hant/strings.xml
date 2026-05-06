@@ -581,6 +581,7 @@
     <string name="gamepad_presets_sheet_title">版面列表</string>
     <string name="gamepad_presets_new_layout">從目前版面新增</string>
     <string name="gamepad_preset_row_menu_cd">版面選項</string>
+    <string name="gamepad_preset_row_share_cd">分享版面</string>
     <string name="gamepad_preset_menu_rename">重新命名</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>
     <string name="gamepad_preset_menu_share">分享 JSON…</string>

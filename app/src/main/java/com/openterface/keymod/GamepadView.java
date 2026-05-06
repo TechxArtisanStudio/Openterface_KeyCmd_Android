@@ -22,6 +22,7 @@ import android.view.View;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.graphics.ColorUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import com.openterface.keymod.GamepadConfigManager.ComponentPosition;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
+import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadStickVisualArt;
 import com.openterface.keymod.gamepad.render.GamepadDynamicLayoutRegistry;
 
@@ -406,6 +408,14 @@ public class GamepadView extends View {
         return Color.argb(Math.min(255, Math.max(0, alpha)), Color.red(color), Color.green(color), Color.blue(color));
     }
 
+    private static FaceStyle faceStyleFromModuleAccent(int accentOpaque) {
+        int opaque = GamepadModuleAccent.toOpaqueArgb(accentOpaque);
+        int body = ColorUtils.blendARGB(0xFFE8EAEE, opaque, 0.55f);
+        int rim = ColorUtils.blendARGB(0xFF2A2E36, opaque, 0.5f);
+        int label = isLightFace(body) ? 0xFF1A1C22 : 0xFFF5F6F8;
+        return new FaceStyle(body, rim, label);
+    }
+
     private FaceStyle faceStyleForFaceLabel(String label, int legacyColor) {
         if (label == null) {
             return faceStyleFromLegacy(legacyColor);
@@ -469,9 +479,10 @@ public class GamepadView extends View {
 
     /**
      * @param cornerRadiusNorm {@code 0} = sharp square, {@code 1} = circle (same as legacy face buttons).
+     * @param accentForRing pressed-state highlight ring (theme or per-module accent).
      */
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
-                                     boolean pressed, String text, float cornerRadiusNorm) {
+                                     boolean pressed, String text, float cornerRadiusNorm, int accentForRing) {
         float cn = Math.max(0f, Math.min(1f, cornerRadiusNorm));
         float cornerPx = cn * r;
         RectF bounds = new RectF(cx - r, cy - r, cx + r, cy + r);
@@ -501,7 +512,7 @@ public class GamepadView extends View {
             float maxCorner = Math.min(ring.width(), ring.height()) * 0.5f;
             float c2 = Math.min(cornerPx + grow, maxCorner);
             retroRingPaint.setStrokeWidth(Math.max(1.5f, r * 0.038f));
-            retroRingPaint.setColor(applyAlphaInt(themeAccentPrimary, 210));
+            retroRingPaint.setColor(applyAlphaInt(accentForRing, 210));
             canvas.drawRoundRect(ring, c2, c2, retroRingPaint);
         }
 
@@ -624,12 +635,14 @@ public class GamepadView extends View {
         String shortLabel = "stick_left".equals(m.id) ? "L"
                 : (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id) ? "E"
                 : (GamepadLayoutPresetConstants.isArrowStickModuleId(m.id) ? "+" : "R"));
+        int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
         drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? dnL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? lfL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? rtL : null,
-                m.stickVisualVariant);
+                m.stickVisualVariant,
+                accent);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -646,8 +659,9 @@ public class GamepadView extends View {
         if ("stick_left".equals(m.id)) {
             dynamicLeftDpadVariant = GamepadDpadVariantArt.normalizeVariant(variant);
         }
+        int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
         drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
-                m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio);
+                m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent);
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -657,7 +671,7 @@ public class GamepadView extends View {
         FaceStyle fs = faceStyleForModuleId(m.id);
         String disp = resolveButtonDisplayLabel(m);
         float corner = GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm);
-        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp, corner);
+        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp, corner, m.moduleAccentArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -667,7 +681,7 @@ public class GamepadView extends View {
         float y = m.anchorY * h;
         float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
         float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
-        drawTouchpadModule(canvas, m.id, x, y, ww, hh);
+        drawTouchpadModule(canvas, m.id, x, y, ww, hh, m.moduleAccentArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -678,7 +692,7 @@ public class GamepadView extends View {
         float density = getResources().getDisplayMetrics().density;
         float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale;
         String disp = m.displayLabel != null && !m.displayLabel.isEmpty() ? m.displayLabel : "?";
-        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp, 1f);
+        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp, 1f, m.moduleAccentArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -690,7 +704,8 @@ public class GamepadView extends View {
         float ww = 108f * density * m.scale;
         float hh = 34f * density * m.scale;
         String disp = resolveButtonDisplayLabel(m);
-        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, disp);
+        int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
+        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, disp, accent);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -714,15 +729,22 @@ public class GamepadView extends View {
     }
 
     private void drawButtonForModule(Canvas canvas, float cx, float cy, float radiusPx, String id,
-                                     FaceStyle style, String displayLabel, float cornerRadiusNorm) {
+                                     FaceStyle style, String displayLabel, float cornerRadiusNorm,
+                                     @Nullable Integer moduleAccentArgb) {
         RectF bounds = new RectF(cx - radiusPx, cy - radiusPx, cx + radiusPx, cy + radiusPx);
         componentBounds.put(id, bounds);
         String textLabel = displayLabel != null ? displayLabel : id;
-        drawRetroFaceButton(canvas, cx, cy, radiusPx, style, id.equals(pressedComponentId), textLabel,
-                cornerRadiusNorm);
+        int ringAccent = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
+        FaceStyle fs = style;
+        if (moduleAccentArgb != null) {
+            fs = faceStyleFromModuleAccent(ringAccent);
+        }
+        drawRetroFaceButton(canvas, cx, cy, radiusPx, fs, id.equals(pressedComponentId), textLabel,
+                cornerRadiusNorm, ringAccent);
     }
 
-    private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh) {
+    private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh,
+                                    @Nullable Integer moduleAccentArgb) {
         float density = getResources().getDisplayMetrics().density;
         float corner = 10f * density;
         float borderW = 1f * density;
@@ -736,8 +758,19 @@ public class GamepadView extends View {
         canvas.drawRoundRect(shadowBounds, corner, corner, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
 
+        int surfTop = Color.parseColor("#EEF0F4");
+        int surfBot = Color.parseColor("#D8DCE3");
+        int borderCol = Color.parseColor("#A7ADB8");
+        int labelCol = Color.parseColor("#5C6169");
+        if (moduleAccentArgb != null) {
+            int ac = GamepadModuleAccent.toOpaqueArgb(moduleAccentArgb);
+            surfTop = ColorUtils.blendARGB(surfTop, ac, 0.38f);
+            surfBot = ColorUtils.blendARGB(surfBot, ac, 0.42f);
+            borderCol = ColorUtils.blendARGB(borderCol, ac, 0.45f);
+            labelCol = ColorUtils.blendARGB(labelCol, ac, 0.35f);
+        }
         Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
-                Color.parseColor("#EEF0F4"), Color.parseColor("#D8DCE3"), Shader.TileMode.CLAMP);
+                surfTop, surfBot, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(surface);
         canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
         retroBodyPaint.setShader(null);
@@ -753,7 +786,7 @@ public class GamepadView extends View {
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(borderW);
-        retroRingPaint.setColor(Color.parseColor("#A7ADB8"));
+        retroRingPaint.setColor(borderCol);
         retroRingPaint.setShader(null);
         canvas.drawRoundRect(bounds, corner, corner, retroRingPaint);
         retroRingPaint.setColor(0x55FFFFFF);
@@ -764,7 +797,7 @@ public class GamepadView extends View {
         float ir = Math.max(corner - insetPx, 2f * density);
         canvas.drawRoundRect(inset, ir, ir, retroRingPaint);
 
-        retroTextPaint.setColor(Color.parseColor("#5C6169"));
+        retroTextPaint.setColor(labelCol);
         retroTextPaint.setTextAlign(Paint.Align.CENTER);
         retroTextPaint.setTextSize(Math.min(ww, hh) * 0.095f);
         retroTextPaint.setFakeBoldText(true);
@@ -777,11 +810,13 @@ public class GamepadView extends View {
     /**
      * Analog stick for SIMPLE v2: {@code boundsId} is stick_left / stick_right (matches positions JSON).
      * @param stickVisualVariant optional preset {@code stickVisualVariant} (draw overlay); null for legacy layouts.
+     * @param accentPrimary theme or per-module accent for cap tint and overlays.
      */
     private void drawAnalogStickForModule(Canvas canvas, float cx, float cy, float baseRadius, float moduleScale,
                                           String boundsId, String shortLabel,
                                           String upLabel, String downLabel, String leftLabel, String rightLabel,
-                                          @androidx.annotation.Nullable String stickVisualVariant) {
+                                          @androidx.annotation.Nullable String stickVisualVariant,
+                                          int accentPrimary) {
         // Preset modules carry size in {@code moduleScale}; legacy SIMPLE uses global {@link #stickSizeScale}.
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         float scaledRadius = baseRadius * globalStickMul * moduleScale;
@@ -823,8 +858,8 @@ public class GamepadView extends View {
         Shader capShader;
         if (centerTap) {
             capShader = new RadialGradient(innerCx - capR * 0.2f, innerCy - capR * 0.22f, capR * 1.05f,
-                    applyAlphaInt(themeAccentPrimary, 185),
-                    darkenArgb(themeAccentPrimary, 0.58f),
+                    applyAlphaInt(accentPrimary, 185),
+                    darkenArgb(accentPrimary, 0.58f),
                     Shader.TileMode.CLAMP);
         } else {
             capShader = new RadialGradient(innerCx - capR * 0.22f, innerCy - capR * 0.24f, capR * 1.02f,
@@ -846,7 +881,7 @@ public class GamepadView extends View {
         canvas.drawCircle(innerCx, innerCy, capR * 0.99f, retroRingPaint);
 
         GamepadStickVisualArt.drawCapOverlay(canvas, stickVisualVariant, innerCx, innerCy, capR,
-                themeAccentPrimary, retroBodyPaint, retroRingPaint, retroGlossPaint);
+                accentPrimary, retroBodyPaint, retroRingPaint, retroGlossPaint);
 
         if (upLabel != null) {
             Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -855,15 +890,15 @@ public class GamepadView extends View {
             dirPaint.setTextSize(scaledRadius * 0.21f);
             dirPaint.setTypeface(retroLabelTypeface);
             dirPaint.setShadowLayer(1f, 0f, 0.75f, 0x55000000);
-            int accent = Color.parseColor("#FFFEFB");
+            int activeDir = Color.parseColor("#FFFEFB");
             int dim = Color.parseColor("#9A96A3");
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? accent : dim);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? activeDir : dim);
             canvas.drawText(upLabel, cx, cy - scaledRadius * 0.65f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? accent : dim);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? activeDir : dim);
             canvas.drawText(downLabel, cx, cy + scaledRadius * 0.75f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? accent : dim);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? activeDir : dim);
             canvas.drawText(leftLabel, cx - scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? accent : dim);
+            dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? activeDir : dim);
             canvas.drawText(rightLabel, cx + scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
             dirPaint.clearShadowLayer();
         } else {
@@ -890,19 +925,19 @@ public class GamepadView extends View {
     private void drawDpadForModule(Canvas canvas, float cx, float cy, float baseRadius, float moduleScale,
                                    String boundsId, String dpadVariant, String upLabel, String downLabel,
                                    String leftLabel, String rightLabel, @Nullable Float dpadSplitGapRatio,
-                                   @Nullable Float dpadSplitOuterReachRatio) {
+                                   @Nullable Float dpadSplitOuterReachRatio, int accentPrimary) {
         float density = getResources().getDisplayMetrics().density;
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, globalStickMul, moduleScale,
                 boundsId, dpadVariant, upLabel, downLabel, leftLabel, rightLabel,
-                activeStickDirections, themeAccentPrimary,
+                activeStickDirections, accentPrimary,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
                 retroLabelTypeface, componentBounds, dynamicHitTestOrder, dpadSplitGapRatio,
                 dpadSplitOuterReachRatio);
     }
 
     private void drawShoulderCapsuleForModule(Canvas canvas, float cx, float cy, float width, float height,
-                                              String moduleId, String textLabel) {
+                                              String moduleId, String textLabel, int accentPrimary) {
         float density = getResources().getDisplayMetrics().density;
         RectF bounds = new RectF(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f);
         componentBounds.put(moduleId, bounds);
@@ -916,8 +951,8 @@ public class GamepadView extends View {
         canvas.drawRoundRect(sh, cr, cr, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
 
-        int top = pressed ? applyAlphaInt(themeAccentPrimary, 220) : Color.parseColor("#6A6872");
-        int bot = pressed ? darkenArgb(themeAccentPrimary, 0.75f) : Color.parseColor("#45434C");
+        int top = pressed ? applyAlphaInt(accentPrimary, 220) : Color.parseColor("#6A6872");
+        int bot = pressed ? darkenArgb(accentPrimary, 0.75f) : Color.parseColor("#45434C");
         Shader lg = new LinearGradient(cx, bounds.top, cx, bounds.bottom, top, bot, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(lg);
         canvas.drawRoundRect(bounds, cr, cr, retroBodyPaint);
@@ -925,7 +960,7 @@ public class GamepadView extends View {
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.2f * density));
-        retroRingPaint.setColor(pressed ? themeAccentPrimary : Color.parseColor("#B0B0B8"));
+        retroRingPaint.setColor(pressed ? accentPrimary : Color.parseColor("#B0B0B8"));
         canvas.drawRoundRect(bounds, cr, cr, retroRingPaint);
 
         retroTextPaint.setColor(Color.WHITE);
@@ -1125,7 +1160,7 @@ public class GamepadView extends View {
                                  String upLabel, String downLabel, String leftLabel, String rightLabel) {
         String boundsId = "stick_" + label.toLowerCase();
         drawAnalogStickForModule(canvas, cx, cy, radius, 1f, boundsId, label,
-                upLabel, downLabel, leftLabel, rightLabel, null);
+                upLabel, downLabel, leftLabel, rightLabel, null, themeAccentPrimary);
     }
 
     private void drawButton(Canvas canvas, float cx, float cy, float radius, String label, int color) {
@@ -1139,7 +1174,8 @@ public class GamepadView extends View {
         componentBounds.put(id, bounds);
         FaceStyle fs = faceStyleForFaceLabel(label, color);
         String textLabel = displayLabel != null ? displayLabel : label;
-        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel, 1f);
+        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel, 1f,
+                themeAccentPrimary);
     }
 
     private void drawShoulderButton(Canvas canvas, float cx, float cy, float width, float height, String label) {
@@ -2186,7 +2222,7 @@ public class GamepadView extends View {
                 applyAlphaInt(FACE_NEUTRAL.body, 110),
                 applyAlphaInt(FACE_NEUTRAL.rim, 110),
                 applyAlphaInt(FACE_NEUTRAL.label, 140));
-        drawRetroFaceButton(canvas, cx, cy, radius, muted, false, label, 1f);
+        drawRetroFaceButton(canvas, cx, cy, radius, muted, false, label, 1f, themeAccentPrimary);
         float density = getResources().getDisplayMetrics().density;
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(2f * density);

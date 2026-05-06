@@ -1,5 +1,7 @@
 package com.openterface.keymod.gamepad;
 
+import android.graphics.Color;
+
 import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
@@ -108,6 +110,11 @@ public class GamepadLayoutPresetDocument {
          * or built-in default.
          */
         @Nullable public Float stickMouseSensitivity;
+        /**
+         * Optional per-module accent (ARGB). Null = theme default for sticks/D-pad and template colors for face
+         * buttons; see {@link GamepadModuleAccent}.
+         */
+        @Nullable public Integer moduleAccentArgb;
     }
 
     public static boolean looksLikeDocument(String json) {
@@ -244,6 +251,12 @@ public class GamepadLayoutPresetDocument {
             }
             if (m.anchorX < 0 || m.anchorX > 1 || m.anchorY < 0 || m.anchorY > 1) {
                 throw new IllegalArgumentException("Module " + m.id + ": anchor must be in [0,1]");
+            }
+            if (m.moduleAccentArgb != null) {
+                int a = Color.alpha(m.moduleAccentArgb);
+                if (a < 64) {
+                    throw new IllegalArgumentException("Module " + m.id + ": moduleAccentArgb alpha must be >= 64");
+                }
             }
             if (m.stickVisualVariant != null) {
                 String sv = m.stickVisualVariant.trim();

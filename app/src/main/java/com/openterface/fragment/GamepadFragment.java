@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.util.TypedValue;
 
@@ -21,10 +23,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.view.Window;
@@ -86,6 +93,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
+import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
@@ -974,6 +982,12 @@ public class GamepadFragment extends Fragment {
             }
 
             @Override
+            public void onSharePreset(@NonNull String id) {
+                dialog.dismiss();
+                sharePresetJson(id);
+            }
+
+            @Override
             public void onOverflow(@NonNull String id, @NonNull View anchor) {
                 showPresetOverflowMenu(id, anchor, dialog, presetListAdapterRef[0]);
             }
@@ -1404,6 +1418,399 @@ public class GamepadFragment extends Fragment {
                 .show();
     }
 
+    /**
+     * Updates selection rings / strokes on the accent color row so the current choice matches
+     * {@link GamepadLayoutPresetDocument.GamepadModule#moduleAccentArgb}.
+     */
+    private void refreshGamepadAccentSectionUi(
+            @NonNull GamepadLayoutPresetDocument.GamepadModule module,
+            @Nullable MaterialButton themeDefaultBtn,
+            @Nullable MaterialButton customBtn,
+            @NonNull List<View> swatchViews,
+            @NonNull Context ctx) {
+        int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
+                ContextCompat.getColor(ctx, R.color.primary));
+        int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+
+        boolean themeSelected = module.moduleAccentArgb == null;
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setStrokeWidth(themeSelected ? dp(2) : 0);
+            themeDefaultBtn.setStrokeColor(ColorStateList.valueOf(themeSelected ? primary : outline));
+        }
+
+        Integer ma = module.moduleAccentArgb;
+        int opaque = ma != null ? GamepadModuleAccent.toOpaqueArgb(ma) : 0;
+        boolean matchedPreset = false;
+        int[] presets = GamepadModuleAccent.PRESET_ARGB;
+        for (int i = 0; i < swatchViews.size() && i < presets.length; i++) {
+            int fill = GamepadModuleAccent.toOpaqueArgb(presets[i]);
+            boolean sel = ma != null && opaque == fill;
+            if (sel) {
+                matchedPreset = true;
+            }
+            View dotView = swatchViews.get(i);
+            GradientDrawable gd = new GradientDrawable();
+            gd.setShape(GradientDrawable.OVAL);
+            gd.setColor(fill);
+            if (sel) {
+                gd.setStroke(dp(3), primary);
+            } else {
+                gd.setStroke(dp(1), outline);
+            }
+            dotView.setBackground(gd);
+            dotView.setContentDescription(ctx.getString(sel
+                    ? R.string.gamepad_module_color_swatch_selected_cd
+                    : R.string.gamepad_module_color_swatch_cd));
+        }
+
+        boolean customSelected = ma != null && !matchedPreset;
+        if (customBtn != null) {
+            customBtn.setStrokeWidth(customSelected ? dp(2) : dp(1));
+            customBtn.setStrokeColor(ColorStateList.valueOf(customSelected ? primary : outline));
+            customBtn.setContentDescription(ctx.getString(customSelected
+                    ? R.string.gamepad_module_color_custom_selected_cd
+                    : R.string.gamepad_module_color_custom_cd));
+        }
+
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setContentDescription(ctx.getString(themeSelected
+                    ? R.string.gamepad_module_color_theme_default_selected_cd
+                    : R.string.gamepad_module_color_theme_default_cd));
+        }
+    }
+
+    private void bindGamepadModuleColorSection(
+            @NonNull View colorSection,
+            @NonNull GamepadLayoutPresetDocument.GamepadModule module) {
+        Context ctx = colorSection.getContext();
+        MaterialButton themeDefaultBtn = colorSection.findViewById(R.id.module_color_theme_default);
+        MaterialButton customBtn = colorSection.findViewById(R.id.module_color_custom);
+        LinearLayout swatchRow = colorSection.findViewById(R.id.module_color_swatches);
+        if (swatchRow == null) {
+            return;
+        }
+        swatchRow.removeAllViews();
+        int dot = dp(36);
+        int margin = dp(6);
+        List<View> swatchViews = new ArrayList<>();
+        for (int c : GamepadModuleAccent.PRESET_ARGB) {
+            View dotView = new View(ctx);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dot, dot);
+            lp.setMargins(margin, dp(4), margin, dp(4));
+            dotView.setLayoutParams(lp);
+            dotView.setOnClickListener(v -> {
+                module.moduleAccentArgb = GamepadModuleAccent.toOpaqueArgb(c);
+                syncGamepadViewFromDoc();
+                refreshGamepadAccentSectionUi(module, themeDefaultBtn, customBtn, swatchViews, ctx);
+            });
+            swatchRow.addView(dotView);
+            swatchViews.add(dotView);
+        }
+        Runnable refreshSelection = () ->
+                refreshGamepadAccentSectionUi(module, themeDefaultBtn, customBtn, swatchViews, ctx);
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setOnClickListener(v -> {
+                module.moduleAccentArgb = null;
+                syncGamepadViewFromDoc();
+                refreshSelection.run();
+            });
+        }
+        if (customBtn != null) {
+            customBtn.setOnClickListener(v -> showGamepadModuleCustomColorDialog(module, refreshSelection));
+        }
+        refreshSelection.run();
+    }
+
+    /**
+     * Parses {@code #RRGGBB}, {@code RRGGBB}, or {@code 0xRRGGBB} (6 hex digits). Returns opaque ARGB or null.
+     */
+    @Nullable
+    private static Integer parseUserHexColor(@Nullable String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String t = raw.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        t = t.toUpperCase(Locale.ROOT);
+        if (t.startsWith("#")) {
+            t = t.substring(1);
+        } else if (t.startsWith("0X")) {
+            t = t.substring(2);
+        }
+        if (t.length() != 6) {
+            return null;
+        }
+        for (int i = 0; i < 6; i++) {
+            char c = t.charAt(i);
+            if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F'))) {
+                return null;
+            }
+        }
+        try {
+            return 0xFF000000 | Integer.parseInt(t, 16);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void showGamepadModuleCustomColorDialog(
+            @NonNull GamepadLayoutPresetDocument.GamepadModule module,
+            @Nullable Runnable onAccentApplied) {
+        Context ctx = requireContext();
+        int cur = module.moduleAccentArgb != null
+                ? GamepadModuleAccent.toOpaqueArgb(module.moduleAccentArgb)
+                : GamepadModuleAccent.toOpaqueArgb(MaterialColors.getColor(ctx,
+                        com.google.android.material.R.attr.colorPrimary,
+                        ContextCompat.getColor(ctx, R.color.primary)));
+        int r0 = Color.red(cur);
+        int g0 = Color.green(cur);
+        int b0 = Color.blue(cur);
+        int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+        int errorColor = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
+                ContextCompat.getColor(ctx, R.color.primary));
+
+        NestedScrollView scroll = new NestedScrollView(ctx);
+        LinearLayout shell = new LinearLayout(ctx);
+        shell.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        shell.setPadding(pad, dp(12), pad, dp(16));
+
+        TextView summary = new TextView(ctx);
+        summary.setText(R.string.gamepad_module_color_custom_summary);
+        summary.setTextAppearance(ctx, com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        LinearLayout.LayoutParams sumLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        sumLp.bottomMargin = dp(12);
+        shell.addView(summary, sumLp);
+
+        View preview = new View(ctx);
+        final GradientDrawable previewShape = new GradientDrawable();
+        previewShape.setCornerRadius(dp(12));
+        previewShape.setStroke(dp(1), outline);
+        previewShape.setColor(Color.rgb(r0, g0, b0));
+        preview.setBackground(previewShape);
+        LinearLayout.LayoutParams preLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(88));
+        preLp.bottomMargin = dp(16);
+        preview.setLayoutParams(preLp);
+        shell.addView(preview);
+
+        SeekBar rSeek = new SeekBar(ctx);
+        SeekBar gSeek = new SeekBar(ctx);
+        SeekBar bSeek = new SeekBar(ctx);
+        rSeek.setMax(255);
+        gSeek.setMax(255);
+        bSeek.setMax(255);
+        rSeek.setProgress(r0);
+        gSeek.setProgress(g0);
+        bSeek.setProgress(b0);
+        rSeek.setProgressTintList(ColorStateList.valueOf(0xFFE57373));
+        rSeek.setThumbTintList(ColorStateList.valueOf(0xFFE53935));
+        gSeek.setProgressTintList(ColorStateList.valueOf(0xFF81C784));
+        gSeek.setThumbTintList(ColorStateList.valueOf(0xFF43A047));
+        bSeek.setProgressTintList(ColorStateList.valueOf(0xFF64B5F6));
+        bSeek.setThumbTintList(ColorStateList.valueOf(0xFF1E88E5));
+
+        TextView rVal = newTextViewMonoValue(ctx);
+        TextView gVal = newTextViewMonoValue(ctx);
+        TextView bVal = newTextViewMonoValue(ctx);
+        rVal.setText(String.valueOf(r0));
+        gVal.setText(String.valueOf(g0));
+        bVal.setText(String.valueOf(b0));
+
+        shell.addView(buildRgbSliderRow(ctx, ctx.getString(R.string.gamepad_module_color_channel_r), rSeek, rVal));
+        shell.addView(buildRgbSliderRow(ctx, ctx.getString(R.string.gamepad_module_color_channel_g), gSeek, gVal));
+        shell.addView(buildRgbSliderRow(ctx, ctx.getString(R.string.gamepad_module_color_channel_b), bSeek, bVal));
+
+        TextView hexLabel = new TextView(ctx);
+        hexLabel.setText(R.string.gamepad_module_color_hex_label);
+        hexLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        LinearLayout.LayoutParams hexLabelLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        hexLabelLp.topMargin = dp(12);
+        hexLabelLp.bottomMargin = dp(6);
+        shell.addView(hexLabel, hexLabelLp);
+
+        EditText hexEdit = new EditText(ctx);
+        hexEdit.setHint(R.string.gamepad_module_color_hex_hint);
+        hexEdit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        hexEdit.setText(String.format(Locale.US, "#%06X", Color.rgb(r0, g0, b0) & 0xFFFFFF));
+        hexEdit.setSelectAllOnFocus(true);
+        LinearLayout.LayoutParams hexLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        shell.addView(hexEdit, hexLp);
+
+        TextView hexError = new TextView(ctx);
+        hexError.setTextAppearance(ctx, com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        hexError.setTextColor(errorColor);
+        hexError.setVisibility(View.GONE);
+        hexError.setPadding(0, dp(4), 0, 0);
+        shell.addView(hexError, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final boolean[] syncFromHex = { false };
+
+        Runnable updatePreviewAndHexFromSliders = () -> {
+            int rr = rSeek.getProgress();
+            int gg = gSeek.getProgress();
+            int bb = bSeek.getProgress();
+            previewShape.setColor(Color.rgb(rr, gg, bb));
+            preview.invalidate();
+            rVal.setText(String.valueOf(rr));
+            gVal.setText(String.valueOf(gg));
+            bVal.setText(String.valueOf(bb));
+            syncFromHex[0] = true;
+            hexEdit.setText(String.format(Locale.US, "#%06X", Color.rgb(rr, gg, bb) & 0xFFFFFF));
+            hexEdit.setSelection(hexEdit.getText().length());
+            syncFromHex[0] = false;
+            hexError.setVisibility(View.GONE);
+        };
+
+        SeekBar.OnSeekBarChangeListener sliderListener = new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (!fromUser || syncFromHex[0]) {
+                    return;
+                }
+                updatePreviewAndHexFromSliders.run();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        };
+        rSeek.setOnSeekBarChangeListener(sliderListener);
+        gSeek.setOnSeekBarChangeListener(sliderListener);
+        bSeek.setOnSeekBarChangeListener(sliderListener);
+
+        hexEdit.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (syncFromHex[0]) {
+                    return;
+                }
+                Integer v = parseUserHexColor(s.toString());
+                hexError.setVisibility(View.GONE);
+                if (v == null) {
+                    return;
+                }
+                syncFromHex[0] = true;
+                rSeek.setProgress(Color.red(v));
+                gSeek.setProgress(Color.green(v));
+                bSeek.setProgress(Color.blue(v));
+                rVal.setText(String.valueOf(Color.red(v)));
+                gVal.setText(String.valueOf(Color.green(v)));
+                bVal.setText(String.valueOf(Color.blue(v)));
+                previewShape.setColor(Color.rgb(Color.red(v), Color.green(v), Color.blue(v)));
+                preview.invalidate();
+                syncFromHex[0] = false;
+            }
+        });
+
+        scroll.addView(shell, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.gamepad_module_color_custom_title)
+                .setView(scroll)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null);
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(d -> {
+            Button ok = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            if (ok != null) {
+                ok.setOnClickListener(v -> {
+                    String hexRaw = hexEdit.getText().toString();
+                    Integer fromHex = parseUserHexColor(hexRaw);
+                    if (!hexRaw.trim().isEmpty() && fromHex == null) {
+                        hexError.setText(R.string.gamepad_module_color_hex_invalid);
+                        hexError.setVisibility(View.VISIBLE);
+                        return;
+                    }
+                    int color = fromHex != null ? fromHex
+                            : Color.rgb(rSeek.getProgress(), gSeek.getProgress(), bSeek.getProgress());
+                    module.moduleAccentArgb = GamepadModuleAccent.toOpaqueArgb(color);
+                    syncGamepadViewFromDoc();
+                    if (onAccentApplied != null) {
+                        onAccentApplied.run();
+                    }
+                    dialog.dismiss();
+                });
+            }
+        });
+        dialog.show();
+    }
+
+    private static TextView newTextViewMonoValue(Context ctx) {
+        TextView tv = new TextView(ctx);
+        tv.setTextAppearance(ctx, com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tv.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        tv.setMinEms(3);
+        return tv;
+    }
+
+    private static LinearLayout buildRgbSliderRow(Context ctx, String label, SeekBar seek, TextView valueTv) {
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int vPad = dp(6);
+        row.setPadding(0, vPad, 0, vPad);
+        TextView lab = new TextView(ctx);
+        lab.setText(label);
+        lab.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        lab.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams labLp = new LinearLayout.LayoutParams(dp(28), LinearLayout.LayoutParams.WRAP_CONTENT);
+        row.addView(lab, labLp);
+        LinearLayout.LayoutParams seekLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        seekLp.setMargins(dp(8), 0, dp(8), 0);
+        row.addView(seek, seekLp);
+        LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(dp(40), LinearLayout.LayoutParams.WRAP_CONTENT);
+        row.addView(valueTv, valLp);
+        return row;
+    }
+
+    /** Standalone accent editor (e.g. touchpad long-press). */
+    private void showGamepadModuleAccentDialog(@Nullable String title,
+            @Nullable GamepadLayoutPresetDocument.GamepadModule module) {
+        if (module == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        LinearLayout shell = new LinearLayout(ctx);
+        shell.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        shell.setPadding(pad, pad, pad, pad);
+        LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_color_section, shell, true);
+        View section = shell.findViewById(R.id.module_color_section);
+        if (section != null) {
+            bindGamepadModuleColorSection(section, module);
+        }
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx).setView(shell);
+        if (title != null && !title.isEmpty()) {
+            b.setTitle(title);
+        }
+        b.setPositiveButton(android.R.string.ok, (d, w) -> applyLayoutDocFromMemory())
+                .show();
+    }
+
     private void handleLongPressMenuChoice(
             String choice,
             String componentId,
@@ -1411,6 +1818,9 @@ public class GamepadFragment extends Fragment {
             boolean hasKeyMapping) {
         if (choice.equals(getString(R.string.gamepad_menu_touchpad_resize))) {
             showTouchpadResizeDialog();
+        } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_color))) {
+            showGamepadModuleAccentDialog(getString(R.string.gamepad_touchpad_color_title),
+                    findModuleById("touchpad_1"));
         } else if (choice.equals(getString(R.string.gamepad_menu_touchpad_mouse_btn_size))) {
             showTouchpadMouseButtonsLayoutSizeDialog();
         } else if (choice.equals(getString(R.string.gamepad_menu_add_touchpad_mouse_l))) {
@@ -1486,6 +1896,7 @@ public class GamepadFragment extends Fragment {
         ArrayList<String> opts = new ArrayList<>();
         if ("touchpad_1".equals(componentId)) {
             opts.add(getString(R.string.gamepad_menu_touchpad_resize));
+            opts.add(getString(R.string.gamepad_menu_touchpad_color));
             opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
             if (findModuleById(GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID) == null) {
                 opts.add(getString(R.string.gamepad_menu_add_touchpad_mouse_l));
@@ -1626,6 +2037,12 @@ public class GamepadFragment extends Fragment {
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
         root.setPadding(pad, pad, pad, pad);
+
+        LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_color_section, root, true);
+        View mouseColorSection = root.findViewById(R.id.module_color_section);
+        if (mouseColorSection != null) {
+            bindGamepadModuleColorSection(mouseColorSection, m);
+        }
 
         TextView title = new TextView(ctx);
         title.setText(R.string.gamepad_mouse_btn_size_pct);
@@ -1810,6 +2227,14 @@ public class GamepadFragment extends Fragment {
         }
         updateKeyLabels(keyUp, keyLeft, keyRight, keyDown);
 
+        View colorSection = dialogView.findViewById(R.id.module_color_section);
+        if (colorSection != null) {
+            GamepadLayoutPresetDocument.GamepadModule cm = findModuleById(stickConfigModuleId);
+            if (cm != null) {
+                bindGamepadModuleColorSection(colorSection, cm);
+            }
+        }
+
         // Stick size seekbar
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.stick_size_seekbar);
         sizeSeekbar.setProgress((int) (stickSizeScale * 100));
@@ -1969,6 +2394,7 @@ public class GamepadFragment extends Fragment {
                 GamepadLayoutPresetDocument.GamepadModule m = findModuleById(stickConfigModuleId);
                 if (m != null) {
                     m.scale = 1.0f;
+                    m.moduleAccentArgb = null;
                 }
                 syncGamepadViewFromDoc();
             } else if (gamepadView != null) {
@@ -2045,6 +2471,11 @@ public class GamepadFragment extends Fragment {
         TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
         dialogTitle.setText(title + " Configuration");
 
+        View btnColorSection = dialogView.findViewById(R.id.module_color_section);
+        if (btnColorSection != null) {
+            bindGamepadModuleColorSection(btnColorSection, m);
+        }
+
         final int[] selectedKey = { currentKey };
         final int[] selectedModifiers = { currentModifiers };
 
@@ -2100,6 +2531,7 @@ public class GamepadFragment extends Fragment {
             updateButtonLabel(keyLabel, defaultKey, 0);
             buttonCornerNorm[0] = GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_DEFAULT;
             m.buttonCornerRadiusNorm = buttonCornerNorm[0];
+            m.moduleAccentArgb = null;
             if (cornerSeek != null) {
                 cornerSeek.setProgress(100);
             }
