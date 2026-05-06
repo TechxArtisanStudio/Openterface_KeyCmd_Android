@@ -826,6 +826,10 @@ by TechxArtisan</string>
     <string name="gamepad_dpad_split_outer_summary">How far the outer corners of the pads sit toward the module edge (near center vs to edge). Pad size stays fixed. If you move this inward while split spacing is very wide, spacing may tighten automatically so the layout stays valid.</string>
     <string name="gamepad_dpad_split_outer_near">Near center</string>
     <string name="gamepad_dpad_split_outer_far">To edge</string>
+    <string name="gamepad_button_corner_title">Button shape</string>
+    <string name="gamepad_button_corner_summary">Square uses sharp corners; round matches the classic circular face button.</string>
+    <string name="gamepad_button_corner_square">Square</string>
+    <string name="gamepad_button_corner_round">Round</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>

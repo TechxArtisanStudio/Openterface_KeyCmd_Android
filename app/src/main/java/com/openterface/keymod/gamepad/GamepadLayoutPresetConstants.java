@@ -77,6 +77,23 @@ public final class GamepadLayoutPresetConstants {
 
     public static final int MAX_BUTTON_MODULES = 20;
 
+    /**
+     * BUTTON only: corner radius of the face shape as a fraction of half-width (same as legacy circle when {@code 1}).
+     * {@code 0} = square with sharp corners; {@code 1} = circle (pill with radius equal to half-size).
+     */
+    public static final float BUTTON_CORNER_RADIUS_NORM_MIN = 0f;
+    public static final float BUTTON_CORNER_RADIUS_NORM_MAX = 1f;
+    public static final float BUTTON_CORNER_RADIUS_NORM_DEFAULT = 1f;
+
+    /** @return clamped {@code [}{@link #BUTTON_CORNER_RADIUS_NORM_MIN}, {@link #BUTTON_CORNER_RADIUS_NORM_MAX}{@code ]}; null or non-finite → default (circle). */
+    public static float clampButtonCornerRadiusNorm(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return BUTTON_CORNER_RADIUS_NORM_DEFAULT;
+        }
+        return Math.max(BUTTON_CORNER_RADIUS_NORM_MIN,
+                Math.min(BUTTON_CORNER_RADIUS_NORM_MAX, v));
+    }
+
     /** Default stick positions: PlayStation-style horizontal pair. */
     public static final String STICK_LAYOUT_SYMMETRICAL = "symmetrical";
     /** Xbox / Switch Pro–style offset sticks. */

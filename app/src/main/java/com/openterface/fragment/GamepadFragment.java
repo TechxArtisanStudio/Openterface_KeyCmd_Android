@@ -584,7 +584,7 @@ public class GamepadFragment extends Fragment {
         boolean presetModules = layoutDoc != null && layoutDoc.modules != null;
         // Per-module scale from layout JSON; global stick multiplier only for legacy SIMPLE without preset.
         gamepadView.setStickSizeScale(presetModules ? 1.0f : stickSizeScale);
-        gamepadView.setButtonSizeScale(buttonSizeScale);
+        gamepadView.setButtonSizeScale(presetModules ? 1.0f : buttonSizeScale);
         float touchpadMouseBtnLayout = 1f;
         if (layoutDoc != null && layoutDoc.layout != null
                 && layoutDoc.layout.touchpadMouseButtonScale != null) {
@@ -1838,6 +1838,8 @@ public class GamepadFragment extends Fragment {
         int currentKey = m.hidKey;
         int currentModifiers = intOr(m.modifierMask, 0);
         buttonSizeScale = m.scale;
+        final float[] buttonCornerNorm = {
+                GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm) };
 
         String title;
         if ("button_a".equals(moduleId)) {
@@ -1871,13 +1873,37 @@ public class GamepadFragment extends Fragment {
         sizeSeekbar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
                 buttonSizeScale = progress / 100f;
-                if (gamepadView != null) {
+                if (layoutDoc != null && layoutDoc.modules != null) {
+                    m.scale = buttonSizeScale;
+                    syncGamepadViewFromDoc();
+                } else if (gamepadView != null) {
                     gamepadView.setButtonSizeScale(buttonSizeScale);
                 }
             }
             @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
         });
+
+        android.widget.SeekBar cornerSeek = dialogView.findViewById(R.id.button_corner_seekbar);
+        if (cornerSeek != null) {
+            cornerSeek.setProgress(Math.round(buttonCornerNorm[0] * 100f));
+            cornerSeek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                    buttonCornerNorm[0] = Math.max(0f, Math.min(1f, progress / 100f));
+                    m.buttonCornerRadiusNorm = buttonCornerNorm[0];
+                    syncGamepadViewFromDoc();
+                }
+
+                @Override
+                public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
+                }
+
+                @Override
+                public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                }
+            });
+        }
 
         LinearLayout modifierRow = new LinearLayout(requireContext());
         modifierRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1925,12 +1951,19 @@ public class GamepadFragment extends Fragment {
             for (android.widget.CheckBox cb : modifierChecks) {
                 cb.setChecked(false);
             }
+            buttonCornerNorm[0] = GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_DEFAULT;
+            m.buttonCornerRadiusNorm = buttonCornerNorm[0];
+            if (cornerSeek != null) {
+                cornerSeek.setProgress(100);
+            }
+            syncGamepadViewFromDoc();
         });
 
         dialogView.findViewById(R.id.btn_done).setOnClickListener(v -> {
             m.hidKey = selectedKey[0];
             m.modifierMask = selectedModifiers[0];
             m.scale = buttonSizeScale;
+            m.buttonCornerRadiusNorm = buttonCornerNorm[0];
             if ("button_a".equals(moduleId)) {
                 buttonAKey = selectedKey[0];
                 buttonAModifiers = selectedModifiers[0];

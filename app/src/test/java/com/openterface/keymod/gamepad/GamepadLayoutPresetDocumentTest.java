@@ -254,6 +254,29 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsButtonCornerRadiusNorm() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(1).buttonCornerRadiusNorm = 0f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        doc.modules.get(1).buttonCornerRadiusNorm = 1f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsButtonCornerRadiusNormOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(1).buttonCornerRadiusNorm = 1.01f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsButtonCornerRadiusNormOnStick() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).buttonCornerRadiusNorm = 0.5f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
     public void validateAcceptsShoulderAndTriggerModules() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         GamepadLayoutPresetDocument.GamepadModule sl = new GamepadLayoutPresetDocument.GamepadModule();

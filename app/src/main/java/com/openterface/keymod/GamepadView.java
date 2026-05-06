@@ -467,36 +467,54 @@ public class GamepadView extends View {
         return FACE_EXTRA_CYCLE[h % FACE_EXTRA_CYCLE.length];
     }
 
+    /**
+     * @param cornerRadiusNorm {@code 0} = sharp square, {@code 1} = circle (same as legacy face buttons).
+     */
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
-                                     boolean pressed, String text) {
+                                     boolean pressed, String text, float cornerRadiusNorm) {
+        float cn = Math.max(0f, Math.min(1f, cornerRadiusNorm));
+        float cornerPx = cn * r;
+        RectF bounds = new RectF(cx - r, cy - r, cx + r, cy + r);
         float shadowDy = r * 0.05f;
         retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(2.5f, r * 0.10f), BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x40000000);
-        canvas.drawCircle(cx, cy + shadowDy * 0.45f, r * 0.97f, retroShadowPaint);
+        RectF shadow = new RectF(bounds);
+        shadow.offset(0, shadowDy * 0.45f);
+        canvas.drawRoundRect(shadow, cornerPx, cornerPx, retroShadowPaint);
         retroShadowPaint.setMaskFilter(null);
 
         int body = pressed ? darkenArgb(style.body, 0.88f) : style.body;
         int rimTone = darkenArgb(style.rim, pressed ? 0.92f : 1f);
         Shader lg = new LinearGradient(cx, cy - r, cx, cy + r, lightenArgb(body, 0.08f), rimTone, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(lg);
-        canvas.drawCircle(cx, cy, r, retroBodyPaint);
+        canvas.drawRoundRect(bounds, cornerPx, cornerPx, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.25f, r * 0.045f));
         retroRingPaint.setColor(applyAlphaInt(0xFF000000, pressed ? 55 : 40));
-        canvas.drawCircle(cx, cy, r * 0.998f, retroRingPaint);
+        canvas.drawRoundRect(bounds, cornerPx, cornerPx, retroRingPaint);
         if (pressed) {
+            float grow = r * 0.015f;
+            RectF ring = new RectF(bounds);
+            ring.inset(-grow, -grow);
+            float maxCorner = Math.min(ring.width(), ring.height()) * 0.5f;
+            float c2 = Math.min(cornerPx + grow, maxCorner);
             retroRingPaint.setStrokeWidth(Math.max(1.5f, r * 0.038f));
             retroRingPaint.setColor(applyAlphaInt(themeAccentPrimary, 210));
-            canvas.drawCircle(cx, cy, r * 1.015f, retroRingPaint);
+            canvas.drawRoundRect(ring, c2, c2, retroRingPaint);
         }
 
-        float glossR = r * 0.88f;
+        float glossInset = r * 0.10f;
+        RectF glossBounds = new RectF(bounds);
+        glossBounds.inset(glossInset, glossInset);
+        float innerHalf = Math.max(1f, r - glossInset);
+        float glossCorner = cn * innerHalf;
+        float glossR = innerHalf * 0.98f;
         Shader rg = new RadialGradient(cx - r * 0.22f, cy - r * 0.26f, glossR,
                 0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
         retroGlossPaint.setShader(rg);
-        canvas.drawCircle(cx, cy, r * 0.9f, retroGlossPaint);
+        canvas.drawRoundRect(glossBounds, glossCorner, glossCorner, retroGlossPaint);
         retroGlossPaint.setShader(null);
 
         if (text != null && !text.isEmpty()) {
@@ -636,7 +654,8 @@ public class GamepadView extends View {
         float y = m.anchorY * h;
         FaceStyle fs = faceStyleForModuleId(m.id);
         String disp = resolveButtonDisplayLabel(m);
-        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp);
+        float corner = GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm);
+        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp, corner);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -657,7 +676,7 @@ public class GamepadView extends View {
         float density = getResources().getDisplayMetrics().density;
         float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale;
         String disp = m.displayLabel != null && !m.displayLabel.isEmpty() ? m.displayLabel : "?";
-        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp);
+        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp, 1f);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -693,11 +712,12 @@ public class GamepadView extends View {
     }
 
     private void drawButtonForModule(Canvas canvas, float cx, float cy, float radiusPx, String id,
-                                     FaceStyle style, String displayLabel) {
+                                     FaceStyle style, String displayLabel, float cornerRadiusNorm) {
         RectF bounds = new RectF(cx - radiusPx, cy - radiusPx, cx + radiusPx, cy + radiusPx);
         componentBounds.put(id, bounds);
         String textLabel = displayLabel != null ? displayLabel : id;
-        drawRetroFaceButton(canvas, cx, cy, radiusPx, style, id.equals(pressedComponentId), textLabel);
+        drawRetroFaceButton(canvas, cx, cy, radiusPx, style, id.equals(pressedComponentId), textLabel,
+                cornerRadiusNorm);
     }
 
     private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh) {
@@ -1117,7 +1137,7 @@ public class GamepadView extends View {
         componentBounds.put(id, bounds);
         FaceStyle fs = faceStyleForFaceLabel(label, color);
         String textLabel = displayLabel != null ? displayLabel : label;
-        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel);
+        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel, 1f);
     }
 
     private void drawShoulderButton(Canvas canvas, float cx, float cy, float width, float height, String label) {
@@ -2162,14 +2182,15 @@ public class GamepadView extends View {
                 applyAlphaInt(FACE_NEUTRAL.body, 110),
                 applyAlphaInt(FACE_NEUTRAL.rim, 110),
                 applyAlphaInt(FACE_NEUTRAL.label, 140));
-        drawRetroFaceButton(canvas, cx, cy, radius, muted, false, label);
+        drawRetroFaceButton(canvas, cx, cy, radius, muted, false, label, 1f);
         float density = getResources().getDisplayMetrics().density;
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(2f * density);
         retroRingPaint.setPathEffect(new DashPathEffect(new float[]{6f * density, 4f * density}, 0f));
         retroRingPaint.setColor(0x88FFFFFF);
         retroRingPaint.setShader(null);
-        canvas.drawCircle(cx, cy, radius * 1.02f, retroRingPaint);
+        RectF outline = new RectF(cx - radius * 1.02f, cy - radius * 1.02f, cx + radius * 1.02f, cy + radius * 1.02f);
+        canvas.drawRoundRect(outline, radius * 1.02f, radius * 1.02f, retroRingPaint);
         retroRingPaint.setPathEffect(null);
     }
 

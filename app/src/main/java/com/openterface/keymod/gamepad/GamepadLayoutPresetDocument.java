@@ -90,6 +90,11 @@ public class GamepadLayoutPresetDocument {
         /** BUTTON: primary HID key and modifier bitmask (same encoding as GamepadFragment). */
         @Nullable public Integer hidKey;
         @Nullable public Integer modifierMask;
+        /**
+         * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
+         * {@link GamepadLayoutPresetConstants#clampButtonCornerRadiusNorm}.
+         */
+        @Nullable public Float buttonCornerRadiusNorm;
         /** MOUSE_BUTTON: 1 = left, 2 = middle, 3 = right (same convention as {@code sendMouseClick}). */
         @Nullable public Integer mouseButton;
         /** TRIGGER: reserved for future analog simulation; false = digital edge on {@code hidKey}. */
@@ -245,6 +250,10 @@ public class GamepadLayoutPresetDocument {
                     }
                 }
             }
+            if (m.buttonCornerRadiusNorm != null
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": buttonCornerRadiusNorm only on BUTTON");
+            }
             if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                     || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)
                     || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
@@ -319,6 +328,16 @@ public class GamepadLayoutPresetDocument {
                 }
                 if (!m.id.matches("button_[a-z0-9]+")) {
                     throw new IllegalArgumentException("Invalid button id: " + m.id);
+                }
+                if (m.buttonCornerRadiusNorm != null) {
+                    if (m.buttonCornerRadiusNorm.isNaN() || m.buttonCornerRadiusNorm.isInfinite()) {
+                        throw new IllegalArgumentException("Module " + m.id + ": invalid buttonCornerRadiusNorm");
+                    }
+                    float c = m.buttonCornerRadiusNorm;
+                    if (c < GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_MIN
+                            || c > GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_MAX) {
+                        throw new IllegalArgumentException("Module " + m.id + ": buttonCornerRadiusNorm out of range");
+                    }
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
                 touchpadCount++;
