@@ -568,20 +568,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     /**
-     * Fullscreen immersive + {@code LAYOUT_HIDE_NAVIGATION} makes the decor measure into the gesture
-     * / nav region; weighted keyboard rows then leave a dead band in portrait. KM Basic turns that off
-     * so {@code fragment_basic_keyboard} gets a stable {@code MATCH_PARENT} height.
+     * Hides the system navigation bar (Back / Home / Recents) with immersive sticky flags, same for
+     * KM Basic and KM Pro. Keyboard / touchpad layouts rely on window inset padding
+     * (see Basic fragments) rather than clearing system UI for portrait.
      */
     @SuppressLint("deprecation")
     private void updateImmersiveForTopFragment() {
-        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        boolean basicHost = f instanceof KeyboardMouseFragment;
-        View decorView = getWindow().getDecorView();
-        if (basicHost) {
-            decorView.setSystemUiVisibility(0);
-        } else {
-            setImmersiveMode();
-        }
+        setImmersiveMode();
     }
 
     public void openDrawerForBasic() {
