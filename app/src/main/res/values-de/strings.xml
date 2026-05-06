@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Openterface KM</string>
+    <string name="app_name">KeyMod</string>
     <string name="settings_title">Einstellungen</string>
     <string name="settings_tab_general">Allgemein</string>
     <string name="settings_tab_voice">Stimme</string>
@@ -429,8 +429,8 @@ von TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Shortcut-Leiste: Symbole anzeigen. Tippen Sie, um zum Kombinationstext zu wechseln.</string>
     <string name="top_shortcut_display_mode_cd_chord">Shortcut-Leiste: Zeigt Kombinationstasten an (z. B. Alt+X). Tippen Sie, um zu Namen zu wechseln.</string>
     <string name="ime_capture_hint">Geben Sie hier den Langtext ein und bearbeiten Sie ihn – tippen Sie auf Senden, um ihn an das verbundene Gerät zu senden</string>
-    <string name="top_shortcut_ime_toggle_keymod">Openterface KM-Tastatur (tippen für System-IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System-IME (tippen für Openterface KM-Tastatur)</string>
+    <string name="top_shortcut_ime_toggle_keymod">KeyMod-Tastatur (tippen für System-IME)</string>
+    <string name="top_shortcut_ime_toggle_system">System-IME (tippen für KeyMod-Tastatur)</string>
     <string name="top_shortcut_ime_toggle_keymod_short">Eingebaut</string>
     <string name="top_shortcut_ime_toggle_system_short">System-IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Tipp: Drücken Sie diese Taste lange, um den Modifikator zu sperren.</string>

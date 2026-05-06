@@ -1,4 +1,4 @@
-# Openterface KM（Android）
+# KeyMod（Android）
 
 <p align="center"><strong>README 语言</strong> · <em>GitHub 仓库首页默认展示根目录的 README.md（英文）</em></p>
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**Openterface KM** 是 [Openterface](https://openterface.com/) 的 Android 配套应用——通过硬件 KVM 桥，用手机以 **USB** 或 **蓝牙** 控制主机。本仓库为 Java/Android 实现（`com.openterface.keymod`）。
+**KeyMod** 是 [Openterface](https://openterface.com/) 的 Android 配套应用——通过硬件 KVM 桥，用手机以 **USB** 或 **蓝牙** 控制主机。本仓库为 Java/Android 实现（`com.openterface.keymod`）。
 
 - **系统要求：** Android 8.0+（API 26）；使用 USB 控制时需 USB OTG  
 - **文档：** 连接步骤、模式与快捷键见 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)（英文）  
