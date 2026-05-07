@@ -818,6 +818,14 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
+    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[クラシック（Xbox風）
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[クラシック（PlayStation風）
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[クラシック（任天堂風）
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[クラシック（NES風）
+    ]]></string>
     <string name="gamepad_stick_config_dpad_hint"><![CDATA[モードを選びます：Dパッド（分割／十字）、方向キー、相対ポインタ。分割Dパッドのときは下のスライダーで間隔と位置を調整します。
     ]]></string>
     <string name="gamepad_stick_config_section_mode"><![CDATA[Mode

@@ -11,6 +11,8 @@ import androidx.preference.PreferenceManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import com.openterface.keymod.R;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,8 +37,11 @@ public class GamepadLayoutPresetRepository {
     private static final String KEY_INDEX = "preset_index_json";
     private static final String KEY_ACTIVE = "active_preset_id";
     private static final String KEY_STORE_VERSION = "store_version";
-    /** v1: initial preset store; v2: built-in two-button sibling preset + optional active switch from legacy toggle. */
-    private static final int STORE_VERSION = 2;
+    /**
+     * v1: initial preset store; v2: built-in two-button sibling preset + optional active switch from legacy toggle;
+     * v3: built-in classic layout presets (Xbox / PlayStation / Nintendo dual-stick + NES).
+     */
+    private static final int STORE_VERSION = 3;
 
     private final Context context;
     private final SharedPreferences storePrefs;
@@ -85,11 +90,115 @@ public class GamepadLayoutPresetRepository {
                     setActivePresetId(GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID);
                 }
             }
+            ensureBuiltInClassicPresets();
             applyActivePresetToDefaultPrefs();
         } catch (Exception e) {
             Log.e(TAG, "Built-in two-button preset migration", e);
         }
         storePrefs.edit().putInt(KEY_STORE_VERSION, STORE_VERSION).apply();
+    }
+
+    /**
+     * Writes missing classic preset JSON files and appends {@link PresetRef} entries after
+     * {@link GamepadLayoutPresetConstants#BUILT_IN_TWO_BUTTON_PRESET_ID} when absent (idempotent).
+     */
+    private void ensureBuiltInClassicPresets() throws IOException {
+        if (!presetFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX).isFile()) {
+            writeFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX,
+                    GamepadBuiltInLayoutPresets.buildClassicXbox(context));
+        }
+        if (!presetFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION).isFile()) {
+            writeFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION,
+                    GamepadBuiltInLayoutPresets.buildClassicPlayStation(context));
+        }
+        if (!presetFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO).isFile()) {
+            writeFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO,
+                    GamepadBuiltInLayoutPresets.buildClassicNintendo(context));
+        }
+        if (!presetFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES).isFile()) {
+            writeFile(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES,
+                    GamepadBuiltInLayoutPresets.buildClassicNes(context));
+        }
+
+        ensureClassicPresetIndexEntry(
+                GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX,
+                R.string.gamepad_preset_builtin_classic_xbox);
+        ensureClassicPresetIndexEntry(
+                GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION,
+                R.string.gamepad_preset_builtin_classic_playstation);
+        ensureClassicPresetIndexEntry(
+                GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO,
+                R.string.gamepad_preset_builtin_classic_nintendo);
+        ensureClassicPresetIndexEntry(
+                GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES,
+                R.string.gamepad_preset_builtin_classic_nes);
+    }
+
+    private static final String[] CLASSIC_PRESET_ORDER = {
+            GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX,
+            GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION,
+            GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO,
+            GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES,
+    };
+
+    private int insertionIndexAfterBuiltInTwins(List<PresetRef> index) {
+        for (int i = 0; i < index.size(); i++) {
+            PresetRef r = index.get(i);
+            if (r != null && GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID.equals(r.id)) {
+                return i + 1;
+            }
+        }
+        for (int i = 0; i < index.size(); i++) {
+            PresetRef r = index.get(i);
+            if (r != null && GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(r.id)) {
+                return i + 1;
+            }
+        }
+        return index.size();
+    }
+
+    private static int indexOfPresetId(List<PresetRef> index, String id) {
+        for (int i = 0; i < index.size(); i++) {
+            PresetRef r = index.get(i);
+            if (r != null && id.equals(r.id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Insert position for {@code insertingId} so classic built-ins stay in {@link #CLASSIC_PRESET_ORDER}.
+     */
+    private int insertionIndexForClassicPreset(List<PresetRef> index, String insertingId) {
+        int insertAt = insertionIndexAfterBuiltInTwins(index);
+        int ord = -1;
+        for (int i = 0; i < CLASSIC_PRESET_ORDER.length; i++) {
+            if (CLASSIC_PRESET_ORDER[i].equals(insertingId)) {
+                ord = i;
+                break;
+            }
+        }
+        if (ord <= 0) {
+            return insertAt;
+        }
+        for (int j = 0; j < ord; j++) {
+            int idx = indexOfPresetId(index, CLASSIC_PRESET_ORDER[j]);
+            if (idx >= 0) {
+                insertAt = Math.max(insertAt, idx + 1);
+            }
+        }
+        return insertAt;
+    }
+
+    private void ensureClassicPresetIndexEntry(String id, int displayNameRes) {
+        List<PresetRef> index = readIndex();
+        if (indexContainsId(index, id)) {
+            return;
+        }
+        int at = insertionIndexForClassicPreset(index, id);
+        index.add(at, new PresetRef(id, context.getString(displayNameRes)));
+        saveIndex(index);
     }
 
     private void applyActivePresetToDefaultPrefs() {

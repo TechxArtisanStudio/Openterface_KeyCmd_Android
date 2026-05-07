@@ -41,6 +41,31 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
+    public void deletePreset_rejectsBuiltInClassicPresets() {
+        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX));
+        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION));
+        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO));
+        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES));
+    }
+
+    @Test
+    public void ensureMigratedFromLegacy_includesClassicPresetIds() {
+        boolean seenXbox = false;
+        boolean seenNes = false;
+        for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
+            if (r != null && GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX.equals(r.id)) {
+                seenXbox = true;
+            }
+            if (r != null && GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES.equals(r.id)) {
+                seenNes = true;
+            }
+        }
+        assertTrue(seenXbox);
+        assertTrue(seenNes);
+        assertNotNull(repo.loadDocument(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX));
+    }
+
+    @Test
     public void duplicateRenameDelete_roundTrip() {
         GamepadLayoutPresetRepository.DuplicateResult dup =
                 repo.duplicatePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);

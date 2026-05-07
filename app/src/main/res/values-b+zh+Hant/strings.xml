@@ -805,6 +805,10 @@
     <string name="gamepad_presets_import_ok">預設已導入</string>
     <string name="gamepad_presets_share_chooser">分享手柄預設</string>
     <string name="gamepad_presets_title">手柄預設</string>
+    <string name="gamepad_preset_builtin_classic_xbox">經典（Xbox 佈局）</string>
+    <string name="gamepad_preset_builtin_classic_playstation">經典（PlayStation 佈局）</string>
+    <string name="gamepad_preset_builtin_classic_nintendo">經典（任天堂佈局）</string>
+    <string name="gamepad_preset_builtin_classic_nes">經典（NES 佈局）</string>
     <string name="gamepad_stick_config_dpad_hint">選擇模式：十字鍵（分離或一體）、方向鍵或相對指標。分離十字鍵時，下方滑塊用於調整間隙與整體位置。</string>
     <string name="gamepad_stick_config_section_mode">模式</string>
     <string name="gamepad_stick_config_size_label">搖桿大小</string>

@@ -842,6 +842,14 @@ por TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
+    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[Clásico (estilo Xbox)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[Clásico (estilo PlayStation)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[Clásico (estilo Nintendo)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[Clásico (estilo NES)
+    ]]></string>
     <string name="gamepad_stick_config_dpad_hint"><![CDATA[Elige el modo: cruceta (segmentada o cruz), teclas de dirección o puntero relativo. Los deslizadores de abajo ajustan separación y posición en segmentada.
     ]]></string>
     <string name="gamepad_stick_config_section_mode"><![CDATA[Mode

@@ -80,12 +80,23 @@ public final class GamepadLayoutPresetConstants {
      */
     public static final String BUILT_IN_TWO_BUTTON_PRESET_ID = "preset_two_buttons";
 
+    /** Built-in dual-stick + face cluster layouts (see {@link GamepadBuiltInLayoutPresets}). */
+    public static final String BUILT_IN_PRESET_CLASSIC_XBOX = "preset_classic_xbox";
+    public static final String BUILT_IN_PRESET_CLASSIC_PLAYSTATION = "preset_classic_playstation";
+    public static final String BUILT_IN_PRESET_CLASSIC_NINTENDO = "preset_classic_nintendo";
+    /** Minimal NES-style layout (D-pad + A/B + select/start). */
+    public static final String BUILT_IN_PRESET_CLASSIC_NES = "preset_classic_nes";
+
     /**
      * Presets that must not be removed from the store (user may still rename for display).
      */
     public static boolean isPresetDeletionProtected(@Nullable String presetId) {
         return DEFAULT_PRESET_ID.equals(presetId)
-                || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId);
+                || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_XBOX.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_PLAYSTATION.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_NINTENDO.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_NES.equals(presetId);
     }
 
     /**

@@ -18,6 +18,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -62,6 +63,9 @@ import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
 import com.openterface.keymod.BuildConfig;
+import com.openterface.keymod.hid.Ch9329HostLockQuery;
+import com.openterface.keymod.hid.Ch9329InboundParser;
+import com.openterface.keymod.hid.HostKeyboardLockLeds;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
@@ -86,6 +90,34 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private UsbSerialPort port;
     private boolean isReading = false;
     private Handler mSerialAsyncHandler;
+    private final Ch9329InboundParser hostLockInboundParser = new Ch9329InboundParser();
+    private final Handler hostLockPollHandler = new Handler(Looper.getMainLooper());
+    private volatile boolean hostLockPollScheduled;
+    private final Runnable hostLockPollRunnable =
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (!hostLockPollScheduled) {
+                        return;
+                    }
+                    try {
+                        if (port != null && isReading) {
+                            synchronized (port) {
+                                port.write(Ch9329HostLockQuery.GET_INFO_PACKET, WRITE_WAIT_MILLIS_HOST_LOCK);
+                            }
+                        } else if (isServiceBound
+                                && bluetoothService != null
+                                && bluetoothService.isConnected()) {
+                            bluetoothService.sendData(Ch9329HostLockQuery.GET_INFO_PACKET);
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Host keyboard lock poll: " + e.getMessage());
+                    }
+                    hostLockPollHandler.postDelayed(this, HOST_LOCK_POLL_INTERVAL_MS);
+                }
+            };
+    private static final int WRITE_WAIT_MILLIS_HOST_LOCK = 2000;
+    private static final int HOST_LOCK_POLL_INTERVAL_MS = 450;
     private UsbDeviceManager.OnDataReadListener onDataReadListener;
     private static final String ACTION_USB_PERMISSION = "com.openterface.ch32v208serial.USB_PERMISSION";
 
@@ -164,6 +196,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                                 || state == ConnectionManager.ConnectionState.ERROR) {
                             isUsbConnected = false;
                             isBluetoothConnected = false;
+                            stopHostLockPolling();
+                            HostKeyboardLockLeds.get().reset();
                             if (port != null) {
                                 try {
                                     port.close();
@@ -252,6 +286,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             bluetoothService = binder.getService();
             isServiceBound = true;
             bluetoothService.setRxBleClient(rxBleClient);
+            bluetoothService.setHostLockInboundParser(hostLockInboundParser);
             Log.d(TAG, "Bound to BluetoothService");
 
             // Keep ConnectionManager in sync with the newly bound service.
@@ -470,6 +505,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     protected void onDestroy() {
         getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(chromeFragmentCallbacks);
+        stopHostLockPolling();
         if (connectionManager != null) {
             connectionManager.removeConnectionStateListener(connectionStateListener);
         }
@@ -1512,12 +1548,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void startReading() {
+        startHostLockPolling();
         new Thread(() -> {
             try {
                 while (isReading) {
                     byte[] buffer = new byte[1024];
                     int numBytesRead = port.read(buffer, 5);
                     if (numBytesRead > 0) {
+                        hostLockInboundParser.append(buffer, numBytesRead);
                         StringBuilder allReadData = new StringBuilder();
                         for (int i = 0; i < numBytesRead; i++) {
                             allReadData.append(String.format("%02X ", buffer[i]));
@@ -1533,6 +1571,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 Log.e(TAG, "Error reading USB data: " + e.getMessage());
             }
         }).start();
+    }
+
+    private void startHostLockPolling() {
+        if (hostLockPollScheduled) {
+            return;
+        }
+        hostLockPollScheduled = true;
+        hostLockPollHandler.post(hostLockPollRunnable);
+    }
+
+    private void stopHostLockPolling() {
+        hostLockPollScheduled = false;
+        hostLockPollHandler.removeCallbacks(hostLockPollRunnable);
     }
 
     private void setupUsbSerial() {
@@ -1609,6 +1660,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             } else {
                 Log.d(TAG, "Bluetooth connected but connectedDevice is null; state synced from callback");
             }
+            startHostLockPolling();
         } else if (!isConnected && connectionManager != null && 
                    connectionManager.getCurrentConnectionType() == ConnectionManager.ConnectionType.BLUETOOTH) {
             connectionManager.disconnect();

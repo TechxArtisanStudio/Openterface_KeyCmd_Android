@@ -26,6 +26,7 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.hid.HostKeyboardLockLeds;
 import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.target.CH9329MSKBMap;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -61,6 +62,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private View shiftKeyRight;
     @Nullable
     private View capsKeyView;
+
+    private final HostKeyboardLockLeds.Listener hostKeyboardLockListener =
+            (numLock, hostCaps, scrollLock) -> {
+                refreshModifierVisuals();
+            };
 
     private final List<View> ctrlModifierKeys = new ArrayList<>(2);
     private final List<View> altModifierKeys = new ArrayList<>(2);
@@ -165,12 +171,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         if (!isInEditMode()) {
             PreferenceManager.getDefaultSharedPreferences(getContext())
                     .registerOnSharedPreferenceChangeListener(kmBasicPrefListener);
+            HostKeyboardLockLeds.get().addListener(hostKeyboardLockListener);
         }
     }
 
     @Override
     protected void onDetachedFromWindow() {
         if (!isInEditMode()) {
+            HostKeyboardLockLeds.get().removeListener(hostKeyboardLockListener);
             PreferenceManager.getDefaultSharedPreferences(getContext())
                     .unregisterOnSharedPreferenceChangeListener(kmBasicPrefListener);
         }
@@ -570,7 +578,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         applyChordOrLockVisualSide(altModifierKeys, parseMod("Alt"), parseMod("AltR"), locked);
         applyChordOrLockVisualSide(winModifierKeys, parseMod("Win"), parseMod("WinR"), locked);
         if (capsKeyView != null) {
-            capsKeyView.setSelected(capsLock);
+            capsKeyView.setSelected(effectiveCapsLockForUi());
         }
     }
 
@@ -610,7 +618,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private int effectiveModifiersForPhysicalKey(boolean isLetter, boolean needsShiftForSymbol) {
         int mods = effectiveModifiersMask();
         boolean shiftForCase =
-                !isMomentaryChordMode() && isLetter && capsLock != stickyShiftLayer();
+                !isMomentaryChordMode() && isLetter && effectiveCapsLockForUi() != stickyShiftLayer();
         if (needsShiftForSymbol) {
             mods |= parseMod("Shift");
         } else if (shiftForCase) {
@@ -694,7 +702,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         if (!Character.isLetter(c)) {
             return letter;
         }
-        boolean upper = capsLock != shiftLayerActive();
+        boolean upper = effectiveCapsLockForUi() != shiftLayerActive();
         return upper ? letter.toUpperCase(Locale.ROOT) : letter.toLowerCase(Locale.ROOT);
     }
 
@@ -720,8 +728,17 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     private void tapModifierToggle(String which) {
         if ("caps".equals(which)) {
-            capsLock = !capsLock;
+            if (!HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
+                capsLock = !capsLock;
+            }
         }
+    }
+
+    private boolean effectiveCapsLockForUi() {
+        if (HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
+            return HostKeyboardLockLeds.get().isCapsLock();
+        }
+        return capsLock;
     }
 
     private void refreshStickyModifierVisuals() {
@@ -738,7 +755,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         refreshStickySideKeys(altModifierKeys, parseMod("Alt"), parseMod("AltR"));
         refreshStickySideKeys(winModifierKeys, parseMod("Win"), parseMod("WinR"));
         if (capsKeyView != null) {
-            capsKeyView.setSelected(capsLock);
+            capsKeyView.setSelected(effectiveCapsLockForUi());
         }
     }
 
@@ -1109,7 +1126,10 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                             k,
                             () -> {
                                 tapKey(0x39, false, false);
-                                capsLock = !capsLock;
+                                if (!HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
+                                    capsLock = !capsLock;
+                                }
+                                refreshModifierVisuals();
                             },
                             () -> "Caps");
                 } else {

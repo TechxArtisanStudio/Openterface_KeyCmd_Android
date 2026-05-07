@@ -8,7 +8,10 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.openterface.keymod.hid.Ch9329InboundParser;
 
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleConnection;
@@ -47,6 +50,10 @@ public class BluetoothService extends Service {
     private Disposable rssiPollDisposable;
     private final Set<ConnectionStateListener> connectionStateListeners = new CopyOnWriteArraySet<>();
     private volatile boolean reconnectSuppressed;
+    @Nullable
+    private Ch9329InboundParser hostLockInboundParser;
+    @Nullable
+    private Disposable hostLockNotifyDisposable;
 
     public interface ConnectionStateListener {
         void onBluetoothConnecting(RxBleDevice device);
@@ -78,6 +85,50 @@ public class BluetoothService extends Service {
      */
     public void setReconnectSuppressed(boolean suppressed) {
         this.reconnectSuppressed = suppressed;
+    }
+
+    /** Shared with USB serial; inbound notify bytes are parsed for host keyboard LED state. */
+    public void setHostLockInboundParser(@Nullable Ch9329InboundParser parser) {
+        hostLockInboundParser = parser;
+        RxBleConnection connection = activeConnection;
+        if (parser != null && connection != null) {
+            startHostLockBleNotifications(connection);
+        }
+    }
+
+    private void startHostLockBleNotifications(@NonNull RxBleConnection connection) {
+        stopHostLockBleNotifications();
+        if (hostLockInboundParser == null) {
+            return;
+        }
+        hostLockNotifyDisposable =
+                connection.setupNotification(NOTIFY_CHARACTERISTIC_UUID)
+                        .flatMap(obs -> obs)
+                        .subscribe(
+                                bytes -> {
+                                    if (hostLockInboundParser != null
+                                            && bytes != null
+                                            && bytes.length > 0) {
+                                        hostLockInboundParser.append(bytes, bytes.length);
+                                    }
+                                },
+                                throwable ->
+                                        Log.w(
+                                                TAG,
+                                                LOG_PREFIX
+                                                        + "Host lock BLE notify setup failed: "
+                                                        + throwable));
+        if (hostLockNotifyDisposable != null) {
+            connectionDisposables.add(hostLockNotifyDisposable);
+        }
+    }
+
+    private void stopHostLockBleNotifications() {
+        if (hostLockNotifyDisposable != null && !hostLockNotifyDisposable.isDisposed()) {
+            hostLockNotifyDisposable.dispose();
+            connectionDisposables.remove(hostLockNotifyDisposable);
+        }
+        hostLockNotifyDisposable = null;
     }
 
     public void addConnectionStateListener(ConnectionStateListener listener) {
@@ -201,6 +252,7 @@ public class BluetoothService extends Service {
                             Log.d(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                             notifyBluetoothConnected(device);
                             startRssiPolling();
+                            startHostLockBleNotifications(connection);
                         },
                         throwable -> {
                             synchronized (connectingDevices) {
@@ -208,6 +260,7 @@ public class BluetoothService extends Service {
                             }
                             Log.e(TAG, LOG_PREFIX + "Connection error for device " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + "): " + throwable.toString());
                             activeConnection = null;
+                            stopHostLockBleNotifications();
                             notifyBluetoothError(device, throwable.toString());
                             notifyBluetoothDisconnected(device);
                             stopRssiPolling();
@@ -331,6 +384,7 @@ public class BluetoothService extends Service {
     public void disconnect() {
         if (activeConnection != null) {
             RxBleDevice previousDevice = connectedDevice;
+            stopHostLockBleNotifications();
             connectionDisposables.clear();
             stopRssiPolling();
             activeConnection = null;

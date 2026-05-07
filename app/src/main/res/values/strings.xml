@@ -779,6 +779,10 @@ by TechxArtisan</string>
     <string name="gamepad_presets_button">Preset</string>
     <string name="gamepad_preset_cycled_toast">Layout: %1$s</string>
     <string name="gamepad_presets_title">Gamepad presets</string>
+    <string name="gamepad_preset_builtin_classic_xbox">Classic (Xbox-style)</string>
+    <string name="gamepad_preset_builtin_classic_playstation">Classic (PlayStation-style)</string>
+    <string name="gamepad_preset_builtin_classic_nintendo">Classic (Nintendo-style)</string>
+    <string name="gamepad_preset_builtin_classic_nes">Classic (NES-style)</string>
     <string name="gamepad_presets_import">Import from file…</string>
     <string name="gamepad_presets_export_share">Export current (share)…</string>
     <string name="gamepad_presets_activated">Preset applied</string>

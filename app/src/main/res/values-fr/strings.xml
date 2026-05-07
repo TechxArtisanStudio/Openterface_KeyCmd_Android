@@ -841,6 +841,14 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
+    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[Classique (style Xbox)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[Classique (style PlayStation)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[Classique (style Nintendo)
+    ]]></string>
+    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[Classique (style NES)
+    ]]></string>
     <string name="gamepad_stick_config_dpad_hint"><![CDATA[Choisissez le mode : D-pad (segmenté ou croix), touches directionnelles ou pointeur relatif. Les curseurs ci-dessous règlent l’écart et la position du groupe en mode segmenté.
     ]]></string>
     <string name="gamepad_stick_config_section_mode"><![CDATA[Mode
