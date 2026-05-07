@@ -694,8 +694,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         if (!Character.isLetter(c)) {
             return letter;
         }
-        boolean upper =
-                isMomentaryChordMode() ? capsLock : (capsLock != stickyShiftLayer());
+        boolean upper = capsLock != shiftLayerActive();
         return upper ? letter.toUpperCase(Locale.ROOT) : letter.toLowerCase(Locale.ROOT);
     }
 
