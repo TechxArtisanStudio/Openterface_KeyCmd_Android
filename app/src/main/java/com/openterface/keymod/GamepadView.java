@@ -1014,8 +1014,17 @@ public class GamepadView extends View {
 
         float hx = cx;
         float hy = cy - scaledRadius * 0.14f;
-        int outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
-        int outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
+        final boolean arrowStickGreyBase = GamepadLayoutPresetConstants.isArrowStickModuleId(boundsId);
+        int outerHi;
+        int outerLo;
+        if (arrowStickGreyBase) {
+            // Arrow stick housing: fixed neutral grey (not module accent).
+            outerHi = Color.parseColor("#5E5E66");
+            outerLo = Color.parseColor("#38383F");
+        } else {
+            outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
+            outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
+        }
         Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
                 outerHi, outerLo, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(outer);
@@ -1024,7 +1033,9 @@ public class GamepadView extends View {
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.75f * density));
-        retroRingPaint.setColor(ColorUtils.blendARGB(Color.parseColor("#6A6A74"), accentPrimary, 0.22f));
+        retroRingPaint.setColor(arrowStickGreyBase
+                ? Color.parseColor("#6A6A74")
+                : ColorUtils.blendARGB(Color.parseColor("#6A6A74"), accentPrimary, 0.22f));
         canvas.drawCircle(cx, cy, scaledRadius * 0.995f, retroRingPaint);
 
         float innerCx = cx;
