@@ -884,6 +884,15 @@ by TechxArtisan</string>
     <string name="gamepad_key_picker_cd_arrow_left">Left arrow key</string>
     <string name="gamepad_key_picker_cd_arrow_right">Right arrow key</string>
     <string name="gamepad_stick_direction_keys_label">Direction keys (tap to change)</string>
+    <string name="gamepad_stick_center_key_title">Center (hub)</string>
+    <string name="gamepad_stick_center_key_summary">Leave empty so the middle area does not send a key. Map a key to tap or hold the hub like an extra button.</string>
+    <string name="gamepad_stick_center_key_clear">None</string>
+    <string name="gamepad_stick_center_key_none">None</string>
+    <string name="gamepad_stick_pointer_center_summary">Center hub: pick a keyboard key below, or leave it empty and choose a mouse button (left / middle / right) for the hub while using relative pointer.</string>
+    <string name="gamepad_stick_pointer_hub_mouse_title">Hub mouse button (when no keyboard key is set)</string>
+    <string name="gamepad_stick_pointer_hub_mouse_left">Left</string>
+    <string name="gamepad_stick_pointer_hub_mouse_middle">Middle</string>
+    <string name="gamepad_stick_pointer_hub_mouse_right">Right</string>
     <string name="gamepad_component_right_stick">Right stick</string>
     <string name="gamepad_component_button_a">Button A</string>
     <string name="gamepad_component_button_b">Button B</string>

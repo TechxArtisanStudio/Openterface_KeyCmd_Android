@@ -396,6 +396,11 @@ public final class GamepadDpadVariantArt {
         retroBodyPaint.setShader(null);
         retroBodyPaint.setColor(dpadHub(themeAccentPrimary));
         canvas.drawRoundRect(cx - hub, cy - hub, cx + hub, cy + hub, corner * 0.35f, corner * 0.35f, retroBodyPaint);
+        if (activeStickDirections.contains(boundsId + "_center")) {
+            retroGlossPaint.setShader(null);
+            retroGlossPaint.setColor(pressTint);
+            canvas.drawRoundRect(cx - hub, cy - hub, cx + hub, cy + hub, corner * 0.35f, corner * 0.35f, retroGlossPaint);
+        }
         drawDirectionLabels(canvas, cx, cy, half, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, labelTypeface, showMappingHints, labelRadialScale);
     }

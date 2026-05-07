@@ -1056,8 +1056,9 @@ public class GamepadView extends View {
         innerCx += ox;
         innerCy += oy;
 
-        boolean centerTap = boundsId.equals(activeStickId)
-                && Math.abs(ox) < scaledRadius * 0.15f && Math.abs(oy) < scaledRadius * 0.15f;
+        boolean hubKeyCenter = activeStickDirections.contains(boundsId + "_center");
+        boolean centerTap = hubKeyCenter || (boundsId.equals(activeStickId)
+                && Math.abs(ox) < scaledRadius * 0.15f && Math.abs(oy) < scaledRadius * 0.15f);
         float capR = scaledRadius * 0.54f;
         Shader capShader;
         if (centerTap) {
@@ -1472,9 +1473,21 @@ public class GamepadView extends View {
                         activeStickCenterX = stickBounds.centerX();
                         activeStickCenterY = stickBounds.centerY();
                         activeStickRadius  = stickBounds.width() / 2f;
-                        stickOffsetX = 0;
-                        stickOffsetY = 0;
+                        float rdx = x - activeStickCenterX;
+                        float rdy = y - activeStickCenterY;
+                        float rdist = (float) Math.sqrt(rdx * rdx + rdy * rdy);
+                        if (rdist > activeStickRadius) {
+                            rdx = rdx * activeStickRadius / rdist;
+                            rdy = rdy * activeStickRadius / rdist;
+                        }
+                        stickOffsetX = rdx;
+                        stickOffsetY = rdy;
                         invalidate();
+                        if (analogStickListener != null) {
+                            String label = componentId.replace("stick_", "");
+                            analogStickListener.onAnalogStickMoved(
+                                    label, rdx / activeStickRadius, rdy / activeStickRadius);
+                        }
                     } else if (isEditMode) {
                         draggedComponentId = componentId;
                         dragPointerId = pointerId;
@@ -1633,12 +1646,6 @@ public class GamepadView extends View {
                     longPressComponentId = null;
                 }
                 if (activeStickId != null) {
-                    float moved = (float) Math.sqrt(
-                            stickOffsetX * stickOffsetX + stickOffsetY * stickOffsetY);
-                    if (moved < activeStickRadius * 0.15f && buttonPressListener != null) {
-                        int keyCode = activeStickId.equals("stick_l") ? 1001 : 1002;
-                        buttonPressListener.onButtonPress(activeStickId + "_click", keyCode);
-                    }
                     String label = activeStickId.replace("stick_", "");
                     activeStickId = null;
                     activeStickPointerId = -1;
@@ -1769,6 +1776,30 @@ public class GamepadView extends View {
         }
     }
 
+    /** First sample for a stick finger (same math as MOVE) so the host sees hub press without a drag slop. */
+    private void notifyDynamicStickAt(String stickModuleId, float touchX, float touchY) {
+        if (analogStickListener == null) {
+            return;
+        }
+        RectF b = componentBounds.get(stickModuleId);
+        if (b == null) {
+            return;
+        }
+        float scx = b.centerX();
+        float scy = b.centerY();
+        float rad = b.width() / 2f;
+        float ddx = touchX - scx;
+        float ddy = touchY - scy;
+        float sdist = (float) Math.sqrt(ddx * ddx + ddy * ddy);
+        if (sdist > rad) {
+            ddx = ddx * rad / sdist;
+            ddy = ddy * rad / sdist;
+        }
+        dynamicStickOffset.put(stickModuleId, new float[]{ddx, ddy});
+        String label = dynamicAnalogStickCallbackId(stickModuleId);
+        analogStickListener.onAnalogStickMoved(label, ddx / rad, ddy / rad);
+    }
+
     private boolean onTouchDynamicLayout(MotionEvent event) {
         int action = event.getActionMasked();
         int pointerIndex = event.getActionIndex();
@@ -1811,6 +1842,7 @@ public class GamepadView extends View {
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
                         dynamicStickOffset.put(componentId, new float[]{0f, 0f});
+                        notifyDynamicStickAt(componentId, x, y);
                         invalidate();
                     } else if (isEditMode) {
                         draggedComponentId = componentId;
@@ -1859,6 +1891,7 @@ public class GamepadView extends View {
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
                         dynamicStickOffset.put(componentId, new float[]{0f, 0f});
+                        notifyDynamicStickAt(componentId, x, y);
                         invalidate();
                     } else if (!isEditMode && buttonPressListener != null) {
                         buttonsPressedSet.add(componentId);
@@ -1990,17 +2023,6 @@ public class GamepadView extends View {
                 }
                 for (Map.Entry<Integer, String> e : new HashMap<>(dynamicPointerStick).entrySet()) {
                     String sid = e.getValue();
-                    float[] off = dynamicStickOffset.get(sid);
-                    RectF b = componentBounds.get(sid);
-                    float rad = b != null ? b.width() / 2f : 1f;
-                    float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
-                    if (moved < rad * 0.15f && buttonPressListener != null
-                            && ("stick_left".equals(sid) || "stick_right".equals(sid)
-                            || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(sid))) {
-                        String clickId = "stick_left".equals(sid) ? "stick_l_click" : "stick_r_click";
-                        int code = "stick_left".equals(sid) ? 1001 : 1002;
-                        buttonPressListener.onButtonPress(clickId, code);
-                    }
                     String label = dynamicAnalogStickCallbackId(sid);
                     if (analogStickListener != null) {
                         analogStickListener.onAnalogStickMoved(label, 0, 0);
@@ -2040,17 +2062,7 @@ public class GamepadView extends View {
                 }
                 String releasedStick = dynamicPointerStick.remove(pointerId);
                 if (releasedStick != null) {
-                    float[] off = dynamicStickOffset.remove(releasedStick);
-                    RectF b = componentBounds.get(releasedStick);
-                    float rad = b != null ? b.width() / 2f : 1f;
-                    float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
-                    if (moved < rad * 0.15f && buttonPressListener != null
-                            && ("stick_left".equals(releasedStick) || "stick_right".equals(releasedStick)
-                            || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(releasedStick))) {
-                        String clickId = "stick_left".equals(releasedStick) ? "stick_l_click" : "stick_r_click";
-                        int code = "stick_left".equals(releasedStick) ? 1001 : 1002;
-                        buttonPressListener.onButtonPress(clickId, code);
-                    }
+                    dynamicStickOffset.remove(releasedStick);
                     String label = dynamicAnalogStickCallbackId(releasedStick);
                     if (analogStickListener != null) {
                         analogStickListener.onAnalogStickMoved(label, 0, 0);

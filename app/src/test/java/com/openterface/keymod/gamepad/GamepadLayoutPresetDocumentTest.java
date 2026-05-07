@@ -156,6 +156,55 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void stickCenterKeyRoundTripsInJson() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule left = doc.modules.get(0);
+        left.stickCenterKey = 44;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        assertEquals(Integer.valueOf(44), parsed.modules.get(0).stickCenterKey);
+    }
+
+    @Test
+    public void validateAcceptsDpadCrossWithStickCenterKey() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        doc.modules.get(0).dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        doc.modules.get(0).stickCenterKey = 40;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void stickPointerCenterFieldsRoundTripJson() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        GamepadLayoutPresetDocument.GamepadModule right = findModule(doc, "stick_right");
+        assertNotNull(right);
+        right.stickPointerCenterKey = 35;
+        right.stickPointerCenterMouseMask = 4;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.GamepadModule r2 = findModule(parsed, "stick_right");
+        assertEquals(Integer.valueOf(35), r2.stickPointerCenterKey);
+        assertEquals(Integer.valueOf(4), r2.stickPointerCenterMouseMask);
+    }
+
+    @Test
+    public void validateAcceptsStickMousePointerHubMouseMask() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        findModule(doc, "stick_right").stickPointerCenterMouseMask = 2;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsStickPointerCenterMouseMaskInvalid() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        findModule(doc, "stick_right").stickPointerCenterMouseMask = 3;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
     public void validateAcceptsDpadSplitWithGapRatio() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.modules.get(0).type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;

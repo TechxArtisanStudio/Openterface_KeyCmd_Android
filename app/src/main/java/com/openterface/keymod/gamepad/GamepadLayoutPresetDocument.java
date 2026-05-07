@@ -98,6 +98,11 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Integer stickLeftKey;
         @Nullable public Integer stickDownKey;
         @Nullable public Integer stickRightKey;
+        /**
+         * Optional hub / inner-disc key for STICK_KEY or cross DPAD. {@code null} = hub sends no key
+         * (dead zone until user maps one in stick config).
+         */
+        @Nullable public Integer stickCenterKey;
         /** DPAD: visual/interaction variant (e.g. {@link GamepadLayoutPresetConstants#DPAD_VARIANT_CROSS}). */
         @Nullable public String dpadVariant;
         /**
@@ -136,6 +141,16 @@ public class GamepadLayoutPresetDocument {
          * or built-in default.
          */
         @Nullable public Float stickMouseSensitivity;
+        /**
+         * STICK_MOUSE only: optional hub (inner disc) keyboard HID key while the finger stays in the hub.
+         * When non-null, {@link #stickPointerCenterMouseMask} is ignored for hub presses.
+         */
+        @Nullable public Integer stickPointerCenterKey;
+        /**
+         * STICK_MOUSE only: HID relative-mouse button mask for hub press when {@link #stickPointerCenterKey} is null.
+         * Use {@code 1} (left), {@code 2} (right), or {@code 4} (middle); null defaults to left ({@code 1}).
+         */
+        @Nullable public Integer stickPointerCenterMouseMask;
         /**
          * Optional per-module accent (ARGB). Null = theme default for sticks/D-pad and template colors for face
          * buttons; see {@link GamepadModuleAccent}.
@@ -359,6 +374,36 @@ public class GamepadLayoutPresetDocument {
                         && (m.stickUpKey == null || m.stickLeftKey == null
                         || m.stickDownKey == null || m.stickRightKey == null)) {
                     throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY/DPAD needs four direction keys");
+                }
+                if (m.stickCenterKey != null) {
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                            && !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey only on STICK_KEY/DPAD");
+                    }
+                    int c = m.stickCenterKey;
+                    if (c < 1 || c > 255) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey out of range");
+                    }
+                }
+                if (m.stickPointerCenterKey != null) {
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey only on STICK_MOUSE");
+                    }
+                    int pk = m.stickPointerCenterKey;
+                    if (pk < 1 || pk > 255) {
+                        throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey out of range");
+                    }
+                }
+                if (m.stickPointerCenterMouseMask != null) {
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
+                        throw new IllegalArgumentException("Module " + m.id
+                                + ": stickPointerCenterMouseMask only on STICK_MOUSE");
+                    }
+                    int mk = m.stickPointerCenterMouseMask;
+                    if (mk != 1 && mk != 2 && mk != 4) {
+                        throw new IllegalArgumentException("Module " + m.id
+                                + ": stickPointerCenterMouseMask must be 1, 2, or 4");
+                    }
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
                 if (m.hidKey == null) {
