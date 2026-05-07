@@ -48,4 +48,11 @@ public final class GamepadPreferenceKeys {
      * (converted to px when applied). Lower = stricter (easier to trigger menu while dragging).
      */
     public static final String EDIT_LONG_PRESS_CANCEL_DP = "gamepad_edit_long_press_cancel_dp";
+
+    /**
+     * When true (default), show mapping hints (callouts below face buttons, stick W/A/S/D, D-pad letters,
+     * touchpad title). Names drawn on the button cap use {@code displayLabel} in the preset and are not
+     * controlled by this toggle.
+     */
+    public static final String SHOW_KEY_MAPPING_HINTS = "gamepad_show_key_mapping_hints";
 }

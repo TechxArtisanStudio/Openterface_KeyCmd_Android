@@ -53,6 +53,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
@@ -86,6 +87,7 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
 import com.openterface.keymod.GamepadView;
+import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutDocumentStore;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetApplier;
@@ -96,6 +98,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
+import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
 import com.openterface.keymod.GamepadView.DpadStateListener;
 
@@ -285,6 +288,23 @@ public class GamepadFragment extends Fragment {
 
         MaterialButton presetsBtn = view.findViewById(R.id.gamepad_presets_btn);
         presetsBtn.setOnClickListener(v -> cycleToNextPreset());
+
+        MaterialButton mappingHintsToggle = view.findViewById(R.id.gamepad_mapping_hints_toggle);
+        if (mappingHintsToggle != null && prefs != null && gamepadView != null) {
+            boolean hintsOn = prefs.getBoolean(GamepadPreferenceKeys.SHOW_KEY_MAPPING_HINTS, true);
+            mappingHintsToggle.setChecked(hintsOn);
+            mappingHintsToggle.setIconResource(
+                    hintsOn ? R.drawable.ic_visibility_24 : R.drawable.ic_visibility_off_24);
+            gamepadView.setKeyMappingHintsVisible(hintsOn);
+            mappingHintsToggle.addOnCheckedChangeListener((button, isChecked) -> {
+                prefs.edit().putBoolean(GamepadPreferenceKeys.SHOW_KEY_MAPPING_HINTS, isChecked).apply();
+                button.setIconResource(
+                        isChecked ? R.drawable.ic_visibility_24 : R.drawable.ic_visibility_off_24);
+                if (gamepadView != null) {
+                    gamepadView.setKeyMappingHintsVisible(isChecked);
+                }
+            });
+        }
 
         editModeMaterialButton = view.findViewById(R.id.edit_mode_toggle);
         editModeMaterialButton.addOnCheckedChangeListener((button, isChecked) -> {
@@ -715,6 +735,10 @@ public class GamepadFragment extends Fragment {
             touchpadMouseBtnLayout = layoutDoc.layout.touchpadMouseButtonScale;
         }
         gamepadView.setTouchpadMouseButtonLayoutScale(touchpadMouseBtnLayout);
+        if (prefs != null) {
+            gamepadView.setKeyMappingHintsVisible(
+                    prefs.getBoolean(GamepadPreferenceKeys.SHOW_KEY_MAPPING_HINTS, true));
+        }
         updateGamepadLabels();
         updateGyroListenerRegistration();
     }
@@ -1419,8 +1443,9 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Updates selection rings / strokes on the accent color row so the current choice matches
+     * Updates selection state on the accent color row so the current choice matches
      * {@link GamepadLayoutPresetDocument.GamepadModule#moduleAccentArgb}.
+     * Preset swatches use a centered color dot inside a ring wrapper when selected.
      */
     private void refreshGamepadAccentSectionUi(
             @NonNull GamepadLayoutPresetDocument.GamepadModule module,
@@ -1432,11 +1457,21 @@ public class GamepadFragment extends Fragment {
                 ContextCompat.getColor(ctx, R.color.primary));
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
+        int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
 
         boolean themeSelected = module.moduleAccentArgb == null;
         if (themeDefaultBtn != null) {
-            themeDefaultBtn.setStrokeWidth(themeSelected ? dp(2) : 0);
-            themeDefaultBtn.setStrokeColor(ColorStateList.valueOf(themeSelected ? primary : outline));
+            themeDefaultBtn.setStrokeWidth(0);
+            themeDefaultBtn.setIcon(themeSelected ? ContextCompat.getDrawable(ctx, R.drawable.ic_check) : null);
+            themeDefaultBtn.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+            themeDefaultBtn.setIconPadding(dp(8));
+            if (themeSelected) {
+                int onTonal = MaterialColors.getColor(themeDefaultBtn,
+                        com.google.android.material.R.attr.colorOnSecondaryContainer, primary);
+                themeDefaultBtn.setIconTint(ColorStateList.valueOf(onTonal));
+            } else {
+                themeDefaultBtn.setIconTint(null);
+            }
         }
 
         Integer ma = module.moduleAccentArgb;
@@ -1449,17 +1484,32 @@ public class GamepadFragment extends Fragment {
             if (sel) {
                 matchedPreset = true;
             }
-            View dotView = swatchViews.get(i);
-            GradientDrawable gd = new GradientDrawable();
-            gd.setShape(GradientDrawable.OVAL);
-            gd.setColor(fill);
-            if (sel) {
-                gd.setStroke(dp(3), primary);
-            } else {
-                gd.setStroke(dp(1), outline);
+            View wrap = swatchViews.get(i);
+            View dotView = wrap;
+            if (wrap instanceof ViewGroup && ((ViewGroup) wrap).getChildCount() > 0) {
+                dotView = ((ViewGroup) wrap).getChildAt(0);
             }
-            dotView.setBackground(gd);
-            dotView.setContentDescription(ctx.getString(sel
+            GradientDrawable dotGd = new GradientDrawable();
+            dotGd.setShape(GradientDrawable.OVAL);
+            dotGd.setColor(fill);
+            dotGd.setStroke(sel ? 0 : dp(1), outlineSoft);
+            dotView.setBackground(dotGd);
+            if (wrap instanceof FrameLayout) {
+                if (sel) {
+                    GradientDrawable ring = new GradientDrawable();
+                    ring.setShape(GradientDrawable.OVAL);
+                    ring.setColor(Color.TRANSPARENT);
+                    ring.setStroke(dp(3), primary);
+                    wrap.setBackground(ring);
+                    wrap.setScaleX(1.06f);
+                    wrap.setScaleY(1.06f);
+                } else {
+                    wrap.setBackground(null);
+                    wrap.setScaleX(1f);
+                    wrap.setScaleY(1f);
+                }
+            }
+            wrap.setContentDescription(ctx.getString(sel
                     ? R.string.gamepad_module_color_swatch_selected_cd
                     : R.string.gamepad_module_color_swatch_cd));
         }
@@ -1468,6 +1518,14 @@ public class GamepadFragment extends Fragment {
         if (customBtn != null) {
             customBtn.setStrokeWidth(customSelected ? dp(2) : dp(1));
             customBtn.setStrokeColor(ColorStateList.valueOf(customSelected ? primary : outline));
+            customBtn.setIcon(customSelected ? ContextCompat.getDrawable(ctx, R.drawable.ic_check) : null);
+            customBtn.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+            customBtn.setIconPadding(dp(8));
+            if (customSelected) {
+                customBtn.setIconTint(ColorStateList.valueOf(primary));
+            } else {
+                customBtn.setIconTint(null);
+            }
             customBtn.setContentDescription(ctx.getString(customSelected
                     ? R.string.gamepad_module_color_custom_selected_cd
                     : R.string.gamepad_module_color_custom_cd));
@@ -1491,21 +1549,28 @@ public class GamepadFragment extends Fragment {
             return;
         }
         swatchRow.removeAllViews();
-        int dot = dp(36);
-        int margin = dp(6);
+        int ringOuter = dp(46);
+        int colorInner = dp(34);
+        int marginH = dp(4);
+        int marginV = dp(6);
         List<View> swatchViews = new ArrayList<>();
         for (int c : GamepadModuleAccent.PRESET_ARGB) {
-            View dotView = new View(ctx);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dot, dot);
-            lp.setMargins(margin, dp(4), margin, dp(4));
-            dotView.setLayoutParams(lp);
-            dotView.setOnClickListener(v -> {
+            FrameLayout wrap = new FrameLayout(ctx);
+            LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(ringOuter, ringOuter);
+            wlp.setMargins(marginH, marginV, marginH, marginV);
+            wrap.setLayoutParams(wlp);
+            View colorDot = new View(ctx);
+            FrameLayout.LayoutParams innerLp = new FrameLayout.LayoutParams(
+                    colorInner, colorInner, Gravity.CENTER);
+            colorDot.setLayoutParams(innerLp);
+            wrap.addView(colorDot);
+            wrap.setOnClickListener(v -> {
                 module.moduleAccentArgb = GamepadModuleAccent.toOpaqueArgb(c);
                 syncGamepadViewFromDoc();
                 refreshGamepadAccentSectionUi(module, themeDefaultBtn, customBtn, swatchViews, ctx);
             });
-            swatchRow.addView(dotView);
-            swatchViews.add(dotView);
+            swatchRow.addView(wrap);
+            swatchViews.add(wrap);
         }
         Runnable refreshSelection = () ->
                 refreshGamepadAccentSectionUi(module, themeDefaultBtn, customBtn, swatchViews, ctx);
@@ -1573,7 +1638,6 @@ public class GamepadFragment extends Fragment {
         int errorColor = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
                 ContextCompat.getColor(ctx, R.color.primary));
 
-        NestedScrollView scroll = new NestedScrollView(ctx);
         LinearLayout shell = new LinearLayout(ctx);
         shell.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
@@ -1724,12 +1788,16 @@ public class GamepadFragment extends Fragment {
             }
         });
 
-        scroll.addView(shell, new ViewGroup.LayoutParams(
+        MaxHeightNestedScrollView scrollRoot = new MaxHeightNestedScrollView(ctx);
+        scrollRoot.setFillViewport(false);
+        scrollRoot.setClipToPadding(false);
+        scrollRoot.addView(shell, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        applyGamepadModuleConfigScrollMaxHeight(scrollRoot);
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_module_color_custom_title)
-                .setView(scroll)
+                .setView(scrollRoot)
                 .setPositiveButton(android.R.string.ok, null)
                 .setNegativeButton(android.R.string.cancel, null);
         AlertDialog dialog = builder.create();
@@ -1767,22 +1835,28 @@ public class GamepadFragment extends Fragment {
         return tv;
     }
 
+    private static int dpForContext(Context ctx, int dpVal) {
+        return Math.round(dpVal * ctx.getResources().getDisplayMetrics().density);
+    }
+
     private static LinearLayout buildRgbSliderRow(Context ctx, String label, SeekBar seek, TextView valueTv) {
         LinearLayout row = new LinearLayout(ctx);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        int vPad = dp(6);
+        int vPad = dpForContext(ctx, 6);
         row.setPadding(0, vPad, 0, vPad);
         TextView lab = new TextView(ctx);
         lab.setText(label);
         lab.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
         lab.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams labLp = new LinearLayout.LayoutParams(dp(28), LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams labLp = new LinearLayout.LayoutParams(
+                dpForContext(ctx, 28), LinearLayout.LayoutParams.WRAP_CONTENT);
         row.addView(lab, labLp);
         LinearLayout.LayoutParams seekLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        seekLp.setMargins(dp(8), 0, dp(8), 0);
+        seekLp.setMargins(dpForContext(ctx, 8), 0, dpForContext(ctx, 8), 0);
         row.addView(seek, seekLp);
-        LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(dp(40), LinearLayout.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(
+                dpForContext(ctx, 40), LinearLayout.LayoutParams.WRAP_CONTENT);
         row.addView(valueTv, valLp);
         return row;
     }
@@ -2095,6 +2169,7 @@ public class GamepadFragment extends Fragment {
         loadStickModuleIntoEditorState(stickConfigModuleId);
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stick_config, null);
+        applyGamepadModuleConfigScrollMaxHeight(dialogView);
         builder.setView(dialogView);
         if (GamepadLayoutDocEditor.canRemove(stickConfigModuleId)) {
             builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
@@ -2459,6 +2534,7 @@ public class GamepadFragment extends Fragment {
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_button_config, null);
+        applyGamepadModuleConfigScrollMaxHeight(dialogView);
         builder.setView(dialogView);
         if (GamepadLayoutDocEditor.canRemove(moduleId)) {
             builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
@@ -2471,6 +2547,33 @@ public class GamepadFragment extends Fragment {
         TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
         dialogTitle.setText(title + " Configuration");
 
+        TextInputEditText capLabelEdit = dialogView.findViewById(R.id.button_cap_label_edit);
+        if (capLabelEdit != null) {
+            capLabelEdit.setText(m.displayLabel != null ? m.displayLabel : "");
+            capLabelEdit.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    String raw = s.toString();
+                    String clamped = GamepadCapLabels.clampToMaxCodePoints(
+                            raw, GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS);
+                    if (!clamped.equals(raw)) {
+                        int sel = capLabelEdit.getSelectionStart();
+                        s.replace(0, s.length(), clamped);
+                        int ns = Math.min(Math.max(sel, 0), clamped.length());
+                        capLabelEdit.setSelection(ns);
+                    }
+                }
+            });
+        }
+
         View btnColorSection = dialogView.findViewById(R.id.module_color_section);
         if (btnColorSection != null) {
             bindGamepadModuleColorSection(btnColorSection, m);
@@ -2481,6 +2584,17 @@ public class GamepadFragment extends Fragment {
 
         final MaterialButton keyLabel = dialogView.findViewById(R.id.button_key_label);
         updateButtonLabel(keyLabel, currentKey, currentModifiers);
+
+        final MaterialSwitch mappedKeyLabelSwitch = dialogView.findViewById(R.id.button_show_mapped_key_label_switch);
+        if (mappedKeyLabelSwitch != null) {
+            boolean showMappedKeyLabel = m.mappedKeyLabelVisible == null
+                    || Boolean.TRUE.equals(m.mappedKeyLabelVisible);
+            mappedKeyLabelSwitch.setChecked(showMappedKeyLabel);
+            mappedKeyLabelSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                m.mappedKeyLabelVisible = isChecked ? null : Boolean.FALSE;
+                syncGamepadViewFromDoc();
+            });
+        }
 
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
         sizeSeekbar.setProgress((int) (buttonSizeScale * 100));
@@ -2532,6 +2646,14 @@ public class GamepadFragment extends Fragment {
             buttonCornerNorm[0] = GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_DEFAULT;
             m.buttonCornerRadiusNorm = buttonCornerNorm[0];
             m.moduleAccentArgb = null;
+            m.displayLabel = null;
+            m.mappedKeyLabelVisible = null;
+            if (mappedKeyLabelSwitch != null) {
+                mappedKeyLabelSwitch.setChecked(true);
+            }
+            if (capLabelEdit != null) {
+                capLabelEdit.setText("");
+            }
             if (cornerSeek != null) {
                 cornerSeek.setProgress(100);
             }
@@ -2543,6 +2665,16 @@ public class GamepadFragment extends Fragment {
             m.modifierMask = selectedModifiers[0];
             m.scale = buttonSizeScale;
             m.buttonCornerRadiusNorm = buttonCornerNorm[0];
+            if (mappedKeyLabelSwitch != null) {
+                m.mappedKeyLabelVisible = mappedKeyLabelSwitch.isChecked() ? null : Boolean.FALSE;
+            }
+            if (capLabelEdit != null) {
+                String capRaw = capLabelEdit.getText().toString().trim();
+                m.displayLabel = capRaw.isEmpty()
+                        ? null
+                        : GamepadCapLabels.clampToMaxCodePoints(
+                                capRaw, GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS);
+            }
             if ("button_a".equals(moduleId)) {
                 buttonAKey = selectedKey[0];
                 buttonAModifiers = selectedModifiers[0];
@@ -2927,6 +3059,24 @@ public class GamepadFragment extends Fragment {
         dialog.show();
     }
 
+    /**
+     * Caps module config dialog body height so content scrolls inside the dialog on landscape /
+     * small windows. Material custom views do not reliably scroll a plain {@link LinearLayout}.
+     */
+    private void applyGamepadModuleConfigScrollMaxHeight(@NonNull MaxHeightNestedScrollView scroll) {
+        android.util.DisplayMetrics dm = scroll.getResources().getDisplayMetrics();
+        int shortest = Math.min(dm.heightPixels, dm.widthPixels);
+        int cap = (int) (shortest * 0.62f);
+        scroll.setMaxHeightPx(Math.max(dp(280), cap));
+    }
+
+    private void applyGamepadModuleConfigScrollMaxHeight(@NonNull View dialogRoot) {
+        View scroll = dialogRoot.findViewById(R.id.gamepad_module_config_scroll);
+        if (scroll instanceof MaxHeightNestedScrollView) {
+            applyGamepadModuleConfigScrollMaxHeight((MaxHeightNestedScrollView) scroll);
+        }
+    }
+
     private int dp(int dp) {
         return (int) (dp * requireContext().getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -3187,10 +3337,7 @@ public class GamepadFragment extends Fragment {
                 if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(mod.type)
                         || GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(mod.type)
                         || GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(mod.type)) {
-                    String lbl = mod.displayLabel != null && !mod.displayLabel.trim().isEmpty()
-                            ? mod.displayLabel.trim()
-                            : buildFullLabel(mod.hidKey, intOr(mod.modifierMask, 0));
-                    labels.put(mod.id, lbl);
+                    labels.put(mod.id, buildFullLabel(mod.hidKey, intOr(mod.modifierMask, 0)));
                 }
             }
         } else {

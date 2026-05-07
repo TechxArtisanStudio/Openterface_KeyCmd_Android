@@ -1,7 +1,5 @@
 package com.openterface.keymod.gamepad;
 
-import android.graphics.Color;
-
 import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
@@ -70,7 +68,10 @@ public class GamepadLayoutPresetDocument {
         public float anchorY;
         @Nullable public Float widthNorm;
         @Nullable public Float heightNorm;
-        /** BUTTON: optional short label shown on the control. */
+        /**
+         * Optional short label centered on the control cap (BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON).
+         * At most {@link GamepadCapLabels#MAX_CAP_LABEL_CODE_POINTS} Unicode code points (emoji usually counts as one each).
+         */
         @Nullable public String displayLabel;
         /** STICK_* / DPAD: HID key codes for four-way digital input (virtual stick ring or D-pad). */
         @Nullable public Integer stickUpKey;
@@ -94,6 +95,11 @@ public class GamepadLayoutPresetDocument {
         /** BUTTON: primary HID key and modifier bitmask (same encoding as GamepadFragment). */
         @Nullable public Integer hidKey;
         @Nullable public Integer modifierMask;
+        /**
+         * BUTTON: when {@code false}, do not draw the mapped-key pill under the cap; {@code null} = show
+         * (default). Independent of the global “key mapping hints” toolbar toggle.
+         */
+        @Nullable public Boolean mappedKeyLabelVisible;
         /**
          * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
          * {@link GamepadLayoutPresetConstants#clampButtonCornerRadiusNorm}.
@@ -253,9 +259,17 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("Module " + m.id + ": anchor must be in [0,1]");
             }
             if (m.moduleAccentArgb != null) {
-                int a = Color.alpha(m.moduleAccentArgb);
+                int a = argbAlphaFromPackedInt(m.moduleAccentArgb);
                 if (a < 64) {
                     throw new IllegalArgumentException("Module " + m.id + ": moduleAccentArgb alpha must be >= 64");
+                }
+            }
+            if (m.displayLabel != null) {
+                String dl = m.displayLabel.trim();
+                if (!dl.isEmpty()
+                        && GamepadCapLabels.codePointCount(dl) > GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS) {
+                    throw new IllegalArgumentException("Module " + m.id + ": displayLabel exceeds "
+                            + GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS + " Unicode code points");
                 }
             }
             if (m.stickVisualVariant != null) {
@@ -430,6 +444,11 @@ public class GamepadLayoutPresetDocument {
             throw new IllegalArgumentException("Too many TRIGGER modules (max "
                     + GamepadLayoutPresetConstants.MAX_TRIGGER_MODULES + ")");
         }
+    }
+
+    /** ARGB packed int; JVM-safe (no {@code android.graphics.Color} stub needed in unit tests). */
+    private static int argbAlphaFromPackedInt(int colorArgb) {
+        return (colorArgb >>> 24) & 0xFF;
     }
 
     @Nullable

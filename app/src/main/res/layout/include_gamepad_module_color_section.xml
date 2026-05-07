@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:text="@string/gamepad_module_color_section_title"
         android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="10dp" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/module_color_theme_default"
@@ -21,13 +21,17 @@
         android:layout_height="wrap_content"
         android:text="@string/gamepad_module_color_theme_default"
         android:textAllCaps="false"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="10dp" />
 
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
-        android:layout_marginBottom="8dp">
+        android:fadeScrollbars="false"
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/spacing_tiny"
+        android:paddingEnd="@dimen/spacing_tiny"
+        android:layout_marginBottom="12dp">
 
         <LinearLayout
             android:id="@+id/module_color_swatches"
@@ -35,7 +39,9 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingVertical="4dp" />
+            android:paddingVertical="6dp"
+            android:paddingStart="@dimen/spacing_small"
+            android:paddingEnd="@dimen/spacing_small" />
     </HorizontalScrollView>
 
     <com.google.android.material.button.MaterialButton

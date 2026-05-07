@@ -163,6 +163,23 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconTint="?android:attr/textColorSecondary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_mapping_hints_toggle"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_small"
+            android:checkable="true"
+            android:contentDescription="@string/gamepad_mapping_hints_toggle_cd"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
+            app:icon="@drawable/ic_visibility_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="?android:attr/textColorSecondary" />
     </LinearLayout>
 
 </FrameLayout>

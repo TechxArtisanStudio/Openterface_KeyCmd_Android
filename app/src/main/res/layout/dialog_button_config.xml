@@ -1,21 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Max-height NestedScrollView: dialog custom view must scroll; plain LinearLayout does not. -->
+<com.openterface.keymod.widget.MaxHeightNestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/gamepad_module_config_scroll"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minWidth="320dp"
-    android:fillViewport="true"
-    android:background="?attr/colorSurface"
+    android:fillViewport="false"
+    android:scrollbars="vertical"
+    android:fadeScrollbars="true"
+    android:overScrollMode="ifContentScrolls"
+    android:clipToPadding="false"
     android:paddingHorizontal="@dimen/spacing_medium"
     android:paddingTop="@dimen/spacing_medium"
-    android:paddingBottom="@dimen/spacing_medium"
-    android:clipToPadding="false">
+    android:paddingBottom="@dimen/spacing_small"
+    android:background="?attr/colorSurface">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingBottom="@dimen/spacing_small">
+    <LinearLayout
+        android:id="@+id/gamepad_module_config_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="@dimen/spacing_large"
+        android:clipToPadding="false">
 
             <TextView
                 android:id="@+id/dialog_title"
@@ -25,6 +32,24 @@
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
                 android:layout_marginBottom="8dp" />
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/button_cap_label_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:hint="@string/gamepad_button_cap_label_hint"
+                app:counterEnabled="true"
+                app:counterMaxLength="6">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/button_cap_label_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:maxLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+
             <include layout="@layout/include_gamepad_module_color_section" />
 
             <TextView
@@ -32,7 +57,15 @@
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_button_config_mapped_key"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="6dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/button_show_mapped_key_label_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_button_config_show_mapped_key_label"
+                android:contentDescription="@string/gamepad_button_config_show_mapped_key_label_cd"
+                android:layout_marginBottom="10dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_key_label"
@@ -168,5 +201,5 @@
                     android:textAllCaps="false" />
             </LinearLayout>
 
-        </LinearLayout>
-</ScrollView>
+    </LinearLayout>
+</com.openterface.keymod.widget.MaxHeightNestedScrollView>

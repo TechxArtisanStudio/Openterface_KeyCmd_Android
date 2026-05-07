@@ -141,6 +141,20 @@ public class GamepadLayoutPresetDocumentTest {
         assertEquals(0xFFE91E63, (int) parsed.modules.get(0).moduleAccentArgb);
     }
 
+    @Test
+    public void roundTripJsonPreservesMappedKeyLabelVisible() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btnA = doc.modules.get(1);
+        assertEquals("button_a", btnA.id);
+        btnA.mappedKeyLabelVisible = Boolean.FALSE;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertNotNull(parsed.modules.get(1).mappedKeyLabelVisible);
+        assertEquals(Boolean.FALSE, parsed.modules.get(1).mappedKeyLabelVisible);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void validateRejectsModuleAccentTooTransparent() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();

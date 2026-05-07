@@ -751,6 +751,7 @@ by TechxArtisan</string>
     <string name="gamepad_edit_mode_on">Editing</string>
     <string name="gamepad_edit_done">Done</string>
     <string name="gamepad_customize_cd">Customize layout</string>
+    <string name="gamepad_mapping_hints_toggle_cd">Show or hide key mapping text below controls (for example Esc). Names on the button cap are edited in each button’s configuration dialog.</string>
     <string name="gamepad_cycle_next_preset_cd">Next layout</string>
     <string name="gamepad_edit_session_title">Move modules</string>
     <string name="gamepad_presets_sheet_title">Layouts</string>
@@ -850,7 +851,10 @@ by TechxArtisan</string>
     <string name="gamepad_button_corner_square">Square</string>
     <string name="gamepad_button_corner_round">Round</string>
     <string name="gamepad_button_config_title_placeholder">Button</string>
+    <string name="gamepad_button_cap_label_hint">Name on button (optional, up to 6 characters or emoji)</string>
     <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
+    <string name="gamepad_button_config_show_mapped_key_label">Show mapped key label under button</string>
+    <string name="gamepad_button_config_show_mapped_key_label_cd">Toggle whether the mapped key name appears in a label under this button</string>
     <string name="gamepad_button_config_size">Button size</string>
     <string name="gamepad_stick_config_section_mode">Mode</string>
     <string name="gamepad_stick_config_size_label">Stick size</string>

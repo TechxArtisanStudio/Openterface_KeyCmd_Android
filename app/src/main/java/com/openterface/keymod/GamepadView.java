@@ -15,11 +15,16 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.graphics.ColorUtils;
@@ -37,6 +42,7 @@ import java.util.Set;
 import com.google.android.material.color.MaterialColors;
 
 import com.openterface.keymod.GamepadConfigManager.ComponentPosition;
+import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
@@ -116,6 +122,12 @@ public class GamepadView extends View {
     private boolean showTwoButtons = false;
     /** Default false: fragment enables with Edit toggle; avoids config menus in play until sync. */
     private boolean longPressEnabled = false;
+
+    /**
+     * When false, hide automatic mapping hints (callouts, stick direction letters, D-pad letters,
+     * touchpad title). Preset {@code displayLabel} on caps is unaffected.
+     */
+    private boolean keyMappingHintsVisible = true;
 
     // Button size scale (0.5 = 50%, 1.0 = 100%, 2.0 = 200%)
     private float buttonSizeScale = 1.0f;
@@ -529,16 +541,181 @@ public class GamepadView extends View {
         retroGlossPaint.setShader(null);
 
         if (text != null && !text.isEmpty()) {
-            float textScale = text.length() > 6 ? 0.4f : text.length() > 4 ? 0.5f : 0.56f;
-            retroTextPaint.setColor(style.label);
-            retroTextPaint.setTextAlign(Paint.Align.CENTER);
-            retroTextPaint.setTextSize(r * textScale);
-            retroTextPaint.setFakeBoldText(true);
-            retroTextPaint.setTypeface(retroLabelTypeface);
-            retroTextPaint.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 35));
-            canvas.drawText(text, cx, cy + r * 0.30f, retroTextPaint);
-            retroTextPaint.clearShadowLayer();
+            drawFittedFaceCapLabel(canvas, cx, cy, r, style, text);
         }
+    }
+
+    private static String normalizeCapText(@Nullable String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String t = raw.trim().replace('\n', ' ').replace('\r', ' ');
+        t = t.replaceAll("\\s+", " ");
+        return t;
+    }
+
+    private static boolean mostlyEmojiOrSymbol(@NonNull String text) {
+        int special = 0;
+        int cpCount = 0;
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            cpCount++;
+            int type = Character.getType(cp);
+            if (cp >= 0x1F300
+                    || Character.isIdeographic(cp)
+                    || type == Character.OTHER_SYMBOL
+                    || type == Character.MATH_SYMBOL
+                    || type == Character.MODIFIER_SYMBOL) {
+                special++;
+            }
+            i += Character.charCount(cp);
+        }
+        return cpCount > 0 && special * 2 >= cpCount;
+    }
+
+    private void drawFittedFaceCapLabel(Canvas canvas, float cx, float cy, float r, FaceStyle style, String raw) {
+        String text = normalizeCapText(raw);
+        if (text.isEmpty()) {
+            return;
+        }
+        float maxW = r * 2f * 0.76f;
+        float maxH = r * 1.38f;
+        float maxSp = r * 0.55f;
+        float minSp = r * 0.18f;
+        boolean useBold = !mostlyEmojiOrSymbol(text);
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setColor(style.label);
+        tp.setTextAlign(Paint.Align.LEFT);
+        tp.setTypeface(useBold ? retroLabelTypeface : Typeface.DEFAULT);
+        tp.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 35));
+        for (int iter = 0; iter < 30; iter++) {
+            float sp = maxSp - (maxSp - minSp) * iter / 29f;
+            tp.setTextSize(sp);
+            tp.setFakeBoldText(useBold);
+            StaticLayout sl = StaticLayout.Builder.obtain(text, 0, text.length(), tp, (int) maxW)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setMaxLines(2)
+                    .setEllipsize(TextUtils.TruncateAt.END)
+                    .setIncludePad(false)
+                    .build();
+            if (sl.getHeight() <= maxH || iter == 29) {
+                float dy = cy - sl.getHeight() / 2f + r * 0.05f;
+                canvas.save();
+                canvas.translate(cx - maxW / 2f, dy);
+                sl.draw(canvas);
+                canvas.restore();
+                tp.clearShadowLayer();
+                return;
+            }
+        }
+    }
+
+    private void drawFittedCapsuleLabel(Canvas canvas, RectF bounds, String raw, int textColorArgb) {
+        String text = normalizeCapText(raw);
+        if (text.isEmpty()) {
+            return;
+        }
+        float maxW = bounds.width() * 0.88f;
+        float maxH = bounds.height() * 0.72f;
+        float maxSp = Math.min(bounds.height(), bounds.width()) * 0.38f;
+        float minSp = Math.min(bounds.height(), bounds.width()) * 0.14f;
+        boolean useBold = !mostlyEmojiOrSymbol(text);
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setColor(textColorArgb);
+        tp.setTextAlign(Paint.Align.LEFT);
+        tp.setTypeface(useBold ? retroLabelTypeface : Typeface.DEFAULT);
+        tp.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 40));
+        float cx = bounds.centerX();
+        float cy = bounds.centerY();
+        for (int iter = 0; iter < 28; iter++) {
+            float sp = maxSp - (maxSp - minSp) * iter / 27f;
+            tp.setTextSize(sp);
+            tp.setFakeBoldText(useBold);
+            StaticLayout sl = StaticLayout.Builder.obtain(text, 0, text.length(), tp, (int) maxW)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setMaxLines(2)
+                    .setEllipsize(TextUtils.TruncateAt.END)
+                    .setIncludePad(false)
+                    .build();
+            if (sl.getHeight() <= maxH || iter == 27) {
+                float dy = cy - sl.getHeight() / 2f;
+                canvas.save();
+                canvas.translate(cx - maxW / 2f, dy);
+                sl.draw(canvas);
+                canvas.restore();
+                tp.clearShadowLayer();
+                return;
+            }
+        }
+    }
+
+    private void drawMappingHintCallout(Canvas canvas, float cx, float top, String rawHint) {
+        if (!keyMappingHintsVisible) {
+            return;
+        }
+        String hint = normalizeCapText(rawHint);
+        if (hint.isEmpty()) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        float maxPillWidth = Math.min(getWidth() * 0.42f, 220f * density);
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setTextSize(Math.max(10f * density, 11f * density));
+        tp.setFakeBoldText(false);
+        tp.setTypeface(Typeface.DEFAULT);
+        tp.setTextAlign(Paint.Align.LEFT);
+        CharSequence ell = TextUtils.ellipsize(hint, tp, maxPillWidth, TextUtils.TruncateAt.END);
+        String line = ell.toString();
+        float tw = tp.measureText(line);
+        float padX = 8f * density;
+        float padY = 3.5f * density;
+        Paint.FontMetrics fm = tp.getFontMetrics();
+        float textH = fm.descent - fm.ascent;
+        RectF pill = new RectF(cx - tw / 2f - padX, top, cx + tw / 2f + padX, top + textH + padY * 2f);
+        retroBodyPaint.setShader(null);
+        retroBodyPaint.setColor(0xD8FFFFFF);
+        float cr = 6f * density;
+        canvas.drawRoundRect(pill, cr, cr, retroBodyPaint);
+        tp.setColor(0xFF2C2C32);
+        tp.clearShadowLayer();
+        float baseline = pill.top + padY - fm.ascent;
+        canvas.drawText(line, cx - tw / 2f, baseline, tp);
+    }
+
+    @Nullable
+    private static String presetDisplayLabel(@Nullable GamepadLayoutPresetDocument.GamepadModule m) {
+        if (m == null || m.displayLabel == null) {
+            return null;
+        }
+        String t = m.displayLabel.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        return GamepadCapLabels.clampToMaxCodePoints(t, GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS);
+    }
+
+    /** If cap text equals the mapping hint, skip drawing the redundant callout below. */
+    private static boolean sameCapAndHint(@Nullable String cap, @Nullable String hint) {
+        if (cap == null || hint == null) {
+            return false;
+        }
+        return cap.trim().equals(hint.trim());
+    }
+
+    private String resolveMappingHintOnly(GamepadLayoutPresetDocument.GamepadModule m) {
+        String fromSync = componentDisplayLabels.get(m.id);
+        if (fromSync != null && !fromSync.isEmpty()) {
+            return fromSync;
+        }
+        return shortButtonLabel(m);
+    }
+
+    public void setKeyMappingHintsVisible(boolean visible) {
+        if (keyMappingHintsVisible == visible) {
+            return;
+        }
+        keyMappingHintsVisible = visible;
+        invalidate();
     }
 
     /** Slightly lift RGB toward white for a subtle top-lit body (0 = no change). */
@@ -669,9 +846,16 @@ public class GamepadView extends View {
         float x = m.anchorX * w;
         float y = m.anchorY * h;
         FaceStyle fs = faceStyleForModuleId(m.id);
-        String disp = resolveButtonDisplayLabel(m);
+        String cap = presetDisplayLabel(m);
+        String hint = resolveMappingHintOnly(m);
+        if (sameCapAndHint(cap, hint)) {
+            hint = null;
+        }
+        if (Boolean.FALSE.equals(m.mappedKeyLabelVisible)) {
+            hint = null;
+        }
         float corner = GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm);
-        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, disp, corner, m.moduleAccentArgb);
+        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, cap, hint, corner, m.moduleAccentArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -691,8 +875,15 @@ public class GamepadView extends View {
         float y = m.anchorY * h;
         float density = getResources().getDisplayMetrics().density;
         float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale;
-        String disp = m.displayLabel != null && !m.displayLabel.isEmpty() ? m.displayLabel : "?";
-        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, disp, 1f, m.moduleAccentArgb);
+        String cap = presetDisplayLabel(m);
+        String hint = resolveMappingHintOnly(m);
+        if ("?".equals(hint)) {
+            hint = null;
+        }
+        if (sameCapAndHint(cap, hint)) {
+            hint = null;
+        }
+        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, cap, hint, 1f, m.moduleAccentArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -703,22 +894,14 @@ public class GamepadView extends View {
         float density = getResources().getDisplayMetrics().density;
         float ww = 108f * density * m.scale;
         float hh = 34f * density * m.scale;
-        String disp = resolveButtonDisplayLabel(m);
+        String cap = presetDisplayLabel(m);
+        String hint = resolveMappingHintOnly(m);
+        if (sameCapAndHint(cap, hint)) {
+            hint = null;
+        }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
-        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, disp, accent);
+        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, cap, hint, accent);
         dynamicHitTestOrder.add(m.id);
-    }
-
-    /** Label on the face button: preset displayLabel, synced map from fragment, else key id. */
-    private String resolveButtonDisplayLabel(GamepadLayoutPresetDocument.GamepadModule m) {
-        if (m.displayLabel != null && !m.displayLabel.trim().isEmpty()) {
-            return m.displayLabel.trim();
-        }
-        String fromSync = componentDisplayLabels.get(m.id);
-        if (fromSync != null && !fromSync.isEmpty()) {
-            return fromSync;
-        }
-        return shortButtonLabel(m);
     }
 
     private String shortButtonLabel(GamepadLayoutPresetDocument.GamepadModule m) {
@@ -729,18 +912,21 @@ public class GamepadView extends View {
     }
 
     private void drawButtonForModule(Canvas canvas, float cx, float cy, float radiusPx, String id,
-                                     FaceStyle style, String displayLabel, float cornerRadiusNorm,
-                                     @Nullable Integer moduleAccentArgb) {
+                                     FaceStyle style, @Nullable String capOnButton, @Nullable String mappingHint,
+                                     float cornerRadiusNorm, @Nullable Integer moduleAccentArgb) {
         RectF bounds = new RectF(cx - radiusPx, cy - radiusPx, cx + radiusPx, cy + radiusPx);
         componentBounds.put(id, bounds);
-        String textLabel = displayLabel != null ? displayLabel : id;
         int ringAccent = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
         FaceStyle fs = style;
         if (moduleAccentArgb != null) {
             fs = faceStyleFromModuleAccent(ringAccent);
         }
-        drawRetroFaceButton(canvas, cx, cy, radiusPx, fs, id.equals(pressedComponentId), textLabel,
+        drawRetroFaceButton(canvas, cx, cy, radiusPx, fs, id.equals(pressedComponentId), capOnButton,
                 cornerRadiusNorm, ringAccent);
+        float density = getResources().getDisplayMetrics().density;
+        if (mappingHint != null && !mappingHint.isEmpty()) {
+            drawMappingHintCallout(canvas, cx, cy + radiusPx + 6f * density, mappingHint);
+        }
     }
 
     private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh,
@@ -797,14 +983,16 @@ public class GamepadView extends View {
         float ir = Math.max(corner - insetPx, 2f * density);
         canvas.drawRoundRect(inset, ir, ir, retroRingPaint);
 
-        retroTextPaint.setColor(labelCol);
-        retroTextPaint.setTextAlign(Paint.Align.CENTER);
-        retroTextPaint.setTextSize(Math.min(ww, hh) * 0.095f);
-        retroTextPaint.setFakeBoldText(true);
-        retroTextPaint.setLetterSpacing(0.12f);
-        retroTextPaint.setTypeface(retroLabelTypeface);
-        canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
-        retroTextPaint.setLetterSpacing(0f);
+        if (keyMappingHintsVisible) {
+            retroTextPaint.setColor(labelCol);
+            retroTextPaint.setTextAlign(Paint.Align.CENTER);
+            retroTextPaint.setTextSize(Math.min(ww, hh) * 0.095f);
+            retroTextPaint.setFakeBoldText(true);
+            retroTextPaint.setLetterSpacing(0.12f);
+            retroTextPaint.setTypeface(retroLabelTypeface);
+            canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
+            retroTextPaint.setLetterSpacing(0f);
+        }
     }
 
     /**
@@ -826,15 +1014,17 @@ public class GamepadView extends View {
 
         float hx = cx;
         float hy = cy - scaledRadius * 0.14f;
+        int outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
+        int outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
         Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
-                Color.parseColor("#5E5E66"), Color.parseColor("#38383F"), Shader.TileMode.CLAMP);
+                outerHi, outerLo, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(outer);
         canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.75f * density));
-        retroRingPaint.setColor(Color.parseColor("#6A6A74"));
+        retroRingPaint.setColor(ColorUtils.blendARGB(Color.parseColor("#6A6A74"), accentPrimary, 0.22f));
         canvas.drawCircle(cx, cy, scaledRadius * 0.995f, retroRingPaint);
 
         float innerCx = cx;
@@ -862,8 +1052,10 @@ public class GamepadView extends View {
                     darkenArgb(accentPrimary, 0.58f),
                     Shader.TileMode.CLAMP);
         } else {
+            int capHi = ColorUtils.blendARGB(Color.parseColor("#8E8C98"), accentPrimary, 0.24f);
+            int capLo = ColorUtils.blendARGB(Color.parseColor("#4F4D56"), accentPrimary, 0.30f);
             capShader = new RadialGradient(innerCx - capR * 0.22f, innerCy - capR * 0.24f, capR * 1.02f,
-                    Color.parseColor("#8E8C98"), Color.parseColor("#4F4D56"), Shader.TileMode.CLAMP);
+                    capHi, capLo, Shader.TileMode.CLAMP);
         }
         retroBodyPaint.setShader(capShader);
         canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
@@ -884,23 +1076,26 @@ public class GamepadView extends View {
                 accentPrimary, retroBodyPaint, retroRingPaint, retroGlossPaint);
 
         if (upLabel != null) {
-            Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            dirPaint.setTextAlign(Paint.Align.CENTER);
-            dirPaint.setFakeBoldText(true);
-            dirPaint.setTextSize(scaledRadius * 0.21f);
-            dirPaint.setTypeface(retroLabelTypeface);
-            dirPaint.setShadowLayer(1f, 0f, 0.75f, 0x55000000);
-            int activeDir = Color.parseColor("#FFFEFB");
-            int dim = Color.parseColor("#9A96A3");
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? activeDir : dim);
-            canvas.drawText(upLabel, cx, cy - scaledRadius * 0.65f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? activeDir : dim);
-            canvas.drawText(downLabel, cx, cy + scaledRadius * 0.75f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? activeDir : dim);
-            canvas.drawText(leftLabel, cx - scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
-            dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? activeDir : dim);
-            canvas.drawText(rightLabel, cx + scaledRadius * 0.7f, cy + scaledRadius * 0.12f, dirPaint);
-            dirPaint.clearShadowLayer();
+            if (keyMappingHintsVisible) {
+                float lr = scaledRadius * 1.08f;
+                Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                dirPaint.setTextAlign(Paint.Align.CENTER);
+                dirPaint.setFakeBoldText(true);
+                dirPaint.setTextSize(lr * 0.20f);
+                dirPaint.setTypeface(retroLabelTypeface);
+                dirPaint.setShadowLayer(1f, 0f, 0.75f, 0x55000000);
+                int activeDir = Color.parseColor("#FFFEFB");
+                int dim = Color.parseColor("#9A96A3");
+                dirPaint.setColor(activeStickDirections.contains(boundsId + "_up") ? activeDir : dim);
+                canvas.drawText(upLabel, cx, cy - lr * 0.62f, dirPaint);
+                dirPaint.setColor(activeStickDirections.contains(boundsId + "_down") ? activeDir : dim);
+                canvas.drawText(downLabel, cx, cy + lr * 0.78f, dirPaint);
+                dirPaint.setColor(activeStickDirections.contains(boundsId + "_left") ? activeDir : dim);
+                canvas.drawText(leftLabel, cx - lr * 0.74f, cy + lr * 0.12f, dirPaint);
+                dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? activeDir : dim);
+                canvas.drawText(rightLabel, cx + lr * 0.74f, cy + lr * 0.12f, dirPaint);
+                dirPaint.clearShadowLayer();
+            }
         } else {
             Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             labelPaint.setColor(Color.parseColor("#F2F1F5"));
@@ -911,11 +1106,13 @@ public class GamepadView extends View {
             labelPaint.setShadowLayer(1.25f, 0f, 0.75f, 0x50000000);
             canvas.drawText(shortLabel, cx, cy + baseRadius * moduleScale * 0.28f, labelPaint);
             labelPaint.clearShadowLayer();
-            Paint l3Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            l3Paint.setColor(Color.parseColor("#A8A4B0"));
-            l3Paint.setTextSize(baseRadius * moduleScale * 0.22f);
-            l3Paint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.58f, l3Paint);
+            if (keyMappingHintsVisible) {
+                Paint l3Paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                l3Paint.setColor(Color.parseColor("#A8A4B0"));
+                l3Paint.setTextSize(baseRadius * moduleScale * 0.22f);
+                l3Paint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.58f, l3Paint);
+            }
         }
     }
 
@@ -933,11 +1130,13 @@ public class GamepadView extends View {
                 activeStickDirections, accentPrimary,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
                 retroLabelTypeface, componentBounds, dynamicHitTestOrder, dpadSplitGapRatio,
-                dpadSplitOuterReachRatio);
+                dpadSplitOuterReachRatio, keyMappingHintsVisible,
+                keyMappingHintsVisible ? 1.12f : 1f);
     }
 
     private void drawShoulderCapsuleForModule(Canvas canvas, float cx, float cy, float width, float height,
-                                              String moduleId, String textLabel, int accentPrimary) {
+                                              String moduleId, @Nullable String capOnCapsule,
+                                              @Nullable String mappingHint, int accentPrimary) {
         float density = getResources().getDisplayMetrics().density;
         RectF bounds = new RectF(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f);
         componentBounds.put(moduleId, bounds);
@@ -963,15 +1162,12 @@ public class GamepadView extends View {
         retroRingPaint.setColor(pressed ? accentPrimary : Color.parseColor("#B0B0B8"));
         canvas.drawRoundRect(bounds, cr, cr, retroRingPaint);
 
-        retroTextPaint.setColor(Color.WHITE);
-        retroTextPaint.setTextSize(Math.min(width, height) * 0.38f);
-        retroTextPaint.setTextAlign(Paint.Align.CENTER);
-        retroTextPaint.setFakeBoldText(true);
-        retroTextPaint.setTypeface(retroLabelTypeface);
-        retroTextPaint.setShadowLayer(1.5f, 0f, 1f, 0x44000000);
-        String t = textLabel != null ? textLabel : moduleId;
-        canvas.drawText(t, cx, cy + height * 0.11f, retroTextPaint);
-        retroTextPaint.clearShadowLayer();
+        if (capOnCapsule != null && !capOnCapsule.isEmpty()) {
+            drawFittedCapsuleLabel(canvas, bounds, capOnCapsule, Color.WHITE);
+        }
+        if (keyMappingHintsVisible && mappingHint != null && !mappingHint.isEmpty()) {
+            drawMappingHintCallout(canvas, cx, bounds.bottom + 4f * density, mappingHint);
+        }
     }
 
     private void drawXboxLayout(Canvas canvas) {
@@ -1173,9 +1369,14 @@ public class GamepadView extends View {
         RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
         componentBounds.put(id, bounds);
         FaceStyle fs = faceStyleForFaceLabel(label, color);
-        String textLabel = displayLabel != null ? displayLabel : label;
-        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), textLabel, 1f,
+        String capOnButton = displayLabel != null ? null : label;
+        String mappingHint = displayLabel;
+        drawRetroFaceButton(canvas, cx, cy, scaledRadius, fs, id.equals(pressedComponentId), capOnButton, 1f,
                 themeAccentPrimary);
+        float density = getResources().getDisplayMetrics().density;
+        if (mappingHint != null && !mappingHint.isEmpty()) {
+            drawMappingHintCallout(canvas, cx, cy + scaledRadius + 6f * density, mappingHint);
+        }
     }
 
     private void drawShoulderButton(Canvas canvas, float cx, float cy, float width, float height, String label) {

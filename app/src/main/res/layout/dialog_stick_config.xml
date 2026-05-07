@@ -1,20 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Max-height NestedScrollView: dialog custom view must scroll; plain LinearLayout does not. -->
+<com.openterface.keymod.widget.MaxHeightNestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/gamepad_module_config_scroll"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:fillViewport="true"
-    android:background="?attr/colorSurface"
+    android:fillViewport="false"
+    android:scrollbars="vertical"
+    android:fadeScrollbars="true"
+    android:overScrollMode="ifContentScrolls"
+    android:clipToPadding="false"
     android:paddingHorizontal="@dimen/spacing_medium"
     android:paddingTop="@dimen/spacing_medium"
-    android:paddingBottom="@dimen/spacing_medium"
-    android:clipToPadding="false">
+    android:paddingBottom="@dimen/spacing_small"
+    android:background="?attr/colorSurface">
 
     <LinearLayout
+        android:id="@+id/gamepad_module_config_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="@dimen/spacing_small">
+        android:paddingBottom="@dimen/spacing_large"
+        android:clipToPadding="false">
 
         <TextView
             android:id="@+id/stick_config_title"
@@ -427,4 +434,4 @@
         </LinearLayout>
 
     </LinearLayout>
-</ScrollView>
+</com.openterface.keymod.widget.MaxHeightNestedScrollView>
