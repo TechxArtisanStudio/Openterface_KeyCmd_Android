@@ -792,7 +792,7 @@ by TechxArtisan</string>
     <string name="gamepad_add_extra_button">Button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
     <!-- Left-thumb slot only: adds cross D-pad by default; open Configure control for stick / split D-pad / pointer modes. -->
-    <string name="gamepad_add_dpad_cross_left">D-pad / stick (left)</string>
+    <string name="gamepad_add_dpad_cross_left">D-Pad / Stick</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">Re-add left mouse button (L)</string>
@@ -825,13 +825,15 @@ by TechxArtisan</string>
     <string name="gamepad_module_color_custom_selected_cd">Custom RGB color (selected)</string>
     <string name="gamepad_touchpad_color_title">Touchpad color</string>
     <string name="gamepad_component_mouse_button">Mouse button</string>
-    <string name="gamepad_component_left_stick">Left stick</string>
-    <string name="gamepad_component_left_dpad">Left D-pad</string>
+    <string name="gamepad_component_left_stick">D-Pad / Stick</string>
+    <string name="gamepad_component_left_dpad">D-Pad / Stick</string>
+    <string name="gamepad_component_left_extra">D-Pad / Stick</string>
     <string name="gamepad_menu_configure_stick">Configure control…</string>
     <string name="gamepad_stick_config_title">Stick configuration</string>
-    <string name="gamepad_stick_config_title_left">Left control</string>
+    <string name="gamepad_stick_config_title_left">D-Pad / Stick</string>
     <string name="gamepad_stick_config_title_right">Right stick</string>
-    <string name="gamepad_stick_config_dpad_hint">Modes here set what the left slot sends: D-pad shapes, direction keys on a thumb ring, or a relative pointer. D-pad tuning below applies to split layout.\n\nLeft slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Direction keys and pointer modes are configured here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).</string>
+    <string name="gamepad_stick_config_title_left_extra">D-Pad / Stick</string>
+    <string name="gamepad_stick_config_dpad_hint">Choose mode: D-pad (split or cross), direction keys, or a relative pointer. The sliders below adjust gap and cluster position when split D-pad is selected.</string>
     <string name="gamepad_stick_mode_analog">Relative pointer (mouse)</string>
     <string name="gamepad_stick_mode_key">Direction keys (virtual stick)</string>
     <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>

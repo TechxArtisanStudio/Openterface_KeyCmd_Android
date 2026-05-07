@@ -3,6 +3,7 @@ package com.openterface.keymod.gamepad;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
 import com.google.gson.Gson;
@@ -180,6 +181,25 @@ public final class GamepadLayoutDocumentStore {
             }
         }
         return "touchpad_" + (maxNum + 1);
+    }
+
+    /**
+     * Next id {@code stick_left_2}, {@code stick_left_3}, … for optional extra left thumb modules.
+     */
+    public static String nextAuxLeftStickModuleId(@Nullable GamepadLayoutPresetDocument doc) {
+        int maxNum = 1;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("stick_left_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("stick_left_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return "stick_left_" + (maxNum + 1);
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {

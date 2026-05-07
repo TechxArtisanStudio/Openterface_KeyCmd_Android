@@ -670,7 +670,7 @@ por TechxArtisan</string>
     ]]></string>
     <string name="connection_toast_usb_disconnected"><![CDATA[USB disconnected
     ]]></string>
-    <string name="gamepad_add_dpad_cross_left"><![CDATA[Cruz / stick (izquierda)
+    <string name="gamepad_add_dpad_cross_left"><![CDATA[D-Pad / Stick
     ]]></string>
     <string name="gamepad_add_extra_button"><![CDATA[Button
     ]]></string>
@@ -704,9 +704,9 @@ por TechxArtisan</string>
     ]]></string>
     <string name="gamepad_component_button_b"><![CDATA[Button B
     ]]></string>
-    <string name="gamepad_component_left_dpad"><![CDATA[Left D-pad
+    <string name="gamepad_component_left_dpad"><![CDATA[D-Pad / Stick
     ]]></string>
-    <string name="gamepad_component_left_stick"><![CDATA[Left stick
+    <string name="gamepad_component_left_stick"><![CDATA[D-Pad / Stick
     ]]></string>
     <string name="gamepad_component_mouse_button"><![CDATA[Mouse button
     ]]></string>
@@ -842,9 +842,7 @@ por TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
-    <string name="gamepad_stick_config_dpad_hint"><![CDATA[Modes here set what the left slot sends: D-pad shapes, direction keys on a thumb ring, or a relative pointer. D-pad tuning below applies to split layout.
-
-Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Direction keys and pointer modes are configured here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).
+    <string name="gamepad_stick_config_dpad_hint"><![CDATA[Elige el modo: cruceta (segmentada o cruz), teclas de dirección o puntero relativo. Los deslizadores de abajo ajustan separación y posición en segmentada.
     ]]></string>
     <string name="gamepad_stick_config_section_mode"><![CDATA[Mode
     ]]></string>
@@ -852,7 +850,7 @@ Left slot: split segments = four pads with a center diamond gap; cross = one con
     ]]></string>
     <string name="gamepad_stick_config_title"><![CDATA[Stick configuration
     ]]></string>
-    <string name="gamepad_stick_config_title_left"><![CDATA[Left control
+    <string name="gamepad_stick_config_title_left"><![CDATA[D-Pad / Stick
     ]]></string>
     <string name="gamepad_stick_config_title_right"><![CDATA[Right stick
     ]]></string>

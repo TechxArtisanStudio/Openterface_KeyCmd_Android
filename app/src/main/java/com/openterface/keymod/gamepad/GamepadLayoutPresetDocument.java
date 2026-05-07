@@ -223,30 +223,6 @@ public class GamepadLayoutPresetDocument {
                 d.layout.faceButtonTemplate = ft;
             }
         }
-        GamepadModule stick = findModule(d.modules, "stick_left");
-        if (stick == null) {
-            throw new IllegalArgumentException("Missing module id=stick_left");
-        }
-        if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
-                && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(stick.type)
-                && !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(stick.type)) {
-            throw new IllegalArgumentException("stick_left must be STICK_KEY, DPAD, or STICK_MOUSE");
-        }
-        if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
-                || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(stick.type)) {
-            if (stick.stickUpKey == null || stick.stickLeftKey == null
-                    || stick.stickDownKey == null || stick.stickRightKey == null) {
-                throw new IllegalArgumentException("STICK_KEY/DPAD requires stickUp/Left/Down/Right key codes");
-            }
-        }
-        if (GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(stick.type)) {
-            if (stick.dpadVariant == null || stick.dpadVariant.trim().isEmpty()) {
-                throw new IllegalArgumentException("DPAD on stick_left requires dpadVariant");
-            }
-            if (!GamepadLayoutPresetConstants.isAllowedDpadVariant(stick.dpadVariant.trim())) {
-                throw new IllegalArgumentException("Invalid dpadVariant: " + stick.dpadVariant);
-            }
-        }
         GamepadModule btnA = findModule(d.modules, "button_a");
         if (btnA == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(btnA.type)) {
             throw new IllegalArgumentException("Missing BUTTON module id=button_a");
@@ -263,7 +239,6 @@ public class GamepadLayoutPresetDocument {
         int mouseButtonCount = 0;
         int shoulderCount = 0;
         int triggerCount = 0;
-        boolean hasStickLeft = false;
         Set<String> seenModuleIds = new HashSet<>();
         for (GamepadModule m : d.modules) {
             if (m == null || m.id == null || m.type == null) {
@@ -314,8 +289,19 @@ public class GamepadLayoutPresetDocument {
                 if (!GamepadLayoutPresetConstants.isStickModuleId(m.id)) {
                     throw new IllegalArgumentException("Unknown stick module id: " + m.id);
                 }
+                if (m.id.startsWith("stick_left_") && !GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+                    throw new IllegalArgumentException("Invalid stick_left_* module id: " + m.id);
+                }
                 if (GamepadLayoutPresetConstants.isObsoleteRemovedThumbStickId(m.id)) {
                     throw new IllegalArgumentException("Obsolete stick module id (no longer supported): " + m.id);
+                }
+                if (GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)
+                        && GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+                    String dv = m.dpadVariant != null ? m.dpadVariant.trim().toLowerCase(java.util.Locale.ROOT) : "";
+                    if (!GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS.equals(dv)) {
+                        throw new IllegalArgumentException("Module " + m.id
+                                + ": extra left DPAD supports dpadVariant cross only");
+                    }
                 }
                 if (GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
                     if (m.dpadVariant == null || m.dpadVariant.trim().isEmpty()) {
@@ -367,9 +353,6 @@ public class GamepadLayoutPresetDocument {
                     if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.25f || s > 4.0f) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickMouseSensitivity must be in [0.25, 4]");
                     }
-                }
-                if ("stick_left".equals(m.id)) {
-                    hasStickLeft = true;
                 }
                 if ((GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                         || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type))
@@ -442,9 +425,6 @@ public class GamepadLayoutPresetDocument {
             } else {
                 throw new IllegalArgumentException("Unknown module type: " + m.type);
             }
-        }
-        if (!hasStickLeft) {
-            throw new IllegalArgumentException("Missing stick_left");
         }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "

@@ -33,8 +33,16 @@ public final class GamepadLayoutPresetUpgrader {
         }
         if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V5) {
             migrateV5ToV6(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V6;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V6) {
+            migrateV6ToV7(d);
             d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
         }
+    }
+
+    /** v6 → v7: optional {@code stick_left}; no structural rewrite (documents may omit the primary left slot). */
+    private static void migrateV6ToV7(GamepadLayoutPresetDocument d) {
     }
 
     /**

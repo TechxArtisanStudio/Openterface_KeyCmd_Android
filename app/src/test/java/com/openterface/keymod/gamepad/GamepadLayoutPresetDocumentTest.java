@@ -22,11 +22,137 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsLayoutWithoutLeftThumbModule() {
+        GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateAcceptsOnlyAuxLeftStickWithoutPrimary() {
+        GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
+        GamepadLayoutPresetDocument.GamepadModule aux = new GamepadLayoutPresetDocument.GamepadModule();
+        aux.id = "stick_left_2";
+        aux.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        aux.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        aux.zIndex = 0;
+        aux.scale = 1.0f;
+        aux.anchorX = 0.2f;
+        aux.anchorY = 0.5f;
+        aux.stickUpKey = 26;
+        aux.stickLeftKey = 4;
+        aux.stickDownKey = 22;
+        aux.stickRightKey = 7;
+        doc.modules.add(0, aux);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void upgradeV6ToV7BumpsSchemaVersion() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V6;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+    }
+
+    @Test
+    public void addLeftDpadStickModuleCreatesPrimaryWhenMissing() {
+        GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
+        GamepadLayoutDocEditor.addLeftDpadStickModule(doc);
+        GamepadLayoutPresetDocument.GamepadModule left = findModule(doc, "stick_left");
+        assertNotNull(left);
+        assertEquals(GamepadLayoutPresetConstants.MODULE_TYPE_DPAD, left.type);
+        assertEquals(GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS, left.dpadVariant);
+    }
+
+    @Test
+    public void addLeftDpadStickModuleAddsAuxWhenPrimaryPresent() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutDocEditor.addLeftDpadStickModule(doc);
+        assertNotNull(findModule(doc, "stick_left"));
+        assertNotNull(findModule(doc, "stick_left_2"));
+    }
+
+    @Test
     public void validateAcceptsDpadCrossLeftStick() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.modules.get(0).type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
         doc.modules.get(0).dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
         GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateAcceptsAuxLeftStickDpadCross() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule aux = new GamepadLayoutPresetDocument.GamepadModule();
+        aux.id = "stick_left_2";
+        aux.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        aux.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        aux.zIndex = 5;
+        aux.scale = 1.0f;
+        aux.anchorX = 0.12f;
+        aux.anchorY = 0.42f;
+        aux.stickUpKey = 26;
+        aux.stickLeftKey = 4;
+        aux.stickDownKey = 22;
+        aux.stickRightKey = 7;
+        doc.modules.add(aux);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsAuxLeftStickDpadSplit() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule aux = new GamepadLayoutPresetDocument.GamepadModule();
+        aux.id = "stick_left_2";
+        aux.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        aux.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_SPLIT;
+        aux.zIndex = 5;
+        aux.scale = 1.0f;
+        aux.anchorX = 0.12f;
+        aux.anchorY = 0.42f;
+        aux.stickUpKey = 26;
+        aux.stickLeftKey = 4;
+        aux.stickDownKey = 22;
+        aux.stickRightKey = 7;
+        doc.modules.add(aux);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsStickLeft1ModuleId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule bad = new GamepadLayoutPresetDocument.GamepadModule();
+        bad.id = "stick_left_1";
+        bad.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        bad.zIndex = 5;
+        bad.scale = 1.0f;
+        bad.anchorX = 0.12f;
+        bad.anchorY = 0.42f;
+        bad.stickUpKey = 26;
+        bad.stickLeftKey = 4;
+        bad.stickDownKey = 22;
+        bad.stickRightKey = 7;
+        doc.modules.add(bad);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void nextAuxLeftStickModuleIdSequential() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        assertEquals("stick_left_2", GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc));
+        GamepadLayoutPresetDocument.GamepadModule aux = new GamepadLayoutPresetDocument.GamepadModule();
+        aux.id = "stick_left_2";
+        aux.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        aux.zIndex = 5;
+        aux.scale = 1.0f;
+        aux.anchorX = 0.12f;
+        aux.anchorY = 0.42f;
+        aux.stickUpKey = 26;
+        aux.stickLeftKey = 4;
+        aux.stickDownKey = 22;
+        aux.stickRightKey = 7;
+        doc.modules.add(aux);
+        assertEquals("stick_left_3", GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc));
     }
 
     @Test
@@ -546,6 +672,31 @@ public class GamepadLayoutPresetDocumentTest {
             }
         }
         return null;
+    }
+
+    private static GamepadLayoutPresetDocument minimalDocumentButtonAOnly() {
+        GamepadLayoutPresetDocument doc = new GamepadLayoutPresetDocument();
+        doc.format = GamepadLayoutPresetConstants.DOCUMENT_FORMAT;
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
+        doc.meta = new GamepadLayoutPresetDocument.Meta();
+        doc.meta.id = "test";
+        doc.meta.displayName = "Test";
+        doc.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        doc.layout.mouseSensitivity = 1.0f;
+        doc.layout.showTwoButtons = false;
+        List<GamepadLayoutPresetDocument.GamepadModule> modules = new ArrayList<>();
+        GamepadLayoutPresetDocument.GamepadModule btnA = new GamepadLayoutPresetDocument.GamepadModule();
+        btnA.id = "button_a";
+        btnA.type = GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON;
+        btnA.zIndex = 0;
+        btnA.scale = 1.0f;
+        btnA.anchorX = 0.85f;
+        btnA.anchorY = 0.5f;
+        btnA.hidKey = 40;
+        btnA.modifierMask = 0;
+        modules.add(btnA);
+        doc.modules = modules;
+        return doc;
     }
 
     private static GamepadLayoutPresetDocument minimalValidDocument() {

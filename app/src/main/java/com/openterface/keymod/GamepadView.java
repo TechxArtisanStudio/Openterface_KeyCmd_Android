@@ -802,12 +802,20 @@ public class GamepadView extends View {
             dnL = componentDisplayLabels.getOrDefault("stick_r_down", "K");
             lfL = componentDisplayLabels.getOrDefault("stick_r_left", "J");
             rtL = componentDisplayLabels.getOrDefault("stick_r_right", "L");
+        } else if (GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+            String p = m.id + "_";
+            upL = componentDisplayLabels.getOrDefault(p + "up", "W");
+            dnL = componentDisplayLabels.getOrDefault(p + "down", "S");
+            lfL = componentDisplayLabels.getOrDefault(p + "left", "A");
+            rtL = componentDisplayLabels.getOrDefault(p + "right", "D");
         }
         String shortLabel;
         if ("stick_left".equals(m.id)) {
             shortLabel = "L";
         } else if ("stick_right".equals(m.id)) {
             shortLabel = "R";
+        } else if (GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+            shortLabel = "L" + m.id.substring("stick_left_".length());
         } else {
             shortLabel = "?";
         }
@@ -830,6 +838,13 @@ public class GamepadView extends View {
         String dnL = componentDisplayLabels.getOrDefault("stick_down", "S");
         String lfL = componentDisplayLabels.getOrDefault("stick_left", "A");
         String rtL = componentDisplayLabels.getOrDefault("stick_right", "D");
+        if (GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+            String p = m.id + "_";
+            upL = componentDisplayLabels.getOrDefault(p + "up", "W");
+            dnL = componentDisplayLabels.getOrDefault(p + "down", "S");
+            lfL = componentDisplayLabels.getOrDefault(p + "left", "A");
+            rtL = componentDisplayLabels.getOrDefault(p + "right", "D");
+        }
         String variant = m.dpadVariant != null ? m.dpadVariant.trim()
                 : GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
         if ("stick_left".equals(m.id)) {
@@ -1980,7 +1995,8 @@ public class GamepadView extends View {
                     float rad = b != null ? b.width() / 2f : 1f;
                     float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
                     if (moved < rad * 0.15f && buttonPressListener != null
-                            && ("stick_left".equals(sid) || "stick_right".equals(sid))) {
+                            && ("stick_left".equals(sid) || "stick_right".equals(sid)
+                            || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(sid))) {
                         String clickId = "stick_left".equals(sid) ? "stick_l_click" : "stick_r_click";
                         int code = "stick_left".equals(sid) ? 1001 : 1002;
                         buttonPressListener.onButtonPress(clickId, code);
@@ -2029,7 +2045,8 @@ public class GamepadView extends View {
                     float rad = b != null ? b.width() / 2f : 1f;
                     float moved = off == null ? 0 : (float) Math.sqrt(off[0] * off[0] + off[1] * off[1]);
                     if (moved < rad * 0.15f && buttonPressListener != null
-                            && ("stick_left".equals(releasedStick) || "stick_right".equals(releasedStick))) {
+                            && ("stick_left".equals(releasedStick) || "stick_right".equals(releasedStick)
+                            || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(releasedStick))) {
                         String clickId = "stick_left".equals(releasedStick) ? "stick_l_click" : "stick_r_click";
                         int code = "stick_left".equals(releasedStick) ? 1001 : 1002;
                         buttonPressListener.onButtonPress(clickId, code);

@@ -741,7 +741,7 @@
 
     <!-- Synced missing strings (new features) -->
     <string name="compose_redo_clear">重做清除</string>
-    <string name="gamepad_add_dpad_cross_left">十字键／摇杆（左）</string>
+    <string name="gamepad_add_dpad_cross_left">十字键／摇杆</string>
     <string name="gamepad_add_extra_button">按键</string>
     <string name="gamepad_add_module_title">添加模块</string>
     <string name="gamepad_add_touchpad">触控板</string>
@@ -758,8 +758,8 @@
     <string name="gamepad_button_corner_title">按键形状</string>
     <string name="gamepad_component_button_a">A 键</string>
     <string name="gamepad_component_button_b">B 键</string>
-    <string name="gamepad_component_left_dpad">左侧十字键</string>
-    <string name="gamepad_component_left_stick">左摇杆</string>
+    <string name="gamepad_component_left_dpad">十字键／摇杆</string>
+    <string name="gamepad_component_left_stick">十字键／摇杆</string>
     <string name="gamepad_component_mouse_button">鼠标按键</string>
     <string name="gamepad_component_right_stick">右摇杆</string>
     <string name="gamepad_component_touchpad">触控板</string>
@@ -805,11 +805,11 @@
     <string name="gamepad_presets_import_ok">预设已导入</string>
     <string name="gamepad_presets_share_chooser">分享手柄预设</string>
     <string name="gamepad_presets_title">手柄预设</string>
-    <string name="gamepad_stick_config_dpad_hint">此处模式决定左侧槽位发送的内容：十字键形状、拇指环上的方向键或相对指针。下方可微调分离十字键布局。\n\n左侧槽位：分离段 = 四块方向键加中心菱形空隙；十字 = 一体形状。仅分离间距改变该空隙（键帽厚度固定）。与主键区的距离会把整块向中心或模块边缘移动；若向内拉且空隙很宽，可能会先收紧间距。方向键与指针模式也在此配置。预设 JSON 可包含更多十字键样式（圆盘、枢轴、浮动、clicky 等）。</string>
+    <string name="gamepad_stick_config_dpad_hint">选择模式：十字键（分离或一体）、方向键或相对指针。分离十字键时，下方滑块用于调节间隙与整体位置。</string>
     <string name="gamepad_stick_config_section_mode">模式</string>
     <string name="gamepad_stick_config_size_label">摇杆大小</string>
     <string name="gamepad_stick_config_title">摇杆配置</string>
-    <string name="gamepad_stick_config_title_left">左侧控制</string>
+    <string name="gamepad_stick_config_title_left">十字键／摇杆</string>
     <string name="gamepad_stick_config_title_right">右摇杆</string>
     <string name="gamepad_stick_direction_keys_label">方向键（点按更改）</string>
     <string name="gamepad_stick_mode_analog">相对指针（鼠标）</string>

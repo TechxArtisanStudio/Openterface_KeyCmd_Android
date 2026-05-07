@@ -88,6 +88,63 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
+    private static int countAuxLeftStickModules(GamepadLayoutPresetDocument doc) {
+        int n = 0;
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /**
+     * Adds a left D-pad / stick module: creates {@code stick_left} when absent, otherwise appends
+     * {@code stick_left_2}, {@code stick_left_3}, … (DPAD cross + default WASD).
+     */
+    public static void addLeftDpadStickModule(GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return;
+        }
+        if (find(doc, "stick_left") == null) {
+            GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+            m.id = "stick_left";
+            m.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+            m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+            m.zIndex = nextZ(doc);
+            m.scale = 1.0f;
+            m.anchorX = 0.20f;
+            m.anchorY = 0.50f;
+            m.stickUpKey = 26;
+            m.stickLeftKey = 4;
+            m.stickDownKey = 22;
+            m.stickRightKey = 7;
+            doc.modules.add(m);
+            return;
+        }
+        int idx = countAuxLeftStickModules(doc);
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.id = GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc);
+        m.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        m.zIndex = nextZ(doc);
+        m.scale = 1.0f;
+        float baseX = 0.20f;
+        float baseY = 0.50f;
+        float ax = baseX - 0.14f * (idx % 4);
+        float ay = baseY + 0.08f * ((idx / 4) % 3);
+        m.anchorX = Math.max(0.08f, Math.min(0.42f, ax));
+        m.anchorY = Math.max(0.18f, Math.min(0.78f, ay));
+        m.stickUpKey = 26;
+        m.stickLeftKey = 4;
+        m.stickDownKey = 22;
+        m.stickRightKey = 7;
+        doc.modules.add(m);
+    }
+
     public static void addButton(GamepadLayoutPresetDocument doc) {
         String id = GamepadLayoutDocumentStore.nextButtonModuleId(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
@@ -221,7 +278,7 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static boolean canRemove(String componentId) {
-        return !"stick_left".equals(componentId) && !"button_a".equals(componentId);
+        return !"button_a".equals(componentId);
     }
 
     public static void removeModule(GamepadLayoutPresetDocument doc, String componentId) {

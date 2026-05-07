@@ -3,6 +3,7 @@ package com.openterface.keymod.gamepad;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
 import com.google.gson.Gson;
@@ -63,14 +64,22 @@ public final class GamepadLayoutPresetApplier {
         }
 
         List<GamepadLayoutPresetDocument.GamepadModule> modules = doc.modules;
-        GamepadLayoutPresetDocument.GamepadModule stick = require(modules, "stick_left");
-        if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
+        GamepadLayoutPresetDocument.GamepadModule stick = resolveLeftThumbStickForPrefs(modules);
+        if (stick == null) {
+            ed.remove(GamepadPreferenceKeys.STICK_MODE);
+            ed.remove(GamepadPreferenceKeys.STICK_UP);
+            ed.remove(GamepadPreferenceKeys.STICK_LEFT);
+            ed.remove(GamepadPreferenceKeys.STICK_DOWN);
+            ed.remove(GamepadPreferenceKeys.STICK_RIGHT);
+            ed.remove(GamepadPreferenceKeys.STICK_SIZE);
+        } else if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(stick.type)
                 || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(stick.type)) {
             ed.putString(GamepadPreferenceKeys.STICK_MODE, "key");
             ed.putInt(GamepadPreferenceKeys.STICK_UP, stick.stickUpKey);
             ed.putInt(GamepadPreferenceKeys.STICK_LEFT, stick.stickLeftKey);
             ed.putInt(GamepadPreferenceKeys.STICK_DOWN, stick.stickDownKey);
             ed.putInt(GamepadPreferenceKeys.STICK_RIGHT, stick.stickRightKey);
+            ed.putFloat(GamepadPreferenceKeys.STICK_SIZE, stick.scale);
         } else {
             ed.putString(GamepadPreferenceKeys.STICK_MODE, "analog");
             int up = stick.stickUpKey != null ? stick.stickUpKey : 26;
@@ -81,8 +90,8 @@ public final class GamepadLayoutPresetApplier {
             ed.putInt(GamepadPreferenceKeys.STICK_LEFT, left);
             ed.putInt(GamepadPreferenceKeys.STICK_DOWN, down);
             ed.putInt(GamepadPreferenceKeys.STICK_RIGHT, right);
+            ed.putFloat(GamepadPreferenceKeys.STICK_SIZE, stick.scale);
         }
-        ed.putFloat(GamepadPreferenceKeys.STICK_SIZE, stick.scale);
 
         GamepadLayoutPresetDocument.GamepadModule btnA = require(modules, "button_a");
         ed.putFloat(GamepadPreferenceKeys.BUTTON_SIZE, btnA.scale);
@@ -116,5 +125,50 @@ public final class GamepadLayoutPresetApplier {
             }
         }
         throw new IllegalArgumentException("Missing module: " + id);
+    }
+
+    /**
+     * Legacy prefs mirror: prefer {@code stick_left}, else lowest-numbered {@code stick_left_2+} thumb
+     * ({@code STICK_KEY} / {@code DPAD} / {@code STICK_MOUSE}).
+     */
+    @Nullable
+    private static GamepadLayoutPresetDocument.GamepadModule resolveLeftThumbStickForPrefs(
+            List<GamepadLayoutPresetDocument.GamepadModule> modules) {
+        if (modules == null) {
+            return null;
+        }
+        GamepadLayoutPresetDocument.GamepadModule primary = null;
+        GamepadLayoutPresetDocument.GamepadModule bestAux = null;
+        int bestNum = Integer.MAX_VALUE;
+        for (GamepadLayoutPresetDocument.GamepadModule m : modules) {
+            if (m == null || m.id == null || m.type == null) {
+                continue;
+            }
+            if (!isLeftThumbStickPrefsType(m)) {
+                continue;
+            }
+            if ("stick_left".equals(m.id)) {
+                primary = m;
+                break;
+            }
+            if (GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+                String suf = m.id.substring("stick_left_".length());
+                try {
+                    int n = Integer.parseInt(suf);
+                    if (n < bestNum) {
+                        bestNum = n;
+                        bestAux = m;
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return primary != null ? primary : bestAux;
+    }
+
+    private static boolean isLeftThumbStickPrefsType(GamepadLayoutPresetDocument.GamepadModule m) {
+        return GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)
+                || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type);
     }
 }

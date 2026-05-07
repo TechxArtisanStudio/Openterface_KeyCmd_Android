@@ -232,6 +232,8 @@ public class CustomKeyboardView extends LinearLayout {
     private boolean isCtrlLeftLocked = false;
     private boolean isAltLeftLocked = false;
     private boolean isWinLeftLocked = false;
+    /** Local UI mirror for main-layout Caps (0x39); may desync from host if Caps toggles elsewhere. */
+    private boolean isCapsLockOn = false;
     private boolean isRunning = true;
     private boolean isSymbolMode = false;
     private boolean isFnLocked = false;
@@ -1422,6 +1424,7 @@ public class CustomKeyboardView extends LinearLayout {
         splitPartner.isCtrlLeftLocked = isCtrlLeftLocked;
         splitPartner.isAltLeftLocked = isAltLeftLocked;
         splitPartner.isWinLeftLocked = isWinLeftLocked;
+        splitPartner.isCapsLockOn = isCapsLockOn;
         splitPartner.post(() -> splitPartner.updateKeyboard());
     }
 
@@ -1961,6 +1964,82 @@ public class CustomKeyboardView extends LinearLayout {
         }
     }
 
+    private static boolean shouldShowCapsLockIndicatorOnKey(Key key) {
+        return key != null && key.code == 0x39 && !key.isTopPanelKey;
+    }
+
+    private int resolveCapsLockIndicatorDotColor() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return Color.GRAY;
+        }
+        if (isCapsLockOn) {
+            return ThemeManager.getColorPrimary(ctx);
+        }
+        return MaterialColors.getColor(
+                ctx,
+                com.google.android.material.R.attr.colorOutlineVariant,
+                ColorUtils.setAlphaComponent(resolveThemeTextColor(), 100));
+    }
+
+    private void addCapsLockStateDotOverlay(FrameLayout container) {
+        View dot = new View(getContext());
+        int size = dpToPx(5);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.TOP);
+        lp.setMarginStart(dpToPx(6));
+        lp.topMargin = dpToPx(5);
+        dot.setLayoutParams(lp);
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.OVAL);
+        gd.setColor(resolveCapsLockIndicatorDotColor());
+        dot.setBackground(gd);
+        dot.setClickable(false);
+        dot.setFocusable(false);
+        container.addView(dot);
+        dot.bringToFront();
+    }
+
+    /**
+     * Adds a top-start dot on the main Caps keycap. Touch stays on {@code listenerTarget}
+     * (inner key face), not on the overlay.
+     */
+    private View wrapKeyButtonWithCapsIndicatorIfNeeded(View button, View listenerTarget) {
+        if (!(listenerTarget instanceof Button)) {
+            return button;
+        }
+        FrameLayout container;
+        if (button instanceof FrameLayout) {
+            container = (FrameLayout) button;
+        } else {
+            ViewGroup.LayoutParams outerLp = button.getLayoutParams();
+            FrameLayout wrap = new FrameLayout(getContext());
+            wrap.setLayoutParams(outerLp);
+            button.setLayoutParams(new FrameLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            wrap.addView(button);
+            button = wrap;
+            container = wrap;
+        }
+        addCapsLockStateDotOverlay(container);
+        return button;
+    }
+
+    private void syncCapsLockIndicatorToPartnerAndRefresh() {
+        if (splitPartner != null) {
+            splitPartner.isCapsLockOn = isCapsLockOn;
+            splitPartner.post(splitPartner::updateKeyboard);
+        }
+        post(this::updateKeyboard);
+    }
+
+    private void maybeToggleCapsLockIndicatorState(Key key, int effectiveKeyCode) {
+        if (key == null || key.isTopPanelKey || key.code != 0x39 || effectiveKeyCode != 0x39) {
+            return;
+        }
+        isCapsLockOn = !isCapsLockOn;
+        syncCapsLockIndicatorToPartnerAndRefresh();
+    }
+
     private void updateKeyboard() {
         stopGamingKeyRepeat();
         detachLocalImeFieldQuiet();
@@ -2257,6 +2336,10 @@ public class CustomKeyboardView extends LinearLayout {
                     // be the listener target or long-press alternates never run.
                     listenerTarget = textButton;
                     }
+                }
+
+                if (shouldShowCapsLockIndicatorOnKey(key)) {
+                    button = wrapKeyButtonWithCapsIndicatorIfNeeded(button, listenerTarget);
                 }
 
                 attachKeyListeners(listenerTarget, key);
@@ -6738,8 +6821,11 @@ public class CustomKeyboardView extends LinearLayout {
     /**
      * Sends one HID keyboard report for {@code key} (Fn layers, locked modifiers, extra numpad),
      * with no profile/mode/UI side effects.
+     *
+     * @param toggleCapsLockIndicatorIfApplicable when false, skips flipping the main Caps key dot
+     *        (used by gaming repeat so each repeat does not toggle the local indicator).
      */
-    private void sendHidKeyDataForKey(Key key) {
+    private void sendHidKeyDataForKey(Key key, boolean toggleCapsLockIndicatorIfApplicable) {
         if (key == null) {
             return;
         }
@@ -6785,6 +6871,13 @@ public class CustomKeyboardView extends LinearLayout {
         }
 
         sendKeyData(combinedValue, effectiveKeyCode);
+        if (toggleCapsLockIndicatorIfApplicable) {
+            maybeToggleCapsLockIndicatorState(key, effectiveKeyCode);
+        }
+    }
+
+    private void sendHidKeyDataForKey(Key key) {
+        sendHidKeyDataForKey(key, true);
     }
 
     private void startGamingKeyRepeat(final Key key) {
@@ -6808,7 +6901,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (!gamingRepeatActive || gamingRepeatKey != key) {
                         return;
                     }
-                    sendHidKeyDataForKey(key);
+                    sendHidKeyDataForKey(key, false);
                     repeatHandler.postDelayed(this, repeatDelay);
                 }
             };

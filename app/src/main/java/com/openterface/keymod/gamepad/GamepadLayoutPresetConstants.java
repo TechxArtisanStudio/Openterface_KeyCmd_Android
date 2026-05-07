@@ -13,8 +13,13 @@ public final class GamepadLayoutPresetConstants {
     /** v4: shoulder/trigger modules, face templates, gyro flag, stick metadata. */
     public static final int SCHEMA_VERSION_V4 = 4;
     public static final int SCHEMA_VERSION_V5 = 5;
-    /** Current preset schema; v6 removes legacy extra-thumb ids (see {@link #isObsoleteRemovedThumbStickId(String)}). */
-    public static final int SCHEMA_VERSION = 6;
+    /** v6 removes legacy extra-thumb ids (see {@link #isObsoleteRemovedThumbStickId(String)}). */
+    public static final int SCHEMA_VERSION_V6 = 6;
+    /**
+     * Current preset schema; v7 makes the primary left thumb ({@code stick_left}) optional alongside
+     * {@code stick_left_2+} (validation only; no automatic module rewrites).
+     */
+    public static final int SCHEMA_VERSION = 7;
 
     /** Max decoded bytes for embedded gamepad background image (JSON interchange). */
     public static final int MAX_BACKGROUND_EMBED_DECODED_BYTES = 6 * 1024 * 1024;
@@ -89,6 +94,25 @@ public final class GamepadLayoutPresetConstants {
      */
     public static boolean isStickModuleId(@Nullable String id) {
         return id != null && id.matches("stick_[a-z0-9_]+");
+    }
+
+    /**
+     * Optional extra left thumb modules: {@code stick_left_2}, {@code stick_left_3}, …
+     * (Primary {@code stick_left} is optional from schema v7 onward; {@code stick_left_1} is not valid.)
+     */
+    public static boolean isAuxLeftStickModuleId(@Nullable String id) {
+        if (id == null || !id.startsWith("stick_left_")) {
+            return false;
+        }
+        String suffix = id.substring("stick_left_".length());
+        if (!suffix.matches("[0-9]+")) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(suffix) >= 2;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /** Preset touchpad modules use ids {@code touchpad_1}, {@code touchpad_2}, … */
