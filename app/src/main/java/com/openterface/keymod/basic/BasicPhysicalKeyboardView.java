@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -96,8 +97,19 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private boolean chordHostHoldSent;
     private final Runnable chordLongPressRunnable = this::onChordLongPressThreshold;
     private final Runnable physicalKeyReleaseRunnable = this::runPhysicalKeyRelease;
+    private final Runnable macCapsDelayedReleaseRunnable =
+            () -> {
+                runPhysicalKeyRelease();
+                refreshModifierVisuals();
+            };
 
     private static final long KM_BASIC_HOLD_LOCK_MS = 1000L;
+    /**
+     * macOS distinguishes Caps tap (input-source / 中英 toggle) vs long-press (Caps Lock) by hold time.
+     * Hold slightly above the host threshold so long-press reliably engages Caps Lock.
+     */
+    private static final long MAC_CAPS_LONG_PRESS_MS = 500L;
+    private static final long MAC_CAPS_MIN_TAP_HOLD_MS = 30L;
     @Nullable private KmBasicHoldLockController kmBasicHoldLockController;
     @Nullable private BasicHoldLockPopup activeHoldLockPopup;
     private final Runnable holdLockPopupRunnable = this::onHoldLockPopupTimeout;
@@ -1015,6 +1027,135 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                                 view, event, onTap, keyPreview, previewText));
     }
 
+    private boolean isMacTarget() {
+        return mainActivity != null && "macos".equals(mainActivity.getTargetOs());
+    }
+
+    /**
+     * KM Basic Caps on macOS: short hold (~30 ms) for input-source / 中英 toggle; long-press for Caps Lock.
+     * Other target OS: same as a normal tap (toggle Caps in one shot).
+     */
+    private void wireMacAwareCapsKey(View v, Supplier<String> previewText) {
+        final boolean[] longFired = {false};
+        final Runnable[] pendingLong = {null};
+        final long[] downAt = {0L};
+        final boolean[] keyDownActive = {false};
+
+        v.setOnTouchListener(
+                (view, event) -> {
+                    if (!isMacTarget()) {
+                        return BasicKeyFeedback.handleStandardKeyTouch(
+                                view,
+                                event,
+                                () -> {
+                                    tapKey(0x39, false, false);
+                                    if (!HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
+                                        capsLock = !capsLock;
+                                    }
+                                    refreshModifierVisuals();
+                                },
+                                keyPreview,
+                                previewText);
+                    }
+                    switch (event.getActionMasked()) {
+                        case MotionEvent.ACTION_DOWN:
+                            longFired[0] = false;
+                            downAt[0] = SystemClock.uptimeMillis();
+                            keyDownActive[0] = true;
+                            handler.removeCallbacks(macCapsDelayedReleaseRunnable);
+                            handler.removeCallbacks(physicalKeyReleaseRunnable);
+                            if (pendingLong[0] != null) {
+                                handler.removeCallbacks(pendingLong[0]);
+                                pendingLong[0] = null;
+                            }
+                            pendingLong[0] =
+                                    () -> {
+                                        longFired[0] = true;
+                                        BasicKeyFeedback.performKeyHaptic(view);
+                                        pendingLong[0] = null;
+                                    };
+                            handler.postDelayed(pendingLong[0], MAC_CAPS_LONG_PRESS_MS);
+                            view.setPressed(true);
+                            BasicKeyFeedback.performKeyHaptic(view);
+                            if (previewText != null) {
+                                String t = previewText.get();
+                                if (t != null && !t.isEmpty()) {
+                                    keyPreview.show(view, t);
+                                }
+                            }
+                            sendPhysicalKeyDown(0x39, false, false);
+                            return true;
+                        case MotionEvent.ACTION_MOVE: {
+                            boolean inside = BasicKeyFeedback.isPointerInsideView(view, event);
+                            view.setPressed(inside);
+                            if (inside) {
+                                if (previewText != null) {
+                                    String t = previewText.get();
+                                    if (t != null && !t.isEmpty()) {
+                                        keyPreview.show(view, t);
+                                    }
+                                }
+                            } else {
+                                keyPreview.dismiss();
+                                if (pendingLong[0] != null) {
+                                    handler.removeCallbacks(pendingLong[0]);
+                                    pendingLong[0] = null;
+                                }
+                                if (keyDownActive[0]) {
+                                    scheduleMacCapsKeyRelease(longFired[0], downAt[0], false);
+                                    keyDownActive[0] = false;
+                                }
+                            }
+                            return true;
+                        }
+                        case MotionEvent.ACTION_UP:
+                            view.setPressed(false);
+                            keyPreview.dismiss();
+                            if (pendingLong[0] != null) {
+                                handler.removeCallbacks(pendingLong[0]);
+                                pendingLong[0] = null;
+                            }
+                            if (keyDownActive[0]) {
+                                boolean inside = BasicKeyFeedback.isPointerInsideView(view, event);
+                                scheduleMacCapsKeyRelease(longFired[0], downAt[0], inside);
+                                keyDownActive[0] = false;
+                            }
+                            return true;
+                        case MotionEvent.ACTION_CANCEL:
+                            view.setPressed(false);
+                            keyPreview.dismiss();
+                            if (pendingLong[0] != null) {
+                                handler.removeCallbacks(pendingLong[0]);
+                                pendingLong[0] = null;
+                            }
+                            if (keyDownActive[0]) {
+                                scheduleMacCapsKeyRelease(longFired[0], downAt[0], false);
+                                keyDownActive[0] = false;
+                            }
+                            return true;
+                        default:
+                            return false;
+                    }
+                });
+    }
+
+    private void scheduleMacCapsKeyRelease(boolean longFired, long downAtMs, boolean commitInside) {
+        long elapsed = SystemClock.uptimeMillis() - downAtMs;
+        if (!longFired) {
+            long delay =
+                    elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
+                            ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
+                            : 0;
+            handler.postDelayed(macCapsDelayedReleaseRunnable, delay);
+        } else {
+            runPhysicalKeyRelease();
+            if (commitInside && !HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
+                capsLock = !capsLock;
+            }
+            refreshModifierVisuals();
+        }
+    }
+
     /** Character / function keys: first tap on key-down, then auto-repeat while held. */
     private void wireRepeatableTap(View v, Runnable onAction, Supplier<String> previewText) {
         v.setOnTouchListener(
@@ -1122,16 +1263,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             if (i == 0) {
                 capsKeyView = k;
                 if (isMomentaryChordMode()) {
-                    wireTap(
-                            k,
-                            () -> {
-                                tapKey(0x39, false, false);
-                                if (!HostKeyboardLockLeds.get().hasReceivedLedFromHost()) {
-                                    capsLock = !capsLock;
-                                }
-                                refreshModifierVisuals();
-                            },
-                            () -> "Caps");
+                    wireMacAwareCapsKey(k, () -> "Caps");
                 } else {
                     styleStickyModifierKeySurface(k);
                     wireTap(
