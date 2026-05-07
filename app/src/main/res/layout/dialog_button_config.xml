@@ -1,36 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Max-height NestedScrollView: dialog custom view must scroll; plain LinearLayout does not. -->
-<com.openterface.keymod.widget.MaxHeightNestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Rounded sheet wraps scroll + pinned footer so Remove/Reset/Done stay visible. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/gamepad_module_config_scroll"
+    android:id="@+id/gamepad_module_config_sheet"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minWidth="320dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_presentation_touchpad_dialog"
+    android:padding="@dimen/spacing_medium"
+    android:layout_marginHorizontal="@dimen/spacing_small"
+    android:layout_marginVertical="@dimen/spacing_small"
+    android:clipToOutline="true">
+
+<com.openterface.keymod.widget.MaxHeightNestedScrollView
+    android:id="@+id/gamepad_module_config_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:fillViewport="false"
     android:scrollbars="vertical"
     android:fadeScrollbars="true"
     android:overScrollMode="ifContentScrolls"
     android:clipToPadding="false"
-    android:paddingHorizontal="@dimen/spacing_medium"
-    android:paddingTop="@dimen/spacing_medium"
-    android:paddingBottom="@dimen/spacing_small"
-    android:background="?attr/colorSurface">
+    android:background="@android:color/transparent">
 
     <LinearLayout
         android:id="@+id/gamepad_module_config_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="@dimen/spacing_large"
-        android:clipToPadding="false">
+        android:paddingBottom="@dimen/spacing_small">
 
             <TextView
                 android:id="@+id/dialog_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_button_config_title_placeholder"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
                 android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/button_cap_label_layout"
@@ -171,35 +183,50 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
-            <com.google.android.material.divider.MaterialDivider
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_medium" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="end"
-                android:layout_marginTop="@dimen/spacing_small">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_reset"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/gamepad_config_reset"
-                    android:textAllCaps="false"
-                    android:layout_marginEnd="@dimen/spacing_small" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_done"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/gamepad_config_done"
-                    android:textAllCaps="false" />
-            </LinearLayout>
-
     </LinearLayout>
 </com.openterface.keymod.widget.MaxHeightNestedScrollView>
+
+    <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="@dimen/spacing_small">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_remove"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_menu_remove"
+            android:textAllCaps="false"
+            android:visibility="gone"
+            android:layout_marginEnd="@dimen/spacing_small"
+            app:strokeColor="?attr/colorError"
+            app:strokeWidth="1dp"
+            android:textColor="?attr/colorError" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_reset"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_reset"
+            android:textAllCaps="false"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_done"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_done"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+</LinearLayout>

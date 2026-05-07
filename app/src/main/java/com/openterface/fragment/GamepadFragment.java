@@ -56,6 +56,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.divider.MaterialDivider;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -1788,10 +1789,13 @@ public class GamepadFragment extends Fragment {
             }
         });
 
+        applyGamepadModuleConfigSheetSurface(shell);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(shell);
         MaxHeightNestedScrollView scrollRoot = new MaxHeightNestedScrollView(ctx);
         scrollRoot.setFillViewport(false);
         scrollRoot.setClipToPadding(false);
-        scrollRoot.addView(shell, new ViewGroup.LayoutParams(
+        scrollRoot.setBackgroundColor(Color.TRANSPARENT);
+        scrollRoot.addView(sheetWrapped, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         applyGamepadModuleConfigScrollMaxHeight(scrollRoot);
 
@@ -1861,6 +1865,69 @@ public class GamepadFragment extends Fragment {
         return row;
     }
 
+    /**
+     * Divider + Remove (when allowed) / Reset / Done row, matching stick & button module sheets.
+     */
+    private void appendGamepadModuleSheetFooter(
+            @NonNull Context ctx,
+            @NonNull LinearLayout verticalSheet,
+            @Nullable String moduleIdForRemove,
+            @NonNull Runnable onReset,
+            @NonNull Runnable onDone,
+            @NonNull AlertDialog dialog) {
+        int gap = dp(8);
+        MaterialDivider divider = new MaterialDivider(ctx);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        divLp.topMargin = dp(12);
+        verticalSheet.addView(divider, divLp);
+
+        LinearLayout footer = new LinearLayout(ctx);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(Gravity.END);
+        LinearLayout.LayoutParams footLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        footLp.topMargin = gap;
+        verticalSheet.addView(footer, footLp);
+
+        int err = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
+                ContextCompat.getColor(ctx, R.color.primary));
+        MaterialButton removeBtn = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        removeBtn.setText(R.string.gamepad_menu_remove);
+        removeBtn.setAllCaps(false);
+        removeBtn.setStrokeColor(ColorStateList.valueOf(err));
+        removeBtn.setTextColor(ColorStateList.valueOf(err));
+        removeBtn.setStrokeWidth(Math.max(1, Math.round(ctx.getResources().getDisplayMetrics().density)));
+        LinearLayout.LayoutParams removeLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        removeLp.setMarginEnd(gap);
+        if (moduleIdForRemove != null && GamepadLayoutDocEditor.canRemove(moduleIdForRemove)) {
+            removeBtn.setVisibility(View.VISIBLE);
+            removeBtn.setOnClickListener(v -> confirmRemoveGamepadModule(moduleIdForRemove, dialog));
+        } else {
+            removeBtn.setVisibility(View.GONE);
+        }
+        footer.addView(removeBtn, removeLp);
+
+        MaterialButton resetBtn = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonTonalStyle);
+        resetBtn.setText(R.string.gamepad_config_reset);
+        resetBtn.setAllCaps(false);
+        LinearLayout.LayoutParams resetLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        resetLp.setMarginEnd(gap);
+        resetBtn.setOnClickListener(v -> onReset.run());
+        footer.addView(resetBtn, resetLp);
+
+        MaterialButton doneBtn = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonStyle);
+        doneBtn.setText(R.string.gamepad_config_done);
+        doneBtn.setAllCaps(false);
+        doneBtn.setOnClickListener(v -> onDone.run());
+        footer.addView(doneBtn, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    }
+
     /** Standalone accent editor (e.g. touchpad long-press). */
     private void showGamepadModuleAccentDialog(@Nullable String title,
             @Nullable GamepadLayoutPresetDocument.GamepadModule module) {
@@ -1877,12 +1944,28 @@ public class GamepadFragment extends Fragment {
         if (section != null) {
             bindGamepadModuleColorSection(section, module);
         }
-        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx).setView(shell);
+        applyGamepadModuleConfigSheetSurface(shell);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(shell);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx).setView(sheetWrapped);
         if (title != null && !title.isEmpty()) {
             b.setTitle(title);
         }
-        b.setPositiveButton(android.R.string.ok, (d, w) -> applyLayoutDocFromMemory())
-                .show();
+        AlertDialog dialog = b.create();
+        appendGamepadModuleSheetFooter(ctx, shell, module.id,
+                () -> {
+                    module.moduleAccentArgb = null;
+                    View sec = shell.findViewById(R.id.module_color_section);
+                    if (sec != null) {
+                        bindGamepadModuleColorSection(sec, module);
+                    }
+                    syncGamepadViewFromDoc();
+                },
+                () -> {
+                    applyLayoutDocFromMemory();
+                    dialog.dismiss();
+                },
+                dialog);
+        dialog.show();
     }
 
     private void handleLongPressMenuChoice(
@@ -2050,21 +2133,42 @@ public class GamepadFragment extends Fragment {
         int hp = Math.round((tp.heightNorm != null ? tp.heightNorm : GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM) * 100f);
         hSeek.setProgress(Math.max(10, Math.min(65, hp)));
 
+        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
         root.addView(wTitle);
         root.addView(wSeek);
         root.addView(hTitle);
         root.addView(hSeek);
 
-        new MaterialAlertDialogBuilder(ctx)
+        applyGamepadModuleConfigSheetSurface(root);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_size_title)
-                .setView(root)
-                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                .setView(sheetWrapped);
+        AlertDialog dialog = b.create();
+        Runnable syncSeeksFromTp = () -> {
+            int wp2 = Math.round((tp.widthNorm != null ? tp.widthNorm
+                    : GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM) * 100f);
+            wSeek.setProgress(Math.max(10, Math.min(65, wp2)));
+            int hp2 = Math.round((tp.heightNorm != null ? tp.heightNorm
+                    : GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM) * 100f);
+            hSeek.setProgress(Math.max(10, Math.min(65, hp2)));
+        };
+        appendGamepadModuleSheetFooter(ctx, root, "touchpad_1",
+                () -> {
+                    tp.widthNorm = GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM;
+                    tp.heightNorm = GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM;
+                    syncSeeksFromTp.run();
+                    syncGamepadViewFromDoc();
+                },
+                () -> {
                     tp.widthNorm = wSeek.getProgress() / 100f;
                     tp.heightNorm = hSeek.getProgress() / 100f;
                     applyLayoutDocFromMemory();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                    dialog.dismiss();
+                },
+                dialog);
+        dialog.show();
     }
 
     /** Layout-level scale for all touchpad L/M/R mouse buttons (50%–200%). */
@@ -2080,6 +2184,7 @@ public class GamepadFragment extends Fragment {
 
         TextView title = new TextView(ctx);
         title.setText(R.string.gamepad_mouse_btn_size_pct);
+        title.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
         android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
         seek.setMax(150);
         float cur = layoutDoc.layout.touchpadMouseButtonScale != null
@@ -2089,15 +2194,25 @@ public class GamepadFragment extends Fragment {
         root.addView(title);
         root.addView(seek);
 
-        new MaterialAlertDialogBuilder(ctx)
+        applyGamepadModuleConfigSheetSurface(root);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_mouse_btn_size_title)
-                .setView(root)
-                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                .setView(sheetWrapped);
+        AlertDialog dialog = b.create();
+        appendGamepadModuleSheetFooter(ctx, root, null,
+                () -> {
+                    layoutDoc.layout.touchpadMouseButtonScale = 1.0f;
+                    seek.setProgress(50);
+                    syncGamepadViewFromDoc();
+                },
+                () -> {
                     layoutDoc.layout.touchpadMouseButtonScale = (seek.getProgress() + 50) / 100f;
                     applyLayoutDocFromMemory();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                    dialog.dismiss();
+                },
+                dialog);
+        dialog.show();
     }
 
     /** Per-module radius scale for one MOUSE_BUTTON (50%–200%). */
@@ -2120,6 +2235,7 @@ public class GamepadFragment extends Fragment {
 
         TextView title = new TextView(ctx);
         title.setText(R.string.gamepad_mouse_btn_size_pct);
+        title.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
         android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
         seek.setMax(150);
         seek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
@@ -2127,15 +2243,29 @@ public class GamepadFragment extends Fragment {
         root.addView(title);
         root.addView(seek);
 
-        new MaterialAlertDialogBuilder(ctx)
+        applyGamepadModuleConfigSheetSurface(root);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_mouse_btn_module_size_title)
-                .setView(root)
-                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                .setView(sheetWrapped);
+        AlertDialog dialog = b.create();
+        appendGamepadModuleSheetFooter(ctx, root, m.id,
+                () -> {
+                    m.scale = 1.0f;
+                    m.moduleAccentArgb = null;
+                    seek.setProgress(50);
+                    if (mouseColorSection != null) {
+                        bindGamepadModuleColorSection(mouseColorSection, m);
+                    }
+                    syncGamepadViewFromDoc();
+                },
+                () -> {
                     m.scale = (seek.getProgress() + 50) / 100f;
                     applyLayoutDocFromMemory();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                    dialog.dismiss();
+                },
+                dialog);
+        dialog.show();
     }
 
     private void exitLayoutEditSession() {
@@ -2171,10 +2301,6 @@ public class GamepadFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_stick_config, null);
         applyGamepadModuleConfigScrollMaxHeight(dialogView);
         builder.setView(dialogView);
-        if (GamepadLayoutDocEditor.canRemove(stickConfigModuleId)) {
-            builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
-                    confirmRemoveGamepadModule(stickConfigModuleId, d));
-        }
 
         final AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -2422,6 +2548,17 @@ public class GamepadFragment extends Fragment {
             updateKeyLabels(keyUp, keyLeft, keyRight, keyDown);
         }));
 
+        MaterialButton stickRemoveBtn = dialogView.findViewById(R.id.stick_remove_btn);
+        if (stickRemoveBtn != null) {
+            if (GamepadLayoutDocEditor.canRemove(stickConfigModuleId)) {
+                stickRemoveBtn.setVisibility(View.VISIBLE);
+                stickRemoveBtn.setOnClickListener(v ->
+                        confirmRemoveGamepadModule(stickConfigModuleId, dialog));
+            } else {
+                stickRemoveBtn.setVisibility(View.GONE);
+            }
+        }
+
         // Reset
         dialogView.findViewById(R.id.stick_reset_btn).setOnClickListener(v -> {
             stickMode = MODE_KEY;
@@ -2536,10 +2673,6 @@ public class GamepadFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_button_config, null);
         applyGamepadModuleConfigScrollMaxHeight(dialogView);
         builder.setView(dialogView);
-        if (GamepadLayoutDocEditor.canRemove(moduleId)) {
-            builder.setNeutralButton(R.string.gamepad_menu_remove, (d, which) ->
-                    confirmRemoveGamepadModule(moduleId, d));
-        }
 
         final AlertDialog dialog = builder.create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -2638,6 +2771,16 @@ public class GamepadFragment extends Fragment {
             selectedModifiers[0] = mod;
             updateButtonLabel(keyLabel, key, mod);
         }));
+
+        MaterialButton btnRemove = dialogView.findViewById(R.id.btn_remove);
+        if (btnRemove != null) {
+            if (GamepadLayoutDocEditor.canRemove(moduleId)) {
+                btnRemove.setVisibility(View.VISIBLE);
+                btnRemove.setOnClickListener(v -> confirmRemoveGamepadModule(moduleId, dialog));
+            } else {
+                btnRemove.setVisibility(View.GONE);
+            }
+        }
 
         dialogView.findViewById(R.id.btn_reset).setOnClickListener(v -> {
             selectedKey[0] = defaultKey;
@@ -3057,6 +3200,25 @@ public class GamepadFragment extends Fragment {
             });
         });
         dialog.show();
+    }
+
+    /**
+     * Rounded sheet background matching touchpad configuration ({@code presentation_card_bg}, 16dp corners).
+     */
+    private void applyGamepadModuleConfigSheetSurface(@NonNull View sheetContent) {
+        sheetContent.setBackgroundResource(R.drawable.bg_presentation_touchpad_dialog);
+        sheetContent.setClipToOutline(true);
+    }
+
+    @NonNull
+    private FrameLayout wrapGamepadModuleConfigSheetMargins(@NonNull View inner) {
+        Context ctx = inner.getContext();
+        FrameLayout outer = new FrameLayout(ctx);
+        int m = dp(8);
+        outer.setPadding(m, m, m, m);
+        outer.addView(inner, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return outer;
     }
 
     /**

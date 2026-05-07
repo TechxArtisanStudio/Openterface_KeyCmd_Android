@@ -128,7 +128,10 @@
         <item name="strokeWidth">1dp</item>
     </style>
 
-    <!-- Gamepad stick / button module configuration dialogs (aligned with gamepad presets bottom sheet) -->
+    <!-- Gamepad stick / button module configuration dialogs (aligned with touchpad presentation card) -->
+    <style name="TextAppearance.KeyMod.GamepadConfig.SheetTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
     <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>

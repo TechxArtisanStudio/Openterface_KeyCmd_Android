@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Max-height NestedScrollView: dialog custom view must scroll; plain LinearLayout does not. -->
-<com.openterface.keymod.widget.MaxHeightNestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Rounded sheet wraps scroll + pinned footer so Remove/Reset/Done stay visible. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/gamepad_module_config_sheet"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_presentation_touchpad_dialog"
+    android:padding="@dimen/spacing_medium"
+    android:layout_marginHorizontal="@dimen/spacing_small"
+    android:layout_marginVertical="@dimen/spacing_small"
+    android:clipToOutline="true">
+
+<com.openterface.keymod.widget.MaxHeightNestedScrollView
     android:id="@+id/gamepad_module_config_scroll"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -10,26 +21,27 @@
     android:fadeScrollbars="true"
     android:overScrollMode="ifContentScrolls"
     android:clipToPadding="false"
-    android:paddingHorizontal="@dimen/spacing_medium"
-    android:paddingTop="@dimen/spacing_medium"
-    android:paddingBottom="@dimen/spacing_small"
-    android:background="?attr/colorSurface">
+    android:background="@android:color/transparent">
 
     <LinearLayout
         android:id="@+id/gamepad_module_config_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="@dimen/spacing_large"
-        android:clipToPadding="false">
+        android:paddingBottom="@dimen/spacing_small">
 
         <TextView
             android:id="@+id/stick_config_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_title"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
-            android:layout_marginBottom="16dp" />
+            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
 
         <TextView
             android:id="@+id/stick_config_dpad_hint"
@@ -402,36 +414,51 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
-        <com.google.android.material.divider.MaterialDivider
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/spacing_medium" />
-
-        <!-- Buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end"
-            android:layout_marginTop="@dimen/spacing_small">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/stick_reset_btn"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_config_reset"
-                android:textAllCaps="false"
-                android:layout_marginEnd="@dimen/spacing_small" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/stick_done_btn"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_config_done"
-                android:textAllCaps="false" />
-        </LinearLayout>
-
     </LinearLayout>
 </com.openterface.keymod.widget.MaxHeightNestedScrollView>
+
+    <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small" />
+
+    <!-- Pinned footer: always visible below scroll -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="@dimen/spacing_small">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_remove_btn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_menu_remove"
+            android:textAllCaps="false"
+            android:visibility="gone"
+            android:layout_marginEnd="@dimen/spacing_small"
+            app:strokeColor="?attr/colorError"
+            app:strokeWidth="1dp"
+            android:textColor="?attr/colorError" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_reset_btn"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_reset"
+            android:textAllCaps="false"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_done_btn"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_done"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+</LinearLayout>
