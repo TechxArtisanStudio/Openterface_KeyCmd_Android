@@ -27,6 +27,9 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     public interface Listener {
         void onActivatePreset(@NonNull String id);
 
+        /** Save preset JSON to a user-chosen path (Storage Access Framework). */
+        void onSavePreset(@NonNull String id);
+
         void onSharePreset(@NonNull String id);
 
         void onOverflow(@NonNull String id, @NonNull View anchor);
@@ -133,6 +136,11 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
                 listener.onActivatePreset(row.id);
             }
         });
+        h.save.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onSavePreset(row.id);
+            }
+        });
         h.share.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onSharePreset(row.id);
@@ -153,6 +161,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     static final class VH extends RecyclerView.ViewHolder {
         final AppCompatImageView check;
         final TextView title;
+        final AppCompatImageButton save;
         final AppCompatImageButton share;
         final AppCompatImageButton overflow;
 
@@ -160,6 +169,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             super(itemView);
             check = itemView.findViewById(R.id.preset_row_check);
             title = itemView.findViewById(R.id.preset_row_title);
+            save = itemView.findViewById(R.id.preset_row_save);
             share = itemView.findViewById(R.id.preset_row_share);
             overflow = itemView.findViewById(R.id.preset_row_overflow);
         }

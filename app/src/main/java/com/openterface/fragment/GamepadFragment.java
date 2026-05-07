@@ -15,6 +15,8 @@ import android.util.TypedValue;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -249,6 +251,10 @@ public class GamepadFragment extends Fragment {
 
     private GamepadLayoutPresetRepository presetRepository;
     private ActivityResultLauncher<String[]> importPresetLauncher;
+    /** Preset id whose JSON is written when {@link #savePresetCreateDocumentLauncher} completes. */
+    @Nullable
+    private String pendingSavePresetIdForDocument;
+    private ActivityResultLauncher<String> savePresetCreateDocumentLauncher;
 
     @Nullable
     private MaterialButton activePresetChipButton;
@@ -281,6 +287,36 @@ public class GamepadFragment extends Fragment {
                     } else {
                         Toast.makeText(requireContext(),
                                 getString(R.string.gamepad_presets_import_fail, err),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+        savePresetCreateDocumentLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/json"),
+                uri -> {
+                    String presetId = pendingSavePresetIdForDocument;
+                    pendingSavePresetIdForDocument = null;
+                    if (uri == null || presetId == null || !isAdded()) {
+                        return;
+                    }
+                    String json = buildPresetExportJson(presetId);
+                    if (json == null) {
+                        Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT)
+                                .show();
+                        return;
+                    }
+                    try (OutputStream os = requireContext().getContentResolver().openOutputStream(uri)) {
+                        if (os == null) {
+                            Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT)
+                                    .show();
+                            return;
+                        }
+                        os.write(json.getBytes(StandardCharsets.UTF_8));
+                        Toast.makeText(requireContext(), R.string.gamepad_presets_save_file_ok, Toast.LENGTH_SHORT)
+                                .show();
+                    } catch (IOException e) {
+                        Log.e(TAG, "save preset to document", e);
+                        Toast.makeText(requireContext(),
+                                getString(R.string.gamepad_presets_save_file_fail, e.getMessage()),
                                 Toast.LENGTH_LONG).show();
                     }
                 });
@@ -1210,6 +1246,15 @@ public class GamepadFragment extends Fragment {
             }
 
             @Override
+            public void onSavePreset(@NonNull String id) {
+                pendingSavePresetIdForDocument = id;
+                String displayName = presetDisplayName(id);
+                String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
+                String base = !safe.isEmpty() ? safe : id;
+                savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
+            }
+
+            @Override
             public void onSharePreset(@NonNull String id) {
                 dialog.dismiss();
                 sharePresetJson(id);
@@ -1416,10 +1461,13 @@ public class GamepadFragment extends Fragment {
                 .show();
     }
 
-    /** Share JSON for the given preset (active = live prefs snapshot; others = file on disk). */
-    private void sharePresetJson(@Nullable String presetId) {
+    /**
+     * Builds the same JSON as share/export (embedded background when needed). Active preset uses a live snapshot.
+     */
+    @Nullable
+    private String buildPresetExportJson(@Nullable String presetId) {
         if (presetRepository == null) {
-            return;
+            return null;
         }
         String id = presetId != null ? presetId : presetRepository.getActivePresetId();
         String active = presetRepository.getActivePresetId();
@@ -1437,8 +1485,7 @@ public class GamepadFragment extends Fragment {
             } else {
                 doc = presetRepository.loadDocument(id != null ? id : GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
                 if (doc == null) {
-                    Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT).show();
-                    return;
+                    return null;
                 }
                 if (doc.meta == null) {
                     doc.meta = new GamepadLayoutPresetDocument.Meta();
@@ -1453,7 +1500,29 @@ public class GamepadFragment extends Fragment {
                 bgBasename = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
             }
             GamepadLayoutPresetBackgroundCodec.injectEmbedForExport(requireContext(), shareDoc, bgBasename);
-            String json = GamepadLayoutPresetDocument.toJsonPretty(shareDoc);
+            return GamepadLayoutPresetDocument.toJsonPretty(shareDoc);
+        } catch (Exception e) {
+            Log.e(TAG, "build preset export json", e);
+            return null;
+        }
+    }
+
+    /** Share JSON for the given preset (active = live prefs snapshot; others = file on disk). */
+    private void sharePresetJson(@Nullable String presetId) {
+        if (presetRepository == null) {
+            return;
+        }
+        String id = presetId != null ? presetId : presetRepository.getActivePresetId();
+        String displayName = presetDisplayName(id);
+        if (displayName.isEmpty()) {
+            displayName = id != null ? id : "layout";
+        }
+        try {
+            String json = buildPresetExportJson(id);
+            if (json == null) {
+                Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
             File shareDir = new File(requireContext().getCacheDir(), "share");
             if (!shareDir.isDirectory() && !shareDir.mkdirs()) {
                 Toast.makeText(requireContext(), R.string.gamepad_presets_export_failed, Toast.LENGTH_SHORT).show();
