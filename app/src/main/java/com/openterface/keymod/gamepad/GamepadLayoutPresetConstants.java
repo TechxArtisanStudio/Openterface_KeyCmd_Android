@@ -84,7 +84,7 @@ public final class GamepadLayoutPresetConstants {
     public static final String BUILT_IN_PRESET_CLASSIC_XBOX = "preset_classic_xbox";
     public static final String BUILT_IN_PRESET_CLASSIC_PLAYSTATION = "preset_classic_playstation";
     public static final String BUILT_IN_PRESET_CLASSIC_NINTENDO = "preset_classic_nintendo";
-    /** Minimal NES-style layout (D-pad + A/B + select/start). */
+    /** Minimal compact classic layout (D-pad + A/B + select/start). */
     public static final String BUILT_IN_PRESET_CLASSIC_NES = "preset_classic_nes";
 
     /**
@@ -94,6 +94,17 @@ public final class GamepadLayoutPresetConstants {
         return DEFAULT_PRESET_ID.equals(presetId)
                 || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId)
                 || BUILT_IN_PRESET_CLASSIC_XBOX.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_PLAYSTATION.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_NINTENDO.equals(presetId)
+                || BUILT_IN_PRESET_CLASSIC_NES.equals(presetId);
+    }
+
+    /**
+     * Built-in classic layouts that can be restored to factory geometry with
+     * {@link GamepadLayoutPresetRepository#resetClassicPresetToFactory(String)}.
+     */
+    public static boolean isClassicBuiltInPresetId(@Nullable String presetId) {
+        return BUILT_IN_PRESET_CLASSIC_XBOX.equals(presetId)
                 || BUILT_IN_PRESET_CLASSIC_PLAYSTATION.equals(presetId)
                 || BUILT_IN_PRESET_CLASSIC_NINTENDO.equals(presetId)
                 || BUILT_IN_PRESET_CLASSIC_NES.equals(presetId);
@@ -159,9 +170,9 @@ public final class GamepadLayoutPresetConstants {
                 Math.min(BUTTON_CORNER_RADIUS_NORM_MAX, v));
     }
 
-    /** Default stick positions: PlayStation-style horizontal pair. */
+    /** Default stick positions: parallel horizontal pair (symmetrical template). */
     public static final String STICK_LAYOUT_SYMMETRICAL = "symmetrical";
-    /** Xbox / Switch Pro–style offset sticks. */
+    /** Asymmetric offset stick pair (offset template; see {@link com.openterface.keymod.GamepadLayout} anchors). */
     public static final String STICK_LAYOUT_OFFSET = "offset";
     /** Alias of {@link #STICK_LAYOUT_SYMMETRICAL} (parallel sticks). */
     public static final String STICK_LAYOUT_PARALLEL = "parallel";

@@ -39,9 +39,13 @@ public class GamepadLayoutPresetRepository {
     private static final String KEY_STORE_VERSION = "store_version";
     /**
      * v1: initial preset store; v2: built-in two-button sibling preset + optional active switch from legacy toggle;
-     * v3: built-in classic layout presets (Xbox / PlayStation / Nintendo dual-stick + NES).
+     * v3: built-in classic layout presets (dual-stick variants + compact);
+     * v4: one-time relabel of classic built-in preset display names (index + JSON meta) to neutral strings;
+     * v5: relabel classics to {@code Classic_1} … {@code Classic_4} from string resources;
+     * v6: rewrite {@code preset_classic_xbox} (Classic_1) from factory geometry while preserving index
+     * {@code displayName} when set.
      */
-    private static final int STORE_VERSION = 3;
+    private static final int STORE_VERSION = 6;
 
     private final Context context;
     private final SharedPreferences storePrefs;
@@ -65,6 +69,7 @@ public class GamepadLayoutPresetRepository {
         if (version >= STORE_VERSION) {
             return;
         }
+        final int previousStoreVersion = version;
         List<PresetRef> index = readIndex();
         if (index.isEmpty()) {
             try {
@@ -91,11 +96,123 @@ public class GamepadLayoutPresetRepository {
                 }
             }
             ensureBuiltInClassicPresets();
+            if (previousStoreVersion < 5) {
+                relabelClassicBuiltinPresetsFromResources();
+            }
+            if (previousStoreVersion < 6) {
+                rewriteClassic1BuiltInFromFactory();
+            }
             applyActivePresetToDefaultPrefs();
         } catch (Exception e) {
             Log.e(TAG, "Built-in two-button preset migration", e);
         }
         storePrefs.edit().putInt(KEY_STORE_VERSION, STORE_VERSION).apply();
+    }
+
+    /**
+     * Rewrites {@code meta.displayName} and index labels for the four classic built-ins from current
+     * string resources (when upgrading preset store past v3; runs again for v5 {@code Classic_n} labels).
+     * Custom renames of those presets are overwritten on each such upgrade step.
+     */
+    private void relabelClassicBuiltinPresetsFromResources() {
+        try {
+            relabelClassicBuiltinDocument(
+                    GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX,
+                    R.string.gamepad_preset_builtin_classic_xbox);
+            relabelClassicBuiltinDocument(
+                    GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION,
+                    R.string.gamepad_preset_builtin_classic_playstation);
+            relabelClassicBuiltinDocument(
+                    GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO,
+                    R.string.gamepad_preset_builtin_classic_nintendo);
+            relabelClassicBuiltinDocument(
+                    GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES,
+                    R.string.gamepad_preset_builtin_classic_nes);
+        } catch (IOException e) {
+            Log.e(TAG, "Classic preset relabel", e);
+        }
+        List<PresetRef> index = readIndex();
+        boolean changed = false;
+        for (PresetRef r : index) {
+            if (r == null || r.id == null) {
+                continue;
+            }
+            String label = null;
+            if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX.equals(r.id)) {
+                label = context.getString(R.string.gamepad_preset_builtin_classic_xbox);
+            } else if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION.equals(r.id)) {
+                label = context.getString(R.string.gamepad_preset_builtin_classic_playstation);
+            } else if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO.equals(r.id)) {
+                label = context.getString(R.string.gamepad_preset_builtin_classic_nintendo);
+            } else if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES.equals(r.id)) {
+                label = context.getString(R.string.gamepad_preset_builtin_classic_nes);
+            }
+            if (label != null && !label.equals(r.displayName)) {
+                r.displayName = label;
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveIndex(index);
+        }
+    }
+
+    private void relabelClassicBuiltinDocument(String presetId, int displayNameRes) throws IOException {
+        GamepadLayoutPresetDocument doc = loadDocument(presetId);
+        if (doc == null) {
+            return;
+        }
+        if (doc.meta == null) {
+            doc.meta = new GamepadLayoutPresetDocument.Meta();
+        }
+        doc.meta.displayName = context.getString(displayNameRes);
+        writeFile(presetId, doc);
+    }
+
+    /**
+     * Refreshes on-disk Classic_1 ({@link GamepadLayoutPresetConstants#BUILT_IN_PRESET_CLASSIC_XBOX}) from
+     * {@link GamepadBuiltInLayoutPresets#buildClassicXbox} so upgrades pick up the dual-zone layout; keeps the
+     * index row's {@link PresetRef#displayName} when non-empty (falls back to existing JSON meta).
+     */
+    private void rewriteClassic1BuiltInFromFactory() {
+        String id = GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX;
+        if (!presetFile(id).isFile()) {
+            return;
+        }
+        try {
+            String keepName = null;
+            for (PresetRef r : readIndex()) {
+                if (r == null || r.id == null) {
+                    continue;
+                }
+                if (id.equals(r.id) && r.displayName != null) {
+                    String t = r.displayName.trim();
+                    if (!t.isEmpty()) {
+                        keepName = t;
+                    }
+                    break;
+                }
+            }
+            if (keepName == null) {
+                GamepadLayoutPresetDocument cur = loadDocument(id);
+                if (cur != null && cur.meta != null && cur.meta.displayName != null) {
+                    String t = cur.meta.displayName.trim();
+                    if (!t.isEmpty()) {
+                        keepName = t;
+                    }
+                }
+            }
+            GamepadLayoutPresetDocument d = GamepadBuiltInLayoutPresets.buildClassicXbox(context);
+            if (keepName != null) {
+                if (d.meta == null) {
+                    d.meta = new GamepadLayoutPresetDocument.Meta();
+                }
+                d.meta.displayName = keepName;
+            }
+            writeFile(id, d);
+        } catch (IOException e) {
+            Log.e(TAG, "Classic_1 built-in geometry refresh (store v6)", e);
+        }
     }
 
     /**
@@ -399,6 +516,63 @@ public class GamepadLayoutPresetRepository {
         } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
+    }
+
+    /**
+     * Overwrites a built-in classic preset file with the canonical factory document and re-applies it
+     * when it is the active preset. Preserves the index/display {@link PresetRef#displayName} in JSON meta when set.
+     *
+     * @return null on success, or error message.
+     */
+    @Nullable
+    public String resetClassicPresetToFactory(@Nullable String id) {
+        if (id == null || id.isEmpty()) {
+            return context.getString(R.string.gamepad_preset_reset_invalid);
+        }
+        if (!GamepadLayoutPresetConstants.isClassicBuiltInPresetId(id)) {
+            return context.getString(R.string.gamepad_preset_reset_invalid);
+        }
+        try {
+            GamepadLayoutPresetDocument doc = buildClassicPresetDocumentForContext(id);
+            List<PresetRef> idx = readIndex();
+            for (PresetRef r : idx) {
+                if (r != null && id.equals(r.id) && r.displayName != null && !r.displayName.trim().isEmpty()) {
+                    if (doc.meta == null) {
+                        doc.meta = new GamepadLayoutPresetDocument.Meta();
+                    }
+                    doc.meta.displayName = r.displayName.trim();
+                    break;
+                }
+            }
+            writeFile(id, doc);
+            if (id.equals(getActivePresetId())) {
+                GamepadLayoutPresetDocument applied = loadDocument(id);
+                if (applied != null) {
+                    GamepadLayoutPresetApplier.apply(context, applied);
+                }
+            }
+            return null;
+        } catch (IOException e) {
+            return e.getMessage() != null ? e.getMessage() : "Reset failed";
+        } catch (IllegalArgumentException e) {
+            return e.getMessage() != null ? e.getMessage() : "Reset failed";
+        }
+    }
+
+    private GamepadLayoutPresetDocument buildClassicPresetDocumentForContext(String id) {
+        if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX.equals(id)) {
+            return GamepadBuiltInLayoutPresets.buildClassicXbox(context);
+        }
+        if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION.equals(id)) {
+            return GamepadBuiltInLayoutPresets.buildClassicPlayStation(context);
+        }
+        if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO.equals(id)) {
+            return GamepadBuiltInLayoutPresets.buildClassicNintendo(context);
+        }
+        if (GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES.equals(id)) {
+            return GamepadBuiltInLayoutPresets.buildClassicNes(context);
+        }
+        throw new IllegalArgumentException("Unknown classic preset: " + id);
     }
 
     /**

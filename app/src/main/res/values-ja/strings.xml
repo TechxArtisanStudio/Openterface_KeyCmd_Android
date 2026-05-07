@@ -424,6 +424,7 @@ TechxArtisan により</string>
     <string name="gamepad_toast_image_load_failed">画像を読み込めませんでした</string>
     <string name="gamepad_customize_cd">レイアウトをカスタマイズ</string>
     <string name="gamepad_cycle_next_preset_cd">次のレイアウト</string>
+    <string name="gamepad_toolbar_reset_active_preset_cd">レイアウトを初期設定に戻す</string>
     <string name="gamepad_edit_session_title">モジュールを移動</string>
     <string name="gamepad_presets_sheet_title">レイアウト</string>
     <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
@@ -431,8 +432,14 @@ TechxArtisan により</string>
     <string name="gamepad_preset_row_share_cd">レイアウトを共有</string>
     <string name="gamepad_preset_menu_rename">名前を変更</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>
+    <string name="gamepad_preset_menu_reset_layout">レイアウトを初期状態に戻す</string>
     <string name="gamepad_preset_menu_share">JSON を共有…</string>
     <string name="gamepad_preset_menu_delete">削除</string>
+    <string name="gamepad_preset_reset_title">レイアウトをリセットしますか？</string>
+    <string name="gamepad_preset_reset_message">この組み込みクラシックレイアウトを既定のモジュール・位置・キーに戻します。表示名は保持されます。</string>
+    <string name="gamepad_preset_reset_confirm">リセット</string>
+    <string name="gamepad_preset_reset_done">レイアウトをリセットしました</string>
+    <string name="gamepad_preset_reset_invalid">このレイアウトはここではリセットできません。</string>
     <string name="gamepad_preset_rename_title">レイアウトの名前を変更</string>
     <string name="gamepad_preset_rename_hint">表示名</string>
     <string name="gamepad_preset_new_title">新しいレイアウト</string>
@@ -818,13 +825,13 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[クラシック（Xbox風）
+    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[Classic_1
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[クラシック（PlayStation風）
+    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[Classic_2
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[クラシック（任天堂風）
+    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[Classic_3
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[クラシック（NES風）
+    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[Classic_4
     ]]></string>
     <string name="gamepad_stick_config_dpad_hint"><![CDATA[モードを選びます：Dパッド（分割／十字）、方向キー、相対ポインタ。分割Dパッドのときは下のスライダーで間隔と位置を調整します。
     ]]></string>

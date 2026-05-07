@@ -34,7 +34,15 @@ public class GamepadBuiltInLayoutPresetsTest {
         assertEquals(GamepadLayoutPresetConstants.STICK_LAYOUT_OFFSET, doc.layout.stickLayoutTemplate);
         assertEquals(GamepadLayoutPresetConstants.FACE_TEMPLATE_XBOX_ABXY, doc.layout.faceButtonTemplate);
         assertNotNull(find(doc, "stick_right"));
+        assertEquals(GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY,
+                find(doc, "stick_left").type);
+        GamepadLayoutPresetDocument.GamepadModule aux = find(doc, "stick_left_2");
+        assertNotNull(aux);
+        assertEquals(GamepadLayoutPresetConstants.MODULE_TYPE_DPAD, aux.type);
+        assertEquals(GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS, aux.dpadVariant);
         assertNotNull(find(doc, "shoulder_l"));
+        assertNotNull(doc.meta);
+        assertEquals("Classic_1", doc.meta.displayName);
     }
 
     @Test

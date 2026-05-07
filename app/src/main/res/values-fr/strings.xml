@@ -729,6 +729,8 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_cycle_next_preset_cd"><![CDATA[Next layout
     ]]></string>
+    <string name="gamepad_toolbar_reset_active_preset_cd"><![CDATA[Rétablir la disposition d’usine
+    ]]></string>
     <string name="gamepad_dpad_split_gap_summary"><![CDATA[Size of the empty diamond in the middle (wider = more space between the inner corners of the four pads). Pad thickness stays fixed.
     ]]></string>
     <string name="gamepad_dpad_split_gap_tight"><![CDATA[Tight
@@ -797,7 +799,19 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_preset_menu_duplicate"><![CDATA[Duplicate
     ]]></string>
+    <string name="gamepad_preset_menu_reset_layout"><![CDATA[Rétablir la disposition par défaut
+    ]]></string>
     <string name="gamepad_preset_menu_rename"><![CDATA[Rename
+    ]]></string>
+    <string name="gamepad_preset_reset_title"><![CDATA[Rétablir la disposition ?
+    ]]></string>
+    <string name="gamepad_preset_reset_message"><![CDATA[Rétablit cette disposition classique intégrée (modules, positions et touches par défaut). Le nom affiché est conservé.
+    ]]></string>
+    <string name="gamepad_preset_reset_confirm"><![CDATA[Rétablir
+    ]]></string>
+    <string name="gamepad_preset_reset_done"><![CDATA[Disposition rétablie
+    ]]></string>
+    <string name="gamepad_preset_reset_invalid"><![CDATA[Cette disposition ne peut pas être rétablie ici.
     ]]></string>
     <string name="gamepad_preset_menu_share"><![CDATA[Share JSON…
     ]]></string>
@@ -841,13 +855,13 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[Classique (style Xbox)
+    <string name="gamepad_preset_builtin_classic_xbox"><![CDATA[Classic_1
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[Classique (style PlayStation)
+    <string name="gamepad_preset_builtin_classic_playstation"><![CDATA[Classic_2
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[Classique (style Nintendo)
+    <string name="gamepad_preset_builtin_classic_nintendo"><![CDATA[Classic_3
     ]]></string>
-    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[Classique (style NES)
+    <string name="gamepad_preset_builtin_classic_nes"><![CDATA[Classic_4
     ]]></string>
     <string name="gamepad_stick_config_dpad_hint"><![CDATA[Choisissez le mode : D-pad (segmenté ou croix), touches directionnelles ou pointeur relatif. Les curseurs ci-dessous règlent l’écart et la position du groupe en mode segmenté.
     ]]></string>

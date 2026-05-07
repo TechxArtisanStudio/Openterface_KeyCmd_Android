@@ -15,7 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Canonical built-in layout documents (classic Xbox / PlayStation / Nintendo dual-stick, NES minimal).
+ * Canonical built-in layout documents: dual-stick offset/parallel/diamond-face variants and one compact layout.
  */
 public final class GamepadBuiltInLayoutPresets {
 
@@ -29,7 +29,7 @@ public final class GamepadBuiltInLayoutPresets {
                 GamepadLayoutPresetConstants.FACE_TEMPLATE_XBOX_ABXY);
         Map<String, GamepadConfigManager.ComponentPosition> pos =
                 new GamepadConfigManager(context).loadLayoutPositions(GamepadLayout.XBOX);
-        addDualStickModules(doc, pos, "lb", "rb", "lt", "rt");
+        addClassic1DualZoneLayout(doc, pos);
         GamepadLayoutPresetDocument.validateOrThrow(doc);
         return doc;
     }
@@ -161,6 +161,86 @@ public final class GamepadBuiltInLayoutPresets {
         doc.layout.faceButtonTemplate = faceTemplate;
         doc.modules = new ArrayList<>();
         return doc;
+    }
+
+    /**
+     * Classic_1: offset dual-stick reference — left {@code STICK_KEY} ring upper-left, cross D-pad
+     * lower-left ({@code stick_left_2}), face cluster upper-right, right stick lower-right, bumpers/triggers top.
+     */
+    private static void addClassic1DualZoneLayout(
+            GamepadLayoutPresetDocument doc,
+            Map<String, GamepadConfigManager.ComponentPosition> pos) {
+        List<GamepadLayoutPresetDocument.GamepadModule> modules = doc.modules;
+
+        GamepadLayoutPresetDocument.GamepadModule dpadAux = new GamepadLayoutPresetDocument.GamepadModule();
+        dpadAux.id = GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc);
+        dpadAux.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        dpadAux.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        dpadAux.zIndex = 2;
+        dpadAux.scale = 0.92f;
+        putAnchor(dpadAux, pos, "dpad", 0.20f, 0.72f);
+        dpadAux.anchorX = 0.20f;
+        dpadAux.anchorY = 0.72f;
+        dpadAux.stickUpKey = 26;
+        dpadAux.stickLeftKey = 4;
+        dpadAux.stickDownKey = 22;
+        dpadAux.stickRightKey = 7;
+        modules.add(dpadAux);
+
+        GamepadLayoutPresetDocument.GamepadModule stickLeft = new GamepadLayoutPresetDocument.GamepadModule();
+        stickLeft.id = "stick_left";
+        stickLeft.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        stickLeft.zIndex = 3;
+        stickLeft.scale = 1.05f;
+        putAnchor(stickLeft, pos, "stick_left", 0.24f, 0.48f);
+        stickLeft.anchorX = 0.24f;
+        stickLeft.anchorY = 0.48f;
+        stickLeft.stickUpKey = 26;
+        stickLeft.stickLeftKey = 4;
+        stickLeft.stickDownKey = 22;
+        stickLeft.stickRightKey = 7;
+        modules.add(stickLeft);
+
+        GamepadLayoutPresetDocument.GamepadModule stickRight = new GamepadLayoutPresetDocument.GamepadModule();
+        stickRight.id = "stick_right";
+        stickRight.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE;
+        stickRight.zIndex = 4;
+        stickRight.scale = 1.0f;
+        putAnchor(stickRight, pos, "stick_right", 0.76f, 0.70f);
+        stickRight.anchorX = 0.76f;
+        stickRight.anchorY = 0.70f;
+        stickRight.stickUpKey = 12;
+        stickRight.stickLeftKey = 13;
+        stickRight.stickDownKey = 14;
+        stickRight.stickRightKey = 15;
+        modules.add(stickRight);
+
+        GamepadFaceButtonTemplates.applyTemplate(doc, doc.layout.faceButtonTemplate);
+        setFaceButtonZLayer(doc, 10);
+
+        addShoulder(modules, pos, GamepadLayoutPresetConstants.SHOULDER_L_ID, "lb",
+                58, "L1", 20);
+        addShoulder(modules, pos, GamepadLayoutPresetConstants.SHOULDER_R_ID, "rb",
+                59, "R1", 21);
+        addTrigger(modules, pos, GamepadLayoutPresetConstants.TRIGGER_L_ID, "lt",
+                60, "L2", 22);
+        addTrigger(modules, pos, GamepadLayoutPresetConstants.TRIGGER_R_ID, "rt",
+                61, "R2", 23);
+    }
+
+    private static void setFaceButtonZLayer(GamepadLayoutPresetDocument doc, int baseZ) {
+        if (doc.modules == null) {
+            return;
+        }
+        String[] ids = {"button_y", "button_x", "button_b", "button_a"};
+        for (int i = 0; i < ids.length; i++) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m != null && ids[i].equals(m.id)) {
+                    m.zIndex = baseZ + i;
+                    break;
+                }
+            }
+        }
     }
 
     private static void addDualStickModules(

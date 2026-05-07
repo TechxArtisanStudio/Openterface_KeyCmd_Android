@@ -49,6 +49,51 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
+    public void resetClassicPresetToFactory_rejectsNonClassic() {
+        assertNotNull(repo.resetClassicPresetToFactory(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID));
+        assertNotNull(repo.resetClassicPresetToFactory(null));
+    }
+
+    @Test
+    public void resetClassicPresetToFactory_restoresCanonicalLayout() throws Exception {
+        String id = GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES;
+        repo.writeFile(id, minimalButtonAOnlyPresetStub());
+        GamepadLayoutPresetDocument broken = repo.loadDocument(id);
+        assertNotNull(broken);
+        assertEquals(1, broken.modules.size());
+        assertNull(repo.resetClassicPresetToFactory(id));
+        GamepadLayoutPresetDocument after = repo.loadDocument(id);
+        assertNotNull(after);
+        assertTrue(after.modules.size() >= 4);
+    }
+
+    /** Intentionally not a NES layout; used to verify reset overwrites invalid on-disk JSON. */
+    private static GamepadLayoutPresetDocument minimalButtonAOnlyPresetStub() {
+        GamepadLayoutPresetDocument doc = new GamepadLayoutPresetDocument();
+        doc.format = GamepadLayoutPresetConstants.DOCUMENT_FORMAT;
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
+        doc.meta = new GamepadLayoutPresetDocument.Meta();
+        doc.meta.id = GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES;
+        doc.meta.displayName = "stub";
+        doc.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        doc.layout.mouseSensitivity = 1.0f;
+        doc.layout.showTwoButtons = false;
+        ArrayList<GamepadLayoutPresetDocument.GamepadModule> modules = new ArrayList<>();
+        GamepadLayoutPresetDocument.GamepadModule btnA = new GamepadLayoutPresetDocument.GamepadModule();
+        btnA.id = "button_a";
+        btnA.type = GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON;
+        btnA.zIndex = 0;
+        btnA.scale = 1.0f;
+        btnA.anchorX = 0.5f;
+        btnA.anchorY = 0.5f;
+        btnA.hidKey = 40;
+        btnA.modifierMask = 0;
+        modules.add(btnA);
+        doc.modules = modules;
+        return doc;
+    }
+
+    @Test
     public void ensureMigratedFromLegacy_includesClassicPresetIds() {
         boolean seenXbox = false;
         boolean seenNes = false;
