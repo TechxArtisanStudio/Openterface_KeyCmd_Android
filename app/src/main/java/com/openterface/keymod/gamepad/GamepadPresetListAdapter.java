@@ -1,16 +1,20 @@
 package com.openterface.keymod.gamepad;
 
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatImageButton;
-import androidx.appcompat.widget.AppCompatImageView;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.color.MaterialColors;
 
 import com.openterface.keymod.R;
 
@@ -137,26 +141,23 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     public void onBindViewHolder(@NonNull VH h, int position) {
         Row row = rows.get(position);
         h.title.setText(row.title);
+
+        int primary = MaterialColors.getColor(h.title, com.google.android.material.R.attr.colorPrimary);
+        int onSurface = MaterialColors.getColor(h.title, com.google.android.material.R.attr.colorOnSurface);
+        if (row.selected) {
+            h.title.setTypeface(null, Typeface.BOLD);
+            h.title.setTextColor(primary);
+        } else {
+            h.title.setTypeface(null, Typeface.NORMAL);
+            h.title.setTextColor(onSurface);
+        }
+
         h.check.setVisibility(row.selected ? View.VISIBLE : View.INVISIBLE);
-        h.itemView.setOnClickListener(v -> {
+        h.overflow.setIconTint(ColorStateList.valueOf(onSurface));
+
+        h.row.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onActivatePreset(row.id);
-            }
-        });
-        h.save.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onSavePreset(row.id);
-            }
-        });
-        h.delete.setVisibility(row.deletable ? View.VISIBLE : View.GONE);
-        h.delete.setOnClickListener(v -> {
-            if (listener != null && row.deletable) {
-                listener.onDeletePreset(row.id);
-            }
-        });
-        h.share.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onSharePreset(row.id);
             }
         });
         h.overflow.setOnClickListener(v -> {
@@ -172,20 +173,16 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     }
 
     static final class VH extends RecyclerView.ViewHolder {
-        final AppCompatImageView check;
+        final LinearLayout row;
         final TextView title;
-        final AppCompatImageButton save;
-        final AppCompatImageButton delete;
-        final AppCompatImageButton share;
-        final AppCompatImageButton overflow;
+        final View check;
+        final MaterialButton overflow;
 
         VH(@NonNull View itemView) {
             super(itemView);
+            row = itemView.findViewById(R.id.preset_row_root);
             check = itemView.findViewById(R.id.preset_row_check);
             title = itemView.findViewById(R.id.preset_row_title);
-            save = itemView.findViewById(R.id.preset_row_save);
-            delete = itemView.findViewById(R.id.preset_row_delete);
-            share = itemView.findViewById(R.id.preset_row_share);
             overflow = itemView.findViewById(R.id.preset_row_overflow);
         }
     }

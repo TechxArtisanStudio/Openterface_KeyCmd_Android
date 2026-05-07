@@ -47,4 +47,5 @@
     <!-- Touchpad surface: slightly above background_light (#FF1C1C1E) for affordance -->
     <color name="touchpad_background">#FF2C2C2E</color>
     <color name="touchpad_help_overlay_panel">#EE2C2C2E</color>
+
 </resources>

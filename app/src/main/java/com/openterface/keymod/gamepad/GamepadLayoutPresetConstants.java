@@ -74,6 +74,18 @@ public final class GamepadLayoutPresetConstants {
     public static final String DEFAULT_PRESET_ID = "preset_default";
 
     /**
+     * Shipped JSON lives under assets/bundled_gamepad/; imported preset ids are {@code preset_pack_<slug>}
+     * derived from the filename (see {@link GamepadLayoutPresetRepository#syncBundledPresetsFromAssets()}).
+     * To ship a preset again after the user removed it, use a new filename so the slug changes.
+     */
+    public static final String BUNDLED_GAMEPAD_ASSET_DIR = "bundled_gamepad";
+    public static final String BUNDLED_PRESET_ID_PREFIX = "preset_pack_";
+
+    public static boolean isBundledPackPresetId(@Nullable String presetId) {
+        return presetId != null && presetId.startsWith(BUNDLED_PRESET_ID_PREFIX);
+    }
+
+    /**
      * Presets that must not be removed from the store (user may still rename for display).
      */
     public static boolean isPresetDeletionProtected(@Nullable String presetId) {
@@ -138,6 +150,58 @@ public final class GamepadLayoutPresetConstants {
         }
         return Math.max(BUTTON_CORNER_RADIUS_NORM_MIN,
                 Math.min(BUTTON_CORNER_RADIUS_NORM_MAX, v));
+    }
+
+    /**
+     * BUTTON only: horizontal half-extent as a multiple of the base face radius ({@code 1} = same as legacy circle).
+     * Wider values elongate into a bar or stadium along X before rotation.
+     */
+    public static final float BUTTON_WIDTH_RATIO_MIN = 0.25f;
+    public static final float BUTTON_WIDTH_RATIO_MAX = 3.5f;
+    public static final float BUTTON_WIDTH_RATIO_DEFAULT = 1f;
+
+    /**
+     * BUTTON only: vertical half-extent as a multiple of the base face radius ({@code 1} = legacy circle).
+     */
+    public static final float BUTTON_HEIGHT_RATIO_MIN = 0.25f;
+    public static final float BUTTON_HEIGHT_RATIO_MAX = 3.5f;
+    public static final float BUTTON_HEIGHT_RATIO_DEFAULT = 1f;
+
+    /** BUTTON only: clockwise rotation in degrees (hit box uses the axis-aligned bounding box of the rotated shape). */
+    public static final float BUTTON_ROTATION_DEG_ABS_MAX = 180f;
+
+    /** @return clamped width ratio; null or non-finite → {@link #BUTTON_WIDTH_RATIO_DEFAULT}. */
+    public static float clampButtonWidthRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return BUTTON_WIDTH_RATIO_DEFAULT;
+        }
+        return Math.max(BUTTON_WIDTH_RATIO_MIN, Math.min(BUTTON_WIDTH_RATIO_MAX, v));
+    }
+
+    /** @return clamped height ratio; null or non-finite → {@link #BUTTON_HEIGHT_RATIO_DEFAULT}. */
+    public static float clampButtonHeightRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return BUTTON_HEIGHT_RATIO_DEFAULT;
+        }
+        return Math.max(BUTTON_HEIGHT_RATIO_MIN, Math.min(BUTTON_HEIGHT_RATIO_MAX, v));
+    }
+
+    /**
+     * @return rotation in degrees normalized to {@code (-180, 180]}; null or non-finite → {@code 0}.
+     */
+    public static float clampButtonRotationDeg(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return 0f;
+        }
+        float a = (float) Math.IEEEremainder(v, 360.0);
+        if (a > 180f) {
+            a -= 360f;
+        }
+        if (a <= -180f) {
+            a += 360f;
+        }
+        return Math.max(-BUTTON_ROTATION_DEG_ABS_MAX,
+                Math.min(BUTTON_ROTATION_DEG_ABS_MAX, a));
     }
 
     /** Default stick positions: parallel horizontal pair (symmetrical template). */

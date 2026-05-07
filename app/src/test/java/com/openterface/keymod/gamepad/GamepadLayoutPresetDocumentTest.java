@@ -1,6 +1,7 @@
 package com.openterface.keymod.gamepad;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -70,6 +71,48 @@ public class GamepadLayoutPresetDocumentTest {
         GamepadLayoutDocEditor.addLeftDpadStickModule(doc);
         assertNotNull(findModule(doc, "stick_left"));
         assertNotNull(findModule(doc, "stick_left_2"));
+    }
+
+    @Test
+    public void duplicateModuleCreatesNumericButtonId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        assertTrue(GamepadLayoutDocEditor.canDuplicateModule("button_a", doc));
+        String nid = GamepadLayoutDocEditor.duplicateModule(doc, "button_a");
+        assertNotNull(nid);
+        assertEquals("button_2", nid);
+        assertEquals(40, (int) findModule(doc, "button_2").hidKey);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void duplicateModuleRefusesStickRight() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        assertFalse(GamepadLayoutDocEditor.canDuplicateModule("stick_right", doc));
+        assertNull(GamepadLayoutDocEditor.duplicateModule(doc, "stick_right"));
+    }
+
+    @Test
+    public void duplicateLeftStickCreatesAuxId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        assertTrue(GamepadLayoutDocEditor.canDuplicateModule("stick_left", doc));
+        String nid = GamepadLayoutDocEditor.duplicateModule(doc, "stick_left");
+        assertEquals("stick_left_2", nid);
+        GamepadLayoutPresetDocument.GamepadModule copy = findModule(doc, "stick_left_2");
+        assertNotNull(copy);
+        assertEquals(GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY, copy.type);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void duplicateModuleRefusesDpadSplitPrimary() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule sl = findModule(doc, "stick_left");
+        sl.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        sl.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_SPLIT;
+        sl.dpadSplitGapRatio = 0.25f;
+        sl.dpadSplitOuterReachRatio = 0.9f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertFalse(GamepadLayoutDocEditor.canDuplicateModule("stick_left", doc));
     }
 
     @Test
@@ -675,6 +718,29 @@ public class GamepadLayoutPresetDocumentTest {
     public void validateRejectsButtonCornerRadiusNormOnStick() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.modules.get(0).buttonCornerRadiusNorm = 0.5f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateAcceptsButtonShapeRatiosAndRotation() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(1).buttonWidthRatio = 2f;
+        doc.modules.get(1).buttonHeightRatio = 0.6f;
+        doc.modules.get(1).buttonRotationDeg = 45f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsButtonWidthRatioOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(1).buttonWidthRatio = 10f;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsButtonShapeRatioOnStick() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).buttonWidthRatio = 1.5f;
         GamepadLayoutPresetDocument.validateOrThrow(doc);
     }
 

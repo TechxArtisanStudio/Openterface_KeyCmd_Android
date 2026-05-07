@@ -545,6 +545,16 @@
             android:layout_marginEnd="@dimen/spacing_small" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_duplicate_btn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_duplicate"
+            android:textAllCaps="false"
+            android:visibility="gone"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/stick_done_btn"
             style="@style/Widget.Material3.Button"
             android:layout_width="wrap_content"

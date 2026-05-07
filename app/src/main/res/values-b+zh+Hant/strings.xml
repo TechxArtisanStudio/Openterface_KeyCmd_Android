@@ -577,6 +577,7 @@
     <string name="gamepad_toast_image_load_failed">圖片載入失敗</string>
     <string name="gamepad_customize_cd">自訂版面</string>
     <string name="gamepad_cycle_next_preset_cd">下一個版面</string>
+    <string name="gamepad_toolbar_reset_active_preset_cd">將版面還原為出廠預設</string>
     <string name="gamepad_edit_session_title">移動模組</string>
     <string name="gamepad_presets_sheet_title">版面列表</string>
     <string name="gamepad_presets_new_layout">從目前版面新增</string>
@@ -586,8 +587,15 @@
     <string name="gamepad_preset_row_share_cd">分享版面</string>
     <string name="gamepad_preset_menu_rename">重新命名</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>
+    <string name="gamepad_preset_menu_save_file">儲存到檔案…</string>
     <string name="gamepad_preset_menu_share">分享 JSON…</string>
     <string name="gamepad_preset_menu_delete">刪除</string>
+    <string name="gamepad_preset_menu_reset_layout">將版面還原為預設</string>
+    <string name="gamepad_preset_reset_title">重設版面？</string>
+    <string name="gamepad_preset_reset_message">將此內建經典版面還原為預設模組、位置與按鍵。預設的顯示名稱會保留。</string>
+    <string name="gamepad_preset_reset_confirm">重設</string>
+    <string name="gamepad_preset_reset_done">已重設版面</string>
+    <string name="gamepad_preset_reset_invalid">無法在此重設該版面。</string>
     <string name="gamepad_preset_rename_title">重新命名版面</string>
     <string name="gamepad_preset_rename_hint">顯示名稱</string>
     <string name="gamepad_preset_new_title">新增版面</string>
@@ -755,6 +763,11 @@
     <string name="gamepad_button_config_size">按鍵大小</string>
     <string name="gamepad_button_config_title_placeholder">按鍵</string>
     <string name="gamepad_button_corner_round">圓形</string>
+    <string name="gamepad_button_shape_title">形狀與傾斜</string>
+    <string name="gamepad_button_shape_summary">橫向、縱向拉伸面鍵（1.0 為圓形占位）；再設定傾斜角。上方「形狀」滑條仍控制方角、膠囊或橢圓程度。</string>
+    <string name="gamepad_button_shape_width">寬度</string>
+    <string name="gamepad_button_shape_height">高度</string>
+    <string name="gamepad_button_rotation">傾斜（度）</string>
     <string name="gamepad_button_corner_square">方形</string>
     <string name="gamepad_button_corner_summary">方形爲尖角；圓形爲經典圓形麪鍵。</string>
     <string name="gamepad_button_corner_title">按鍵形狀</string>
@@ -765,6 +778,9 @@
     <string name="gamepad_component_mouse_button">滑鼠按鍵</string>
     <string name="gamepad_component_right_stick">右搖桿</string>
     <string name="gamepad_component_touchpad">觸控闆</string>
+    <string name="gamepad_config_duplicate">複製</string>
+    <string name="gamepad_config_duplicate_done">已複製模組</string>
+    <string name="gamepad_config_duplicate_failed">無法複製模組</string>
     <string name="gamepad_config_done">完成</string>
     <string name="gamepad_config_reset">重置</string>
     <string name="gamepad_config_slider_faster">更快</string>
@@ -807,6 +823,10 @@
     <string name="gamepad_presets_import_ok">預設已導入</string>
     <string name="gamepad_presets_share_chooser">分享手柄預設</string>
     <string name="gamepad_presets_title">手柄預設</string>
+    <string name="gamepad_preset_builtin_classic_xbox">Classic_1</string>
+    <string name="gamepad_preset_builtin_classic_playstation">Classic_2</string>
+    <string name="gamepad_preset_builtin_classic_nintendo">Classic_3</string>
+    <string name="gamepad_preset_builtin_classic_nes">Classic_4</string>
     <string name="gamepad_stick_config_dpad_hint">選擇模式：十字鍵（分離或一體）、方向鍵或相對指標。分離十字鍵時，下方滑塊用於調整間隙與整體位置。</string>
     <string name="gamepad_stick_config_section_mode">模式</string>
     <string name="gamepad_stick_config_size_label">搖桿大小</string>

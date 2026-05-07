@@ -130,6 +130,18 @@ public class GamepadLayoutPresetDocument {
          * {@link GamepadLayoutPresetConstants#clampButtonCornerRadiusNorm}.
          */
         @Nullable public Float buttonCornerRadiusNorm;
+        /**
+         * BUTTON: horizontal half-size relative to the layout face radius ({@code null} = {@code 1});
+         * see {@link GamepadLayoutPresetConstants#clampButtonWidthRatio}.
+         */
+        @Nullable public Float buttonWidthRatio;
+        /**
+         * BUTTON: vertical half-size relative to the layout face radius ({@code null} = {@code 1});
+         * see {@link GamepadLayoutPresetConstants#clampButtonHeightRatio}.
+         */
+        @Nullable public Float buttonHeightRatio;
+        /** BUTTON: clockwise rotation in degrees ({@code null} = {@code 0}); see {@link GamepadLayoutPresetConstants#clampButtonRotationDeg}. */
+        @Nullable public Float buttonRotationDeg;
         /** MOUSE_BUTTON: 1 = left, 2 = middle, 3 = right (same convention as {@code sendMouseClick}). */
         @Nullable public Integer mouseButton;
         /** TRIGGER: reserved for future analog simulation; false = digital edge on {@code hidKey}. */
@@ -298,6 +310,10 @@ public class GamepadLayoutPresetDocument {
                     && !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
                 throw new IllegalArgumentException("Module " + m.id + ": buttonCornerRadiusNorm only on BUTTON");
             }
+            if ((m.buttonWidthRatio != null || m.buttonHeightRatio != null || m.buttonRotationDeg != null)
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": button shape ratios/rotation only on BUTTON");
+            }
             if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                     || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)
                     || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
@@ -420,6 +436,31 @@ public class GamepadLayoutPresetDocument {
                     if (c < GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_MIN
                             || c > GamepadLayoutPresetConstants.BUTTON_CORNER_RADIUS_NORM_MAX) {
                         throw new IllegalArgumentException("Module " + m.id + ": buttonCornerRadiusNorm out of range");
+                    }
+                }
+                if (m.buttonWidthRatio != null) {
+                    if (m.buttonWidthRatio.isNaN() || m.buttonWidthRatio.isInfinite()) {
+                        throw new IllegalArgumentException("Module " + m.id + ": invalid buttonWidthRatio");
+                    }
+                    float w = m.buttonWidthRatio;
+                    if (w < GamepadLayoutPresetConstants.BUTTON_WIDTH_RATIO_MIN
+                            || w > GamepadLayoutPresetConstants.BUTTON_WIDTH_RATIO_MAX) {
+                        throw new IllegalArgumentException("Module " + m.id + ": buttonWidthRatio out of range");
+                    }
+                }
+                if (m.buttonHeightRatio != null) {
+                    if (m.buttonHeightRatio.isNaN() || m.buttonHeightRatio.isInfinite()) {
+                        throw new IllegalArgumentException("Module " + m.id + ": invalid buttonHeightRatio");
+                    }
+                    float hh = m.buttonHeightRatio;
+                    if (hh < GamepadLayoutPresetConstants.BUTTON_HEIGHT_RATIO_MIN
+                            || hh > GamepadLayoutPresetConstants.BUTTON_HEIGHT_RATIO_MAX) {
+                        throw new IllegalArgumentException("Module " + m.id + ": buttonHeightRatio out of range");
+                    }
+                }
+                if (m.buttonRotationDeg != null) {
+                    if (m.buttonRotationDeg.isNaN() || m.buttonRotationDeg.isInfinite()) {
+                        throw new IllegalArgumentException("Module " + m.id + ": invalid buttonRotationDeg");
                     }
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {

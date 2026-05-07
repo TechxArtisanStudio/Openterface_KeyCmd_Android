@@ -32,6 +32,17 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
+    public void bundledSlugFromAssetFilename_stripsJsonAndLowercases() {
+        assertEquals("classic_1", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("Classic_1.json"));
+        assertEquals("classic_1", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("CLASSIC_1.JSON"));
+    }
+
+    @Test
+    public void bundledSlugFromAssetFilename_mapsNonAlphanumericToUnderscore() {
+        assertEquals("my_preset", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("My Preset.json"));
+    }
+
+    @Test
     public void deletePreset_rejectsBuiltInDefault() {
         assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID));
     }

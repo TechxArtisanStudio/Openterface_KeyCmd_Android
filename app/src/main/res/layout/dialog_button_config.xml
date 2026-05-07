@@ -183,6 +183,111 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_medium" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_button_shape_title"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_button_shape_summary"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_button_shape_width"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:layout_marginEnd="8dp" />
+
+                <SeekBar
+                    android:id="@+id/button_width_ratio_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="350"
+                    android:min="25"
+                    android:progress="100"
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_button_shape_height"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:layout_marginEnd="8dp" />
+
+                <SeekBar
+                    android:id="@+id/button_height_ratio_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="350"
+                    android:min="25"
+                    android:progress="100"
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_button_rotation"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:layout_marginEnd="8dp" />
+
+                <SeekBar
+                    android:id="@+id/button_rotation_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="360"
+                    android:progress="180"
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
+
+                <TextView
+                    android:id="@+id/button_rotation_deg_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="40dp"
+                    android:gravity="end"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
     </LinearLayout>
 </com.openterface.keymod.widget.MaxHeightNestedScrollView>
 
@@ -218,6 +323,16 @@
             android:layout_height="wrap_content"
             android:text="@string/gamepad_config_reset"
             android:textAllCaps="false"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_duplicate"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_duplicate"
+            android:textAllCaps="false"
+            android:visibility="gone"
             android:layout_marginEnd="@dimen/spacing_small" />
 
         <com.google.android.material.button.MaterialButton

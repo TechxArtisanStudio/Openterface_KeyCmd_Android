@@ -158,6 +158,15 @@ public class GamepadView extends View {
     private float bgStartOffsetY = 0f;
     private float bgStartScale = 1.0f;
 
+    /**
+     * Insets reserved around the dynamic layout coordinate system so modules are not drawn under
+     * system bars (e.g. gesture nav in landscape). Anchors stay 0–1 within the inner content rect.
+     */
+    private int contentInsetLeft;
+    private int contentInsetTop;
+    private int contentInsetRight;
+    private int contentInsetBottom;
+
     /** Schema-driven SIMPLE layout (v2); when non-null, replaces fixed drawSimpleLayout. */
     private GamepadLayoutPresetDocument layoutDocument;
     private KeyCodeProvider keyCodeProvider;
@@ -495,11 +504,27 @@ public class GamepadView extends View {
      */
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
                                      boolean pressed, String text, float cornerRadiusNorm, int accentForRing) {
+        drawRetroFaceButtonOriented(canvas, cx, cy, r, r, style, pressed, text, cornerRadiusNorm, accentForRing, 0f);
+    }
+
+    /**
+     * Rounded rect / stadium face in local axes (halfW × halfH), then rotated by {@code rotationDeg} clockwise.
+     */
+    private void drawRetroFaceButtonOriented(Canvas canvas, float cx, float cy, float halfW, float halfH,
+                                           FaceStyle style, boolean pressed, @Nullable String text,
+                                           float cornerRadiusNorm, int accentForRing, float rotationDeg) {
         float cn = Math.max(0f, Math.min(1f, cornerRadiusNorm));
-        float cornerPx = cn * r;
-        RectF bounds = new RectF(cx - r, cy - r, cx + r, cy + r);
-        float shadowDy = r * 0.05f;
-        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(2.5f, r * 0.10f), BlurMaskFilter.Blur.NORMAL));
+        float ref = Math.max(1f, Math.min(halfW, halfH));
+        float cornerPx = cn * ref;
+        float shadowDy = ref * 0.05f;
+        float strokeRef = Math.max(1.25f, ref * 0.045f);
+
+        canvas.save();
+        canvas.translate(cx, cy);
+        canvas.rotate(rotationDeg);
+
+        RectF bounds = new RectF(-halfW, -halfH, halfW, halfH);
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(Math.max(2.5f, ref * 0.10f), BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x40000000);
         RectF shadow = new RectF(bounds);
         shadow.offset(0, shadowDy * 0.45f);
@@ -508,41 +533,52 @@ public class GamepadView extends View {
 
         int body = pressed ? darkenArgb(style.body, 0.88f) : style.body;
         int rimTone = darkenArgb(style.rim, pressed ? 0.92f : 1f);
-        Shader lg = new LinearGradient(cx, cy - r, cx, cy + r, lightenArgb(body, 0.08f), rimTone, Shader.TileMode.CLAMP);
+        Shader lg = new LinearGradient(0, -halfH, 0, halfH, lightenArgb(body, 0.08f), rimTone, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(lg);
         canvas.drawRoundRect(bounds, cornerPx, cornerPx, retroBodyPaint);
         retroBodyPaint.setShader(null);
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
-        retroRingPaint.setStrokeWidth(Math.max(1.25f, r * 0.045f));
+        retroRingPaint.setStrokeWidth(strokeRef);
         retroRingPaint.setColor(applyAlphaInt(0xFF000000, pressed ? 55 : 40));
         canvas.drawRoundRect(bounds, cornerPx, cornerPx, retroRingPaint);
         if (pressed) {
-            float grow = r * 0.015f;
+            float grow = ref * 0.015f;
             RectF ring = new RectF(bounds);
             ring.inset(-grow, -grow);
             float maxCorner = Math.min(ring.width(), ring.height()) * 0.5f;
             float c2 = Math.min(cornerPx + grow, maxCorner);
-            retroRingPaint.setStrokeWidth(Math.max(1.5f, r * 0.038f));
+            retroRingPaint.setStrokeWidth(Math.max(1.5f, ref * 0.038f));
             retroRingPaint.setColor(applyAlphaInt(accentForRing, 210));
             canvas.drawRoundRect(ring, c2, c2, retroRingPaint);
         }
 
-        float glossInset = r * 0.10f;
+        float glossInset = ref * 0.10f;
         RectF glossBounds = new RectF(bounds);
         glossBounds.inset(glossInset, glossInset);
-        float innerHalf = Math.max(1f, r - glossInset);
+        float innerHalf = Math.max(1f, Math.min(halfW, halfH) - glossInset);
         float glossCorner = cn * innerHalf;
         float glossR = innerHalf * 0.98f;
-        Shader rg = new RadialGradient(cx - r * 0.22f, cy - r * 0.26f, glossR,
+        Shader rg = new RadialGradient(-halfW * 0.22f, -halfH * 0.26f, glossR,
                 0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
         retroGlossPaint.setShader(rg);
         canvas.drawRoundRect(glossBounds, glossCorner, glossCorner, retroGlossPaint);
         retroGlossPaint.setShader(null);
 
         if (text != null && !text.isEmpty()) {
-            drawFittedFaceCapLabel(canvas, cx, cy, r, style, text);
+            drawFittedFaceCapLabelLocal(canvas, halfW, halfH, style, text);
         }
+        canvas.restore();
+    }
+
+    /** Axis-aligned bounds for hit-testing a rotated rounded-rect button centered at ({@code cx}, {@code cy}). */
+    private static RectF orientedButtonHitAabb(float cx, float cy, float halfW, float halfH, float rotationDeg) {
+        double rad = Math.toRadians(rotationDeg);
+        double c = Math.abs(Math.cos(rad));
+        double s = Math.abs(Math.sin(rad));
+        float ax = (float) (halfW * c + halfH * s);
+        float ay = (float) (halfW * s + halfH * c);
+        return new RectF(cx - ax, cy - ay, cx + ax, cy + ay);
     }
 
     private static String normalizeCapText(@Nullable String raw) {
@@ -573,15 +609,18 @@ public class GamepadView extends View {
         return cpCount > 0 && special * 2 >= cpCount;
     }
 
-    private void drawFittedFaceCapLabel(Canvas canvas, float cx, float cy, float r, FaceStyle style, String raw) {
+    /** Cap label centered at local origin (0,0), drawn inside caller's rotated/translated canvas. */
+    private void drawFittedFaceCapLabelLocal(Canvas canvas, float halfW, float halfH, FaceStyle style, String raw) {
         String text = normalizeCapText(raw);
         if (text.isEmpty()) {
             return;
         }
-        float maxW = r * 2f * 0.76f;
-        float maxH = r * 1.38f;
-        float maxSp = r * 0.55f;
-        float minSp = r * 0.18f;
+        float labelR = Math.min(halfW, halfH);
+        float maxW = Math.min(halfW * 2f * 0.76f, labelR * 2f * 0.76f);
+        maxW = Math.max(32f, maxW);
+        float maxH = Math.min(halfH * 1.25f, labelR * 1.38f);
+        float maxSp = labelR * 0.55f;
+        float minSp = labelR * 0.18f;
         boolean useBold = !mostlyEmojiOrSymbol(text);
         TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         tp.setColor(style.label);
@@ -599,9 +638,9 @@ public class GamepadView extends View {
                     .setIncludePad(false)
                     .build();
             if (sl.getHeight() <= maxH || iter == 29) {
-                float dy = cy - sl.getHeight() / 2f + r * 0.05f;
+                float dy = -sl.getHeight() / 2f + labelR * 0.05f;
                 canvas.save();
-                canvas.translate(cx - maxW / 2f, dy);
+                canvas.translate(-maxW / 2f, dy);
                 sl.draw(canvas);
                 canvas.restore();
                 tp.clearShadowLayer();
@@ -749,6 +788,61 @@ public class GamepadView extends View {
         return dpadPressedSet.contains(id) || id.equals(pressedComponentId);
     }
 
+    /**
+     * Keeps preset modules inside the safe area; set from window system bar insets (see GamepadFragment).
+     */
+    public void setGamepadContentInsets(int left, int top, int right, int bottom) {
+        left = Math.max(0, left);
+        top = Math.max(0, top);
+        right = Math.max(0, right);
+        bottom = Math.max(0, bottom);
+        if (contentInsetLeft == left && contentInsetTop == top
+                && contentInsetRight == right && contentInsetBottom == bottom) {
+            return;
+        }
+        contentInsetLeft = left;
+        contentInsetTop = top;
+        contentInsetRight = right;
+        contentInsetBottom = bottom;
+        invalidate();
+    }
+
+    private int contentWidthPx() {
+        return Math.max(1, getWidth() - contentInsetLeft - contentInsetRight);
+    }
+
+    private int contentHeightPx() {
+        return Math.max(1, getHeight() - contentInsetTop - contentInsetBottom);
+    }
+
+    /** Map view X/Y to normalized anchors for the dynamic layout content rect. */
+    private void viewXYToDynamicNorm(float viewX, float viewY, float[] out) {
+        out[0] = (viewX - contentInsetLeft) / contentWidthPx();
+        out[1] = (viewY - contentInsetTop) / contentHeightPx();
+    }
+
+    private void applyDraggedAnchorsFromViewXY(float moveX, float moveY) {
+        if (useDynamicLayout()) {
+            float[] n = new float[2];
+            viewXYToDynamicNorm(moveX, moveY, n);
+            applyDraggedComponentAnchors(n[0], n[1]);
+        } else {
+            applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+        }
+    }
+
+    /** Dynamic draw uses a translated canvas; bump stored hit rects into view coordinates. */
+    private void offsetDynamicBoundsIntoViewCoordinates() {
+        if (contentInsetLeft == 0 && contentInsetTop == 0) {
+            return;
+        }
+        float dx = contentInsetLeft;
+        float dy = contentInsetTop;
+        for (RectF r : componentBounds.values()) {
+            r.offset(dx, dy);
+        }
+    }
+
     public void setLayoutDocument(@androidx.annotation.Nullable GamepadLayoutPresetDocument doc) {
         this.layoutDocument = doc;
         dynamicHitTestOrder.clear();
@@ -781,12 +875,16 @@ public class GamepadView extends View {
 
     private void drawDynamicSimpleLayout(Canvas canvas) {
         dynamicHitTestOrder.clear();
-        int w = getWidth();
-        int h = getHeight();
         if (layoutDocument == null || layoutDocument.modules == null) {
             return;
         }
-        GamepadDynamicLayoutRegistry.drawSortedModules(this, canvas, layoutDocument, w, h);
+        int cw = contentWidthPx();
+        int ch = contentHeightPx();
+        canvas.save();
+        canvas.translate(contentInsetLeft, contentInsetTop);
+        GamepadDynamicLayoutRegistry.drawSortedModules(this, canvas, layoutDocument, cw, ch);
+        canvas.restore();
+        offsetDynamicBoundsIntoViewCoordinates();
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -869,7 +967,7 @@ public class GamepadView extends View {
             hint = null;
         }
         float corner = GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm);
-        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, cap, hint, corner, m.moduleAccentArgb);
+        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, cap, hint, corner, m.moduleAccentArgb, m);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -897,7 +995,7 @@ public class GamepadView extends View {
         if (sameCapAndHint(cap, hint)) {
             hint = null;
         }
-        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, cap, hint, 1f, m.moduleAccentArgb);
+        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, cap, hint, 1f, m.moduleAccentArgb, null);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -927,19 +1025,29 @@ public class GamepadView extends View {
 
     private void drawButtonForModule(Canvas canvas, float cx, float cy, float radiusPx, String id,
                                      FaceStyle style, @Nullable String capOnButton, @Nullable String mappingHint,
-                                     float cornerRadiusNorm, @Nullable Integer moduleAccentArgb) {
-        RectF bounds = new RectF(cx - radiusPx, cy - radiusPx, cx + radiusPx, cy + radiusPx);
-        componentBounds.put(id, bounds);
+                                     float cornerRadiusNorm, @Nullable Integer moduleAccentArgb,
+                                     @Nullable GamepadLayoutPresetDocument.GamepadModule buttonShape) {
+        float rw = GamepadLayoutPresetConstants.clampButtonWidthRatio(
+                buttonShape != null ? buttonShape.buttonWidthRatio : null);
+        float rh = GamepadLayoutPresetConstants.clampButtonHeightRatio(
+                buttonShape != null ? buttonShape.buttonHeightRatio : null);
+        float rotDeg = GamepadLayoutPresetConstants.clampButtonRotationDeg(
+                buttonShape != null ? buttonShape.buttonRotationDeg : null);
+        float halfW = radiusPx * rw;
+        float halfH = radiusPx * rh;
+        componentBounds.put(id, orientedButtonHitAabb(cx, cy, halfW, halfH, rotDeg));
         int ringAccent = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
         FaceStyle fs = style;
         if (moduleAccentArgb != null) {
             fs = faceStyleFromModuleAccent(ringAccent);
         }
-        drawRetroFaceButton(canvas, cx, cy, radiusPx, fs, id.equals(pressedComponentId), capOnButton,
-                cornerRadiusNorm, ringAccent);
+        drawRetroFaceButtonOriented(canvas, cx, cy, halfW, halfH, fs, id.equals(pressedComponentId), capOnButton,
+                cornerRadiusNorm, ringAccent, rotDeg);
         float density = getResources().getDisplayMetrics().density;
         if (mappingHint != null && !mappingHint.isEmpty()) {
-            drawMappingHintCallout(canvas, cx, cy + radiusPx + 6f * density, mappingHint);
+            RectF hb = componentBounds.get(id);
+            float hintY = hb != null ? hb.bottom + 6f * density : cy + halfH + 6f * density;
+            drawMappingHintCallout(canvas, cx, hintY, mappingHint);
         }
     }
 
@@ -1026,15 +1134,24 @@ public class GamepadView extends View {
         RectF bounds = new RectF(cx - scaledRadius, cy - scaledRadius, cx + scaledRadius, cy + scaledRadius);
         componentBounds.put(boundsId, bounds);
 
-        float hx = cx;
-        float hy = cy - scaledRadius * 0.14f;
+        final boolean rightStickFlatUi = "stick_right".equals(boundsId) || "stick_r".equals(boundsId);
+
         int outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
         int outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
-        Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
-                outerHi, outerLo, Shader.TileMode.CLAMP);
-        retroBodyPaint.setShader(outer);
-        canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
-        retroBodyPaint.setShader(null);
+        if (rightStickFlatUi) {
+            int outerFlat = ColorUtils.blendARGB(outerHi, outerLo, 0.5f);
+            retroBodyPaint.setShader(null);
+            retroBodyPaint.setColor(outerFlat);
+            canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
+        } else {
+            float hx = cx;
+            float hy = cy - scaledRadius * 0.14f;
+            Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
+                    outerHi, outerLo, Shader.TileMode.CLAMP);
+            retroBodyPaint.setShader(outer);
+            canvas.drawCircle(cx, cy, scaledRadius, retroBodyPaint);
+            retroBodyPaint.setShader(null);
+        }
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.75f * density));
@@ -1060,34 +1177,43 @@ public class GamepadView extends View {
         boolean centerTap = hubKeyCenter || (boundsId.equals(activeStickId)
                 && Math.abs(ox) < scaledRadius * 0.15f && Math.abs(oy) < scaledRadius * 0.15f);
         float capR = scaledRadius * 0.54f;
-        Shader capShader;
-        if (centerTap) {
-            capShader = new RadialGradient(innerCx - capR * 0.2f, innerCy - capR * 0.22f, capR * 1.05f,
-                    applyAlphaInt(accentPrimary, 185),
-                    darkenArgb(accentPrimary, 0.58f),
-                    Shader.TileMode.CLAMP);
+        int capHi = ColorUtils.blendARGB(Color.parseColor("#8E8C98"), accentPrimary, 0.24f);
+        int capLo = ColorUtils.blendARGB(Color.parseColor("#4F4D56"), accentPrimary, 0.30f);
+        if (rightStickFlatUi) {
+            int capFlat = centerTap
+                    ? ColorUtils.blendARGB(applyAlphaInt(accentPrimary, 190), darkenArgb(accentPrimary, 0.55f), 0.52f)
+                    : ColorUtils.blendARGB(capHi, capLo, 0.52f);
+            retroBodyPaint.setShader(null);
+            retroBodyPaint.setColor(capFlat);
+            canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
         } else {
-            int capHi = ColorUtils.blendARGB(Color.parseColor("#8E8C98"), accentPrimary, 0.24f);
-            int capLo = ColorUtils.blendARGB(Color.parseColor("#4F4D56"), accentPrimary, 0.30f);
-            capShader = new RadialGradient(innerCx - capR * 0.22f, innerCy - capR * 0.24f, capR * 1.02f,
-                    capHi, capLo, Shader.TileMode.CLAMP);
-        }
-        retroBodyPaint.setShader(capShader);
-        canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
-        retroBodyPaint.setShader(null);
+            Shader capShader;
+            if (centerTap) {
+                capShader = new RadialGradient(innerCx - capR * 0.2f, innerCy - capR * 0.22f, capR * 1.05f,
+                        applyAlphaInt(accentPrimary, 185),
+                        darkenArgb(accentPrimary, 0.58f),
+                        Shader.TileMode.CLAMP);
+            } else {
+                capShader = new RadialGradient(innerCx - capR * 0.22f, innerCy - capR * 0.24f, capR * 1.02f,
+                        capHi, capLo, Shader.TileMode.CLAMP);
+            }
+            retroBodyPaint.setShader(capShader);
+            canvas.drawCircle(innerCx, innerCy, capR, retroBodyPaint);
+            retroBodyPaint.setShader(null);
 
-        Shader spec = new RadialGradient(innerCx - capR * 0.28f, innerCy - capR * 0.28f, capR * 0.42f,
-                0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
-        retroGlossPaint.setShader(spec);
-        canvas.drawCircle(innerCx, innerCy, capR * 0.93f, retroGlossPaint);
-        retroGlossPaint.setShader(null);
+            Shader spec = new RadialGradient(innerCx - capR * 0.28f, innerCy - capR * 0.28f, capR * 0.42f,
+                    0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+            retroGlossPaint.setShader(spec);
+            canvas.drawCircle(innerCx, innerCy, capR * 0.93f, retroGlossPaint);
+            retroGlossPaint.setShader(null);
+        }
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1f, 1.1f * density));
         retroRingPaint.setColor(applyAlphaInt(0xFF000000, 45));
         canvas.drawCircle(innerCx, innerCy, capR * 0.99f, retroRingPaint);
 
-        GamepadStickVisualArt.drawCapOverlay(canvas, stickVisualVariant, innerCx, innerCy, capR,
+        GamepadStickVisualArt.drawCapOverlay(canvas, rightStickFlatUi ? null : stickVisualVariant, innerCx, innerCy, capR,
                 accentPrimary, retroBodyPaint, retroRingPaint, retroGlossPaint);
 
         if (upLabel != null) {
@@ -1111,7 +1237,7 @@ public class GamepadView extends View {
                 canvas.drawText(rightLabel, cx + lr * 0.74f, cy + lr * 0.12f, dirPaint);
                 dirPaint.clearShadowLayer();
             }
-        } else {
+        } else if (!rightStickFlatUi) {
             Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             labelPaint.setColor(Color.parseColor("#F2F1F5"));
             labelPaint.setTextSize(baseRadius * moduleScale * 0.48f);
@@ -1628,7 +1754,7 @@ public class GamepadView extends View {
                     }
                     float moveX = event.getX(dragIdx);
                     float moveY = event.getY(dragIdx);
-                    applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+                    applyDraggedAnchorsFromViewXY(moveX, moveY);
                     invalidate();
                 }
                 return true;
@@ -2005,7 +2131,7 @@ public class GamepadView extends View {
                         }
                         float moveX = event.getX(dragIdx);
                         float moveY = event.getY(dragIdx);
-                        applyDraggedComponentAnchors(moveX / getWidth(), moveY / getHeight());
+                        applyDraggedAnchorsFromViewXY(moveX, moveY);
                         invalidate();
                     }
                 }

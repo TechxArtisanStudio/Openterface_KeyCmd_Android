@@ -42,6 +42,27 @@ tasks.withType(Test).configureEach { task ->
     }
 }
 
+def bundledGamepadAssetsRoot = layout.buildDirectory.dir('generated/bundled-gamepad-assets')
+
+tasks.register('syncBundledGamepadPresets') {
+    description = 'Copy repo-root gamepad/*.json into generated assets bundled_gamepad/. default.json seeds built-in preset_default (Default); other JSON files become optional pack presets.'
+    outputs.dir(bundledGamepadAssetsRoot)
+    doLast {
+        def outRoot = bundledGamepadAssetsRoot.get().asFile
+        def outDir = new File(outRoot, 'bundled_gamepad')
+        outDir.deleteDir()
+        outDir.mkdirs()
+        def src = rootProject.file('gamepad')
+        if (src.isDirectory()) {
+            copy {
+                from(src)
+                include '**/*.json'
+                into outDir
+            }
+        }
+    }
+}
+
 android {
     namespace 'com.openterface.keymod'
     compileSdk 35
@@ -90,7 +111,15 @@ android {
         }
     }
 
+    sourceSets {
+        main {
+            assets.srcDir(bundledGamepadAssetsRoot)
+        }
+    }
+
 }
+
+tasks.named('preBuild').configure { dependsOn('syncBundledGamepadPresets') }
 
 dependencies {
 

@@ -753,6 +753,7 @@ by TechxArtisan</string>
     <string name="gamepad_customize_cd">Customize layout</string>
     <string name="gamepad_mapping_hints_toggle_cd">Show or hide key mapping text below controls (for example Esc). Names on the button cap are edited in each button’s configuration dialog.</string>
     <string name="gamepad_cycle_next_preset_cd">Next layout</string>
+    <string name="gamepad_toolbar_reset_active_preset_cd">Reset layout to factory default</string>
     <string name="gamepad_edit_session_title">Move modules</string>
     <string name="gamepad_presets_sheet_title">Layouts</string>
     <string name="gamepad_presets_new_layout">New layout from current</string>
@@ -765,8 +766,15 @@ by TechxArtisan</string>
     <string name="gamepad_preset_row_delete_cd">Delete layout</string>
     <string name="gamepad_preset_menu_rename">Rename</string>
     <string name="gamepad_preset_menu_duplicate">Duplicate</string>
+    <string name="gamepad_preset_menu_save_file">Save to file…</string>
     <string name="gamepad_preset_menu_share">Share JSON…</string>
+    <string name="gamepad_preset_menu_reset_layout">Reset layout to default</string>
     <string name="gamepad_preset_menu_delete">Delete</string>
+    <string name="gamepad_preset_reset_title">Reset layout?</string>
+    <string name="gamepad_preset_reset_message">Restore this built-in classic layout to its default modules, positions, and keys. Your display name for this preset is kept.</string>
+    <string name="gamepad_preset_reset_confirm">Reset</string>
+    <string name="gamepad_preset_reset_done">Layout reset</string>
+    <string name="gamepad_preset_reset_invalid">This layout cannot be reset here.</string>
     <string name="gamepad_preset_rename_title">Rename layout</string>
     <string name="gamepad_preset_rename_hint">Display name</string>
     <string name="gamepad_preset_new_title">New layout</string>
@@ -784,6 +792,10 @@ by TechxArtisan</string>
     <string name="gamepad_presets_button">Preset</string>
     <string name="gamepad_preset_cycled_toast">Layout: %1$s</string>
     <string name="gamepad_presets_title">Gamepad presets</string>
+    <string name="gamepad_preset_builtin_classic_xbox">Classic_1</string>
+    <string name="gamepad_preset_builtin_classic_playstation">Classic_2</string>
+    <string name="gamepad_preset_builtin_classic_nintendo">Classic_3</string>
+    <string name="gamepad_preset_builtin_classic_nes">Classic_4</string>
     <string name="gamepad_presets_import">Import from file…</string>
     <string name="gamepad_presets_export_share">Export current (share)…</string>
     <string name="gamepad_presets_activated">Preset applied</string>
@@ -857,6 +869,12 @@ by TechxArtisan</string>
     <string name="gamepad_button_corner_summary">Square uses sharp corners; round matches the classic circular face button.</string>
     <string name="gamepad_button_corner_square">Square</string>
     <string name="gamepad_button_corner_round">Round</string>
+    <string name="gamepad_button_shape_title">Shape and tilt</string>
+    <string name="gamepad_button_shape_summary">Stretch the face horizontally and vertically (1.0 = circle footprint), then set tilt. Corner slider still controls square vs pill vs oval corners.</string>
+    <string name="gamepad_button_shape_width">Width</string>
+    <string name="gamepad_button_shape_height">Height</string>
+    <string name="gamepad_button_rotation">Tilt (°)</string>
+    <string name="gamepad_button_rotation_deg_value">%1$d°</string>
     <string name="gamepad_button_config_title_placeholder">Button</string>
     <string name="gamepad_button_cap_label_hint">Name on button (optional, up to 6 characters or emoji)</string>
     <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
@@ -872,6 +890,9 @@ by TechxArtisan</string>
     <string name="gamepad_stick_pointer_mouse_sensitivity_title">Pointer sensitivity</string>
     <string name="gamepad_stick_pointer_mouse_sensitivity_summary">How fast the cursor moves for the right stick. Used only when the right stick is set to relative pointer (mouse).</string>
     <string name="gamepad_config_reset">Reset</string>
+    <string name="gamepad_config_duplicate">Duplicate</string>
+    <string name="gamepad_config_duplicate_done">Module duplicated</string>
+    <string name="gamepad_config_duplicate_failed">Could not duplicate module</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>
     <string name="gamepad_key_picker_save">Save</string>

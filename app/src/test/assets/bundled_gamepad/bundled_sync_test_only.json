@@ -1,0 +1,149 @@
+{
+  "format": "openterface.gamepad.layout.v1",
+  "layout": {
+    "backgroundOffsetX": 0.0,
+    "backgroundOffsetY": 0.0,
+    "backgroundScale": 1.0,
+    "faceButtonTemplate": "xbox_abxy",
+    "mouseSensitivity": 1.0,
+    "showTwoButtons": false,
+    "stickLayoutTemplate": "offset"
+  },
+  "meta": {
+    "displayName": "BundledSyncTest",
+    "exportedAt": "2026-05-07T18:13:41Z",
+    "id": "preset_test_placeholder",
+    "sourceAppVersion": "0.14"
+  },
+  "modules": [
+    {
+      "anchorX": 0.3048689,
+      "anchorY": 0.73499185,
+      "dpadVariant": "cross",
+      "id": "stick_left_2",
+      "moduleAccentArgb": -8825528,
+      "scale": 1.5,
+      "stickDownKey": 22,
+      "stickLeftKey": 4,
+      "stickRightKey": 7,
+      "stickUpKey": 26,
+      "type": "DPAD",
+      "zIndex": 2
+    },
+    {
+      "anchorX": 0.13146068,
+      "anchorY": 0.4933252,
+      "id": "stick_left",
+      "moduleAccentArgb": -8825528,
+      "scale": 1.05,
+      "stickDownKey": 22,
+      "stickLeftKey": 4,
+      "stickRightKey": 7,
+      "stickUpKey": 26,
+      "type": "STICK_KEY",
+      "zIndex": 3
+    },
+    {
+      "anchorX": 0.64250934,
+      "anchorY": 0.7599919,
+      "id": "stick_right",
+      "moduleAccentArgb": -8825528,
+      "scale": 1.17,
+      "stickDownKey": 14,
+      "stickLeftKey": 13,
+      "stickMouseSensitivity": 1.0,
+      "stickPointerCenterMouseMask": 1,
+      "stickRightKey": 15,
+      "stickUpKey": 12,
+      "type": "STICK_MOUSE",
+      "zIndex": 4
+    },
+    {
+      "anchorX": 0.83020794,
+      "anchorY": 0.38749185,
+      "displayLabel": "Y",
+      "hidKey": 28,
+      "id": "button_y",
+      "modifierMask": 0,
+      "scale": 1.0,
+      "type": "BUTTON",
+      "zIndex": 10
+    },
+    {
+      "anchorX": 0.77031505,
+      "anchorY": 0.5433252,
+      "displayLabel": "X",
+      "hidKey": 27,
+      "id": "button_x",
+      "modifierMask": 0,
+      "scale": 1.0,
+      "type": "BUTTON",
+      "zIndex": 11
+    },
+    {
+      "anchorX": 0.8951311,
+      "anchorY": 0.53749186,
+      "displayLabel": "B",
+      "hidKey": 5,
+      "id": "button_b",
+      "modifierMask": 0,
+      "scale": 1.0,
+      "type": "BUTTON",
+      "zIndex": 12
+    },
+    {
+      "anchorX": 0.83497924,
+      "anchorY": 0.6863298,
+      "displayLabel": "A",
+      "hidKey": 40,
+      "id": "button_a",
+      "modifierMask": 0,
+      "scale": 1.0,
+      "type": "BUTTON",
+      "zIndex": 13
+    },
+    {
+      "anchorX": 0.25243446,
+      "anchorY": 0.2033252,
+      "displayLabel": "L1",
+      "hidKey": 58,
+      "id": "shoulder_l",
+      "scale": 1.0,
+      "type": "SHOULDER",
+      "zIndex": 20
+    },
+    {
+      "anchorX": 0.8985019,
+      "anchorY": 0.2033252,
+      "displayLabel": "R1",
+      "hidKey": 59,
+      "id": "shoulder_r",
+      "scale": 1.0,
+      "type": "SHOULDER",
+      "zIndex": 21
+    },
+    {
+      "anchorX": 0.116479404,
+      "anchorY": 0.2033252,
+      "displayLabel": "L2",
+      "hidKey": 60,
+      "id": "trigger_l",
+      "scale": 1.0,
+      "triggerVariant": "digital",
+      "type": "TRIGGER",
+      "zIndex": 22
+    },
+    {
+      "anchorX": 0.76292133,
+      "anchorY": 0.20499186,
+      "displayLabel": "R2",
+      "hidKey": 61,
+      "id": "trigger_r",
+      "scale": 1.0,
+      "triggerVariant": "digital",
+      "type": "TRIGGER",
+      "zIndex": 23
+    }
+  ],
+  "schemaVersion": 7
+}

@@ -577,6 +577,7 @@
     <string name="gamepad_toast_image_load_failed">图片加载失败</string>
     <string name="gamepad_customize_cd">自定义布局</string>
     <string name="gamepad_cycle_next_preset_cd">下一个布局</string>
+    <string name="gamepad_toolbar_reset_active_preset_cd">将布局恢复为出厂默认</string>
     <string name="gamepad_edit_session_title">移动模块</string>
     <string name="gamepad_presets_sheet_title">布局列表</string>
     <string name="gamepad_presets_new_layout">从当前布局新建</string>
@@ -586,8 +587,15 @@
     <string name="gamepad_preset_row_share_cd">分享布局</string>
     <string name="gamepad_preset_menu_rename">重命名</string>
     <string name="gamepad_preset_menu_duplicate">复制</string>
+    <string name="gamepad_preset_menu_save_file">保存到文件…</string>
     <string name="gamepad_preset_menu_share">分享 JSON…</string>
     <string name="gamepad_preset_menu_delete">删除</string>
+    <string name="gamepad_preset_menu_reset_layout">将布局恢复为默认</string>
+    <string name="gamepad_preset_reset_title">重置布局？</string>
+    <string name="gamepad_preset_reset_message">将此内置经典布局恢复为默认模块、位置与按键。预设的显示名称将保留。</string>
+    <string name="gamepad_preset_reset_confirm">重置</string>
+    <string name="gamepad_preset_reset_done">已重置布局</string>
+    <string name="gamepad_preset_reset_invalid">无法在此处重置该布局。</string>
     <string name="gamepad_preset_rename_title">重命名布局</string>
     <string name="gamepad_preset_rename_hint">显示名称</string>
     <string name="gamepad_preset_new_title">新建布局</string>
@@ -755,6 +763,11 @@
     <string name="gamepad_button_config_size">按键大小</string>
     <string name="gamepad_button_config_title_placeholder">按键</string>
     <string name="gamepad_button_corner_round">圆形</string>
+    <string name="gamepad_button_shape_title">形状与倾斜</string>
+    <string name="gamepad_button_shape_summary">横向、纵向拉伸面键（1.0 为圆形占位）；再设置倾斜角。上方“形状”滑条仍控制方角、胶囊或椭圆程度。</string>
+    <string name="gamepad_button_shape_width">宽度</string>
+    <string name="gamepad_button_shape_height">高度</string>
+    <string name="gamepad_button_rotation">倾斜（度）</string>
     <string name="gamepad_button_corner_square">方形</string>
     <string name="gamepad_button_corner_summary">方形为尖角；圆形为经典圆形面键。</string>
     <string name="gamepad_button_corner_title">按键形状</string>
@@ -765,6 +778,9 @@
     <string name="gamepad_component_mouse_button">鼠标按键</string>
     <string name="gamepad_component_right_stick">右摇杆</string>
     <string name="gamepad_component_touchpad">触控板</string>
+    <string name="gamepad_config_duplicate">复制</string>
+    <string name="gamepad_config_duplicate_done">已复制模块</string>
+    <string name="gamepad_config_duplicate_failed">无法复制模块</string>
     <string name="gamepad_config_done">完成</string>
     <string name="gamepad_config_reset">重置</string>
     <string name="gamepad_config_slider_faster">更快</string>
@@ -807,6 +823,10 @@
     <string name="gamepad_presets_import_ok">预设已导入</string>
     <string name="gamepad_presets_share_chooser">分享手柄预设</string>
     <string name="gamepad_presets_title">手柄预设</string>
+    <string name="gamepad_preset_builtin_classic_xbox">Classic_1</string>
+    <string name="gamepad_preset_builtin_classic_playstation">Classic_2</string>
+    <string name="gamepad_preset_builtin_classic_nintendo">Classic_3</string>
+    <string name="gamepad_preset_builtin_classic_nes">Classic_4</string>
     <string name="gamepad_stick_config_dpad_hint">选择模式：十字键（分离或一体）、方向键或相对指针。分离十字键时，下方滑块用于调节间隙与整体位置。</string>
     <string name="gamepad_stick_config_section_mode">模式</string>
     <string name="gamepad_stick_config_size_label">摇杆大小</string>

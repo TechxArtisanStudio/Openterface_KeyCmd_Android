@@ -7,6 +7,9 @@
         android:id="@+id/gamepad_preset_duplicate"
         android:title="@string/gamepad_preset_menu_duplicate" />
     <item
+        android:id="@+id/gamepad_preset_save_file"
+        android:title="@string/gamepad_preset_menu_save_file" />
+    <item
         android:id="@+id/gamepad_preset_share"
         android:title="@string/gamepad_preset_menu_share" />
     <item

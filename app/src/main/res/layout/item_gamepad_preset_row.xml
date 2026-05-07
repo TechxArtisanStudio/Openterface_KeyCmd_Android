@@ -1,23 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/preset_row_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
     android:gravity="center_vertical"
     android:minHeight="52dp"
     android:orientation="horizontal"
-    android:paddingHorizontal="@dimen/spacing_medium"
+    android:paddingHorizontal="@dimen/spacing_small"
     android:paddingVertical="@dimen/spacing_small">
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/preset_row_check"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:contentDescription="@null"
         android:visibility="invisible"
         app:srcCompat="@drawable/ic_check"
-        app:tint="?attr/colorPrimary" />
+        app:tint="?attr/colorPrimary"
+        tools:visibility="visible" />
 
     <TextView
         android:id="@+id/preset_row_title"
@@ -27,41 +32,22 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+        android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+        android:textColor="?attr/colorOnSurface"
+        tools:text="Classic_1" />
 
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/preset_row_save"
-        style="@style/Widget.Material3.Button.IconButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:contentDescription="@string/gamepad_preset_row_save_cd"
-        app:srcCompat="@drawable/save_24"
-        app:tint="?android:attr/textColorSecondary" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/preset_row_delete"
-        style="@style/Widget.Material3.Button.IconButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:contentDescription="@string/gamepad_preset_row_delete_cd"
-        app:srcCompat="@drawable/delete_24"
-        app:tint="?android:attr/textColorSecondary" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/preset_row_share"
-        style="@style/Widget.Material3.Button.IconButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:contentDescription="@string/gamepad_preset_row_share_cd"
-        app:srcCompat="@drawable/share_24"
-        app:tint="?android:attr/textColorSecondary" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/preset_row_overflow"
         style="@style/Widget.Material3.Button.IconButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:contentDescription="@string/gamepad_preset_row_menu_cd"
-        app:srcCompat="@drawable/ic_menu"
-        app:tint="?android:attr/textColorSecondary" />
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+        app:icon="@drawable/ic_menu"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="?attr/colorOnSurface" />
 </LinearLayout>
