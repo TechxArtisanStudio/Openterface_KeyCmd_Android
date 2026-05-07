@@ -690,10 +690,7 @@ TechxArtisan により</string>
     ]]></string>
     <string name="connection_toast_usb_disconnected"><![CDATA[USB disconnected
     ]]></string>
-    <string name="gamepad_add_arrow_stick"><![CDATA[Arrow stick
-    
-    ]]></string>
-    <string name="gamepad_add_dpad_cross_left"><![CDATA[D-Pad
+    <string name="gamepad_add_dpad_cross_left"><![CDATA[十字キー／スティック（左）
     ]]></string>
     <string name="gamepad_add_extra_button"><![CDATA[Button
     ]]></string>
@@ -701,9 +698,9 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_add_touchpad"><![CDATA[Touchpad
     ]]></string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_summary"><![CDATA[How fast the cursor moves for this stick. Used only when mapping is set to mouse direction (relative pointer).
+    <string name="gamepad_stick_pointer_mouse_sensitivity_summary"><![CDATA[How fast the cursor moves for the right stick. Used only when the right stick is set to relative pointer (mouse).
     ]]></string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_title"><![CDATA[Pointer sensitivity
+    <string name="gamepad_stick_pointer_mouse_sensitivity_title"><![CDATA[Pointer sensitivity
     ]]></string>
     <string name="gamepad_bg_pick_gallery"><![CDATA[Pick from gallery
     ]]></string>
@@ -722,8 +719,6 @@ TechxArtisan により</string>
     <string name="gamepad_button_corner_summary"><![CDATA[Square uses sharp corners; round matches the classic circular face button.
     ]]></string>
     <string name="gamepad_button_corner_title"><![CDATA[Button shape
-    ]]></string>
-    <string name="gamepad_component_arrow_stick"><![CDATA[Arrow stick
     ]]></string>
     <string name="gamepad_component_button_a"><![CDATA[Button A
     ]]></string>
@@ -823,7 +818,9 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_presets_title"><![CDATA[Gamepad presets
     ]]></string>
-    <string name="gamepad_stick_config_dpad_hint"><![CDATA[Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Analog and key ring are here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).
+    <string name="gamepad_stick_config_dpad_hint"><![CDATA[Modes here set what the left slot sends: D-pad shapes, direction keys on a thumb ring, or a relative pointer. D-pad tuning below applies to split layout.
+
+Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Direction keys and pointer modes are configured here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).
     ]]></string>
     <string name="gamepad_stick_config_section_mode"><![CDATA[Mode
     ]]></string>
@@ -837,13 +834,13 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_stick_direction_keys_label"><![CDATA[Direction keys (tap to change)
     ]]></string>
-    <string name="gamepad_stick_mode_analog"><![CDATA[Analog (mouse)
+    <string name="gamepad_stick_mode_analog"><![CDATA[Relative pointer (mouse)
     ]]></string>
     <string name="gamepad_stick_mode_dpad_cross"><![CDATA[D-pad (cross, digital)
     ]]></string>
     <string name="gamepad_stick_mode_dpad_split"><![CDATA[D-pad (split segments)
     ]]></string>
-    <string name="gamepad_stick_mode_key"><![CDATA[Key mapping (virtual stick)
+    <string name="gamepad_stick_mode_key"><![CDATA[Direction keys (virtual stick)
     ]]></string>
     <string name="gamepad_touchpad_height_pct"><![CDATA[Height (%)
     ]]></string>

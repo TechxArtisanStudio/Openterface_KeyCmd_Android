@@ -741,13 +741,12 @@
 
     <!-- Synced missing strings (new features) -->
     <string name="compose_redo_clear">重做清除</string>
-    <string name="gamepad_add_arrow_stick">方嚮搖桿</string>
-    <string name="gamepad_add_dpad_cross_left">十字鍵</string>
+    <string name="gamepad_add_dpad_cross_left">十字鍵／搖桿（左）</string>
     <string name="gamepad_add_extra_button">按鍵</string>
     <string name="gamepad_add_module_title">添加模塊</string>
     <string name="gamepad_add_touchpad">觸控闆</string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_summary">此搖桿在映射爲滑鼠方嚮（相對指針）時的光標移動速度。</string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_title">指針靈敏度</string>
+    <string name="gamepad_stick_pointer_mouse_sensitivity_summary">右搖桿設爲相對指針（滑鼠）時的光標移動速度。</string>
+    <string name="gamepad_stick_pointer_mouse_sensitivity_title">指針靈敏度</string>
     <string name="gamepad_bg_pick_gallery">從相簿選擇</string>
     <string name="gamepad_bg_remove">移除揹景</string>
     <string name="gamepad_button_config_mapped_key">映射按鍵（點按更改）</string>
@@ -757,7 +756,6 @@
     <string name="gamepad_button_corner_square">方形</string>
     <string name="gamepad_button_corner_summary">方形爲尖角；圓形爲經典圓形麪鍵。</string>
     <string name="gamepad_button_corner_title">按鍵形狀</string>
-    <string name="gamepad_component_arrow_stick">方嚮搖桿</string>
     <string name="gamepad_component_button_a">A 鍵</string>
     <string name="gamepad_component_button_b">B 鍵</string>
     <string name="gamepad_component_left_dpad">左側十字鍵</string>
@@ -807,17 +805,17 @@
     <string name="gamepad_presets_import_ok">預設已導入</string>
     <string name="gamepad_presets_share_chooser">分享手柄預設</string>
     <string name="gamepad_presets_title">手柄預設</string>
-    <string name="gamepad_stick_config_dpad_hint">左側槽位：分離段 = 四塊方嚮鍵加中心菱形空隙；十字 = 一體形狀。僅分離間距改變該空隙（鍵帽厚度固定）。與主鍵區的距離會把整塊嚮中心或模塊邊緣移動；若嚮內拉且空隙很寬，可能會先收緊間距。模擬與鍵環也在此。預設 JSON 可包含更多十字鍵樣式（圓盤、樞軸、浮動、clicky 等）。</string>
+    <string name="gamepad_stick_config_dpad_hint">此處模式決定左側槽位發送的內容：十字鍵形狀、拇指環上的方嚮鍵或相對指針。下方可微調分離十字鍵佈侷。\n\n左側槽位：分離段 = 四塊方嚮鍵加中心菱形空隙；十字 = 一體形狀。僅分離間距改變該空隙（鍵帽厚度固定）。與主鍵區的距離會把整塊嚮中心或模塊邊緣移動；若嚮內拉且空隙很寬，可能會先收緊間距。方嚮鍵與指針模式也在此配置。預設 JSON 可包含更多十字鍵樣式（圓盤、樞軸、浮動、clicky 等）。</string>
     <string name="gamepad_stick_config_section_mode">模式</string>
     <string name="gamepad_stick_config_size_label">搖桿大小</string>
     <string name="gamepad_stick_config_title">搖桿配置</string>
     <string name="gamepad_stick_config_title_left">左側控製</string>
     <string name="gamepad_stick_config_title_right">右搖桿</string>
     <string name="gamepad_stick_direction_keys_label">方嚮鍵（點按更改）</string>
-    <string name="gamepad_stick_mode_analog">模擬（滑鼠）</string>
+    <string name="gamepad_stick_mode_analog">相對指針（滑鼠）</string>
     <string name="gamepad_stick_mode_dpad_cross">十字鍵（一體，數字）</string>
     <string name="gamepad_stick_mode_dpad_split">十字鍵（分離段）</string>
-    <string name="gamepad_stick_mode_key">按鍵映射（虛擬搖桿）</string>
+    <string name="gamepad_stick_mode_key">方嚮鍵（虛擬搖桿）</string>
     <string name="gamepad_touchpad_height_pct">高度（%）</string>
     <string name="gamepad_touchpad_mouse_btn_size_title">觸控闆滑鼠鍵（全部）</string>
     <string name="gamepad_touchpad_size_title">觸控闆大小</string>

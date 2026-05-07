@@ -12,11 +12,21 @@ public final class GamepadLayoutPresetConstants {
     public static final int SCHEMA_VERSION_V3 = 3;
     /** v4: shoulder/trigger modules, face templates, gyro flag, stick metadata. */
     public static final int SCHEMA_VERSION_V4 = 4;
+    public static final int SCHEMA_VERSION_V5 = 5;
+    /** Current preset schema; v6 removes legacy extra-thumb ids (see {@link #isObsoleteRemovedThumbStickId(String)}). */
+    public static final int SCHEMA_VERSION = 6;
+
+    /** Max decoded bytes for embedded gamepad background image (JSON interchange). */
+    public static final int MAX_BACKGROUND_EMBED_DECODED_BYTES = 6 * 1024 * 1024;
     /**
-     * Current preset schema: v4 plus optional {@code stickMouseSensitivity} on {@code STICK_MOUSE} sticks;
-     * v5 migrates legacy {@code stick_right} into {@link #STICK_KEY_EXTRA_ID} when the arrow slot is free.
+     * Max base64 character count for embedded background (~4/3 of decoded size + padding).
+     * Decoded size must not exceed {@link #MAX_BACKGROUND_EMBED_DECODED_BYTES}.
      */
-    public static final int SCHEMA_VERSION = 5;
+    public static final int MAX_BACKGROUND_EMBED_BASE64_CHARS = 8_400_000;
+    public static final String BACKGROUND_EMBED_ENCODING_BASE64 = "base64";
+    public static final String BACKGROUND_MEDIA_TYPE_PNG = "image/png";
+    public static final String BACKGROUND_MEDIA_TYPE_JPEG = "image/jpeg";
+    public static final String BACKGROUND_MEDIA_TYPE_WEBP = "image/webp";
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
     /**
@@ -42,11 +52,6 @@ public final class GamepadLayoutPresetConstants {
      * for UI copy / future analog simulation.
      */
     public static final String MODULE_TYPE_TRIGGER = "TRIGGER";
-
-    /**
-     * Optional arrow stick module id (key or mouse direction); additional slots use {@code stick_aux_*}.
-     */
-    public static final String STICK_KEY_EXTRA_ID = "stick_key_extra";
 
     public static final String MOUSE_BTN_LEFT_ID = "mouse_btn_l";
     public static final String MOUSE_BTN_MIDDLE_ID = "mouse_btn_m";
@@ -80,15 +85,26 @@ public final class GamepadLayoutPresetConstants {
 
     /**
      * Stick-like module ids: {@code stick_} plus lowercase letters, digits, and underscores
-     * (e.g. {@code stick_left}, {@code stick_right}, {@code stick_key_extra}, {@code stick_aux_1}).
+     * (e.g. {@code stick_left}, {@code stick_right}).
      */
     public static boolean isStickModuleId(@Nullable String id) {
         return id != null && id.matches("stick_[a-z0-9_]+");
     }
 
-    /** Arrow stick slot: {@link #STICK_KEY_EXTRA_ID} or {@code stick_aux_1}, {@code stick_aux_2}, … */
-    public static boolean isArrowStickModuleId(@Nullable String id) {
-        return STICK_KEY_EXTRA_ID.equals(id) || (id != null && id.startsWith("stick_aux_"));
+    /** Preset touchpad modules use ids {@code touchpad_1}, {@code touchpad_2}, … */
+    public static boolean isTouchpadModuleId(@Nullable String id) {
+        return id != null && id.matches("touchpad_[0-9]+");
+    }
+
+    /**
+     * Legacy id used in v4→v5 migration before schema v6; not valid in current presets.
+     */
+    public static final String LEGACY_STICK_KEY_EXTRA_MODULE_ID = "stick_key_extra";
+
+    /** {@code stick_key_extra} / {@code stick_aux_*} were removed in schema v6 (see {@link GamepadLayoutPresetUpgrader}). */
+    public static boolean isObsoleteRemovedThumbStickId(@Nullable String id) {
+        return LEGACY_STICK_KEY_EXTRA_MODULE_ID.equals(id)
+                || (id != null && id.startsWith("stick_aux_"));
     }
 
     /**
@@ -175,6 +191,16 @@ public final class GamepadLayoutPresetConstants {
                 || TRIGGER_VARIANT_ANALOG.equals(x)
                 || TRIGGER_VARIANT_HAIR.equals(x)
                 || TRIGGER_VARIANT_ADAPTIVE.equals(x);
+    }
+
+    public static boolean isAllowedBackgroundEmbedMediaType(@Nullable String mediaType) {
+        if (mediaType == null) {
+            return false;
+        }
+        String x = mediaType.trim().toLowerCase(java.util.Locale.ROOT);
+        return BACKGROUND_MEDIA_TYPE_PNG.equals(x)
+                || BACKGROUND_MEDIA_TYPE_JPEG.equals(x)
+                || BACKGROUND_MEDIA_TYPE_WEBP.equals(x);
     }
 
     /**

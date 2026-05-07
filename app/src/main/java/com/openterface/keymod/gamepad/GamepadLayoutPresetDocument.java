@@ -46,6 +46,16 @@ public class GamepadLayoutPresetDocument {
         public float backgroundOffsetX;
         public float backgroundOffsetY;
         /**
+         * Portable interchange only: encoding for {@link #backgroundImageData}
+         * (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_EMBED_ENCODING_BASE64}).
+         * Cleared after the image is written to {@link #backgroundImageFile} so layout JSON in prefs stays small.
+         */
+        @Nullable public String backgroundImageEncoding;
+        /** Declared media type; must match decoded bytes (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_MEDIA_TYPE_PNG}). */
+        @Nullable public String backgroundImageMediaType;
+        /** Raw base64 body (no {@code data:} URL prefix). */
+        @Nullable public String backgroundImageData;
+        /**
          * Optional preset geometry hint: {@link GamepadLayoutPresetConstants#STICK_LAYOUT_SYMMETRICAL},
          * {@link GamepadLayoutPresetConstants#STICK_LAYOUT_OFFSET}, or {@link GamepadLayoutPresetConstants#STICK_LAYOUT_PARALLEL}.
          */
@@ -59,6 +69,16 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Boolean gyroEnabled;
     }
 
+    /**
+     * One drawable plus touch target on the gamepad canvas.
+     * <p><b>Layers:</b> {@code id} is <em>which</em> control (e.g. {@code stick_left}, {@code stick_right}).
+     * {@code type} is <em>what the host receives</em>
+     * ({@code STICK_KEY}, {@code STICK_MOUSE}, {@code DPAD}, {@code BUTTON}, …). Fields such as
+     * {@code dpadVariant}, {@code dpadSplitGapRatio}, {@code stickMouseSensitivity}, and
+     * {@code stickVisualVariant} are <em>parameters</em> on that same module, not separate module types.
+     * See {@code docs/USER_GUIDE.md} (Gamepad module model) and {@code .cursor/plans/gamepad_module_taxonomy.plan.md}
+     * for user vocabulary and roadmap.
+     */
     public static class GamepadModule {
         public String id;
         public String type;
@@ -176,6 +196,7 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("layout.touchpadMouseButtonScale must be in [0.5, 2]");
             }
         }
+        validateBackgroundEmbed(d.layout);
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
@@ -239,7 +260,6 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_b with hidKey");
             }
         }
-        int touchpadCount = 0;
         int mouseButtonCount = 0;
         int shoulderCount = 0;
         int triggerCount = 0;
@@ -294,6 +314,9 @@ public class GamepadLayoutPresetDocument {
                 if (!GamepadLayoutPresetConstants.isStickModuleId(m.id)) {
                     throw new IllegalArgumentException("Unknown stick module id: " + m.id);
                 }
+                if (GamepadLayoutPresetConstants.isObsoleteRemovedThumbStickId(m.id)) {
+                    throw new IllegalArgumentException("Obsolete stick module id (no longer supported): " + m.id);
+                }
                 if (GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
                     if (m.dpadVariant == null || m.dpadVariant.trim().isEmpty()) {
                         throw new IllegalArgumentException("Module " + m.id + ": DPAD requires dpadVariant");
@@ -336,11 +359,6 @@ public class GamepadLayoutPresetDocument {
                         }
                     }
                 }
-                if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
-                    throw new IllegalArgumentException("stick_key_extra must be STICK_KEY or STICK_MOUSE");
-                }
                 if (m.stickMouseSensitivity != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickMouseSensitivity only on STICK_MOUSE");
@@ -377,9 +395,8 @@ public class GamepadLayoutPresetDocument {
                     }
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
-                touchpadCount++;
-                if (!"touchpad_1".equals(m.id)) {
-                    throw new IllegalArgumentException("Touchpad id must be touchpad_1");
+                if (!GamepadLayoutPresetConstants.isTouchpadModuleId(m.id)) {
+                    throw new IllegalArgumentException("Invalid TOUCHPAD id (expected touchpad_<n>): " + m.id);
                 }
                 if (m.widthNorm == null || m.heightNorm == null
                         || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
@@ -429,9 +446,6 @@ public class GamepadLayoutPresetDocument {
         if (!hasStickLeft) {
             throw new IllegalArgumentException("Missing stick_left");
         }
-        if (touchpadCount > 1) {
-            throw new IllegalArgumentException("At most one touchpad module allowed");
-        }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "
                     + GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES + ")");
@@ -449,6 +463,54 @@ public class GamepadLayoutPresetDocument {
     /** ARGB packed int; JVM-safe (no {@code android.graphics.Color} stub needed in unit tests). */
     private static int argbAlphaFromPackedInt(int colorArgb) {
         return (colorArgb >>> 24) & 0xFF;
+    }
+
+    private static void validateBackgroundEmbed(LayoutGlobals L) {
+        String enc = trimOrNull(L.backgroundImageEncoding);
+        String mime = trimOrNull(L.backgroundImageMediaType);
+        String data = stripBase64Whitespace(L.backgroundImageData);
+        boolean hasData = data != null && !data.isEmpty();
+        boolean any = enc != null || mime != null || hasData;
+        if (!any) {
+            return;
+        }
+        if (enc == null || mime == null || !hasData) {
+            throw new IllegalArgumentException(
+                    "layout backgroundImageEncoding, backgroundImageMediaType, and backgroundImageData must all be set together");
+        }
+        if (!GamepadLayoutPresetConstants.BACKGROUND_EMBED_ENCODING_BASE64.equalsIgnoreCase(enc)) {
+            throw new IllegalArgumentException("Unsupported backgroundImageEncoding");
+        }
+        if (!GamepadLayoutPresetConstants.isAllowedBackgroundEmbedMediaType(mime)) {
+            throw new IllegalArgumentException("Unsupported backgroundImageMediaType");
+        }
+        if (data.length() > GamepadLayoutPresetConstants.MAX_BACKGROUND_EMBED_BASE64_CHARS) {
+            throw new IllegalArgumentException("backgroundImageData too large");
+        }
+    }
+
+    @Nullable
+    private static String trimOrNull(@Nullable String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    @Nullable
+    private static String stripBase64Whitespace(@Nullable String s) {
+        if (s == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (!Character.isWhitespace(c)) {
+                sb.append(c);
+            }
+        }
+        return sb.length() == 0 ? null : sb.toString();
     }
 
     @Nullable

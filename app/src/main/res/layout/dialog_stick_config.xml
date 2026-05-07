@@ -102,9 +102,9 @@
                 android:buttonTint="?attr/colorPrimary" />
         </RadioGroup>
 
-        <!-- Arrow stick: mouse-direction sensitivity (STICK_MOUSE only) -->
+        <!-- Right stick: pointer (mouse-direction) sensitivity when type is STICK_MOUSE -->
         <LinearLayout
-            android:id="@+id/arrow_stick_mouse_sensitivity_section"
+            android:id="@+id/stick_pointer_mouse_sensitivity_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -114,14 +114,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_arrow_stick_mouse_sensitivity_title"
+                android:text="@string/gamepad_stick_pointer_mouse_sensitivity_title"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_arrow_stick_mouse_sensitivity_summary"
+                android:text="@string/gamepad_stick_pointer_mouse_sensitivity_summary"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
@@ -139,7 +139,7 @@
                     android:layout_marginEnd="8dp" />
 
                 <SeekBar
-                    android:id="@+id/arrow_stick_mouse_sensitivity_seek"
+                    android:id="@+id/stick_pointer_mouse_sensitivity_seek"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"

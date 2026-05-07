@@ -791,9 +791,8 @@ by TechxArtisan</string>
     <string name="gamepad_add_module_title">Add module</string>
     <string name="gamepad_add_extra_button">Button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
-    <string name="gamepad_add_arrow_stick">Arrow stick</string>
-    <!-- Left-thumb / stick_left slot only; shape (cross, split, …) is set in Configure control. -->
-    <string name="gamepad_add_dpad_cross_left">D-Pad</string>
+    <!-- Left-thumb slot only: adds cross D-pad by default; open Configure control for stick / split D-pad / pointer modes. -->
+    <string name="gamepad_add_dpad_cross_left">D-pad / stick (left)</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">Re-add left mouse button (L)</string>
@@ -826,16 +825,15 @@ by TechxArtisan</string>
     <string name="gamepad_module_color_custom_selected_cd">Custom RGB color (selected)</string>
     <string name="gamepad_touchpad_color_title">Touchpad color</string>
     <string name="gamepad_component_mouse_button">Mouse button</string>
-    <string name="gamepad_component_arrow_stick">Arrow stick</string>
     <string name="gamepad_component_left_stick">Left stick</string>
     <string name="gamepad_component_left_dpad">Left D-pad</string>
     <string name="gamepad_menu_configure_stick">Configure control…</string>
     <string name="gamepad_stick_config_title">Stick configuration</string>
     <string name="gamepad_stick_config_title_left">Left control</string>
     <string name="gamepad_stick_config_title_right">Right stick</string>
-    <string name="gamepad_stick_config_dpad_hint">Left slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Analog and key ring are here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).</string>
-    <string name="gamepad_stick_mode_analog">Analog (mouse)</string>
-    <string name="gamepad_stick_mode_key">Key mapping (virtual stick)</string>
+    <string name="gamepad_stick_config_dpad_hint">Modes here set what the left slot sends: D-pad shapes, direction keys on a thumb ring, or a relative pointer. D-pad tuning below applies to split layout.\n\nLeft slot: split segments = four pads with a center diamond gap; cross = one connected shape. Split spacing changes that gap only (pad thickness is fixed). Distance to keys moves the whole cluster toward the center or the module edge; pulling it inward may tighten spacing first if the gap was very wide. Direction keys and pointer modes are configured here too. Preset JSON can use more D-pad styles (disc, pivot, floating, clicky).</string>
+    <string name="gamepad_stick_mode_analog">Relative pointer (mouse)</string>
+    <string name="gamepad_stick_mode_key">Direction keys (virtual stick)</string>
     <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>
     <string name="gamepad_stick_mode_dpad_split">D-pad (split segments)</string>
     <string name="gamepad_dpad_split_gap_title">Split spacing</string>
@@ -862,8 +860,8 @@ by TechxArtisan</string>
     <string name="gamepad_config_slider_large">Large</string>
     <string name="gamepad_config_slider_slower">Slower</string>
     <string name="gamepad_config_slider_faster">Faster</string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_title">Pointer sensitivity</string>
-    <string name="gamepad_arrow_stick_mouse_sensitivity_summary">How fast the cursor moves for this stick. Used only when mapping is set to mouse direction (relative pointer).</string>
+    <string name="gamepad_stick_pointer_mouse_sensitivity_title">Pointer sensitivity</string>
+    <string name="gamepad_stick_pointer_mouse_sensitivity_summary">How fast the cursor moves for the right stick. Used only when the right stick is set to relative pointer (mouse).</string>
     <string name="gamepad_config_reset">Reset</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>

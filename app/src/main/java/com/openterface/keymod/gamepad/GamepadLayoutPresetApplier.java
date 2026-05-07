@@ -26,6 +26,7 @@ public final class GamepadLayoutPresetApplier {
 
     public static void apply(Context context, GamepadLayoutPresetDocument doc) throws IllegalArgumentException {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
+        GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
         SharedPreferences.Editor ed = PreferenceManager.getDefaultSharedPreferences(context).edit();
         GamepadLayoutPresetDocument.LayoutGlobals L = doc.layout;
 

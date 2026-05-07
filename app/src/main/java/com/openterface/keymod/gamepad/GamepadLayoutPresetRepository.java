@@ -185,6 +185,7 @@ public class GamepadLayoutPresetRepository {
 
     public void writeFile(String id, GamepadLayoutPresetDocument doc) throws IOException {
         doc.meta.id = id;
+        GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
         File f = presetFile(id);
         try (OutputStreamWriter w = new OutputStreamWriter(
                 new java.io.FileOutputStream(f), StandardCharsets.UTF_8)) {

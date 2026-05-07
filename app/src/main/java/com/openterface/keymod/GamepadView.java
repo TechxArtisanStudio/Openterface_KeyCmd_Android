@@ -802,16 +802,15 @@ public class GamepadView extends View {
             dnL = componentDisplayLabels.getOrDefault("stick_r_down", "K");
             lfL = componentDisplayLabels.getOrDefault("stick_r_left", "J");
             rtL = componentDisplayLabels.getOrDefault("stick_r_right", "L");
-        } else if (GamepadLayoutPresetConstants.isArrowStickModuleId(m.id)) {
-            String p = m.id + "_";
-            upL = componentDisplayLabels.getOrDefault(p + "up", "\u2191");
-            dnL = componentDisplayLabels.getOrDefault(p + "down", "\u2193");
-            lfL = componentDisplayLabels.getOrDefault(p + "left", "\u2190");
-            rtL = componentDisplayLabels.getOrDefault(p + "right", "\u2192");
         }
-        String shortLabel = "stick_left".equals(m.id) ? "L"
-                : (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id) ? "E"
-                : (GamepadLayoutPresetConstants.isArrowStickModuleId(m.id) ? "+" : "R"));
+        String shortLabel;
+        if ("stick_left".equals(m.id)) {
+            shortLabel = "L";
+        } else if ("stick_right".equals(m.id)) {
+            shortLabel = "R";
+        } else {
+            shortLabel = "?";
+        }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
         drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
@@ -1014,17 +1013,8 @@ public class GamepadView extends View {
 
         float hx = cx;
         float hy = cy - scaledRadius * 0.14f;
-        final boolean arrowStickGreyBase = GamepadLayoutPresetConstants.isArrowStickModuleId(boundsId);
-        int outerHi;
-        int outerLo;
-        if (arrowStickGreyBase) {
-            // Arrow stick housing: fixed neutral grey (not module accent).
-            outerHi = Color.parseColor("#5E5E66");
-            outerLo = Color.parseColor("#38383F");
-        } else {
-            outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
-            outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
-        }
+        int outerHi = ColorUtils.blendARGB(Color.parseColor("#5E5E66"), accentPrimary, 0.28f);
+        int outerLo = ColorUtils.blendARGB(Color.parseColor("#38383F"), accentPrimary, 0.34f);
         Shader outer = new RadialGradient(hx, hy, scaledRadius * 1.05f,
                 outerHi, outerLo, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(outer);
@@ -1033,9 +1023,7 @@ public class GamepadView extends View {
 
         retroRingPaint.setStyle(Paint.Style.STROKE);
         retroRingPaint.setStrokeWidth(Math.max(1.5f, 1.75f * density));
-        retroRingPaint.setColor(arrowStickGreyBase
-                ? Color.parseColor("#6A6A74")
-                : ColorUtils.blendARGB(Color.parseColor("#6A6A74"), accentPrimary, 0.22f));
+        retroRingPaint.setColor(ColorUtils.blendARGB(Color.parseColor("#6A6A74"), accentPrimary, 0.22f));
         canvas.drawCircle(cx, cy, scaledRadius * 0.995f, retroRingPaint);
 
         float innerCx = cx;
@@ -2063,7 +2051,7 @@ public class GamepadView extends View {
         }
     }
 
-    /** Callback id for {@link AnalogStickListener}: legacy {@code l}/{@code r}, else module id (e.g. stick_key_extra). */
+    /** Callback id for {@link AnalogStickListener}: {@code l}/{@code r} for primary slots, else the module id (e.g. custom {@code stick_*}). */
     private static String dynamicAnalogStickCallbackId(String sid) {
         if ("stick_left".equals(sid)) {
             return "l";
@@ -2397,8 +2385,6 @@ public class GamepadView extends View {
         } else if ("r".equals(s)) {
             out.add("stick_r");
             out.add("stick_right");
-        } else if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(s)) {
-            out.add(GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID);
         } else if (s.startsWith("stick_")) {
             out.add(s);
         } else {

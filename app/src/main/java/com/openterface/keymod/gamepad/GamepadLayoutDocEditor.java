@@ -16,12 +16,30 @@ public final class GamepadLayoutDocEditor {
         return find(doc, "stick_right") != null;
     }
 
+    /** @return true if the layout has at least one {@link GamepadLayoutPresetConstants#MODULE_TYPE_TOUCHPAD} module. */
     public static boolean hasTouchpad(GamepadLayoutPresetDocument doc) {
-        return find(doc, "touchpad_1") != null;
+        if (doc == null || doc.modules == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    public static boolean hasStickKeyExtra(GamepadLayoutPresetDocument doc) {
-        return find(doc, GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID) != null;
+    private static int countTouchpadModules(GamepadLayoutPresetDocument doc) {
+        int n = 0;
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     public static void addStickRight(GamepadLayoutPresetDocument doc) {
@@ -70,44 +88,6 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
-    /**
-     * Adds {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} when missing; otherwise appends another
-     * {@code STICK_KEY} with id {@code stick_aux_1}, {@code stick_aux_2}, …
-     */
-    public static void addStickKeyExtra(GamepadLayoutPresetDocument doc) {
-        if (doc == null || doc.modules == null) {
-            return;
-        }
-        if (!hasStickKeyExtra(doc)) {
-            GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-            m.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
-            m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
-            m.zIndex = nextZ(doc);
-            m.scale = 1.0f;
-            m.anchorX = 0.5f;
-            m.anchorY = 0.72f;
-            // HID arrow keys (same usages as d-pad arrows in GamepadView)
-            m.stickUpKey = 82;
-            m.stickLeftKey = 80;
-            m.stickDownKey = 81;
-            m.stickRightKey = 79;
-            doc.modules.add(m);
-            return;
-        }
-        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-        m.id = GamepadLayoutDocumentStore.nextStickAuxModuleId(doc);
-        m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
-        m.zIndex = nextZ(doc);
-        m.scale = 1.0f;
-        m.anchorX = 0.5f;
-        m.anchorY = 0.72f;
-        m.stickUpKey = 82;
-        m.stickLeftKey = 80;
-        m.stickDownKey = 81;
-        m.stickRightKey = 79;
-        doc.modules.add(m);
-    }
-
     public static void addButton(GamepadLayoutPresetDocument doc) {
         String id = GamepadLayoutDocumentStore.nextButtonModuleId(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
@@ -125,16 +105,19 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static void addTouchpad(GamepadLayoutPresetDocument doc) {
-        if (hasTouchpad(doc)) {
+        if (doc == null || doc.modules == null) {
             return;
         }
+        int idx = countTouchpadModules(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-        m.id = "touchpad_1";
+        m.id = GamepadLayoutDocumentStore.nextTouchpadModuleId(doc);
         m.type = GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD;
         m.zIndex = nextZ(doc);
         m.scale = 1.0f;
-        m.anchorX = 0.5f;
-        m.anchorY = 0.35f;
+        float ax = 0.5f + 0.06f * (idx % 4) - 0.09f;
+        float ay = 0.35f + 0.07f * (idx / 4);
+        m.anchorX = Math.max(0.1f, Math.min(0.9f, ax));
+        m.anchorY = Math.max(0.12f, Math.min(0.82f, ay));
         m.widthNorm = TOUCHPAD_DEFAULT_SIZE_NORM;
         m.heightNorm = TOUCHPAD_DEFAULT_SIZE_NORM;
         doc.modules.add(m);
@@ -245,7 +228,7 @@ public final class GamepadLayoutDocEditor {
         if (!canRemove(componentId)) {
             return;
         }
-        boolean removedTouchpad = "touchpad_1".equals(componentId);
+        boolean removedTouchpad = GamepadLayoutPresetConstants.isTouchpadModuleId(componentId);
         Iterator<GamepadLayoutPresetDocument.GamepadModule> it = doc.modules.iterator();
         while (it.hasNext()) {
             if (componentId.equals(it.next().id)) {
@@ -253,7 +236,7 @@ public final class GamepadLayoutDocEditor {
                 break;
             }
         }
-        if (removedTouchpad) {
+        if (removedTouchpad && !hasTouchpad(doc)) {
             removeBundledMouseButtons(doc);
         }
         if ("button_b".equals(componentId)) {

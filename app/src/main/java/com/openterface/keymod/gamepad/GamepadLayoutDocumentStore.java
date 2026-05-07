@@ -14,7 +14,6 @@ import com.openterface.keymod.GamepadLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,6 +50,7 @@ public final class GamepadLayoutDocumentStore {
 
     public static void save(Context context, GamepadLayoutPresetDocument doc) {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
+        GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
         PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc))
                 .apply();
@@ -165,24 +165,21 @@ public final class GamepadLayoutDocumentStore {
         return "button_" + (maxNum + 1);
     }
 
-    /**
-     * Next unused id {@code stick_aux_1}, {@code stick_aux_2}, … for additional arrow sticks after
-     * {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} is taken (type is STICK_KEY by default; can be changed in UI).
-     */
-    public static String nextStickAuxModuleId(GamepadLayoutPresetDocument doc) {
-        Set<String> taken = new HashSet<>();
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            if (m != null && m.id != null) {
-                taken.add(m.id);
+    /** Next id {@code touchpad_1}, {@code touchpad_2}, … based on existing TOUCHPAD modules. */
+    public static String nextTouchpadModuleId(GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("touchpad_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("touchpad_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
             }
         }
-        for (int i = 1; i < 1_000_000; i++) {
-            String id = "stick_aux_" + i;
-            if (!taken.contains(id)) {
-                return id;
-            }
-        }
-        throw new IllegalStateException("No free stick_aux_* id");
+        return "touchpad_" + (maxNum + 1);
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {
