@@ -106,7 +106,6 @@ public class GamepadView extends View {
     private float longPressDownY = 0;
     private boolean longPressCancelled = false;
     private ComponentLongPressListener longPressListener;
-    private EmptyAreaLongPressListener emptyAreaLongPressListener;
 
     // Component bounds (for touch detection)
     private Map<String, RectF> componentBounds;
@@ -1724,17 +1723,6 @@ public class GamepadView extends View {
                         }
                         invalidate();
                     }
-                } else if (longPressEnabled && isEditMode) {
-                    longPressDownX = x;
-                    longPressDownY = y;
-                    longPressCancelled = false;
-                    Runnable emptyAreaRunnable = () -> {
-                        if (!longPressCancelled && emptyAreaLongPressListener != null) {
-                            emptyAreaLongPressListener.onEmptyAreaLongPress();
-                        }
-                    };
-                    longPressRunnable = emptyAreaRunnable;
-                    longPressHandler.postDelayed(emptyAreaRunnable, longPressThresholdMs);
                 }
                 return true;
             }
@@ -2080,17 +2068,6 @@ public class GamepadView extends View {
                         }
                         invalidate();
                     }
-                } else if (longPressEnabled && isEditMode) {
-                    longPressDownX = x;
-                    longPressDownY = y;
-                    longPressCancelled = false;
-                    Runnable emptyAreaRunnable = () -> {
-                        if (!longPressCancelled && emptyAreaLongPressListener != null) {
-                            emptyAreaLongPressListener.onEmptyAreaLongPress();
-                        }
-                    };
-                    longPressRunnable = emptyAreaRunnable;
-                    longPressHandler.postDelayed(emptyAreaRunnable, longPressThresholdMs);
                 }
                 return true;
             }
@@ -2517,10 +2494,6 @@ public class GamepadView extends View {
         this.buttonReleaseListener = listener;
     }
 
-    public void setEmptyAreaLongPressListener(EmptyAreaLongPressListener listener) {
-        this.emptyAreaLongPressListener = listener;
-    }
-
     public void setComponentDisabled(String componentId, boolean disabled) {
         disabledComponents.put(componentId, disabled);
         invalidate();
@@ -2550,7 +2523,7 @@ public class GamepadView extends View {
     }
 
     /**
-     * Tunes customize-mode long-press before module / empty-area menus. Values are clamped for safety.
+     * Tunes customize-mode long-press before module configuration menus. Values are clamped for safety.
      * Persisted keys: {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_MS},
      * {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_CANCEL_DP}.
      */
@@ -2739,10 +2712,6 @@ public class GamepadView extends View {
 
     public interface ButtonReleaseListener {
         void onButtonRelease(String buttonId, int keyCode);
-    }
-
-    public interface EmptyAreaLongPressListener {
-        void onEmptyAreaLongPress();
     }
 
     public interface KeyCodeProvider {

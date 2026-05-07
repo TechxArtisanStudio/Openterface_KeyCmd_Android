@@ -13,6 +13,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.util.TypedValue;
+import android.util.DisplayMetrics;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -265,6 +266,10 @@ public class GamepadFragment extends Fragment {
     @Nullable
     private MaterialButton editModeMaterialButton;
     @Nullable
+    private MaterialButton editBackgroundToolbarButton;
+    @Nullable
+    private MaterialButton editAddModuleToolbarButton;
+    @Nullable
     private ImageButton gamepadChromeMenu;
     @Nullable
     private LinearLayout gamepadChromeConnectionWrap;
@@ -375,11 +380,21 @@ public class GamepadFragment extends Fragment {
         }
 
         editModeMaterialButton = view.findViewById(R.id.edit_mode_toggle);
+        editBackgroundToolbarButton = view.findViewById(R.id.gamepad_edit_background_btn);
+        editAddModuleToolbarButton = view.findViewById(R.id.gamepad_edit_add_module_btn);
+        if (editBackgroundToolbarButton != null) {
+            editBackgroundToolbarButton.setOnClickListener(v -> showEditBackgroundMenu());
+        }
+        if (editAddModuleToolbarButton != null) {
+            editAddModuleToolbarButton.setOnClickListener(v -> showAddModuleMenu());
+        }
         editModeMaterialButton.addOnCheckedChangeListener((button, isChecked) -> {
             if (gamepadView != null) {
                 gamepadView.setLongPressEnabled(isChecked);
                 gamepadView.setEditMode(isChecked);
             }
+            setEditModeToolbarExtrasVisible(isChecked);
+            applyEditModeToggleContentDescription();
             Log.d(TAG, "Edit mode: " + (isChecked ? "enabled" : "disabled"));
         });
         // Listener does not run for initial unchecked state; align view with play mode.
@@ -387,6 +402,8 @@ public class GamepadFragment extends Fragment {
             gamepadView.setLongPressEnabled(editModeMaterialButton.isChecked());
             gamepadView.setEditMode(editModeMaterialButton.isChecked());
         }
+        setEditModeToolbarExtrasVisible(editModeMaterialButton.isChecked());
+        applyEditModeToggleContentDescription();
 
         MaterialButton sessionDone = view.findViewById(R.id.gamepad_edit_session_done);
         if (sessionDone != null) {
@@ -592,12 +609,6 @@ public class GamepadFragment extends Fragment {
         gamepadView.setComponentLongPressListener(componentId -> {
             Log.d(TAG, "Long press on: " + componentId);
             showLongPressMenu(componentId);
-        });
-
-        // Long press on empty area (in edit mode) to change background
-        gamepadView.setEmptyAreaLongPressListener(() -> {
-            Log.d(TAG, "Long press on empty area");
-            showEditBackgroundAndModulesMenu();
         });
 
         // Save positions when exiting edit mode
@@ -1558,7 +1569,7 @@ public class GamepadFragment extends Fragment {
         if (layoutDoc == null) {
             layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
         }
-        new AlertDialog.Builder(gamepadUiContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.gamepad_add_module_title)
                 .setItems(new String[]{
                         getString(R.string.gamepad_add_touchpad),
@@ -5237,14 +5248,33 @@ public class GamepadFragment extends Fragment {
         // Triggered by the callback
     }
 
-    /** Edit-mode empty-area long-press: background actions plus add-module entry. */
-    private void showEditBackgroundAndModulesMenu() {
+    private void setEditModeToolbarExtrasVisible(boolean visible) {
+        int vis = visible ? View.VISIBLE : View.GONE;
+        if (editBackgroundToolbarButton != null) {
+            editBackgroundToolbarButton.setVisibility(vis);
+        }
+        if (editAddModuleToolbarButton != null) {
+            editAddModuleToolbarButton.setVisibility(vis);
+        }
+    }
+
+    /** TalkBack: distinguish customize (off) vs editing (on). */
+    private void applyEditModeToggleContentDescription() {
+        if (editModeMaterialButton == null) {
+            return;
+        }
+        editModeMaterialButton.setContentDescription(editModeMaterialButton.isChecked()
+                ? getString(R.string.gamepad_edit_mode_on)
+                : getString(R.string.gamepad_customize_cd));
+    }
+
+    /** Edit-mode toolbar: gallery, fill color, pattern, clear background. */
+    private void showEditBackgroundMenu() {
         String[] options = new String[]{
                 getString(R.string.gamepad_bg_pick_gallery),
                 getString(R.string.gamepad_bg_color_title),
                 getString(R.string.gamepad_bg_pattern_title),
                 getString(R.string.gamepad_bg_remove),
-                getString(R.string.gamepad_presets_add_module),
         };
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.gamepad_edit_canvas_menu_title)
@@ -5293,8 +5323,6 @@ public class GamepadFragment extends Fragment {
                             }
                         }
                         persistActivePresetSnapshot();
-                    } else {
-                        showAddModuleMenu();
                     }
                 })
                 .show();
@@ -5303,14 +5331,28 @@ public class GamepadFragment extends Fragment {
     private void showBackgroundColorDialog() {
         Context ctx = requireContext();
         float density = ctx.getResources().getDisplayMetrics().density;
-        int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, ctx.getResources().getDisplayMetrics());
-        int chip = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, ctx.getResources().getDisplayMetrics());
-        int gap = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, ctx.getResources().getDisplayMetrics());
+        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, dm);
+        int chip = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, dm);
+        int gap = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, dm);
 
         final int[] presets = new int[]{
                 0xFF1A1C22, 0xFF2D3142, 0xFF1E3A2F, 0xFF3D2E4A, 0xFF262C36,
                 0xFFECEFF4, 0xFFD0D7DE, 0xFFC9DCE8, 0xFFE8DFD5, 0xFF1B2838, 0xFF3E2723,
         };
+
+        int screenW = dm.widthPixels;
+        int shorter = Math.min(screenW, dm.heightPixels);
+        boolean landscape = ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        // Guess inner dialog width so column count uses horizontal space in landscape.
+        int innerGuess = landscape
+                ? (int) (screenW * 0.82f)
+                : (int) (Math.min(screenW, dm.heightPixels) * 0.90f);
+        int cell = chip + 2 * gap;
+        int columnCount = Math.max(3, Math.min(8, Math.max(1, innerGuess / cell)));
+
+        int maxScrollHRaw = (int) (shorter * (landscape ? 0.46f : 0.52f));
+        final int maxScrollH = Math.max(maxScrollHRaw, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 120f, dm));
 
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -5321,8 +5363,29 @@ public class GamepadFragment extends Fragment {
         root.addView(hint);
 
         GridLayout grid = new GridLayout(ctx);
-        grid.setColumnCount(4);
-        root.addView(grid);
+        grid.setColumnCount(columnCount);
+        grid.setUseDefaultMargins(false);
+        grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+
+        NestedScrollView scroll = new NestedScrollView(ctx) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                int hMode = MeasureSpec.getMode(heightMeasureSpec);
+                int hSize = MeasureSpec.getSize(heightMeasureSpec);
+                if (hMode == MeasureSpec.UNSPECIFIED) {
+                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(maxScrollH, MeasureSpec.AT_MOST);
+                } else {
+                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.min(hSize, maxScrollH), MeasureSpec.AT_MOST);
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            }
+        };
+        scroll.setFillViewport(false);
+        scroll.setNestedScrollingEnabled(true);
+        scroll.addView(grid, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         MaterialButton customBtn = new MaterialButton(ctx);
         customBtn.setText(R.string.gamepad_bg_color_custom);

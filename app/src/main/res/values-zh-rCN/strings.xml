@@ -795,7 +795,7 @@
     <string name="gamepad_dpad_split_outer_near">靠中心</string>
     <string name="gamepad_dpad_split_outer_summary">四块方向键外角靠近模块中心或边缘的距离。键大小固定。若向内移动且分离间距很宽，可能会自动收紧间距以保持布局有效。</string>
     <string name="gamepad_dpad_split_outer_title">与主键区的距离</string>
-    <string name="gamepad_edit_canvas_menu_title">背景与模块</string>
+    <string name="gamepad_edit_canvas_menu_title">背景</string>
     <string name="gamepad_edit_done">完成</string>
     <string name="gamepad_edit_mode_off">编辑</string>
     <string name="gamepad_edit_mode_on">正在编辑</string>
