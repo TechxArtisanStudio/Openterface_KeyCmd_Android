@@ -867,7 +867,7 @@
     <string name="kb_mouse_placeholder_numpad">獨立數字鍵盤屏幕即將推齣。請在「鍵盤與滑鼠專業版」中使用數字鍵盤與快捷條。</string>
     <string name="kb_mouse_placeholder_touchpad">獨立觸控闆視圖即將推齣。請在「鍵盤與滑鼠專業版」中衕時使用觸控闆與鍵盤。</string>
     <string name="kb_mouse_sub_compose">撰寫</string>
-    <string name="kb_mouse_sub_ime">編輯</string>
+    <string name="kb_mouse_sub_ime">編輯發送</string>
     <string name="kb_mouse_sub_keyboard">鍵盤</string>
     <string name="kb_mouse_sub_numpad">數字鍵盤</string>
     <string name="kb_mouse_sub_touchpad">觸控闆</string>

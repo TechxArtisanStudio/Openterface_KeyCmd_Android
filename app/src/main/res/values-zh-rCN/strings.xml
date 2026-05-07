@@ -867,7 +867,7 @@
     <string name="kb_mouse_placeholder_numpad">独立数字键盘屏幕即将推出。请在「键盘与鼠标专业版」中使用数字键盘与快捷条。</string>
     <string name="kb_mouse_placeholder_touchpad">独立触控板视图即将推出。请在「键盘与鼠标专业版」中同时使用触控板与键盘。</string>
     <string name="kb_mouse_sub_compose">撰写</string>
-    <string name="kb_mouse_sub_ime">编辑</string>
+    <string name="kb_mouse_sub_ime">编辑发送</string>
     <string name="kb_mouse_sub_keyboard">键盘</string>
     <string name="kb_mouse_sub_numpad">数字键盘</string>
     <string name="kb_mouse_sub_touchpad">触控板</string>
