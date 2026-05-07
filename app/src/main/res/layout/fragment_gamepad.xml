@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_light">
+    android:background="?attr/colorSurface"
+    android:theme="@style/ThemeOverlay.KeyMod.Gamepad">
 
     <!-- Gamepad View -->
     <com.openterface.keymod.GamepadView
@@ -33,7 +34,7 @@
             android:padding="@dimen/button_icon_padding"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_menu"
-            android:tint="@color/text_primary" />
+            android:tint="?attr/colorOnSurface" />
 
         <View
             android:layout_width="0dp"
@@ -57,7 +58,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@string/connection"
                 android:src="@drawable/ic_bluetooth"
-                android:tint="@color/text_secondary" />
+                android:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
     </LinearLayout>
 
@@ -127,7 +128,7 @@
             app:icon="@drawable/ic_edit"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
-            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
+            app:iconTint="?attr/colorPrimary" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/gamepad_active_preset_chip"

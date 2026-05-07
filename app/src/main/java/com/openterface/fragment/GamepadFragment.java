@@ -519,6 +519,16 @@ public class GamepadFragment extends Fragment {
         return getActivity() instanceof MainActivity ? (MainActivity) getActivity() : null;
     }
 
+    /**
+     * Themed context for gamepad-only dark UI (see {@code fragment_gamepad} root {@code android:theme}).
+     * Used for sheets/dialogs opened from this fragment so they match the gamepad chrome.
+     */
+    @NonNull
+    private Context gamepadUiContext() {
+        View root = getView();
+        return root != null ? root.getContext() : requireContext();
+    }
+
     private void setupListeners() {
         // Button press listener (face buttons only, D-pad handled by dpadStateListener)
         gamepadView.setButtonPressListener((buttonId, keyCode) -> {
@@ -1212,7 +1222,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void showGamepadPresetsBottomSheet() {
-        Context ctx = requireContext();
+        Context ctx = gamepadUiContext();
         BottomSheetDialog dialog = new BottomSheetDialog(ctx);
         View sheet = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
         dialog.setContentView(sheet);
@@ -1261,6 +1271,11 @@ public class GamepadFragment extends Fragment {
             }
 
             @Override
+            public void onDeletePreset(@NonNull String id) {
+                confirmDeletePreset(id, dialog, presetListAdapterRef[0]);
+            }
+
+            @Override
             public void onOverflow(@NonNull String id, @NonNull View anchor) {
                 showPresetOverflowMenu(id, anchor, dialog, presetListAdapterRef[0]);
             }
@@ -1286,12 +1301,38 @@ public class GamepadFragment extends Fragment {
         adapter.setData(presetRepository.listPresets(), presetRepository.getActivePresetId());
     }
 
+    private void confirmDeletePreset(
+            @NonNull String presetId,
+            @NonNull BottomSheetDialog hostDialog,
+            @NonNull GamepadPresetListAdapter adapter) {
+        if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
+            return;
+        }
+        Context ctx = hostDialog.getContext();
+        new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_preset_delete_title)
+                .setMessage(R.string.gamepad_preset_delete_message)
+                .setPositiveButton(R.string.gamepad_preset_delete_confirm, (d, w) -> {
+                    String err = presetRepository.deletePreset(presetId);
+                    if (err != null) {
+                        Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
+                        refreshPresetSheetAdapter(adapter);
+                    } else {
+                        hostDialog.dismiss();
+                        reloadFromPrefsAndApplyView();
+                        updateActivePresetNameUi();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void showPresetOverflowMenu(
             @NonNull String presetId,
             @NonNull View anchor,
             @NonNull BottomSheetDialog hostDialog,
             @NonNull GamepadPresetListAdapter adapter) {
-        PopupMenu pm = new PopupMenu(requireContext(), anchor);
+        PopupMenu pm = new PopupMenu(anchor.getContext(), anchor);
         pm.getMenuInflater().inflate(R.menu.menu_gamepad_preset_row, pm.getMenu());
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
             pm.getMenu().findItem(R.id.gamepad_preset_delete).setVisible(false);
@@ -1320,15 +1361,15 @@ public class GamepadFragment extends Fragment {
                 return true;
             }
             if (id == R.id.gamepad_preset_reset_layout) {
-                new AlertDialog.Builder(requireContext())
+                new AlertDialog.Builder(anchor.getContext())
                         .setTitle(R.string.gamepad_preset_reset_title)
                         .setMessage(R.string.gamepad_preset_reset_message)
                         .setPositiveButton(R.string.gamepad_preset_reset_confirm, (d, w) -> {
                             String err = presetRepository.resetClassicPresetToFactory(presetId);
                             if (err != null) {
-                                Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
+                                Toast.makeText(anchor.getContext(), err, Toast.LENGTH_LONG).show();
                             } else {
-                                Toast.makeText(requireContext(), R.string.gamepad_preset_reset_done,
+                                Toast.makeText(anchor.getContext(), R.string.gamepad_preset_reset_done,
                                         Toast.LENGTH_SHORT).show();
                                 if (presetId.equals(presetRepository.getActivePresetId())) {
                                     reloadFromPrefsAndApplyView();
@@ -1347,22 +1388,7 @@ public class GamepadFragment extends Fragment {
                 return true;
             }
             if (id == R.id.gamepad_preset_delete) {
-                new AlertDialog.Builder(requireContext())
-                        .setTitle(R.string.gamepad_preset_delete_title)
-                        .setMessage(R.string.gamepad_preset_delete_message)
-                        .setPositiveButton(R.string.gamepad_preset_delete_confirm, (d, w) -> {
-                            String err = presetRepository.deletePreset(presetId);
-                            if (err != null) {
-                                Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
-                                refreshPresetSheetAdapter(adapter);
-                            } else {
-                                hostDialog.dismiss();
-                                reloadFromPrefsAndApplyView();
-                                updateActivePresetNameUi();
-                            }
-                        })
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
+                confirmDeletePreset(presetId, hostDialog, adapter);
                 return true;
             }
             return false;
@@ -1371,7 +1397,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void promptRenamePreset(@NonNull String presetId, @NonNull Runnable onOk) {
-        Context ctx = requireContext();
+        Context ctx = gamepadUiContext();
         View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
         TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
         TextInputEditText input = wrap.findViewById(R.id.gamepad_text_input);
@@ -1395,7 +1421,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void promptNewUserPreset() {
-        Context ctx = requireContext();
+        Context ctx = gamepadUiContext();
         View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
         TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
         TextInputEditText input = wrap.findViewById(R.id.gamepad_text_input);
@@ -1442,7 +1468,7 @@ public class GamepadFragment extends Fragment {
         if (layoutDoc == null) {
             layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
         }
-        new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(gamepadUiContext())
                 .setTitle(R.string.gamepad_add_module_title)
                 .setItems(new String[]{
                         getString(R.string.gamepad_add_touchpad),

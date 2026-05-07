@@ -32,6 +32,9 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
 
         void onSharePreset(@NonNull String id);
 
+        /** User tapped row delete; only invoked for presets that are not deletion-protected. */
+        void onDeletePreset(@NonNull String id);
+
         void onOverflow(@NonNull String id, @NonNull View anchor);
     }
 
@@ -39,11 +42,13 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         @NonNull final String id;
         @NonNull final String title;
         final boolean selected;
+        final boolean deletable;
 
-        Row(@NonNull String id, @NonNull String title, boolean selected) {
+        Row(@NonNull String id, @NonNull String title, boolean selected, boolean deletable) {
             this.id = id;
             this.title = title;
             this.selected = selected;
+            this.deletable = deletable;
         }
 
         @Override
@@ -56,13 +61,14 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             }
             Row row = (Row) o;
             return selected == row.selected
+                    && deletable == row.deletable
                     && id.equals(row.id)
                     && title.equals(row.title);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, title, selected);
+            return Objects.hash(id, title, selected, deletable);
         }
     }
 
@@ -83,7 +89,8 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             }
             String title = r.displayName != null && !r.displayName.isEmpty() ? r.displayName : r.id;
             boolean selected = activeId != null && activeId.equals(r.id);
-            newRows.add(new Row(r.id, title, selected));
+            boolean deletable = !GamepadLayoutPresetConstants.isPresetDeletionProtected(r.id);
+            newRows.add(new Row(r.id, title, selected, deletable));
         }
         if (rows.isEmpty()) {
             rows.clear();
@@ -141,6 +148,12 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
                 listener.onSavePreset(row.id);
             }
         });
+        h.delete.setVisibility(row.deletable ? View.VISIBLE : View.GONE);
+        h.delete.setOnClickListener(v -> {
+            if (listener != null && row.deletable) {
+                listener.onDeletePreset(row.id);
+            }
+        });
         h.share.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onSharePreset(row.id);
@@ -162,6 +175,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         final AppCompatImageView check;
         final TextView title;
         final AppCompatImageButton save;
+        final AppCompatImageButton delete;
         final AppCompatImageButton share;
         final AppCompatImageButton overflow;
 
@@ -170,6 +184,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             check = itemView.findViewById(R.id.preset_row_check);
             title = itemView.findViewById(R.id.preset_row_title);
             save = itemView.findViewById(R.id.preset_row_save);
+            delete = itemView.findViewById(R.id.preset_row_delete);
             share = itemView.findViewById(R.id.preset_row_share);
             overflow = itemView.findViewById(R.id.preset_row_overflow);
         }

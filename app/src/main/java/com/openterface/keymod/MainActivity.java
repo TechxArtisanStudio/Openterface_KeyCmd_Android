@@ -9,6 +9,7 @@ import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbDevice;
@@ -27,6 +28,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageView;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.HorizontalScrollView;
@@ -47,6 +49,7 @@ import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -71,6 +74,7 @@ import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
+import com.google.android.material.color.MaterialColors;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
 
@@ -601,6 +605,46 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             }
         }
         updateImmersiveForTopFragment();
+        applyWindowSystemBarAppearanceForHostFragment(f);
+    }
+
+    /**
+     * Gamepad mode uses a fixed dark shell; match status/navigation bar. Other fragments follow the
+     * activity theme (DayNight).
+     */
+    private void applyWindowSystemBarAppearanceForHostFragment(@Nullable Fragment f) {
+        Window window = getWindow();
+        if (window == null) {
+            return;
+        }
+        WindowInsetsControllerCompat wic = WindowCompat.getInsetsController(window, window.getDecorView());
+        if (f instanceof GamepadFragment) {
+            int bar = ContextCompat.getColor(this, R.color.gamepad_window_system_bar);
+            window.setStatusBarColor(bar);
+            window.setNavigationBarColor(bar);
+            if (wic != null) {
+                wic.setAppearanceLightStatusBars(false);
+                wic.setAppearanceLightNavigationBars(false);
+            }
+            return;
+        }
+        TypedArray a = getTheme().obtainStyledAttributes(new int[]{
+                android.R.attr.statusBarColor,
+                android.R.attr.navigationBarColor});
+        try {
+            int fallback = ContextCompat.getColor(this, R.color.background_light);
+            int status = a.getColor(0, fallback);
+            int nav = a.getColor(1, fallback);
+            window.setStatusBarColor(status);
+            window.setNavigationBarColor(nav);
+            if (wic != null) {
+                boolean light = MaterialColors.isColorLight(status);
+                wic.setAppearanceLightStatusBars(light);
+                wic.setAppearanceLightNavigationBars(light);
+            }
+        } finally {
+            a.recycle();
+        }
     }
 
     /**

@@ -39,6 +39,15 @@
         app:tint="?android:attr/textColorSecondary" />
 
     <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/preset_row_delete"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/gamepad_preset_row_delete_cd"
+        app:srcCompat="@drawable/delete_24"
+        app:tint="?android:attr/textColorSecondary" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/preset_row_share"
         style="@style/Widget.Material3.Button.IconButton"
         android:layout_width="48dp"

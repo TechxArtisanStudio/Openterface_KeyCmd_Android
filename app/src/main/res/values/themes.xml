@@ -133,4 +133,7 @@
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+
+    <!-- Gamepad mode only: dark surfaces / Material widgets regardless of app DayNight. -->
+    <style name="ThemeOverlay.KeyMod.Gamepad" parent="ThemeOverlay.Material3.Dark" />
 </resources>

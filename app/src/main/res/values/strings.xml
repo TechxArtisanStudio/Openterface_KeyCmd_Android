@@ -760,6 +760,7 @@ by TechxArtisan</string>
     <string name="gamepad_preset_row_menu_cd">Layout options</string>
     <string name="gamepad_preset_row_share_cd">Share layout</string>
     <string name="gamepad_preset_row_save_cd">Save layout to device</string>
+    <string name="gamepad_preset_row_delete_cd">Delete layout</string>
     <string name="gamepad_preset_menu_rename">Rename</string>
     <string name="gamepad_preset_menu_duplicate">Duplicate</string>
     <string name="gamepad_preset_menu_share">Share JSON…</string>

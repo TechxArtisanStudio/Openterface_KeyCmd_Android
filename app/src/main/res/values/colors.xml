@@ -17,6 +17,8 @@
     <!-- Mode Card Colors -->
     <color name="color_keyboard_mouse">#FF2196F3</color>
     <color name="color_gamepad">#FF9C27B0</color>
+    <!-- Gamepad screen + status/navigation bars while Gamepad mode is active (always dark). -->
+    <color name="gamepad_window_system_bar">#FF1C1C1E</color>
     <color name="color_shortcuts">#FFFF9800</color>
     <color name="color_macros">#FFF44336</color>
     <color name="color_voice">#FF00BCD4</color>
