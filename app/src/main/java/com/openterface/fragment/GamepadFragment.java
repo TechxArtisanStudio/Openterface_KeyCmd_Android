@@ -52,7 +52,6 @@ import androidx.appcompat.widget.PopupMenu;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
@@ -104,6 +103,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
+import com.openterface.keymod.gamepad.GamepadPresetsBottomSheetDialog;
 import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
 import com.openterface.keymod.GamepadView.DpadStateListener;
@@ -259,8 +259,6 @@ public class GamepadFragment extends Fragment {
     @Nullable
     private MaterialButton activePresetChipButton;
     @Nullable
-    private MaterialButton toolbarResetPresetButton;
-    @Nullable
     private MaterialButton editModeMaterialButton;
     @Nullable
     private ImageButton gamepadChromeMenu;
@@ -353,27 +351,6 @@ public class GamepadFragment extends Fragment {
 
         MaterialButton presetsBtn = view.findViewById(R.id.gamepad_presets_btn);
         presetsBtn.setOnClickListener(v -> cycleToNextPreset());
-
-        toolbarResetPresetButton = view.findViewById(R.id.gamepad_toolbar_reset_preset_btn);
-        if (toolbarResetPresetButton != null) {
-            toolbarResetPresetButton.setOnClickListener(v -> {
-                if (presetRepository == null) {
-                    return;
-                }
-                String activeId = presetRepository.getActivePresetId();
-                if (!GamepadLayoutPresetConstants.isClassicBuiltInPresetId(activeId)) {
-                    return;
-                }
-                String err = presetRepository.resetClassicPresetToFactory(activeId);
-                if (err != null) {
-                    Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show();
-                } else {
-                    reloadFromPrefsAndApplyView();
-                    Toast.makeText(requireContext(), R.string.gamepad_preset_reset_done, Toast.LENGTH_SHORT)
-                            .show();
-                }
-            });
-        }
 
         MaterialButton mappingHintsToggle = view.findViewById(R.id.gamepad_mapping_hints_toggle);
         if (mappingHintsToggle != null && prefs != null && gamepadView != null) {
@@ -1079,19 +1056,6 @@ public class GamepadFragment extends Fragment {
         }
         String activeId = presetRepository.getActivePresetId();
         activePresetChipButton.setText(presetDisplayName(activeId));
-        syncToolbarClassicResetButtonVisibility();
-    }
-
-    /** One-tap factory reset for built-in classic layouts only; hidden for other active presets. */
-    private void syncToolbarClassicResetButtonVisibility() {
-        if (toolbarResetPresetButton == null || presetRepository == null) {
-            return;
-        }
-        String activeId = presetRepository.getActivePresetId();
-        toolbarResetPresetButton.setVisibility(
-                GamepadLayoutPresetConstants.isClassicBuiltInPresetId(activeId)
-                        ? View.VISIBLE
-                        : View.GONE);
     }
 
     /** Display label for a preset id (falls back to id). */
@@ -1223,16 +1187,10 @@ public class GamepadFragment extends Fragment {
 
     private void showGamepadPresetsBottomSheet() {
         Context ctx = gamepadUiContext();
-        BottomSheetDialog dialog = new BottomSheetDialog(ctx);
+        BottomSheetDialog dialog = new GamepadPresetsBottomSheetDialog(ctx);
         View sheet = LayoutInflater.from(ctx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
         dialog.setContentView(sheet);
         dialog.setDismissWithAnimation(true);
-        dialog.setOnShowListener(d -> {
-            View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (bottom != null) {
-                BottomSheetBehavior.from(bottom).setState(BottomSheetBehavior.STATE_EXPANDED);
-            }
-        });
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
         // Do not call setHasFixedSize(true): layout uses wrap_content height (lint InvalidSetHasFixedSize).
@@ -1337,8 +1295,6 @@ public class GamepadFragment extends Fragment {
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
             pm.getMenu().findItem(R.id.gamepad_preset_delete).setVisible(false);
         }
-        pm.getMenu().findItem(R.id.gamepad_preset_reset_layout).setVisible(
-                GamepadLayoutPresetConstants.isClassicBuiltInPresetId(presetId));
         pm.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.gamepad_preset_rename) {
@@ -1358,28 +1314,6 @@ public class GamepadFragment extends Fragment {
                             dup.error != null ? dup.error : getString(R.string.gamepad_preset_action_failed),
                             Toast.LENGTH_LONG).show();
                 }
-                return true;
-            }
-            if (id == R.id.gamepad_preset_reset_layout) {
-                new AlertDialog.Builder(anchor.getContext())
-                        .setTitle(R.string.gamepad_preset_reset_title)
-                        .setMessage(R.string.gamepad_preset_reset_message)
-                        .setPositiveButton(R.string.gamepad_preset_reset_confirm, (d, w) -> {
-                            String err = presetRepository.resetClassicPresetToFactory(presetId);
-                            if (err != null) {
-                                Toast.makeText(anchor.getContext(), err, Toast.LENGTH_LONG).show();
-                            } else {
-                                Toast.makeText(anchor.getContext(), R.string.gamepad_preset_reset_done,
-                                        Toast.LENGTH_SHORT).show();
-                                if (presetId.equals(presetRepository.getActivePresetId())) {
-                                    reloadFromPrefsAndApplyView();
-                                }
-                                refreshPresetSheetAdapter(adapter);
-                                updateActivePresetNameUi();
-                            }
-                        })
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
                 return true;
             }
             if (id == R.id.gamepad_preset_share) {

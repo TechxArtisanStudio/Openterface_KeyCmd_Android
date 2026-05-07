@@ -1,6 +1,7 @@
 package com.openterface.keymod.gamepad;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -36,78 +37,19 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
-    public void deletePreset_rejectsBuiltInTwoButton() {
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID));
-    }
-
-    @Test
-    public void deletePreset_rejectsBuiltInClassicPresets() {
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX));
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_PLAYSTATION));
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NINTENDO));
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES));
-    }
-
-    @Test
-    public void resetClassicPresetToFactory_rejectsNonClassic() {
-        assertNotNull(repo.resetClassicPresetToFactory(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID));
-        assertNotNull(repo.resetClassicPresetToFactory(null));
-    }
-
-    @Test
-    public void resetClassicPresetToFactory_restoresCanonicalLayout() throws Exception {
-        String id = GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES;
-        repo.writeFile(id, minimalButtonAOnlyPresetStub());
-        GamepadLayoutPresetDocument broken = repo.loadDocument(id);
-        assertNotNull(broken);
-        assertEquals(1, broken.modules.size());
-        assertNull(repo.resetClassicPresetToFactory(id));
-        GamepadLayoutPresetDocument after = repo.loadDocument(id);
-        assertNotNull(after);
-        assertTrue(after.modules.size() >= 4);
-    }
-
-    /** Intentionally not a NES layout; used to verify reset overwrites invalid on-disk JSON. */
-    private static GamepadLayoutPresetDocument minimalButtonAOnlyPresetStub() {
-        GamepadLayoutPresetDocument doc = new GamepadLayoutPresetDocument();
-        doc.format = GamepadLayoutPresetConstants.DOCUMENT_FORMAT;
-        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
-        doc.meta = new GamepadLayoutPresetDocument.Meta();
-        doc.meta.id = GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES;
-        doc.meta.displayName = "stub";
-        doc.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
-        doc.layout.mouseSensitivity = 1.0f;
-        doc.layout.showTwoButtons = false;
-        ArrayList<GamepadLayoutPresetDocument.GamepadModule> modules = new ArrayList<>();
-        GamepadLayoutPresetDocument.GamepadModule btnA = new GamepadLayoutPresetDocument.GamepadModule();
-        btnA.id = "button_a";
-        btnA.type = GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON;
-        btnA.zIndex = 0;
-        btnA.scale = 1.0f;
-        btnA.anchorX = 0.5f;
-        btnA.anchorY = 0.5f;
-        btnA.hidKey = 40;
-        btnA.modifierMask = 0;
-        modules.add(btnA);
-        doc.modules = modules;
-        return doc;
-    }
-
-    @Test
-    public void ensureMigratedFromLegacy_includesClassicPresetIds() {
-        boolean seenXbox = false;
-        boolean seenNes = false;
+    public void listPresets_excludesDiscontinuedBuiltinIds() {
         for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
-            if (r != null && GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX.equals(r.id)) {
-                seenXbox = true;
+            if (r == null || r.id == null) {
+                continue;
             }
-            if (r != null && GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_NES.equals(r.id)) {
-                seenNes = true;
-            }
+            assertFalse("preset_two_buttons".equals(r.id));
+            assertFalse(r.id.startsWith("preset_classic_"));
         }
-        assertTrue(seenXbox);
-        assertTrue(seenNes);
-        assertNotNull(repo.loadDocument(GamepadLayoutPresetConstants.BUILT_IN_PRESET_CLASSIC_XBOX));
+    }
+
+    @Test
+    public void deletePreset_unknownId_returnsError() {
+        assertNotNull(repo.deletePreset("preset_does_not_exist"));
     }
 
     @Test
