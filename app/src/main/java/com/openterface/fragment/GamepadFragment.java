@@ -924,11 +924,18 @@ public class GamepadFragment extends Fragment {
             buttonAKey = btnA.hidKey;
             buttonAModifiers = intOr(btnA.modifierMask, 0);
             buttonSizeScale = btnA.scale;
+        } else {
+            buttonAKey = DEFAULT_BUTTON_A;
+            buttonAModifiers = 0;
+            buttonSizeScale = 1.0f;
         }
         GamepadLayoutPresetDocument.GamepadModule btnB = findModuleById("button_b");
         if (btnB != null && btnB.hidKey != null) {
             buttonBKey = btnB.hidKey;
             buttonBModifiers = intOr(btnB.modifierMask, 0);
+        } else {
+            buttonBKey = DEFAULT_BUTTON_B;
+            buttonBModifiers = 0;
         }
 
         pruneAuxLeftThumbDirHeld();

@@ -29,6 +29,40 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsLayoutWithoutButtonA() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.removeIf(m -> m != null && "button_a".equals(m.id));
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void removeModuleRemovesButtonAAndClearsTwoButtonMode() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btnB = new GamepadLayoutPresetDocument.GamepadModule();
+        btnB.id = "button_b";
+        btnB.type = GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON;
+        btnB.zIndex = 2;
+        btnB.scale = 1.0f;
+        btnB.anchorX = 0.93f;
+        btnB.anchorY = 0.4f;
+        btnB.hidKey = 41;
+        btnB.modifierMask = 0;
+        doc.modules.add(btnB);
+        doc.layout.showTwoButtons = true;
+        assertTrue(GamepadLayoutDocEditor.canRemove("button_a"));
+        GamepadLayoutDocEditor.removeModule(doc, "button_a");
+        assertNull(findModule(doc, "button_a"));
+        assertFalse(doc.layout.showTwoButtons);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void canRemoveRejectsNullOrEmptyId() {
+        assertFalse(GamepadLayoutDocEditor.canRemove(null));
+        assertFalse(GamepadLayoutDocEditor.canRemove(""));
+    }
+
+    @Test
     public void validateAcceptsOnlyAuxLeftStickWithoutPrimary() {
         GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
         GamepadLayoutPresetDocument.GamepadModule aux = new GamepadLayoutPresetDocument.GamepadModule();

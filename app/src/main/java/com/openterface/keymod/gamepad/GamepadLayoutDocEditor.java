@@ -285,7 +285,7 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static boolean canRemove(String componentId) {
-        return !"button_a".equals(componentId);
+        return componentId != null && !componentId.isEmpty();
     }
 
     /**
@@ -396,6 +396,9 @@ public final class GamepadLayoutDocEditor {
     public static void removeModule(GamepadLayoutPresetDocument doc, String componentId) {
         if (!canRemove(componentId)) {
             return;
+        }
+        if ("button_a".equals(componentId)) {
+            doc.layout.showTwoButtons = false;
         }
         boolean removedTouchpad = GamepadLayoutPresetConstants.isTouchpadModuleId(componentId);
         Iterator<GamepadLayoutPresetDocument.GamepadModule> it = doc.modules.iterator();

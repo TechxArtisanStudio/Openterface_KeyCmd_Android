@@ -251,15 +251,21 @@ public class GamepadLayoutPresetDocument {
             }
         }
         GamepadModule btnA = findModule(d.modules, "button_a");
-        if (btnA == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(btnA.type)) {
-            throw new IllegalArgumentException("Missing BUTTON module id=button_a");
-        }
-        if (btnA.hidKey == null) {
-            throw new IllegalArgumentException("button_a missing hidKey");
+        if (btnA != null) {
+            if (!GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(btnA.type)) {
+                throw new IllegalArgumentException("button_a must be BUTTON type");
+            }
+            if (btnA.hidKey == null) {
+                throw new IllegalArgumentException("button_a missing hidKey");
+            }
         }
         if (d.layout.showTwoButtons) {
+            if (btnA == null) {
+                throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_a");
+            }
             GamepadModule btnB = findModule(d.modules, "button_b");
-            if (btnB == null || btnB.hidKey == null) {
+            if (btnB == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(btnB.type)
+                    || btnB.hidKey == null) {
                 throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_b with hidKey");
             }
         }

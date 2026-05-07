@@ -93,10 +93,16 @@ public final class GamepadLayoutPresetApplier {
             ed.putFloat(GamepadPreferenceKeys.STICK_SIZE, stick.scale);
         }
 
-        GamepadLayoutPresetDocument.GamepadModule btnA = require(modules, "button_a");
-        ed.putFloat(GamepadPreferenceKeys.BUTTON_SIZE, btnA.scale);
-        ed.putInt(GamepadPreferenceKeys.BUTTON_A_KEY, btnA.hidKey);
-        ed.putInt(GamepadPreferenceKeys.BUTTON_A_MOD, btnA.modifierMask != null ? btnA.modifierMask : 0);
+        GamepadLayoutPresetDocument.GamepadModule btnA = findModule(modules, "button_a");
+        if (btnA != null) {
+            ed.putFloat(GamepadPreferenceKeys.BUTTON_SIZE, btnA.scale);
+            ed.putInt(GamepadPreferenceKeys.BUTTON_A_KEY, btnA.hidKey);
+            ed.putInt(GamepadPreferenceKeys.BUTTON_A_MOD, btnA.modifierMask != null ? btnA.modifierMask : 0);
+        } else {
+            ed.putFloat(GamepadPreferenceKeys.BUTTON_SIZE, 1.0f);
+            ed.putInt(GamepadPreferenceKeys.BUTTON_A_KEY, 40);
+            ed.putInt(GamepadPreferenceKeys.BUTTON_A_MOD, 0);
+        }
 
         if (L.showTwoButtons) {
             GamepadLayoutPresetDocument.GamepadModule btnB = require(modules, "button_b");
@@ -117,12 +123,25 @@ public final class GamepadLayoutPresetApplier {
         new GamepadConfigManager(context).saveLayoutPositions(GamepadLayout.SIMPLE, positions);
     }
 
-    private static GamepadLayoutPresetDocument.GamepadModule require(
+    @Nullable
+    private static GamepadLayoutPresetDocument.GamepadModule findModule(
             List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {
+        if (modules == null) {
+            return null;
+        }
         for (GamepadLayoutPresetDocument.GamepadModule m : modules) {
             if (m != null && id.equals(m.id)) {
                 return m;
             }
+        }
+        return null;
+    }
+
+    private static GamepadLayoutPresetDocument.GamepadModule require(
+            List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {
+        GamepadLayoutPresetDocument.GamepadModule m = findModule(modules, id);
+        if (m != null) {
+            return m;
         }
         throw new IllegalArgumentException("Missing module: " + id);
     }
