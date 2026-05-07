@@ -460,6 +460,30 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsBackgroundFillAndPattern() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.backgroundFillArgb = 0xFF2D3142;
+        doc.layout.backgroundPattern = GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS, doc.layout.backgroundPattern);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsUnknownBackgroundPattern() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.backgroundPattern = "zebra";
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateNormalizesBackgroundPatternNoneToNull() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.backgroundPattern = "none";
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertNull(doc.layout.backgroundPattern);
+    }
+
+    @Test
     public void upgradeV1SchemaThenValidates() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V1;

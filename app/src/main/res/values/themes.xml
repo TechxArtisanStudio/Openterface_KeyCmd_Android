@@ -138,8 +138,8 @@
     <style name="ThemeOverlay.KeyMod.Gamepad" parent="ThemeOverlay.Material3.Dark" />
 
     <!-- Layouts sheet: presentation_card is a light (or night) surface; gamepad overlay uses Dark
-         tokens so colorOnSurface was light-on-white. This overlay fixes surface + onSurface and
-         uses fade-only window animations (see Animation.KeyMod.GamepadPresetSheet). -->
+         tokens so colorOnSurface was light-on-white. No window enter/exit animation here so the
+         BottomSheetBehavior slide is the only motion (avoids alpha + slide fighting). -->
     <style name="ThemeOverlay.KeyMod.GamepadPresetSheet" parent="ThemeOverlay.Material3.Dark">
         <item name="android:colorBackground">@color/presentation_card_bg</item>
         <item name="colorSurface">@color/presentation_card_bg</item>
@@ -147,6 +147,5 @@
         <item name="colorOnSurfaceVariant">@color/presentation_text_secondary</item>
         <item name="colorOutline">@color/text_secondary</item>
         <item name="colorOutlineVariant">@color/divider</item>
-        <item name="android:windowAnimationStyle">@style/Animation.KeyMod.GamepadPresetSheet</item>
     </style>
 </resources>

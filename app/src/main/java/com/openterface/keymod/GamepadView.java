@@ -138,6 +138,11 @@ public class GamepadView extends View {
 
     // Background image
     private android.graphics.Bitmap backgroundBitmap = null;
+    /** Null = no custom fill (use default gradient when no bitmap). */
+    @Nullable private Integer backgroundFillArgb = null;
+    /** Canonical pattern id (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_PATTERN_DOTS}); null = none. */
+    @Nullable private String backgroundPatternId = null;
+    private Paint patternOverlayPaint;
     private Runnable onBackgroundChanged;
 
     /** Openterface wordmark on the background plane (drawn under sticks/buttons). */
@@ -255,6 +260,10 @@ public class GamepadView extends View {
         bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         bgPaint.setColor(Color.parseColor("#F5F5F5"));
 
+        patternOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        patternOverlayPaint.setStyle(Paint.Style.STROKE);
+        patternOverlayPaint.setStrokeCap(Paint.Cap.ROUND);
+
         buttonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         buttonPaint.setColor(Color.parseColor("#2196F3"));
 
@@ -296,15 +305,12 @@ public class GamepadView extends View {
         super.onDraw(canvas);
         refreshThemeAccent();
 
-        // Draw background image if set, otherwise light vertical gradient (app surface tone)
+        // Draw background image if set, otherwise gradient (custom fill and/or default) + optional pattern
         if (backgroundBitmap != null) {
             drawBackgroundWithPanZoom(canvas);
         } else {
-            Shader sh = new LinearGradient(0, 0, 0, getHeight(),
-                    Color.parseColor("#F5F5F5"), Color.parseColor("#ECECEC"), Shader.TileMode.CLAMP);
-            bgPaint.setShader(sh);
-            canvas.drawRect(0, 0, getWidth(), getHeight(), bgPaint);
-            bgPaint.setShader(null);
+            drawSolidOrDefaultBackground(canvas);
+            drawProceduralBackgroundPattern(canvas);
         }
 
         drawBrandWatermark(canvas);
@@ -366,6 +372,98 @@ public class GamepadView extends View {
         canvas.translate(-bw / 2f, -bh / 2f);
         canvas.drawBitmap(backgroundBitmap, 0, 0, null);
         canvas.restore();
+    }
+
+    private void drawSolidOrDefaultBackground(Canvas canvas) {
+        int vw = getWidth();
+        int vh = getHeight();
+        if (vw <= 0 || vh <= 0) {
+            return;
+        }
+        int topColor;
+        int bottomColor;
+        if (backgroundFillArgb != null) {
+            int c = backgroundFillArgb;
+            topColor = c;
+            bottomColor = isLightFace(c) ? darkenArgb(c, 0.9f) : ColorUtils.blendARGB(c, Color.WHITE, 0.1f);
+        } else {
+            topColor = Color.parseColor("#F5F5F5");
+            bottomColor = Color.parseColor("#ECECEC");
+        }
+        Shader sh = new LinearGradient(0, 0, 0, vh, topColor, bottomColor, Shader.TileMode.CLAMP);
+        bgPaint.setShader(sh);
+        canvas.drawRect(0, 0, vw, vh, bgPaint);
+        bgPaint.setShader(null);
+    }
+
+    private void drawProceduralBackgroundPattern(Canvas canvas) {
+        if (backgroundPatternId == null) {
+            return;
+        }
+        int vw = getWidth();
+        int vh = getHeight();
+        if (vw <= 0 || vh <= 0) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int ref = backgroundFillArgb != null ? backgroundFillArgb : Color.parseColor("#F0F0F0");
+        double lum = ColorUtils.calculateLuminance(ref);
+        int strokeRgb = lum > 0.52 ? 0xFF000000 : 0xFFFFFFFF;
+        int strokeA = lum > 0.52 ? 14 : 18;
+        patternOverlayPaint.setColor(Color.argb(strokeA, Color.red(strokeRgb), Color.green(strokeRgb), Color.blue(strokeRgb)));
+
+        switch (backgroundPatternId) {
+            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS: {
+                patternOverlayPaint.setStyle(Paint.Style.FILL);
+                float step = 24f * density;
+                float r = Math.max(0.55f, 0.35f * density);
+                for (float x = step * 0.5f; x < vw; x += step) {
+                    for (float y = step * 0.5f; y < vh; y += step) {
+                        canvas.drawCircle(x, y, r, patternOverlayPaint);
+                    }
+                }
+                patternOverlayPaint.setStyle(Paint.Style.STROKE);
+                break;
+            }
+            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID: {
+                patternOverlayPaint.setStrokeWidth(Math.max(0.5f, 0.35f * density));
+                float g = 14f * density;
+                for (float x = 0; x <= vw; x += g) {
+                    canvas.drawLine(x, 0, x, vh, patternOverlayPaint);
+                }
+                for (float y = 0; y <= vh; y += g) {
+                    canvas.drawLine(0, y, vw, y, patternOverlayPaint);
+                }
+                break;
+            }
+            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH: {
+                patternOverlayPaint.setStrokeWidth(Math.max(0.5f, 0.4f * density));
+                float spacing = 18f * density;
+                for (float k = -vh; k < vw + vh; k += spacing) {
+                    canvas.drawLine(k, 0, k + vh, vh, patternOverlayPaint);
+                }
+                break;
+            }
+            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NOISE: {
+                patternOverlayPaint.setStyle(Paint.Style.FILL);
+                float cell = 5f * density;
+                float dotR = Math.max(0.45f, 0.28f * density);
+                for (int ix = 0; ix * cell < vw; ix++) {
+                    for (int iy = 0; iy * cell < vh; iy++) {
+                        int h = (ix * 92837111 ^ iy * 689287499) & 0x7fffffff;
+                        if ((h % 11) < 3) {
+                            float cx = ix * cell + cell * 0.5f;
+                            float cy = iy * cell + cell * 0.5f;
+                            canvas.drawCircle(cx, cy, dotR, patternOverlayPaint);
+                        }
+                    }
+                }
+                patternOverlayPaint.setStyle(Paint.Style.STROKE);
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     private void drawComponents(Canvas canvas) {
@@ -2519,6 +2617,33 @@ public class GamepadView extends View {
         this.bgOffsetX = offsetX;
         this.bgOffsetY = offsetY;
         invalidate();
+    }
+
+    /** Null clears custom fill (default gradient when no bitmap). */
+    public void setBackgroundFillArgb(@Nullable Integer argb) {
+        this.backgroundFillArgb = argb;
+        invalidate();
+    }
+
+    @Nullable
+    public Integer getBackgroundFillArgb() {
+        return backgroundFillArgb;
+    }
+
+    /** Pass null or {@link GamepadLayoutPresetConstants#BACKGROUND_PATTERN_NONE} to clear. */
+    public void setBackgroundPatternId(@Nullable String patternId) {
+        if (patternId == null || patternId.trim().isEmpty()
+                || GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE.equalsIgnoreCase(patternId.trim())) {
+            this.backgroundPatternId = null;
+        } else {
+            this.backgroundPatternId = patternId.trim().toLowerCase(Locale.ROOT);
+        }
+        invalidate();
+    }
+
+    @Nullable
+    public String getBackgroundPatternId() {
+        return backgroundPatternId;
     }
 
     private Runnable onBackgroundViewportChanged;

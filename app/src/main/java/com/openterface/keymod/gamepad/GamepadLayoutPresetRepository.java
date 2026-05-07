@@ -327,6 +327,41 @@ public class GamepadLayoutPresetRepository {
     }
 
     /**
+     * Replaces the built-in default preset file with {@code assets/.../default.json}. Keeps the
+     * current index display name (and writes it into {@link GamepadLayoutPresetDocument.Meta}).
+     *
+     * @return null on success, or an error message.
+     */
+    @Nullable
+    public String resetDefaultPresetFromBundled() {
+        GamepadLayoutPresetDocument fresh = loadBundledDefaultPresetFromAssets();
+        if (fresh == null) {
+            return "Could not load bundled default layout";
+        }
+        String displayKeep = "Default";
+        List<PresetRef> idx = readIndex();
+        for (PresetRef r : idx) {
+            if (r != null && GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(r.id)) {
+                if (r.displayName != null && !r.displayName.trim().isEmpty()) {
+                    displayKeep = r.displayName.trim();
+                }
+                break;
+            }
+        }
+        if (fresh.meta == null) {
+            fresh.meta = new GamepadLayoutPresetDocument.Meta();
+        }
+        fresh.meta.id = GamepadLayoutPresetConstants.DEFAULT_PRESET_ID;
+        fresh.meta.displayName = displayKeep;
+        try {
+            writeFile(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, fresh);
+        } catch (IOException e) {
+            return e.getMessage();
+        }
+        return null;
+    }
+
+    /**
      * Updates display name in index and in the preset JSON on disk.
      *
      * @return null on success, or error message.

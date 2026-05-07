@@ -33,6 +33,28 @@ public final class GamepadLayoutPresetConstants {
     public static final String BACKGROUND_MEDIA_TYPE_JPEG = "image/jpeg";
     public static final String BACKGROUND_MEDIA_TYPE_WEBP = "image/webp";
 
+    /** No pattern overlay (JSON may omit or use this value). */
+    public static final String BACKGROUND_PATTERN_NONE = "none";
+    public static final String BACKGROUND_PATTERN_DOTS = "dots";
+    public static final String BACKGROUND_PATTERN_MICRO_GRID = "micro_grid";
+    public static final String BACKGROUND_PATTERN_DIAGONAL_HATCH = "diagonal_hatch";
+    public static final String BACKGROUND_PATTERN_NOISE = "noise";
+
+    public static boolean isAllowedBackgroundPattern(@Nullable String p) {
+        if (p == null) {
+            return true;
+        }
+        String x = p.trim();
+        if (x.isEmpty() || BACKGROUND_PATTERN_NONE.equalsIgnoreCase(x)) {
+            return true;
+        }
+        String y = x.toLowerCase(java.util.Locale.ROOT);
+        return BACKGROUND_PATTERN_DOTS.equals(y)
+                || BACKGROUND_PATTERN_MICRO_GRID.equals(y)
+                || BACKGROUND_PATTERN_DIAGONAL_HATCH.equals(y)
+                || BACKGROUND_PATTERN_NOISE.equals(y);
+    }
+
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
     /**
      * Digital directional pad on any stick-shaped module id ({@link #isStickModuleId(String)}); same direction key

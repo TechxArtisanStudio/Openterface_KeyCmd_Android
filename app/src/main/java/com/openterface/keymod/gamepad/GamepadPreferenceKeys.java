@@ -22,6 +22,10 @@ public final class GamepadPreferenceKeys {
     public static final String BG_SCALE = "gamepad_bg_scale";
     public static final String BG_OFFSET_X = "gamepad_bg_offset_x";
     public static final String BG_OFFSET_Y = "gamepad_bg_offset_y";
+    /** Packed ARGB; key present only when user chose a custom canvas fill (no image). */
+    public static final String BG_FILL_ARGB = "gamepad_bg_fill_argb";
+    /** One of {@link GamepadLayoutPresetConstants} background pattern ids; absent = none. */
+    public static final String BG_PATTERN = "gamepad_bg_pattern";
     /**
      * Legacy mirror of {@code layout.showTwoButtons}; still written when applying a preset for
      * compatibility. Active preset + layout document are authoritative; no dedicated UI toggle.

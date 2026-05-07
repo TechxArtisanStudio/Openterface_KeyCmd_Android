@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.ShadowLooper;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.annotation.Config;
 
 import java.util.Arrays;

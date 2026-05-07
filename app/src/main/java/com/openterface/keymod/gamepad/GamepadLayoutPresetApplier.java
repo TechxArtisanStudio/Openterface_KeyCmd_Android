@@ -63,6 +63,20 @@ public final class GamepadLayoutPresetApplier {
             ed.putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, L.backgroundOffsetY);
         }
 
+        if (L.backgroundFillArgb != null) {
+            ed.putInt(GamepadPreferenceKeys.BG_FILL_ARGB, L.backgroundFillArgb);
+        } else {
+            ed.remove(GamepadPreferenceKeys.BG_FILL_ARGB);
+        }
+        if (L.backgroundPattern != null && !L.backgroundPattern.trim().isEmpty()
+                && !GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE.equalsIgnoreCase(
+                        L.backgroundPattern.trim())) {
+            ed.putString(GamepadPreferenceKeys.BG_PATTERN, L.backgroundPattern.trim().toLowerCase(
+                    java.util.Locale.ROOT));
+        } else {
+            ed.remove(GamepadPreferenceKeys.BG_PATTERN);
+        }
+
         List<GamepadLayoutPresetDocument.GamepadModule> modules = doc.modules;
         GamepadLayoutPresetDocument.GamepadModule stick = resolveLeftThumbStickForPrefs(modules);
         if (stick == null) {

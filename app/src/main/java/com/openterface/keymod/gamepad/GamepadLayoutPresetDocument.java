@@ -67,6 +67,16 @@ public class GamepadLayoutPresetDocument {
         @Nullable public String faceButtonTemplate;
         /** When true, device tilt can drive relative pointer movement (see gamepad screen + USER_GUIDE). */
         @Nullable public Boolean gyroEnabled;
+        /**
+         * Custom canvas fill when no {@link #backgroundImageFile} (packed ARGB). Null = use built-in default gradient
+         * unless only {@link #backgroundPattern} is set (pattern over default gradient).
+         */
+        @Nullable public Integer backgroundFillArgb;
+        /**
+         * Subtle procedural pattern over fill or default gradient; see
+         * {@link GamepadLayoutPresetConstants#BACKGROUND_PATTERN_NONE} and related ids.
+         */
+        @Nullable public String backgroundPattern;
     }
 
     /**
@@ -224,6 +234,7 @@ public class GamepadLayoutPresetDocument {
             }
         }
         validateBackgroundEmbed(d.layout);
+        validateBackgroundFillAndPattern(d.layout);
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
@@ -558,6 +569,21 @@ public class GamepadLayoutPresetDocument {
         }
         if (data.length() > GamepadLayoutPresetConstants.MAX_BACKGROUND_EMBED_BASE64_CHARS) {
             throw new IllegalArgumentException("backgroundImageData too large");
+        }
+    }
+
+    private static void validateBackgroundFillAndPattern(LayoutGlobals L) {
+        if (L.backgroundPattern != null) {
+            String raw = L.backgroundPattern.trim();
+            if (raw.isEmpty()) {
+                L.backgroundPattern = null;
+            } else if (!GamepadLayoutPresetConstants.isAllowedBackgroundPattern(raw)) {
+                throw new IllegalArgumentException("layout.backgroundPattern is not a known pattern id");
+            } else if (GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE.equalsIgnoreCase(raw)) {
+                L.backgroundPattern = null;
+            } else {
+                L.backgroundPattern = raw.toLowerCase(java.util.Locale.ROOT);
+            }
         }
     }
 

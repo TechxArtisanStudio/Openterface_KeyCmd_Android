@@ -683,6 +683,30 @@ von TechxArtisan</string>
     ]]></string>
     <string name="gamepad_bg_pick_gallery"><![CDATA[Pick from gallery
     ]]></string>
+    <string name="gamepad_bg_color_title"><![CDATA[Hintergrundfarbe
+    ]]></string>
+    <string name="gamepad_bg_color_presets_hint"><![CDATA[Farbfeld antippen oder benutzerdefiniertes RGB wählen.
+    ]]></string>
+    <string name="gamepad_bg_color_custom"><![CDATA[Benutzerdefinierte Farbe…
+    ]]></string>
+    <string name="gamepad_bg_color_channel_r"><![CDATA[Rot: %1$d
+    ]]></string>
+    <string name="gamepad_bg_color_channel_g"><![CDATA[Grün: %1$d
+    ]]></string>
+    <string name="gamepad_bg_color_channel_b"><![CDATA[Blau: %1$d
+    ]]></string>
+    <string name="gamepad_bg_pattern_title"><![CDATA[Hintergrundmuster
+    ]]></string>
+    <string name="gamepad_bg_pattern_none"><![CDATA[Keins
+    ]]></string>
+    <string name="gamepad_bg_pattern_dots"><![CDATA[Punktraster
+    ]]></string>
+    <string name="gamepad_bg_pattern_micro_grid"><![CDATA[Feines Raster
+    ]]></string>
+    <string name="gamepad_bg_pattern_diagonal_hatch"><![CDATA[Diagonale Linien
+    ]]></string>
+    <string name="gamepad_bg_pattern_noise"><![CDATA[Feine Körnung
+    ]]></string>
     <string name="gamepad_bg_remove"><![CDATA[Remove background
     ]]></string>
     <string name="gamepad_button_config_mapped_key"><![CDATA[Mapped key (tap to change)

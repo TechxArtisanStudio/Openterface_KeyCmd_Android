@@ -99,6 +99,13 @@ public final class GamepadLayoutDocumentStore {
         doc.layout.backgroundScale = prefs.getFloat(GamepadPreferenceKeys.BG_SCALE, 1.0f);
         doc.layout.backgroundOffsetX = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_X, 0f);
         doc.layout.backgroundOffsetY = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_Y, 0f);
+        if (prefs.contains(GamepadPreferenceKeys.BG_FILL_ARGB)) {
+            doc.layout.backgroundFillArgb = prefs.getInt(GamepadPreferenceKeys.BG_FILL_ARGB, 0);
+        }
+        if (prefs.contains(GamepadPreferenceKeys.BG_PATTERN)) {
+            String pat = prefs.getString(GamepadPreferenceKeys.BG_PATTERN, null);
+            doc.layout.backgroundPattern = pat != null && !pat.trim().isEmpty() ? pat.trim() : null;
+        }
 
         List<GamepadLayoutPresetDocument.GamepadModule> modules = new ArrayList<>();
         String stickMode = prefs.getString(GamepadPreferenceKeys.STICK_MODE, "key");

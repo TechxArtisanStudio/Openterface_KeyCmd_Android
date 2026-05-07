@@ -713,6 +713,30 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_bg_pick_gallery"><![CDATA[Pick from gallery
     ]]></string>
+    <string name="gamepad_bg_color_title"><![CDATA[背景の色
+    ]]></string>
+    <string name="gamepad_bg_color_presets_hint"><![CDATA[色見本をタップするか、カスタムRGBを選びます。
+    ]]></string>
+    <string name="gamepad_bg_color_custom"><![CDATA[カスタム色…
+    ]]></string>
+    <string name="gamepad_bg_color_channel_r"><![CDATA[赤: %1$d
+    ]]></string>
+    <string name="gamepad_bg_color_channel_g"><![CDATA[緑: %1$d
+    ]]></string>
+    <string name="gamepad_bg_color_channel_b"><![CDATA[青: %1$d
+    ]]></string>
+    <string name="gamepad_bg_pattern_title"><![CDATA[背景のパターン
+    ]]></string>
+    <string name="gamepad_bg_pattern_none"><![CDATA[なし
+    ]]></string>
+    <string name="gamepad_bg_pattern_dots"><![CDATA[ドット格子
+    ]]></string>
+    <string name="gamepad_bg_pattern_micro_grid"><![CDATA[細かいグリッド
+    ]]></string>
+    <string name="gamepad_bg_pattern_diagonal_hatch"><![CDATA[斜めライン
+    ]]></string>
+    <string name="gamepad_bg_pattern_noise"><![CDATA[スペックル
+    ]]></string>
     <string name="gamepad_bg_remove"><![CDATA[Remove background
     ]]></string>
     <string name="gamepad_button_config_mapped_key"><![CDATA[Mapped key (tap to change)

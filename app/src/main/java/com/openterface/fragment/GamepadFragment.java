@@ -43,6 +43,7 @@ import android.widget.ImageView;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
+import android.widget.GridLayout;
 import android.widget.RadioGroup;
 import androidx.core.widget.NestedScrollView;
 import android.widget.SeekBar;
@@ -966,6 +967,7 @@ public class GamepadFragment extends Fragment {
         }
         updateGamepadLabels();
         updateGyroListenerRegistration();
+        applyCanvasBackgroundStyleFromPrefsAndDoc();
     }
 
     private void updateGyroListenerRegistration() {
@@ -1172,6 +1174,7 @@ public class GamepadFragment extends Fragment {
                     float offsetX = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_X, 0f);
                     float offsetY = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_Y, 0f);
                     gamepadView.setBackgroundViewport(scale, offsetX, offsetY);
+                    applyCanvasBackgroundStyleFromPrefsAndDoc();
                     return;
                 }
             }
@@ -1194,6 +1197,85 @@ public class GamepadFragment extends Fragment {
             }
         }
         gamepadView.setBackgroundBitmap(null);
+        applyCanvasBackgroundStyleFromPrefsAndDoc();
+    }
+
+    /** Applies custom fill + pattern to {@link GamepadView} from prefs (preferred) or {@link #layoutDoc}. */
+    private void applyCanvasBackgroundStyleFromPrefsAndDoc() {
+        if (gamepadView == null || prefs == null) {
+            return;
+        }
+        Integer fill = null;
+        if (prefs.contains(GamepadPreferenceKeys.BG_FILL_ARGB)) {
+            fill = prefs.getInt(GamepadPreferenceKeys.BG_FILL_ARGB, 0);
+        } else if (layoutDoc != null && layoutDoc.layout != null && layoutDoc.layout.backgroundFillArgb != null) {
+            fill = layoutDoc.layout.backgroundFillArgb;
+        }
+        String pattern = null;
+        if (prefs.contains(GamepadPreferenceKeys.BG_PATTERN)) {
+            pattern = prefs.getString(GamepadPreferenceKeys.BG_PATTERN, null);
+        } else if (layoutDoc != null && layoutDoc.layout != null && layoutDoc.layout.backgroundPattern != null) {
+            pattern = layoutDoc.layout.backgroundPattern;
+        }
+        gamepadView.setBackgroundFillArgb(fill);
+        gamepadView.setBackgroundPatternId(pattern);
+    }
+
+    @Nullable
+    private Integer readCurrentBackgroundFillArgb() {
+        if (prefs != null && prefs.contains(GamepadPreferenceKeys.BG_FILL_ARGB)) {
+            return prefs.getInt(GamepadPreferenceKeys.BG_FILL_ARGB, 0);
+        }
+        if (layoutDoc != null && layoutDoc.layout != null && layoutDoc.layout.backgroundFillArgb != null) {
+            return layoutDoc.layout.backgroundFillArgb;
+        }
+        return null;
+    }
+
+    @Nullable
+    private String readCurrentBackgroundPatternId() {
+        if (prefs != null && prefs.contains(GamepadPreferenceKeys.BG_PATTERN)) {
+            return prefs.getString(GamepadPreferenceKeys.BG_PATTERN, null);
+        }
+        if (layoutDoc != null && layoutDoc.layout != null && layoutDoc.layout.backgroundPattern != null) {
+            return layoutDoc.layout.backgroundPattern;
+        }
+        return null;
+    }
+
+    private void persistCanvasBackgroundFillAndPattern(@Nullable Integer fillArgb, @Nullable String patternId) {
+        if (!isAdded() || layoutDoc == null || layoutDoc.layout == null) {
+            return;
+        }
+        layoutDoc.layout.backgroundFillArgb = fillArgb;
+        if (patternId == null || patternId.trim().isEmpty()
+                || GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE.equalsIgnoreCase(patternId.trim())) {
+            layoutDoc.layout.backgroundPattern = null;
+        } else {
+            layoutDoc.layout.backgroundPattern = patternId.trim().toLowerCase(Locale.ROOT);
+        }
+        SharedPreferences.Editor ed = prefs.edit();
+        if (fillArgb != null) {
+            ed.putInt(GamepadPreferenceKeys.BG_FILL_ARGB, fillArgb);
+        } else {
+            ed.remove(GamepadPreferenceKeys.BG_FILL_ARGB);
+        }
+        if (layoutDoc.layout.backgroundPattern != null) {
+            ed.putString(GamepadPreferenceKeys.BG_PATTERN, layoutDoc.layout.backgroundPattern);
+        } else {
+            ed.remove(GamepadPreferenceKeys.BG_PATTERN);
+        }
+        ed.apply();
+        if (gamepadView != null) {
+            gamepadView.setBackgroundFillArgb(fillArgb);
+            gamepadView.setBackgroundPatternId(layoutDoc.layout.backgroundPattern);
+        }
+        try {
+            GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "save layout after canvas background", e);
+        }
+        persistActivePresetSnapshot();
     }
 
     private void showGamepadPresetsBottomSheet() {
@@ -1204,21 +1286,25 @@ public class GamepadFragment extends Fragment {
         BottomSheetDialog dialog = new GamepadPresetsBottomSheetDialog(sheetCtx);
         View sheet = LayoutInflater.from(sheetCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
         dialog.setContentView(sheet);
-        // Fade-only window anim is set on the overlay; avoid Material's slide-away dismiss.
+        // Avoid Material's slide-away dismiss; do not add window enter/exit alpha so the sheet's
+        // single BottomSheetBehavior slide stays smooth (window fade + sheet slide felt choppy).
         dialog.setDismissWithAnimation(false);
         Window dw = dialog.getWindow();
         if (dw != null) {
-            dw.setWindowAnimations(R.style.Animation_KeyMod_GamepadPresetSheet);
+            dw.setWindowAnimations(0);
         }
         dialog.setOnShowListener(d -> {
             View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
             if (bottom != null) {
                 // Let the inflated sheet use {@code bg_presentation_touchpad_dialog} without a second surface behind it.
                 bottom.setBackgroundResource(android.R.color.transparent);
-                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
-                behavior.setSkipCollapsed(true);
-                behavior.setFitToContents(true);
-                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                // Defer expand to the next frame so it does not compete with the initial attach/layout.
+                bottom.post(() -> {
+                    BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
+                    behavior.setSkipCollapsed(true);
+                    behavior.setFitToContents(true);
+                    behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                });
             }
         });
 
@@ -1315,6 +1401,31 @@ public class GamepadFragment extends Fragment {
                 .show();
     }
 
+    private void confirmResetDefaultPreset(
+            @NonNull BottomSheetDialog hostDialog,
+            @NonNull GamepadPresetListAdapter adapter) {
+        Context ctx = hostDialog.getContext();
+        new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_preset_reset_title)
+                .setMessage(R.string.gamepad_preset_reset_message)
+                .setPositiveButton(R.string.gamepad_preset_reset_confirm, (d, w) -> {
+                    String err = presetRepository.resetDefaultPresetFromBundled();
+                    if (err != null) {
+                        Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(ctx, R.string.gamepad_preset_reset_done, Toast.LENGTH_SHORT).show();
+                        refreshPresetSheetAdapter(adapter);
+                        if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(
+                                presetRepository.getActivePresetId())) {
+                            reloadFromPrefsAndApplyView();
+                            updateActivePresetNameUi();
+                        }
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void showPresetOverflowMenu(
             @NonNull String presetId,
             @NonNull View anchor,
@@ -1324,6 +1435,9 @@ public class GamepadFragment extends Fragment {
         pm.getMenuInflater().inflate(R.menu.menu_gamepad_preset_row, pm.getMenu());
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
             pm.getMenu().findItem(R.id.gamepad_preset_delete).setVisible(false);
+        }
+        if (!GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(presetId)) {
+            pm.getMenu().findItem(R.id.gamepad_preset_reset_layout).setVisible(false);
         }
         pm.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
@@ -1344,6 +1458,10 @@ public class GamepadFragment extends Fragment {
                             dup.error != null ? dup.error : getString(R.string.gamepad_preset_action_failed),
                             Toast.LENGTH_LONG).show();
                 }
+                return true;
+            }
+            if (id == R.id.gamepad_preset_reset_layout) {
+                confirmResetDefaultPreset(hostDialog, adapter);
                 return true;
             }
             if (id == R.id.gamepad_preset_save_file) {
@@ -5071,6 +5189,13 @@ public class GamepadFragment extends Fragment {
                         out.close();
                         prefs.edit().putString(GamepadPreferenceKeys.BG_IMAGE, name).apply();
                         currentBgPath = name;
+                        if (layoutDoc != null && layoutDoc.layout != null) {
+                            layoutDoc.layout.backgroundImageFile = name;
+                            try {
+                                GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+                            } catch (IllegalArgumentException ignored) {
+                            }
+                        }
                         persistActivePresetSnapshot();
                     } catch (java.io.IOException e) {
                         Log.e(TAG, "Failed to save background image", e);
@@ -5083,7 +5208,18 @@ public class GamepadFragment extends Fragment {
                             .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
                             .apply();
                     currentBgPath = null;
+                    if (layoutDoc != null && layoutDoc.layout != null) {
+                        layoutDoc.layout.backgroundImageFile = null;
+                        layoutDoc.layout.backgroundScale = 1.0f;
+                        layoutDoc.layout.backgroundOffsetX = 0f;
+                        layoutDoc.layout.backgroundOffsetY = 0f;
+                        try {
+                            GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
                     persistActivePresetSnapshot();
+                    applyCanvasBackgroundStyleFromPrefsAndDoc();
                 }
             });
             gamepadView.setBackgroundViewportCallback(() -> {
@@ -5093,6 +5229,7 @@ public class GamepadFragment extends Fragment {
                     .putFloat(GamepadPreferenceKeys.BG_OFFSET_Y, gamepadView.getBackgroundOffsetY())
                     .apply();
             });
+            applyCanvasBackgroundStyleFromPrefsAndDoc();
         }
     }
 
@@ -5104,10 +5241,12 @@ public class GamepadFragment extends Fragment {
     private void showEditBackgroundAndModulesMenu() {
         String[] options = new String[]{
                 getString(R.string.gamepad_bg_pick_gallery),
+                getString(R.string.gamepad_bg_color_title),
+                getString(R.string.gamepad_bg_pattern_title),
                 getString(R.string.gamepad_bg_remove),
                 getString(R.string.gamepad_presets_add_module),
         };
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.gamepad_edit_canvas_menu_title)
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
@@ -5117,27 +5256,217 @@ public class GamepadFragment extends Fragment {
                         intent.setType("image/*");
                         startActivityForResult(intent, PICK_BG_IMAGE);
                     } else if (which == 1) {
+                        showBackgroundColorDialog();
+                    } else if (which == 2) {
+                        showBackgroundPatternDialog();
+                    } else if (which == 3) {
                         if (gamepadView != null) {
                             gamepadView.setBackgroundBitmap(null);
+                            gamepadView.setBackgroundFillArgb(null);
+                            gamepadView.setBackgroundPatternId(null);
                         }
                         if (currentBgPath != null) {
                             java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
                             if (file.exists()) {
                                 file.delete();
                             }
-                            prefs.edit()
-                                    .remove(GamepadPreferenceKeys.BG_IMAGE)
-                                    .remove(GamepadPreferenceKeys.BG_SCALE)
-                                    .remove(GamepadPreferenceKeys.BG_OFFSET_X)
-                                    .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
-                                    .apply();
-                            currentBgPath = null;
-                            persistActivePresetSnapshot();
                         }
+                        currentBgPath = null;
+                        prefs.edit()
+                                .remove(GamepadPreferenceKeys.BG_IMAGE)
+                                .remove(GamepadPreferenceKeys.BG_SCALE)
+                                .remove(GamepadPreferenceKeys.BG_OFFSET_X)
+                                .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
+                                .remove(GamepadPreferenceKeys.BG_FILL_ARGB)
+                                .remove(GamepadPreferenceKeys.BG_PATTERN)
+                                .apply();
+                        if (layoutDoc != null && layoutDoc.layout != null) {
+                            layoutDoc.layout.backgroundImageFile = null;
+                            layoutDoc.layout.backgroundScale = 1.0f;
+                            layoutDoc.layout.backgroundOffsetX = 0f;
+                            layoutDoc.layout.backgroundOffsetY = 0f;
+                            layoutDoc.layout.backgroundFillArgb = null;
+                            layoutDoc.layout.backgroundPattern = null;
+                            try {
+                                GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+                            } catch (IllegalArgumentException ignored) {
+                            }
+                        }
+                        persistActivePresetSnapshot();
                     } else {
                         showAddModuleMenu();
                     }
                 })
+                .show();
+    }
+
+    private void showBackgroundColorDialog() {
+        Context ctx = requireContext();
+        float density = ctx.getResources().getDisplayMetrics().density;
+        int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, ctx.getResources().getDisplayMetrics());
+        int chip = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, ctx.getResources().getDisplayMetrics());
+        int gap = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, ctx.getResources().getDisplayMetrics());
+
+        final int[] presets = new int[]{
+                0xFF1A1C22, 0xFF2D3142, 0xFF1E3A2F, 0xFF3D2E4A, 0xFF262C36,
+                0xFFECEFF4, 0xFFD0D7DE, 0xFFC9DCE8, 0xFFE8DFD5, 0xFF1B2838, 0xFF3E2723,
+        };
+
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView hint = new TextView(ctx);
+        hint.setText(R.string.gamepad_bg_color_presets_hint);
+        root.addView(hint);
+
+        GridLayout grid = new GridLayout(ctx);
+        grid.setColumnCount(4);
+        root.addView(grid);
+
+        MaterialButton customBtn = new MaterialButton(ctx);
+        customBtn.setText(R.string.gamepad_bg_color_custom);
+        LinearLayout.LayoutParams lpBtn = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpBtn.topMargin = gap * 2;
+        root.addView(customBtn, lpBtn);
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.gamepad_bg_color_title)
+                .setView(root)
+                .setNegativeButton(android.R.string.cancel, null);
+        androidx.appcompat.app.AlertDialog dlg = builder.create();
+
+        for (int color : presets) {
+            View v = new View(ctx);
+            GradientDrawable gd = new GradientDrawable();
+            gd.setColor(color);
+            gd.setCornerRadius(8f * density);
+            v.setBackground(gd);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = chip;
+            lp.height = chip;
+            lp.setMargins(gap, gap, gap, gap);
+            int c = color;
+            v.setOnClickListener(x -> {
+                dlg.dismiss();
+                persistCanvasBackgroundFillAndPattern(c, readCurrentBackgroundPatternId());
+            });
+            grid.addView(v, lp);
+        }
+
+        customBtn.setOnClickListener(v -> {
+            dlg.dismiss();
+            showBackgroundCustomRgbDialog();
+        });
+        dlg.show();
+    }
+
+    private void showBackgroundCustomRgbDialog() {
+        Context ctx = requireContext();
+        int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, ctx.getResources().getDisplayMetrics());
+        Integer cur = readCurrentBackgroundFillArgb();
+        int cr = cur != null ? Color.red(cur) : 45;
+        int cg = cur != null ? Color.green(cur) : 52;
+        int cb = cur != null ? Color.blue(cur) : 58;
+
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        View preview = new View(ctx);
+        int previewH = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 48f, ctx.getResources().getDisplayMetrics());
+        LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, previewH);
+        prevLp.bottomMargin = pad;
+        root.addView(preview, prevLp);
+
+        TextView lr = new TextView(ctx);
+        SeekBar sr = new SeekBar(ctx);
+        sr.setMax(255);
+        sr.setProgress(cr);
+        TextView lg = new TextView(ctx);
+        SeekBar sg = new SeekBar(ctx);
+        sg.setMax(255);
+        sg.setProgress(cg);
+        TextView lb = new TextView(ctx);
+        SeekBar sb = new SeekBar(ctx);
+        sb.setMax(255);
+        sb.setProgress(cb);
+
+        Runnable updatePreview = () -> {
+            int rgb = Color.rgb(sr.getProgress(), sg.getProgress(), sb.getProgress());
+            GradientDrawable gd = new GradientDrawable();
+            gd.setColor(rgb);
+            gd.setCornerRadius(8f * ctx.getResources().getDisplayMetrics().density);
+            preview.setBackground(gd);
+            lr.setText(getString(R.string.gamepad_bg_color_channel_r, sr.getProgress()));
+            lg.setText(getString(R.string.gamepad_bg_color_channel_g, sg.getProgress()));
+            lb.setText(getString(R.string.gamepad_bg_color_channel_b, sb.getProgress()));
+        };
+        SeekBar.OnSeekBarChangeListener listener = new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updatePreview.run();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        };
+        sr.setOnSeekBarChangeListener(listener);
+        sg.setOnSeekBarChangeListener(listener);
+        sb.setOnSeekBarChangeListener(listener);
+        lr.setText(getString(R.string.gamepad_bg_color_channel_r, cr));
+        lg.setText(getString(R.string.gamepad_bg_color_channel_g, cg));
+        lb.setText(getString(R.string.gamepad_bg_color_channel_b, cb));
+        GradientDrawable initGd = new GradientDrawable();
+        initGd.setColor(Color.rgb(cr, cg, cb));
+        initGd.setCornerRadius(8f * ctx.getResources().getDisplayMetrics().density);
+        preview.setBackground(initGd);
+
+        root.addView(lr);
+        root.addView(sr);
+        root.addView(lg);
+        root.addView(sg);
+        root.addView(lb);
+        root.addView(sb);
+
+        new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.gamepad_bg_color_custom)
+                .setView(root)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    int rgb = Color.rgb(sr.getProgress(), sg.getProgress(), sb.getProgress());
+                    persistCanvasBackgroundFillAndPattern(rgb | 0xFF000000, readCurrentBackgroundPatternId());
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showBackgroundPatternDialog() {
+        String[] labels = new String[]{
+                getString(R.string.gamepad_bg_pattern_none),
+                getString(R.string.gamepad_bg_pattern_dots),
+                getString(R.string.gamepad_bg_pattern_micro_grid),
+                getString(R.string.gamepad_bg_pattern_diagonal_hatch),
+                getString(R.string.gamepad_bg_pattern_noise),
+        };
+        final String[] ids = new String[]{
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NOISE,
+        };
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.gamepad_bg_pattern_title)
+                .setItems(labels, (d, which) -> {
+                    String id = ids[which];
+                    persistCanvasBackgroundFillAndPattern(readCurrentBackgroundFillArgb(), id);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
@@ -5216,12 +5545,6 @@ public class GamepadFragment extends Fragment {
         @Override
         protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            applyLandscapeSizingIfReady();
-        }
-
-        @Override
-        protected void onStart() {
-            super.onStart();
             applyLandscapeSizingIfReady();
         }
 
