@@ -617,7 +617,7 @@ public class GamepadFragment extends Fragment {
             if (layoutDoc != null) {
                 mergeViewPositionsIntoLayoutDoc(positions);
                 try {
-                    GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
+                    GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc, true);
                 } catch (IllegalArgumentException e) {
                     Log.e(TAG, "Could not persist layout after edit", e);
                 }
@@ -1060,7 +1060,7 @@ public class GamepadFragment extends Fragment {
         }
         try {
             GamepadLayoutPresetDocument.validateOrThrow(layoutDoc);
-            GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc);
+            GamepadLayoutPresetApplier.apply(requireContext(), layoutDoc, true);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Layout document invalid", e);
             Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_LONG).show();

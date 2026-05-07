@@ -24,8 +24,34 @@ fi
 
 export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_HOME_DEFAULT}"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
-export JAVA_HOME="${JAVA_HOME:-$JAVA_HOME_DEFAULT}"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
+
+# Gradle needs a working JDK. Cursor/IDE often exports JAVA_HOME; if it is wrong,
+# "A problem occurred starting process 'Gradle build daemon'" is common.
+resolve_java_home() {
+  if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+    return
+  fi
+  if [[ -x "$JAVA_HOME_DEFAULT/bin/java" ]]; then
+    export JAVA_HOME="$JAVA_HOME_DEFAULT"
+    return
+  fi
+  if [[ -x /usr/libexec/java_home ]]; then
+    local mac_home
+    mac_home="$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home 2>/dev/null)" || true
+    if [[ -n "$mac_home" && -x "$mac_home/bin/java" ]]; then
+      export JAVA_HOME="$mac_home"
+      return
+    fi
+  fi
+  export JAVA_HOME="$JAVA_HOME_DEFAULT"
+}
+
+if [[ -n "${JAVA_HOME:-}" && ! -x "${JAVA_HOME}/bin/java" ]]; then
+  echo "Warning: JAVA_HOME is set but invalid ($JAVA_HOME); ignoring and searching for JDK."
+  unset JAVA_HOME
+fi
+resolve_java_home
 
 if ! command -v adb >/dev/null 2>&1; then
   echo "Error: adb not found in PATH."
@@ -35,9 +61,24 @@ fi
 
 if [[ ! -x "$JAVA_HOME/bin/java" ]]; then
   echo "Error: JAVA_HOME is invalid: $JAVA_HOME"
-  echo "Set JAVA_HOME and retry."
+  echo "Install JDK 17 (e.g. brew install openjdk@17) or set JAVA_HOME to a JDK with bin/java."
   exit 1
 fi
+
+# Symlinked JAVA_HOME (e.g. from IDE env) can confuse native Gradle startup; use real path.
+if [[ -d "$JAVA_HOME" ]]; then
+  JAVA_HOME="$(cd "$JAVA_HOME" && pwd -P)"
+  export JAVA_HOME
+fi
+
+if ! "$JAVA_HOME/bin/java" -version >/dev/null 2>&1; then
+  echo "Error: JAVA_HOME java failed to start: $JAVA_HOME/bin/java"
+  echo "Unset JAVA_HOME or fix it; then re-run this script."
+  exit 1
+fi
+
+echo "==> Using JAVA_HOME=$JAVA_HOME"
+"$JAVA_HOME/bin/java" -version 2>&1 | head -n1 || true
 
 echo "==> Target device: $DEVICE_SERIAL"
 if ! adb devices | awk 'NR>1 {print $1}' | grep -qx "$DEVICE_SERIAL"; then
@@ -48,9 +89,20 @@ fi
 
 echo "==> Reinstalling debug build..."
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+
+run_install_debug() {
+  ANDROID_SERIAL="$DEVICE_SERIAL" "$GRADLEW" installDebug --no-daemon
+}
+
 (
   cd "$ROOT_DIR"
-  ANDROID_SERIAL="$DEVICE_SERIAL" "$GRADLEW" installDebug --no-daemon
+  if ! run_install_debug; then
+    echo "==> installDebug failed (often: 'Gradle build daemon' JVM could not start)."
+    echo "==> Stopping Gradle daemons and retrying once..."
+    "$GRADLEW" --stop 2>/dev/null || true
+    sleep 1
+    run_install_debug
+  fi
 )
 
 echo "==> Restarting app..."

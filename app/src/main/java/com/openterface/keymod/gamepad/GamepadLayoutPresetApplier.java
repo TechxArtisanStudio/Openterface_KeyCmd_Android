@@ -26,6 +26,15 @@ public final class GamepadLayoutPresetApplier {
     private GamepadLayoutPresetApplier() {}
 
     public static void apply(Context context, GamepadLayoutPresetDocument doc) throws IllegalArgumentException {
+        apply(context, doc, false);
+    }
+
+    /**
+     * @param commitSync when true, uses {@link SharedPreferences.Editor#commit()} so a follow-up
+     *                     {@link GamepadLayoutDocumentStore#loadOrCreate} in the same frame sees prefs.
+     */
+    public static void apply(Context context, GamepadLayoutPresetDocument doc, boolean commitSync)
+            throws IllegalArgumentException {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
         GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
         SharedPreferences.Editor ed = PreferenceManager.getDefaultSharedPreferences(context).edit();
@@ -125,7 +134,11 @@ public final class GamepadLayoutPresetApplier {
         }
 
         ed.putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc));
-        ed.apply();
+        if (commitSync && !ed.commit()) {
+            throw new IllegalArgumentException("Could not persist layout preferences");
+        } else if (!commitSync) {
+            ed.apply();
+        }
 
         Map<String, GamepadConfigManager.ComponentPosition> positions = new HashMap<>();
         for (GamepadLayoutPresetDocument.GamepadModule m : modules) {

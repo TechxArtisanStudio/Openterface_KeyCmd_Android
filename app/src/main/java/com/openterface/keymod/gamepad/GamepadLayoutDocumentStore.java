@@ -29,6 +29,10 @@ public final class GamepadLayoutDocumentStore {
 
     private GamepadLayoutDocumentStore() {}
 
+    /**
+     * Loads persisted layout JSON, or if missing/invalid tries the active preset file from
+     * {@link GamepadLayoutPresetRepository}, else builds from legacy flat prefs.
+     */
     public static GamepadLayoutPresetDocument loadOrCreate(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String json = prefs.getString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, null);
@@ -38,10 +42,22 @@ public final class GamepadLayoutDocumentStore {
                 try {
                     GamepadLayoutPresetDocument.validateOrThrow(d);
                     mergeAnchorsFromDisk(context, d);
-                    return d;
+                    if (!d.modules.isEmpty()) {
+                        return d;
+                    }
                 } catch (IllegalArgumentException ignored) {
-                    // fall through to recreate
+                    // fall through to recover or recreate
                 }
+            }
+        }
+        GamepadLayoutPresetRepository presetRepo = new GamepadLayoutPresetRepository(context);
+        GamepadLayoutPresetDocument fromDisk = presetRepo.loadDocument(presetRepo.getActivePresetId());
+        if (fromDisk != null && !fromDisk.modules.isEmpty()) {
+            try {
+                GamepadLayoutPresetApplier.apply(context, fromDisk, true);
+                return loadOrCreate(context);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to legacy-built document
             }
         }
         GamepadLayoutPresetDocument doc = buildDefaultFromLegacyPrefs(context);

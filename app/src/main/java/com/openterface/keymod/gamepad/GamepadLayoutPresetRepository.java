@@ -91,6 +91,11 @@ public class GamepadLayoutPresetRepository {
                 storePrefs.edit()
                         .putString(KEY_ACTIVE, GamepadLayoutPresetConstants.DEFAULT_PRESET_ID)
                         .apply();
+                try {
+                    GamepadLayoutPresetApplier.apply(context, doc, true);
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "Apply seeded default preset to prefs", e);
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Migration failed", e);
             }
@@ -178,7 +183,7 @@ public class GamepadLayoutPresetRepository {
             return;
         }
         try {
-            GamepadLayoutPresetApplier.apply(context, d);
+            GamepadLayoutPresetApplier.apply(context, d, true);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "apply active after migration", e);
         }
@@ -280,7 +285,7 @@ public class GamepadLayoutPresetRepository {
         if (setActive) {
             setActivePresetId(newId);
             try {
-                GamepadLayoutPresetApplier.apply(context, parsed);
+                GamepadLayoutPresetApplier.apply(context, parsed, true);
             } catch (IllegalArgumentException e) {
                 return e.getMessage();
             }
@@ -318,7 +323,7 @@ public class GamepadLayoutPresetRepository {
             return "Preset not found";
         }
         try {
-            GamepadLayoutPresetApplier.apply(context, d);
+            GamepadLayoutPresetApplier.apply(context, d, true);
             setActivePresetId(id);
             return null;
         } catch (IllegalArgumentException e) {
@@ -329,6 +334,12 @@ public class GamepadLayoutPresetRepository {
     /**
      * Replaces the built-in default preset file with {@code assets/.../default.json}. Keeps the
      * current index display name (and writes it into {@link GamepadLayoutPresetDocument.Meta}).
+     * <p>
+     * Changing {@code gamepad/default.json} in the repo only affects the next app build’s assets until
+     * this method overwrites on-disk {@code preset_default.json}. {@link #syncBundledPresetsFromAssets}
+     * does not refresh that file. When Default is the active preset, default SharedPreferences (including
+     * {@link GamepadPreferenceKeys#LAYOUT_DOCUMENT_JSON} for the canvas) are updated as well; otherwise only
+     * the preset file on disk changes until the user activates Default.
      *
      * @return null on success, or an error message.
      */
@@ -357,6 +368,13 @@ public class GamepadLayoutPresetRepository {
             writeFile(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, fresh);
         } catch (IOException e) {
             return e.getMessage();
+        }
+        if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(getActivePresetId())) {
+            try {
+                GamepadLayoutPresetApplier.apply(context, fresh, true);
+            } catch (IllegalArgumentException e) {
+                return e.getMessage();
+            }
         }
         return null;
     }
@@ -514,6 +532,10 @@ public class GamepadLayoutPresetRepository {
      * Imports JSON shipped under assets/{@link GamepadLayoutPresetConstants#BUNDLED_GAMEPAD_ASSET_DIR}.
      * Stable ids {@code preset_pack_<slug>} from filenames; skips slugs the user deleted (until reinstall).
      * Safe to call on every launch (cheap when nothing new).
+     * <p>
+     * {@code default.json} in that folder is reserved for the built-in {@link GamepadLayoutPresetConstants#DEFAULT_PRESET_ID}
+     * layout and is intentionally skipped here so optional pack presets import does not overwrite it.
+     * Refreshing the on-disk default preset from a new build asset is {@link #resetDefaultPresetFromBundled()}.
      */
     public void syncBundledPresetsFromAssets() {
         String dir = GamepadLayoutPresetConstants.BUNDLED_GAMEPAD_ASSET_DIR;
