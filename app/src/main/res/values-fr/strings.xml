@@ -877,6 +877,16 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_import_short"><![CDATA[Importer…
     ]]></string>
+    <string name="gamepad_presets_reset_shipped"><![CDATA[Réinitialiser les dispositions fournies avec l’app
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_title"><![CDATA[Réinitialiser les dispositions intégrées ?
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_message"><![CDATA[Rétablit « Par défaut » et toutes les dispositions fournies avec cette version de l’application à l’état d’origine après installation. Les dispositions personnalisées que vous avez créées ou importées ne sont ni supprimées ni modifiées.
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_confirm"><![CDATA[Réinitialiser l’intégré
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_done"><![CDATA[Dispositions intégrées réinitialisées
+    ]]></string>
     <string name="gamepad_presets_share_chooser"><![CDATA[Share gamepad preset
     ]]></string>
     <string name="gamepad_presets_sheet_title"><![CDATA[Layouts

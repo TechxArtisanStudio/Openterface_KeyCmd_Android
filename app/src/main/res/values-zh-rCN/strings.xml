@@ -583,6 +583,11 @@
     <string name="gamepad_presets_new_layout">从当前布局新建</string>
     <string name="gamepad_presets_new_layout_short">从当前新建</string>
     <string name="gamepad_presets_import_short">导入…</string>
+    <string name="gamepad_presets_reset_shipped">重置应用自带的布局</string>
+    <string name="gamepad_presets_reset_shipped_title">重置内置布局？</string>
+    <string name="gamepad_presets_reset_shipped_message">将「默认」以及本应用版本打包的所有布局恢复为安装时的原始内容。您创建或导入的自定义布局不会被删除，也不会被修改。</string>
+    <string name="gamepad_presets_reset_shipped_confirm">重置内置</string>
+    <string name="gamepad_presets_reset_shipped_done">已重置内置布局</string>
     <string name="gamepad_preset_row_menu_cd">布局选项</string>
     <string name="gamepad_preset_row_share_cd">分享布局</string>
     <string name="gamepad_preset_menu_rename">重命名</string>

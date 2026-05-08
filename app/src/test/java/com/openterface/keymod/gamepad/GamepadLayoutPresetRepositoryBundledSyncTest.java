@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
 
@@ -27,8 +28,11 @@ public class GamepadLayoutPresetRepositoryBundledSyncTest {
     private GamepadLayoutPresetRepository repo;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         Context ctx = RuntimeEnvironment.getApplication();
+        String[] bundled = ctx.getAssets().list("bundled_gamepad");
+        assumeTrue("Robolectric needs merged Android assets (e.g. testOptions.unitTests.includeAndroidResources)",
+                bundled != null && bundled.length > 0);
         clearPresetStore(ctx);
         repo = new GamepadLayoutPresetRepository(ctx);
         repo.ensureMigratedFromLegacy();
@@ -101,5 +105,47 @@ public class GamepadLayoutPresetRepositoryBundledSyncTest {
         }
         assertTrue(found);
         assertNotNull(repo.loadDocument(NESTED_BUNDLED_TEST_ID));
+    }
+
+    @Test
+    public void resetShipped_restoresDeletedBundledAndKeepsUserPreset() {
+        repo.syncBundledPresetsFromAssets();
+        assertNotNull(repo.loadDocument(BUNDLED_TEST_ID));
+
+        GamepadLayoutPresetRepository.DuplicateResult dup =
+                repo.duplicatePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
+        assertTrue(dup.isSuccess());
+        assertNotNull(dup.newId);
+        String userId = dup.newId;
+        assertTrue(userId.startsWith("preset_"));
+        assertNotNull(repo.loadDocument(userId));
+
+        assertNull(repo.deletePreset(BUNDLED_TEST_ID));
+        boolean hadBundled = false;
+        for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
+            if (BUNDLED_TEST_ID.equals(r.id)) {
+                hadBundled = true;
+                break;
+            }
+        }
+        assertFalse(hadBundled);
+        assertNull(repo.loadDocument(BUNDLED_TEST_ID));
+
+        assertNull(repo.resetAllShippedGamepadLayoutsFromAssets());
+
+        boolean bundledBack = false;
+        boolean userStill = false;
+        for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
+            if (BUNDLED_TEST_ID.equals(r.id)) {
+                bundledBack = true;
+            }
+            if (userId.equals(r.id)) {
+                userStill = true;
+            }
+        }
+        assertTrue(bundledBack);
+        assertTrue(userStill);
+        assertNotNull(repo.loadDocument(BUNDLED_TEST_ID));
+        assertNotNull(repo.loadDocument(userId));
     }
 }

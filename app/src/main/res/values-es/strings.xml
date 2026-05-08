@@ -878,6 +878,16 @@ por TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_import_short"><![CDATA[Importar…
     ]]></string>
+    <string name="gamepad_presets_reset_shipped"><![CDATA[Restablecer diseños incluidos con la app
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_title"><![CDATA[¿Restablecer diseños integrados?
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_message"><![CDATA[Restaura «Predeterminado» y todos los diseños incluidos en esta versión de la app a los originales de la instalación. Los diseños personalizados que creaste o importaste no se eliminan ni se modifican.
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_confirm"><![CDATA[Restablecer integrados
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_done"><![CDATA[Diseños integrados restablecidos
+    ]]></string>
     <string name="gamepad_presets_share_chooser"><![CDATA[Share gamepad preset
     ]]></string>
     <string name="gamepad_presets_sheet_title"><![CDATA[Layouts

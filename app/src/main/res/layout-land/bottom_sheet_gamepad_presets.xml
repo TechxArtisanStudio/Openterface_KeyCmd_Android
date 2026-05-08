@@ -45,6 +45,22 @@
             app:iconPadding="0dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_presets_reset_shipped_btn"
+            style="@style/Widget.Material3.Button.IconButton.Outlined"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:contentDescription="@string/gamepad_presets_reset_shipped"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            app:icon="@drawable/change_circle_24px"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:strokeColor="?attr/colorOutline" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/gamepad_presets_import_btn"
             style="@style/Widget.Material3.Button.IconButton.Outlined"
             android:layout_width="48dp"

@@ -430,6 +430,11 @@ TechxArtisan により</string>
     <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
     <string name="gamepad_presets_new_layout_short">現在から新規</string>
     <string name="gamepad_presets_import_short">読み込み…</string>
+    <string name="gamepad_presets_reset_shipped">アプリ同梱レイアウトを初期化</string>
+    <string name="gamepad_presets_reset_shipped_title">同梱レイアウトをリセットしますか？</string>
+    <string name="gamepad_presets_reset_shipped_message">「デフォルト」と、このアプリ版に同梱されているすべてのレイアウトを、インストール時の内容に戻します。作成または読み込んだカスタムレイアウトは削除されず、変更もされません。</string>
+    <string name="gamepad_presets_reset_shipped_confirm">同梱をリセット</string>
+    <string name="gamepad_presets_reset_shipped_done">同梱レイアウトをリセットしました</string>
     <string name="gamepad_preset_row_menu_cd">レイアウトのオプション</string>
     <string name="gamepad_preset_row_share_cd">レイアウトを共有</string>
     <string name="gamepad_preset_menu_rename">名前を変更</string>

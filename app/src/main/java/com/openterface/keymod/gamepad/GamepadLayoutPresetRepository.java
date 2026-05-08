@@ -23,9 +23,12 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -386,6 +389,158 @@ public class GamepadLayoutPresetRepository {
         storePrefs.edit()
                 .putString(KEY_BUNDLED_DEFAULT_FINGERPRINT_APPLIED, BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT)
                 .apply();
+        return null;
+    }
+
+    /**
+     * Resets every layout shipped with the app build ({@link GamepadLayoutPresetConstants#DEFAULT_PRESET_ID} and
+     * all {@code preset_pack_*} from {@code assets/bundled_gamepad/}) to bundled JSON, clears the deleted-bundled-slug
+     * blocklist so removed packs reappear, and rebuilds the preset index with user presets unchanged and in their
+     * prior order. Removes on-disk {@code preset_pack_*} files that no longer exist in the current APK assets.
+     *
+     * @return null on success, or an error message.
+     */
+    @Nullable
+    public String resetAllShippedGamepadLayoutsFromAssets() {
+        List<PresetRef> oldIdx = readIndex();
+        Map<String, String> displayById = new HashMap<>();
+        for (PresetRef r : oldIdx) {
+            if (r != null && r.id != null) {
+                String dn = r.displayName != null ? r.displayName.trim() : "";
+                if (!dn.isEmpty()) {
+                    displayById.put(r.id, dn);
+                }
+            }
+        }
+
+        String defErr = resetDefaultPresetFromBundled();
+        if (defErr != null) {
+            return defErr;
+        }
+
+        storePrefs.edit().remove(KEY_DELETED_BUNDLED_SLUGS).apply();
+
+        String dir = GamepadLayoutPresetConstants.BUNDLED_GAMEPAD_ASSET_DIR;
+        List<String> relativeJsonPaths = new ArrayList<>();
+        try {
+            collectBundledJsonRelativePaths(dir, "", relativeJsonPaths);
+        } catch (IOException e) {
+            Log.w(TAG, "reset shipped: list bundled assets", e);
+            return e.getMessage();
+        }
+        relativeJsonPaths.sort(String.CASE_INSENSITIVE_ORDER);
+        final boolean haveBundledAssetListing = !relativeJsonPaths.isEmpty();
+
+        Set<String> shippedPackIds = new HashSet<>();
+        Map<String, String> packDisplayInIndexOrder = new LinkedHashMap<>();
+        if (haveBundledAssetListing) {
+            for (String rel : relativeJsonPaths) {
+                if (rel == null || rel.isEmpty()) {
+                    continue;
+                }
+                String slug = bundledSlugFromBundledAssetRelativePath(rel);
+                if (slug.isEmpty() || "default".equals(slug)) {
+                    continue;
+                }
+                String id = GamepadLayoutPresetConstants.BUNDLED_PRESET_ID_PREFIX + slug;
+                String assetPath = dir + "/" + rel;
+                GamepadLayoutPresetDocument parsed = loadBundledPresetDocumentAtAssetPath(assetPath);
+                if (parsed == null) {
+                    return "Could not load bundled layout: " + rel;
+                }
+                if (parsed.meta == null) {
+                    parsed.meta = new GamepadLayoutPresetDocument.Meta();
+                }
+                parsed.meta.id = id;
+                String display = displayById.get(id);
+                if (display == null || display.isEmpty()) {
+                    display = displayNameForBundled(parsed, slug);
+                }
+                parsed.meta.displayName = display;
+                try {
+                    writeFile(id, parsed);
+                } catch (IOException e) {
+                    return e.getMessage();
+                }
+                shippedPackIds.add(id);
+                packDisplayInIndexOrder.put(id, display);
+            }
+        } else {
+            for (PresetRef r : oldIdx) {
+                if (r == null || r.id == null) {
+                    continue;
+                }
+                if (!GamepadLayoutPresetConstants.isBundledPackPresetId(r.id)) {
+                    continue;
+                }
+                String d = r.displayName != null && !r.displayName.trim().isEmpty()
+                        ? r.displayName.trim()
+                        : r.id;
+                packDisplayInIndexOrder.put(r.id, d);
+                shippedPackIds.add(r.id);
+            }
+        }
+
+        if (haveBundledAssetListing) {
+            File presetDir = new File(context.getFilesDir(), "gamepad_layout_presets");
+            if (presetDir.isDirectory()) {
+                File[] files = presetDir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        String name = f.getName();
+                        if (!name.endsWith(".json")) {
+                            continue;
+                        }
+                        String fileId = name.substring(0, name.length() - 5);
+                        if (GamepadLayoutPresetConstants.isBundledPackPresetId(fileId)
+                                && !shippedPackIds.contains(fileId)) {
+                            if (!f.delete()) {
+                                Log.w(TAG, "Could not delete obsolete bundled preset file " + name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        String defaultDisplay = displayById.get(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
+        if (defaultDisplay == null || defaultDisplay.isEmpty()) {
+            defaultDisplay = "Default";
+        }
+        List<PresetRef> newIdx = new ArrayList<>();
+        newIdx.add(new PresetRef(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, defaultDisplay));
+
+        for (Map.Entry<String, String> e : packDisplayInIndexOrder.entrySet()) {
+            newIdx.add(new PresetRef(e.getKey(), e.getValue()));
+        }
+
+        for (PresetRef r : oldIdx) {
+            if (r == null || r.id == null) {
+                continue;
+            }
+            if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(r.id)) {
+                continue;
+            }
+            if (GamepadLayoutPresetConstants.isBundledPackPresetId(r.id)) {
+                continue;
+            }
+            newIdx.add(new PresetRef(r.id, r.displayName != null ? r.displayName : r.id));
+        }
+
+        saveIndex(newIdx);
+
+        String active = getActivePresetId();
+        if (active != null && (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(active)
+                || GamepadLayoutPresetConstants.isBundledPackPresetId(active))) {
+            GamepadLayoutPresetDocument d = loadDocument(active);
+            if (d != null) {
+                try {
+                    GamepadLayoutPresetApplier.apply(context, d, true);
+                } catch (IllegalArgumentException e) {
+                    return e.getMessage();
+                }
+            }
+        }
         return null;
     }
 
@@ -806,17 +961,39 @@ public class GamepadLayoutPresetRepository {
     }
 
     /**
-     * @return null on success, else error message for logging.
+     * Loads and validates a layout JSON from {@code assetPath} under app assets.
+     *
+     * @return parsed document, or null if missing, unreadable, or invalid.
      */
     @Nullable
-    private String importBundledAssetAtPath(String assetPath, String id, String slug, List<PresetRef> index) {
+    private GamepadLayoutPresetDocument loadBundledPresetDocumentAtAssetPath(String assetPath) {
         try (InputStream in = context.getAssets().open(assetPath)) {
             String json = readStreamUtf8(in);
             GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
             if (parsed == null) {
-                return "Invalid JSON";
+                return null;
             }
             GamepadLayoutPresetDocument.validateOrThrow(parsed);
+            return parsed;
+        } catch (IOException e) {
+            Log.w(TAG, "bundled asset " + assetPath, e);
+            return null;
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "bundled asset invalid " + assetPath + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * @return null on success, else error message for logging.
+     */
+    @Nullable
+    private String importBundledAssetAtPath(String assetPath, String id, String slug, List<PresetRef> index) {
+        GamepadLayoutPresetDocument parsed = loadBundledPresetDocumentAtAssetPath(assetPath);
+        if (parsed == null) {
+            return "Invalid JSON";
+        }
+        try {
             if (parsed.meta == null) {
                 parsed.meta = new GamepadLayoutPresetDocument.Meta();
             }
@@ -827,8 +1004,6 @@ public class GamepadLayoutPresetRepository {
             index.add(new PresetRef(id, display));
             return null;
         } catch (IOException e) {
-            return e.getMessage();
-        } catch (IllegalArgumentException e) {
             return e.getMessage();
         }
     }

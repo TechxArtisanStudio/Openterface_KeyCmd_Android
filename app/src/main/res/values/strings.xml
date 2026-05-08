@@ -763,6 +763,11 @@ by TechxArtisan</string>
     <!-- Compact labels for landscape Layouts sheet (single row). -->
     <string name="gamepad_presets_new_layout_short">New from current</string>
     <string name="gamepad_presets_import_short">Import…</string>
+    <string name="gamepad_presets_reset_shipped">Reset layouts shipped with the app</string>
+    <string name="gamepad_presets_reset_shipped_title">Reset built-in layouts?</string>
+    <string name="gamepad_presets_reset_shipped_message">This restores Default and every layout bundled with this app version to the originals from the install. Custom layouts you created or imported are not removed and are not changed.</string>
+    <string name="gamepad_presets_reset_shipped_confirm">Reset built-in</string>
+    <string name="gamepad_presets_reset_shipped_done">Built-in layouts reset</string>
     <string name="gamepad_preset_row_menu_cd">Layout options</string>
     <string name="gamepad_preset_row_share_cd">Share layout</string>
     <string name="gamepad_preset_row_save_cd">Save layout to device</string>

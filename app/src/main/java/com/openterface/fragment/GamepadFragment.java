@@ -1435,6 +1435,7 @@ public class GamepadFragment extends Fragment {
         // Do not call setHasFixedSize(true): layout uses wrap_content height (lint InvalidSetHasFixedSize).
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
+        MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
 
         final GamepadPresetListAdapter[] presetListAdapterRef = new GamepadPresetListAdapter[1];
@@ -1482,20 +1483,80 @@ public class GamepadFragment extends Fragment {
         recycler.setAdapter(adapter);
         refreshPresetSheetAdapter(adapter);
 
-        newLayoutBtn.setOnClickListener(v -> {
-            dialog.dismiss();
-            promptNewUserPreset();
-        });
-        importBtn.setOnClickListener(v -> {
-            dialog.dismiss();
-            importPresetLauncher.launch(new String[]{"application/json"});
-        });
+        if (newLayoutBtn != null) {
+            newLayoutBtn.setOnClickListener(v -> {
+                dialog.dismiss();
+                promptNewUserPreset();
+            });
+        }
+        if (resetShippedBtn != null) {
+            resetShippedBtn.setOnClickListener(v -> new AlertDialog.Builder(sheetCtx)
+                    .setTitle(R.string.gamepad_presets_reset_shipped_title)
+                    .setMessage(R.string.gamepad_presets_reset_shipped_message)
+                    .setPositiveButton(R.string.gamepad_presets_reset_shipped_confirm, (d, w) -> {
+                        String err = presetRepository.resetAllShippedGamepadLayoutsFromAssets();
+                        if (err != null) {
+                            Toast.makeText(sheetCtx, err, Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(sheetCtx, R.string.gamepad_presets_reset_shipped_done,
+                                            Toast.LENGTH_SHORT)
+                                    .show();
+                            refreshPresetSheetAdapterAndResetListPresentation(
+                                    recycler, sheet, presetListAdapterRef[0], dialog);
+                            reloadFromPrefsAndApplyView();
+                            updateActivePresetNameUi();
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show());
+        }
+        if (importBtn != null) {
+            importBtn.setOnClickListener(v -> {
+                dialog.dismiss();
+                importPresetLauncher.launch(new String[]{"application/json"});
+            });
+        }
 
         dialog.show();
     }
 
     private void refreshPresetSheetAdapter(@NonNull GamepadPresetListAdapter adapter) {
         adapter.setData(presetRepository.listPresets(), presetRepository.getActivePresetId());
+    }
+
+    /**
+     * Refreshes preset rows then resets scroll and forces a layout pass on the sheet and bottom
+     * sheet container. Needed after bulk list changes (e.g. reset shipped layouts) so a
+     * {@code wrap_content} RecyclerView and the sheet height present the full list correctly.
+     */
+    private void refreshPresetSheetAdapterAndResetListPresentation(
+            @NonNull RecyclerView recycler,
+            @NonNull View sheetRoot,
+            @NonNull GamepadPresetListAdapter adapter,
+            @NonNull BottomSheetDialog presetSheetDialog) {
+        refreshPresetSheetAdapter(adapter);
+        // Two posts: first runs after the current frame; second runs after DiffUtil + child layout
+        // so scroll/remeasure see the updated item count and heights.
+        recycler.post(() -> recycler.post(() -> {
+            recycler.stopScroll();
+            RecyclerView.LayoutManager lm = recycler.getLayoutManager();
+            if (lm instanceof LinearLayoutManager) {
+                ((LinearLayoutManager) lm).scrollToPositionWithOffset(0, 0);
+            } else {
+                recycler.scrollToPosition(0);
+            }
+            recycler.requestLayout();
+            sheetRoot.requestLayout();
+            View designBottom = presetSheetDialog.findViewById(
+                    com.google.android.material.R.id.design_bottom_sheet);
+            if (designBottom != null) {
+                designBottom.requestLayout();
+                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(designBottom);
+                behavior.setSkipCollapsed(true);
+                behavior.setFitToContents(true);
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+        }));
     }
 
     private void confirmDeletePreset(

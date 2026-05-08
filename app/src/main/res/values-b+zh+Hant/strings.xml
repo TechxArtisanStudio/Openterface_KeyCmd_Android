@@ -583,6 +583,11 @@
     <string name="gamepad_presets_new_layout">從目前版面新增</string>
     <string name="gamepad_presets_new_layout_short">從目前新增</string>
     <string name="gamepad_presets_import_short">導入…</string>
+    <string name="gamepad_presets_reset_shipped">重設應用程式隨附的版面</string>
+    <string name="gamepad_presets_reset_shipped_title">重設內建版面？</string>
+    <string name="gamepad_presets_reset_shipped_message">將「預設」以及此應用程式版本內含的所有版面還原為安裝時的原始內容。您建立或匯入的自訂版面不會被刪除，也不會被變更。</string>
+    <string name="gamepad_presets_reset_shipped_confirm">重設內建</string>
+    <string name="gamepad_presets_reset_shipped_done">已重設內建版面</string>
     <string name="gamepad_preset_row_menu_cd">版面選項</string>
     <string name="gamepad_preset_row_share_cd">分享版面</string>
     <string name="gamepad_preset_menu_rename">重新命名</string>

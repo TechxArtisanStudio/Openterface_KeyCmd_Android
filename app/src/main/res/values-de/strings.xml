@@ -877,6 +877,16 @@ von TechxArtisan</string>
     ]]></string>
     <string name="gamepad_presets_import_short"><![CDATA[Import…
     ]]></string>
+    <string name="gamepad_presets_reset_shipped"><![CDATA[Mitgelieferte Layouts zurücksetzen
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_title"><![CDATA[Mitgelieferte Layouts zurücksetzen?
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_message"><![CDATA[Stellt „Standard“ und alle mit dieser App-Version gebündelten Layouts auf den Zustand nach der Installation wieder her. Eigene oder importierte Layouts werden nicht entfernt und nicht geändert.
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_confirm"><![CDATA[Mitgelieferte zurücksetzen
+    ]]></string>
+    <string name="gamepad_presets_reset_shipped_done"><![CDATA[Mitgelieferte Layouts zurückgesetzt
+    ]]></string>
     <string name="gamepad_presets_share_chooser"><![CDATA[Share gamepad preset
     ]]></string>
     <string name="gamepad_presets_sheet_title"><![CDATA[Layouts
