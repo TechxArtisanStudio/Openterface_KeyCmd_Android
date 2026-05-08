@@ -64,7 +64,6 @@ import android.app.Dialog;
 
 import androidx.appcompat.app.AppCompatDialog;
 import androidx.appcompat.widget.PopupMenu;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -1701,17 +1700,34 @@ public class GamepadFragment extends Fragment {
                 dw.setExitTransition(null);
             }
             applyGamepadPresetsPickerWindowLayout(dw, dlgCtx);
+            dw.setFlags(
+                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
         }
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
         recycler.setHasFixedSize(true);
         recycler.setItemAnimator(null);
+        recycler.setNestedScrollingEnabled(true);
+        recycler.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
 
         final GamepadPresetListAdapter[] presetListAdapterRef = new GamepadPresetListAdapter[1];
         presetListAdapterRef[0] = new GamepadPresetListAdapter(new GamepadPresetListAdapter.Listener() {
+            @Override
+            public void onPresetReorderFinished() {
+                List<String> ids = presetListAdapterRef[0].consumePendingReorderIds();
+                if (ids != null) {
+                    String err = presetRepository.reorderPresets(ids);
+                    if (err != null) {
+                        refreshPresetSheetAdapter(presetListAdapterRef[0]);
+                        Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+
             @Override
             public void onActivatePreset(@NonNull String id) {
                 presetRepository.persistActiveSnapshot();
@@ -1757,53 +1773,8 @@ public class GamepadFragment extends Fragment {
         GamepadPresetListAdapter adapter = presetListAdapterRef[0];
         recycler.setLayoutManager(new LinearLayoutManager(dlgCtx));
         recycler.setAdapter(adapter);
+        adapter.setReorderHandlesEnabled(true);
         refreshPresetSheetAdapter(adapter);
-
-        ItemTouchHelper presetReorderTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
-            @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView,
-                    @NonNull RecyclerView.ViewHolder viewHolder,
-                    @NonNull RecyclerView.ViewHolder target) {
-                int from = viewHolder.getBindingAdapterPosition();
-                int to = target.getBindingAdapterPosition();
-                if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
-                    return false;
-                }
-                adapter.moveItem(from, to);
-                return true;
-            }
-
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-            }
-
-            @Override
-            public boolean isLongPressDragEnabled() {
-                return false;
-            }
-
-            @Override
-            public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
-                super.onSelectedChanged(viewHolder, actionState);
-            }
-
-            @Override
-            public void clearView(@NonNull RecyclerView recyclerView,
-                    @NonNull RecyclerView.ViewHolder viewHolder) {
-                super.clearView(recyclerView, viewHolder);
-                List<String> ids = adapter.consumePendingReorderIds();
-                if (ids != null) {
-                    String err = presetRepository.reorderPresets(ids);
-                    if (err != null) {
-                        refreshPresetSheetAdapter(adapter);
-                        Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
-        });
-        adapter.setDragHelper(presetReorderTouchHelper);
-        presetReorderTouchHelper.attachToRecyclerView(recycler);
 
         if (newLayoutBtn != null) {
             newLayoutBtn.setOnClickListener(v -> {
@@ -1840,6 +1811,11 @@ public class GamepadFragment extends Fragment {
         }
 
         dialog.show();
+        recycler.post(() -> {
+            if (recycler.isAttachedToWindow()) {
+                recycler.requestFocus();
+            }
+        });
     }
 
     private void refreshPresetSheetAdapter(@NonNull GamepadPresetListAdapter adapter) {

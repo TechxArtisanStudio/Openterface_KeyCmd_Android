@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -13,7 +14,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
@@ -28,6 +28,9 @@ import java.util.Objects;
 /**
  * Rows for the gamepad preset picker bottom sheet (activate + overflow per preset).
  * Uses {@link DiffUtil} so rename / activate updates animate minimally instead of full refresh.
+ * <p>
+ * Reorder uses a manual drag on the handle only (no {@code ItemTouchHelper.attachToRecyclerView}):
+ * that helper registers a RecyclerView touch listener that commonly blocks vertical list scrolling.
  */
 public final class GamepadPresetListAdapter extends RecyclerView.Adapter<GamepadPresetListAdapter.VH> {
 
@@ -43,6 +46,9 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         void onDeletePreset(@NonNull String id);
 
         void onOverflow(@NonNull String id, @NonNull View anchor);
+
+        /** After a handle drag reorder; host should call {@link #consumePendingReorderIds()} and persist. */
+        void onPresetReorderFinished();
     }
 
     private static final class Row {
@@ -82,16 +88,18 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     private final List<Row> rows = new ArrayList<>();
     @Nullable
     private final Listener listener;
-    @Nullable
-    private ItemTouchHelper dragHelper;
+    private boolean reorderHandlesEnabled = true;
     private boolean reorderPending;
+    /** Active adapter index while dragging by handle; {@link RecyclerView#NO_POSITION} when idle. */
+    private int manualDragAnchorPos = RecyclerView.NO_POSITION;
 
     public GamepadPresetListAdapter(@Nullable Listener listener) {
         this.listener = listener;
     }
 
-    public void setDragHelper(@Nullable ItemTouchHelper helper) {
-        this.dragHelper = helper;
+    /** When false, drag handles are hidden (e.g. single-row list). Default true for the Layouts sheet. */
+    public void setReorderHandlesEnabled(boolean enabled) {
+        reorderHandlesEnabled = enabled;
     }
 
     /**
@@ -130,6 +138,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     public void setData(@NonNull List<GamepadLayoutPresetRepository.PresetRef> presets,
                         @Nullable String activeId) {
         reorderPending = false;
+        manualDragAnchorPos = RecyclerView.NO_POSITION;
         List<Row> newRows = new ArrayList<>(presets.size());
         for (GamepadLayoutPresetRepository.PresetRef r : presets) {
             if (r == null || r.id == null) {
@@ -210,14 +219,56 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             }
         });
 
-        boolean showReorder = dragHelper != null && rows.size() > 1;
+        boolean showReorder = reorderHandlesEnabled && rows.size() > 1;
         h.dragHandle.setVisibility(showReorder ? View.VISIBLE : View.GONE);
         if (showReorder) {
             h.dragHandle.setOnTouchListener((v, event) -> {
-                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                    dragHelper.startDrag(h);
+                ViewParentRv parentRv = ViewParentRv.from(h.itemView);
+                if (parentRv == null) {
+                    return false;
                 }
-                return false;
+                RecyclerView rv = parentRv.recyclerView;
+                int action = event.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN) {
+                    int pos = h.getBindingAdapterPosition();
+                    if (pos == RecyclerView.NO_POSITION) {
+                        return false;
+                    }
+                    manualDragAnchorPos = pos;
+                    rv.requestDisallowInterceptTouchEvent(true);
+                    return true;
+                }
+                if (action == MotionEvent.ACTION_MOVE) {
+                    if (manualDragAnchorPos == RecyclerView.NO_POSITION) {
+                        return true;
+                    }
+                    int[] loc = new int[2];
+                    rv.getLocationOnScreen(loc);
+                    float x = event.getRawX() - loc[0];
+                    float y = event.getRawY() - loc[1];
+                    View under = rv.findChildViewUnder(x, y);
+                    if (under == null) {
+                        return true;
+                    }
+                    int targetPos = rv.getChildAdapterPosition(under);
+                    if (targetPos == RecyclerView.NO_POSITION || targetPos == manualDragAnchorPos) {
+                        return true;
+                    }
+                    moveItem(manualDragAnchorPos, targetPos);
+                    manualDragAnchorPos = targetPos;
+                    return true;
+                }
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                    rv.requestDisallowInterceptTouchEvent(false);
+                    if (manualDragAnchorPos != RecyclerView.NO_POSITION) {
+                        manualDragAnchorPos = RecyclerView.NO_POSITION;
+                        if (reorderPending && listener != null) {
+                            listener.onPresetReorderFinished();
+                        }
+                    }
+                    return true;
+                }
+                return true;
             });
         } else {
             h.dragHandle.setOnTouchListener(null);
@@ -227,6 +278,24 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     @Override
     public int getItemCount() {
         return rows.size();
+    }
+
+    /** Pair holder for local class without extra file. */
+    private static final class ViewParentRv {
+        final RecyclerView recyclerView;
+
+        ViewParentRv(RecyclerView recyclerView) {
+            this.recyclerView = recyclerView;
+        }
+
+        @Nullable
+        static ViewParentRv from(@NonNull View itemView) {
+            ViewParent p = itemView.getParent();
+            if (p instanceof RecyclerView) {
+                return new ViewParentRv((RecyclerView) p);
+            }
+            return null;
+        }
     }
 
     static final class VH extends RecyclerView.ViewHolder {
