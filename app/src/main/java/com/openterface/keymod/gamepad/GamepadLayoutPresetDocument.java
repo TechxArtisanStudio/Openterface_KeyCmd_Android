@@ -103,6 +103,11 @@ public class GamepadLayoutPresetDocument {
          * At most {@link GamepadCapLabels#MAX_CAP_LABEL_CODE_POINTS} Unicode code points (emoji usually counts as one each).
          */
         @Nullable public String displayLabel;
+        /**
+         * Optional ARGB for {@link #displayLabel} when drawn on a BUTTON / MOUSE_BUTTON cap. Null = use the preset face
+         * style’s default label color (same as layouts that omit this field).
+         */
+        @Nullable public Integer displayLabelColorArgb;
         /** STICK_* / DPAD: HID key codes for four-way digital input (virtual stick ring or D-pad). */
         @Nullable public Integer stickUpKey;
         @Nullable public Integer stickLeftKey;
@@ -315,6 +320,12 @@ public class GamepadLayoutPresetDocument {
                         && GamepadCapLabels.codePointCount(dl) > GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS) {
                     throw new IllegalArgumentException("Module " + m.id + ": displayLabel exceeds "
                             + GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS + " Unicode code points");
+                }
+            }
+            if (m.displayLabelColorArgb != null) {
+                int a = argbAlphaFromPackedInt(m.displayLabelColorArgb);
+                if (a < 64) {
+                    throw new IllegalArgumentException("Module " + m.id + ": displayLabelColorArgb alpha must be >= 64");
                 }
             }
             if (m.stickVisualVariant != null) {

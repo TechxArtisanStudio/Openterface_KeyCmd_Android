@@ -2,6 +2,7 @@
 <!-- Rounded sheet wraps scroll + pinned footer so Remove/Reset/Done stay visible. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/gamepad_module_config_sheet"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -42,6 +43,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/gamepad_module_id_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+            android:textColor="?android:attr/textColorSecondary"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:layout_marginBottom="8dp"
+            tools:text="Module ID: stick_left" />
 
         <TextView
             android:id="@+id/stick_config_dpad_hint"

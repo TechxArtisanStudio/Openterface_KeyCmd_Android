@@ -652,7 +652,8 @@ public class GamepadView extends View {
      */
     private void drawRetroFaceButton(Canvas canvas, float cx, float cy, float r, FaceStyle style,
                                      boolean pressed, String text, float cornerRadiusNorm, int accentForRing) {
-        drawRetroFaceButtonOriented(canvas, cx, cy, r, r, style, pressed, text, cornerRadiusNorm, accentForRing, 0f);
+        drawRetroFaceButtonOriented(canvas, cx, cy, r, r, style, pressed, text, cornerRadiusNorm, accentForRing, 0f,
+                null);
     }
 
     /**
@@ -660,7 +661,8 @@ public class GamepadView extends View {
      */
     private void drawRetroFaceButtonOriented(Canvas canvas, float cx, float cy, float halfW, float halfH,
                                            FaceStyle style, boolean pressed, @Nullable String text,
-                                           float cornerRadiusNorm, int accentForRing, float rotationDeg) {
+                                           float cornerRadiusNorm, int accentForRing, float rotationDeg,
+                                           @Nullable Integer capLabelColorArgbOverride) {
         float cn = Math.max(0f, Math.min(1f, cornerRadiusNorm));
         float ref = Math.max(1f, Math.min(halfW, halfH));
         float cornerPx = cn * ref;
@@ -714,7 +716,7 @@ public class GamepadView extends View {
         retroGlossPaint.setShader(null);
 
         if (text != null && !text.isEmpty()) {
-            drawFittedFaceCapLabelLocal(canvas, halfW, halfH, style, text);
+            drawFittedFaceCapLabelLocal(canvas, halfW, halfH, style, text, capLabelColorArgbOverride);
         }
         canvas.restore();
     }
@@ -758,7 +760,8 @@ public class GamepadView extends View {
     }
 
     /** Cap label centered at local origin (0,0), drawn inside caller's rotated/translated canvas. */
-    private void drawFittedFaceCapLabelLocal(Canvas canvas, float halfW, float halfH, FaceStyle style, String raw) {
+    private void drawFittedFaceCapLabelLocal(Canvas canvas, float halfW, float halfH, FaceStyle style, String raw,
+            @Nullable Integer labelColorOverride) {
         String text = normalizeCapText(raw);
         if (text.isEmpty()) {
             return;
@@ -771,7 +774,10 @@ public class GamepadView extends View {
         float minSp = labelR * 0.18f;
         boolean useBold = !mostlyEmojiOrSymbol(text);
         TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        tp.setColor(style.label);
+        int labelArgb = labelColorOverride != null
+                ? GamepadModuleAccent.toOpaqueArgb(labelColorOverride)
+                : style.label;
+        tp.setColor(labelArgb);
         tp.setTextAlign(Paint.Align.LEFT);
         tp.setTypeface(useBold ? retroLabelTypeface : Typeface.DEFAULT);
         tp.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 35));
@@ -1097,17 +1103,16 @@ public class GamepadView extends View {
             dynamicLeftDpadVariant = GamepadDpadVariantArt.normalizeVariant(variant);
         }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
-        boolean showCrossDirectionIcons = keyMappingHintsVisible
-                && Boolean.TRUE.equals(m.dpadDirectionIconsVisible)
+        boolean moduleWantsDirectionIcons = Boolean.TRUE.equals(m.dpadDirectionIconsVisible)
                 && GamepadDpadVariantArt.usesCrossArmDecoration(variant);
         Drawable[] iconPool = null;
-        if (showCrossDirectionIcons) {
+        if (moduleWantsDirectionIcons) {
             ensureDpadDirectionIconDrawables();
             iconPool = dpadDirectionIconPool;
         }
         drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
                 m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent,
-                showCrossDirectionIcons, iconPool);
+                moduleWantsDirectionIcons, iconPool);
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -1152,7 +1157,7 @@ public class GamepadView extends View {
         if (sameCapAndHint(cap, hint)) {
             hint = null;
         }
-        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, cap, hint, 1f, m.moduleAccentArgb, null);
+        drawButtonForModule(canvas, x, y, rpx, m.id, FACE_NEUTRAL, cap, hint, 1f, m.moduleAccentArgb, m);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1198,8 +1203,9 @@ public class GamepadView extends View {
         if (moduleAccentArgb != null) {
             fs = faceStyleFromModuleAccent(ringAccent);
         }
+        Integer capLabelArgb = buttonShape != null ? buttonShape.displayLabelColorArgb : null;
         drawRetroFaceButtonOriented(canvas, cx, cy, halfW, halfH, fs, id.equals(pressedComponentId), capOnButton,
-                cornerRadiusNorm, ringAccent, rotDeg);
+                cornerRadiusNorm, ringAccent, rotDeg, capLabelArgb);
         float density = getResources().getDisplayMetrics().density;
         if (mappingHint != null && !mappingHint.isEmpty()) {
             RectF hb = componentBounds.get(id);

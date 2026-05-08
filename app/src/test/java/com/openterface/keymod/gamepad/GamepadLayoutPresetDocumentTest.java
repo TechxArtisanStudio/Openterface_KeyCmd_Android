@@ -398,6 +398,27 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void roundTripJsonPreservesDisplayLabelColorArgb() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btnA = doc.modules.get(1);
+        assertEquals("button_a", btnA.id);
+        btnA.displayLabelColorArgb = 0xFFE53935;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertNotNull(parsed.modules.get(1).displayLabelColorArgb);
+        assertEquals(0xFFE53935, (int) parsed.modules.get(1).displayLabelColorArgb);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsDisplayLabelColorTooTransparent() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(1).displayLabelColorArgb = 0x10000000;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
     public void roundTripJsonPreservesMappedKeyLabelVisible() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         GamepadLayoutPresetDocument.GamepadModule btnA = doc.modules.get(1);

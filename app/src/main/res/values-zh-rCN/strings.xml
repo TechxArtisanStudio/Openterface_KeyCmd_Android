@@ -590,7 +590,7 @@
     <string name="gamepad_preset_menu_save_file">保存到文件…</string>
     <string name="gamepad_preset_menu_share">分享 JSON…</string>
     <string name="gamepad_preset_menu_delete">删除</string>
-    <string name="gamepad_preset_menu_reset_layout">将布局恢复为默认</string>
+    <string name="gamepad_preset_menu_reset_layout">重置布局</string>
     <string name="gamepad_preset_reset_title">重置布局？</string>
     <string name="gamepad_preset_reset_message">将此内置经典布局恢复为默认模块、位置与按键。预设的显示名称将保留。</string>
     <string name="gamepad_preset_reset_confirm">重置</string>
@@ -838,7 +838,7 @@
     <string name="gamepad_stick_mode_dpad_cross">十字键（一体，数字）</string>
     <string name="gamepad_stick_mode_dpad_split">十字键（分离段）</string>
     <string name="gamepad_dpad_direction_icons_title">方向箭头</string>
-    <string name="gamepad_dpad_direction_icons_summary">在一体十字键各臂上显示 Material 箭头图标；映射键标签会随箭头对齐。需在工具栏开启键位映射提示。</string>
+    <string name="gamepad_dpad_direction_icons_summary">在一体十字键各臂上显示 Material 箭头图标。工具栏开启键位映射提示时同时显示映射键标签；仅开启本选项时也会显示箭头。</string>
     <string name="gamepad_dpad_direction_icons_switch">显示方向图标</string>
     <string name="gamepad_stick_mode_key">方向键（虚拟摇杆）</string>
     <string name="gamepad_touchpad_height_pct">高度（%）</string>

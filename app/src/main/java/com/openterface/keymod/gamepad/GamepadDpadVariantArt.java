@@ -447,9 +447,6 @@ public final class GamepadDpadVariantArt {
             float labelRadialScale,
             boolean showDirectionIcons,
             @Nullable Drawable[] directionIcons) {
-        if (!showMappingHints) {
-            return;
-        }
         final int activeCol = Color.parseColor("#F5F2EA");
         final int dimCol = Color.parseColor("#8C8894");
         float inset = Math.max(1.25f * density, half * 0.028f);
@@ -462,6 +459,9 @@ public final class GamepadDpadVariantArt {
         RectF rightArm = new RectF(cx + hub + inset, cy - barHalf + inset, cx + half - inset, cy + barHalf - inset);
 
         boolean icons = showDirectionIcons && directionIcons != null && directionIcons.length >= 4;
+        if (!showMappingHints && !icons) {
+            return;
+        }
 
         Paint dirPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         dirPaint.setTypeface(labelTypeface);
@@ -474,6 +474,9 @@ public final class GamepadDpadVariantArt {
         String r = rightLabel != null ? rightLabel : "D";
 
         if (!icons) {
+            if (!showMappingHints) {
+                return;
+            }
             dirPaint.setTextAlign(Paint.Align.CENTER);
             dirPaint.setTextSize(baseText);
             dirPaint.setShadowLayer(1.5f, 0f, 1f, 0x66000000);
@@ -489,6 +492,18 @@ public final class GamepadDpadVariantArt {
             return;
         }
 
+        if (!showMappingHints) {
+            drawCrossDirectionIconCentered(canvas, upArm, directionIcons[0], activeStickDirections.contains(boundsId + "_up"),
+                    activeCol, dimCol);
+            drawCrossDirectionIconCentered(canvas, downArm, directionIcons[1],
+                    activeStickDirections.contains(boundsId + "_down"), activeCol, dimCol);
+            drawCrossDirectionIconCentered(canvas, leftArm, directionIcons[2],
+                    activeStickDirections.contains(boundsId + "_left"), activeCol, dimCol);
+            drawCrossDirectionIconCentered(canvas, rightArm, directionIcons[3],
+                    activeStickDirections.contains(boundsId + "_right"), activeCol, dimCol);
+            return;
+        }
+
         float gap = Math.max(1f * density, lr * 0.03f);
         drawCrossArmVerticalIconTop(canvas, upArm, cx, u, directionIcons[0], dirPaint, baseText, lr, gap, padInner,
                 density, activeStickDirections.contains(boundsId + "_up"), activeCol, dimCol);
@@ -498,6 +513,18 @@ public final class GamepadDpadVariantArt {
                 density, activeStickDirections.contains(boundsId + "_left"), activeCol, dimCol);
         drawCrossArmHorizontalIconRight(canvas, rightArm, r, directionIcons[3], dirPaint, baseText, lr, gap, padInner,
                 density, activeStickDirections.contains(boundsId + "_right"), activeCol, dimCol);
+    }
+
+    private static void drawCrossDirectionIconCentered(Canvas canvas, RectF arm, @Nullable Drawable icon,
+            boolean active, int activeCol, int dimCol) {
+        if (icon == null || arm.width() <= 2f || arm.height() <= 2f) {
+            return;
+        }
+        int tint = active ? activeCol : dimCol;
+        float size = Math.min(arm.width(), arm.height()) * 0.52f;
+        float left = arm.centerX() - size / 2f;
+        float top = arm.centerY() - size / 2f;
+        drawTintedDrawableInSquare(canvas, icon, tint, left, top, size);
     }
 
     private static void drawCrossLabelCentered(Canvas canvas, RectF arm, String text, Paint p,

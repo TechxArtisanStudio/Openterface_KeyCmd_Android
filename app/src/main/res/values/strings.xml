@@ -770,7 +770,7 @@ by TechxArtisan</string>
     <string name="gamepad_preset_menu_duplicate">Duplicate</string>
     <string name="gamepad_preset_menu_save_file">Save to file…</string>
     <string name="gamepad_preset_menu_share">Share JSON…</string>
-    <string name="gamepad_preset_menu_reset_layout">Reset layout to default</string>
+    <string name="gamepad_preset_menu_reset_layout">Reset layout</string>
     <string name="gamepad_preset_menu_delete">Delete</string>
     <string name="gamepad_preset_reset_title">Reset layout?</string>
     <string name="gamepad_preset_reset_message">Restore this built-in classic layout to its default modules, positions, and keys. Your display name for this preset is kept.</string>
@@ -872,7 +872,7 @@ by TechxArtisan</string>
     <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>
     <string name="gamepad_stick_mode_dpad_split">D-pad (split segments)</string>
     <string name="gamepad_dpad_direction_icons_title">Direction arrows</string>
-    <string name="gamepad_dpad_direction_icons_summary">Show Material arrow icons on each arm of the cross D-pad. Mapped key labels move to stay aligned with the arrows. Requires key mapping hints on in the gamepad toolbar.</string>
+    <string name="gamepad_dpad_direction_icons_summary">Show Material arrow icons on each arm of the cross D-pad. Mapped key labels appear when key mapping hints are on in the gamepad toolbar; icons show whenever this option is enabled.</string>
     <string name="gamepad_dpad_direction_icons_switch">Show direction icons</string>
     <string name="gamepad_dpad_split_gap_title">Split spacing</string>
     <string name="gamepad_dpad_split_gap_summary">Size of the empty diamond in the middle (wider = more space between the inner corners of the four pads). Pad thickness stays fixed.</string>
@@ -894,10 +894,17 @@ by TechxArtisan</string>
     <string name="gamepad_button_rotation_deg_value">%1$d°</string>
     <string name="gamepad_button_config_title_placeholder">Button</string>
     <string name="gamepad_button_cap_label_hint">Name on button (optional, up to 6 characters or emoji)</string>
+    <string name="gamepad_button_cap_label_color_title">Name on button color</string>
     <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
     <string name="gamepad_button_config_show_mapped_key_label">Show mapped key label under button</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Toggle whether the mapped key name appears in a label under this button</string>
     <string name="gamepad_button_config_size">Button size</string>
+    <!-- Default layout: primary lower-right module (id button_a). Title is role-based; exact id is shown above "Name on button". -->
+    <string name="gamepad_button_config_dialog_title_slot_a">Main button</string>
+    <!-- Default layout: companion upper-right module (id button_b). -->
+    <string name="gamepad_button_config_dialog_title_slot_b">Second button</string>
+    <!-- %1$s = layout module id (e.g. button_a). Shown above the optional cap label field. -->
+    <string name="gamepad_module_config_module_id_line">Module ID: %1$s</string>
     <string name="gamepad_stick_config_section_mode">Mode</string>
     <string name="gamepad_stick_config_size_label">Stick size</string>
     <string name="gamepad_config_slider_small">Small</string>

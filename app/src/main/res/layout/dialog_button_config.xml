@@ -2,6 +2,7 @@
 <!-- Rounded sheet wraps scroll + pinned footer so Remove/Reset/Done stay visible. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/gamepad_module_config_sheet"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -44,6 +45,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp" />
 
+            <TextView
+                android:id="@+id/gamepad_module_id_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textColor="?android:attr/textColorSecondary"
+                android:fontFamily="monospace"
+                android:textIsSelectable="true"
+                android:layout_marginBottom="8dp"
+                tools:text="Module ID: button_a" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/button_cap_label_layout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -61,6 +73,46 @@
                     android:inputType="textCapSentences|textMultiLine"
                     android:maxLines="2" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_button_cap_label_color_title"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="@dimen/spacing_medium">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_cap_color_theme_default"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_module_color_theme_default"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="8dp" />
+
+                <com.openterface.keymod.widget.NestedFriendlyHorizontalScrollView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:scrollbars="none"
+                    android:clipToPadding="false">
+
+                    <LinearLayout
+                        android:id="@+id/button_cap_color_swatches"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="4dp" />
+                </com.openterface.keymod.widget.NestedFriendlyHorizontalScrollView>
+            </LinearLayout>
 
             <include layout="@layout/include_gamepad_module_color_section" />
 
@@ -290,11 +342,6 @@
 
     </LinearLayout>
 </com.openterface.keymod.widget.MaxHeightNestedScrollView>
-
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_small" />
 
     <LinearLayout
         android:layout_width="match_parent"

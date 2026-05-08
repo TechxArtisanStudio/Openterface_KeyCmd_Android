@@ -434,7 +434,7 @@ TechxArtisan により</string>
     <string name="gamepad_preset_row_share_cd">レイアウトを共有</string>
     <string name="gamepad_preset_menu_rename">名前を変更</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>
-    <string name="gamepad_preset_menu_reset_layout">レイアウトを初期状態に戻す</string>
+    <string name="gamepad_preset_menu_reset_layout">レイアウトをリセット</string>
     <string name="gamepad_preset_menu_share">JSON を共有…</string>
     <string name="gamepad_preset_menu_delete">削除</string>
     <string name="gamepad_preset_reset_title">レイアウトをリセットしますか？</string>
@@ -881,7 +881,7 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_dpad_direction_icons_title"><![CDATA[Direction arrows
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_summary"><![CDATA[Show Material arrow icons on each arm of the cross D-pad. Mapped key labels stay aligned with the arrows. Requires key mapping hints on in the gamepad toolbar.
+    <string name="gamepad_dpad_direction_icons_summary"><![CDATA[Show Material arrow icons on each arm of the cross D-pad. Mapped key labels appear when key mapping hints are on in the gamepad toolbar; icons show whenever this option is enabled.
     ]]></string>
     <string name="gamepad_dpad_direction_icons_switch"><![CDATA[Show direction icons
     ]]></string>

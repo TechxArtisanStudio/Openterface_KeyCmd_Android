@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.graphics.Canvas;
+import android.graphics.Typeface;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.drawable.GradientDrawable;
@@ -2097,6 +2098,122 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    /**
+     * Updates selection state for optional {@link GamepadLayoutPresetDocument.GamepadModule#displayLabelColorArgb}
+     * (text drawn on the button cap).
+     */
+    private void refreshButtonCapLabelColorRowUi(
+            @NonNull GamepadLayoutPresetDocument.GamepadModule module,
+            @Nullable MaterialButton themeDefaultBtn,
+            @NonNull List<View> swatchViews,
+            @NonNull Context ctx) {
+        int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
+                ContextCompat.getColor(ctx, R.color.primary));
+        int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+        int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
+
+        boolean themeSelected = module.displayLabelColorArgb == null;
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setStrokeWidth(0);
+            themeDefaultBtn.setIcon(themeSelected ? ContextCompat.getDrawable(ctx, R.drawable.ic_check) : null);
+            themeDefaultBtn.setIconGravity(MaterialButton.ICON_GRAVITY_TEXT_START);
+            themeDefaultBtn.setIconPadding(dp(8));
+            if (themeSelected) {
+                int onTonal = MaterialColors.getColor(themeDefaultBtn,
+                        com.google.android.material.R.attr.colorOnSecondaryContainer, primary);
+                themeDefaultBtn.setIconTint(ColorStateList.valueOf(onTonal));
+            } else {
+                themeDefaultBtn.setIconTint(null);
+            }
+        }
+
+        Integer ma = module.displayLabelColorArgb;
+        int opaque = ma != null ? GamepadModuleAccent.toOpaqueArgb(ma) : 0;
+        int[] presets = GamepadModuleAccent.CAP_LABEL_PRESET_ARGB;
+        for (int i = 0; i < swatchViews.size() && i < presets.length; i++) {
+            int fill = GamepadModuleAccent.toOpaqueArgb(presets[i]);
+            boolean sel = ma != null && opaque == fill;
+            View wrap = swatchViews.get(i);
+            View dotView = wrap;
+            if (wrap instanceof ViewGroup && ((ViewGroup) wrap).getChildCount() > 0) {
+                dotView = ((ViewGroup) wrap).getChildAt(0);
+            }
+            GradientDrawable dotGd = new GradientDrawable();
+            dotGd.setShape(GradientDrawable.OVAL);
+            dotGd.setColor(fill);
+            dotGd.setStroke(sel ? 0 : dp(1), outlineSoft);
+            dotView.setBackground(dotGd);
+            if (wrap instanceof FrameLayout) {
+                if (sel) {
+                    GradientDrawable ring = new GradientDrawable();
+                    ring.setShape(GradientDrawable.OVAL);
+                    ring.setColor(Color.TRANSPARENT);
+                    ring.setStroke(dp(3), primary);
+                    wrap.setBackground(ring);
+                    wrap.setScaleX(1.06f);
+                    wrap.setScaleY(1.06f);
+                } else {
+                    wrap.setBackground(null);
+                    wrap.setScaleX(1f);
+                    wrap.setScaleY(1f);
+                }
+            }
+            wrap.setContentDescription(ctx.getString(sel
+                    ? R.string.gamepad_module_color_swatch_selected_cd
+                    : R.string.gamepad_module_color_swatch_cd));
+        }
+
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setContentDescription(ctx.getString(themeSelected
+                    ? R.string.gamepad_module_color_theme_default_selected_cd
+                    : R.string.gamepad_module_color_theme_default_cd));
+        }
+    }
+
+    private void bindButtonCapLabelColorRow(
+            @NonNull View dialogView, @NonNull GamepadLayoutPresetDocument.GamepadModule module) {
+        Context ctx = dialogView.getContext();
+        MaterialButton themeDefaultBtn = dialogView.findViewById(R.id.button_cap_color_theme_default);
+        LinearLayout swatchRow = dialogView.findViewById(R.id.button_cap_color_swatches);
+        if (swatchRow == null) {
+            return;
+        }
+        swatchRow.removeAllViews();
+        int ringOuter = dp(46);
+        int colorInner = dp(34);
+        int marginH = dp(4);
+        int marginV = dp(6);
+        List<View> swatchViews = new ArrayList<>();
+        for (int c : GamepadModuleAccent.CAP_LABEL_PRESET_ARGB) {
+            FrameLayout wrap = new FrameLayout(ctx);
+            LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(ringOuter, ringOuter);
+            wlp.setMargins(marginH, marginV, marginH, marginV);
+            wrap.setLayoutParams(wlp);
+            View colorDot = new View(ctx);
+            FrameLayout.LayoutParams innerLp = new FrameLayout.LayoutParams(
+                    colorInner, colorInner, Gravity.CENTER);
+            colorDot.setLayoutParams(innerLp);
+            wrap.addView(colorDot);
+            wrap.setOnClickListener(v -> {
+                module.displayLabelColorArgb = GamepadModuleAccent.toOpaqueArgb(c);
+                syncGamepadViewFromDoc();
+                refreshButtonCapLabelColorRowUi(module, themeDefaultBtn, swatchViews, ctx);
+            });
+            swatchRow.addView(wrap);
+            swatchViews.add(wrap);
+        }
+        Runnable refreshSelection = () -> refreshButtonCapLabelColorRowUi(module, themeDefaultBtn, swatchViews, ctx);
+        if (themeDefaultBtn != null) {
+            themeDefaultBtn.setOnClickListener(v -> {
+                module.displayLabelColorArgb = null;
+                syncGamepadViewFromDoc();
+                refreshSelection.run();
+            });
+        }
+        refreshSelection.run();
+    }
+
     private void bindGamepadModuleColorSection(
             @NonNull View colorSection,
             @NonNull GamepadLayoutPresetDocument.GamepadModule module) {
@@ -2526,6 +2643,7 @@ public class GamepadFragment extends Fragment {
         shell.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
         shell.setPadding(pad, pad, pad, pad);
+        shell.addView(createGamepadModuleIdTextViewForSheet(ctx, module.id));
         LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_color_section, shell, true);
         View section = shell.findViewById(R.id.module_color_section);
         if (section != null) {
@@ -2713,6 +2831,8 @@ public class GamepadFragment extends Fragment {
         int pad = dp(16);
         root.setPadding(pad, pad, pad, pad);
 
+        root.addView(createGamepadModuleIdTextViewForSheet(ctx, touchpadModuleId), 0);
+
         TextView wTitle = new TextView(ctx);
         wTitle.setText(R.string.gamepad_touchpad_width_pct);
         android.widget.SeekBar wSeek = new android.widget.SeekBar(ctx);
@@ -2829,6 +2949,8 @@ public class GamepadFragment extends Fragment {
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(16);
         root.setPadding(pad, pad, pad, pad);
+
+        root.addView(createGamepadModuleIdTextViewForSheet(ctx, m.id));
 
         LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_color_section, root, true);
         View mouseColorSection = root.findViewById(R.id.module_color_section);
@@ -2961,6 +3083,7 @@ public class GamepadFragment extends Fragment {
                 titleTv.setContentDescription(getString(R.string.gamepad_stick_config_title));
             }
         }
+        bindGamepadModuleIdLine(dialogView, stickConfigModuleId);
         TextView dpadHint = dialogView.findViewById(R.id.stick_config_dpad_hint);
         if (dpadHint != null) {
             dpadHint.setVisibility(("stick_left".equals(stickConfigModuleId)
@@ -3429,9 +3552,9 @@ public class GamepadFragment extends Fragment {
 
         String title;
         if ("button_a".equals(moduleId)) {
-            title = "Button A";
+            title = getString(R.string.gamepad_button_config_dialog_title_slot_a);
         } else if ("button_b".equals(moduleId)) {
-            title = "Button B";
+            title = getString(R.string.gamepad_button_config_dialog_title_slot_b);
         } else {
             title = m.displayLabel != null ? m.displayLabel : moduleId;
         }
@@ -3447,7 +3570,10 @@ public class GamepadFragment extends Fragment {
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 
         TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
-        dialogTitle.setText(title + " Configuration");
+        dialogTitle.setText(title);
+
+        String layoutModuleId = (m.id != null && !m.id.isEmpty()) ? m.id : moduleId;
+        bindGamepadModuleIdLine(dialogView, layoutModuleId);
 
         TextInputEditText capLabelEdit = dialogView.findViewById(R.id.button_cap_label_edit);
         if (capLabelEdit != null) {
@@ -3476,6 +3602,7 @@ public class GamepadFragment extends Fragment {
             });
         }
 
+        bindButtonCapLabelColorRow(dialogView, m);
         View btnColorSection = dialogView.findViewById(R.id.module_color_section);
         if (btnColorSection != null) {
             bindGamepadModuleColorSection(btnColorSection, m);
@@ -3643,6 +3770,7 @@ public class GamepadFragment extends Fragment {
             m.buttonCornerRadiusNorm = buttonCornerNorm[0];
             m.moduleAccentArgb = null;
             m.displayLabel = null;
+            m.displayLabelColorArgb = null;
             m.mappedKeyLabelVisible = null;
             if (mappedKeyLabelSwitch != null) {
                 mappedKeyLabelSwitch.setChecked(true);
@@ -3666,6 +3794,10 @@ public class GamepadFragment extends Fragment {
                 rotationSeek.setProgress(180);
             }
             syncGamepadViewFromDoc();
+            bindButtonCapLabelColorRow(dialogView, m);
+            if (btnColorSection != null) {
+                bindGamepadModuleColorSection(btnColorSection, m);
+            }
         });
 
         MaterialButton btnDuplicate = dialogView.findViewById(R.id.btn_duplicate);
@@ -4118,6 +4250,38 @@ public class GamepadFragment extends Fragment {
         outer.addView(inner, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return outer;
+    }
+
+    /** Sets {@link R.id#gamepad_module_id_text} when present on {@code root} (inflated button / stick sheets). */
+    private void bindGamepadModuleIdLine(@NonNull View root, @Nullable String layoutModuleId) {
+        TextView tv = root.findViewById(R.id.gamepad_module_id_text);
+        if (tv == null) {
+            return;
+        }
+        String id = layoutModuleId != null && !layoutModuleId.isEmpty() ? layoutModuleId : "";
+        tv.setText(getString(R.string.gamepad_module_config_module_id_line, id));
+    }
+
+    /**
+     * Module ID line for programmatic module sheets (touchpad resize, accent-only, mouse button size), matching
+     * {@link R.layout#dialog_button_config}.
+     */
+    @NonNull
+    private TextView createGamepadModuleIdTextViewForSheet(@NonNull Context ctx, @NonNull String layoutModuleId) {
+        TextView tv = new TextView(ctx);
+        tv.setId(R.id.gamepad_module_id_text);
+        tv.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        int secondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+        tv.setTextColor(secondary);
+        tv.setTypeface(Typeface.MONOSPACE);
+        tv.setTextIsSelectable(true);
+        tv.setText(getString(R.string.gamepad_module_config_module_id_line, layoutModuleId));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(8);
+        tv.setLayoutParams(lp);
+        return tv;
     }
 
     /**
