@@ -60,4 +60,7 @@ public final class GamepadPreferenceKeys {
      * controlled by this toggle.
      */
     public static final String SHOW_KEY_MAPPING_HINTS = "gamepad_show_key_mapping_hints";
+
+    /** Trimmed display name stamped into exported preset JSON as {@code meta.creator}. */
+    public static final String PRESET_EXPORT_CREATOR_NAME = "gamepad_preset_export_creator_name";
 }

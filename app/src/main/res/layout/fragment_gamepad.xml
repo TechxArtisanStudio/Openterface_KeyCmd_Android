@@ -116,6 +116,29 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_export_creator_chip"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginEnd="@dimen/spacing_tiny"
+            android:contentDescription="@string/gamepad_creator_chip_cd"
+            android:ellipsize="end"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:maxWidth="@dimen/gamepad_creator_chip_max_width"
+            android:maxLines="1"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:backgroundTint="@android:color/transparent"
+            tools:text="Creator"
+            tools:visibility="visible" />
+
         <LinearLayout
             android:id="@+id/gamepad_chrome_connection_wrap"
             android:layout_width="wrap_content"

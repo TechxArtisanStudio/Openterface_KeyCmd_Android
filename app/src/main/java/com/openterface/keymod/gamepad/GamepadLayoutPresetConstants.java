@@ -29,6 +29,9 @@ public final class GamepadLayoutPresetConstants {
     /** Current preset schema. */
     public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
 
+    /** Max length for {@link GamepadLayoutPresetDocument.Meta#creator} after trim. */
+    public static final int META_CREATOR_MAX_CHARS = 64;
+
     /** JSON / Gson field names on {@link GamepadLayoutPresetDocument.GestureLockConfig}. */
     public static final String GESTURE_LOCK_SLOT_UP_LEFT = "upLeft";
     public static final String GESTURE_LOCK_SLOT_UP_RIGHT = "upRight";

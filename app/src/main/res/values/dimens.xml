@@ -51,6 +51,7 @@
     <dimen name="gamepad_toolbar_preset_min_width">76dp</dimen>
     <dimen name="gamepad_preset_name_max_width">140dp</dimen>
     <dimen name="gamepad_preset_chip_max_width">220dp</dimen>
+    <dimen name="gamepad_creator_chip_max_width">100dp</dimen>
     <!-- Layouts bottom sheet (portrait + GamepadFragment). -->
     <dimen name="gamepad_presets_recycler_max_height">320dp</dimen>
     <dimen name="gamepad_presets_recycler_max_height_land">360dp</dimen>

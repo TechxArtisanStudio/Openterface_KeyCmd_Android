@@ -312,6 +312,55 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void metaCreatorTrimsAndRoundTripsJson() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.meta.creator = "  Alice  ";
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals("Alice", doc.meta.creator);
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        assertNotNull(parsed.meta);
+        assertEquals("Alice", parsed.meta.creator);
+    }
+
+    @Test
+    public void validateMetaCreatorForUiClearsWhitespaceOnlyCreator() {
+        GamepadLayoutPresetDocument.Meta meta = new GamepadLayoutPresetDocument.Meta();
+        meta.creator = "   \t  ";
+        GamepadLayoutPresetDocument.validateMetaCreatorForUi(meta);
+        assertNull(meta.creator);
+    }
+
+    @Test
+    public void validateMetaCreatorForUiRejectsEmbeddedNewline() {
+        GamepadLayoutPresetDocument.Meta meta = new GamepadLayoutPresetDocument.Meta();
+        meta.creator = "a\nb";
+        try {
+            GamepadLayoutPresetDocument.validateMetaCreatorForUi(meta);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("line breaks"));
+        }
+    }
+
+    @Test
+    public void validateRejectsMetaCreatorTooLong() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < GamepadLayoutPresetConstants.META_CREATOR_MAX_CHARS + 1; i++) {
+            sb.append('x');
+        }
+        doc.meta.creator = sb.toString();
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("meta.creator"));
+        }
+    }
+
+    @Test
     public void validateAcceptsDpadCrossWithStickCenterKey() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.modules.get(0).type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;

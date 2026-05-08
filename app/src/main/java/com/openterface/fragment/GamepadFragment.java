@@ -120,6 +120,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
+import com.openterface.keymod.gamepad.GamepadPresetExportCreator;
 import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
 import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
@@ -325,6 +326,8 @@ public class GamepadFragment extends Fragment {
     private MaterialButton gamepadPresetsToolbarButton;
     @Nullable
     private MaterialButton gamepadMappingHintsToolbarButton;
+    @Nullable
+    private MaterialButton gamepadExportCreatorChip;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -459,6 +462,11 @@ public class GamepadFragment extends Fragment {
         }
         setEditModeToolbarExtrasVisible(editModeMaterialButton.isChecked());
         applyEditModeToggleContentDescription();
+
+        gamepadExportCreatorChip = view.findViewById(R.id.gamepad_export_creator_chip);
+        if (gamepadExportCreatorChip != null) {
+            gamepadExportCreatorChip.setOnClickListener(v -> showEditExportCreatorDialog());
+        }
 
         MaterialButton sessionDone = view.findViewById(R.id.gamepad_edit_session_done);
         if (sessionDone != null) {
@@ -1713,17 +1721,21 @@ public class GamepadFragment extends Fragment {
 
             @Override
             public void onSavePreset(@NonNull String id) {
-                pendingSavePresetIdForDocument = id;
-                String displayName = presetDisplayName(id);
-                String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-                String base = !safe.isEmpty() ? safe : id;
-                savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
+                ensureExportCreatorNameThen(() -> {
+                    pendingSavePresetIdForDocument = id;
+                    String displayName = presetDisplayName(id);
+                    String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
+                    String base = !safe.isEmpty() ? safe : id;
+                    savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
+                });
             }
 
             @Override
             public void onSharePreset(@NonNull String id) {
-                dialog.dismiss();
-                sharePresetJson(id);
+                ensureExportCreatorNameThen(() -> {
+                    dialog.dismiss();
+                    sharePresetJson(id);
+                });
             }
 
             @Override
@@ -1964,16 +1976,20 @@ public class GamepadFragment extends Fragment {
                 return true;
             }
             if (id == R.id.gamepad_preset_save_file) {
-                pendingSavePresetIdForDocument = presetId;
-                String displayName = presetDisplayName(presetId);
-                String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-                String base = !safe.isEmpty() ? safe : presetId;
-                savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
+                ensureExportCreatorNameThen(() -> {
+                    pendingSavePresetIdForDocument = presetId;
+                    String displayName = presetDisplayName(presetId);
+                    String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
+                    String base = !safe.isEmpty() ? safe : presetId;
+                    savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
+                });
                 return true;
             }
             if (id == R.id.gamepad_preset_share) {
-                hostDialog.dismiss();
-                sharePresetJson(presetId);
+                ensureExportCreatorNameThen(() -> {
+                    hostDialog.dismiss();
+                    sharePresetJson(presetId);
+                });
                 return true;
             }
             if (id == R.id.gamepad_preset_delete) {
@@ -2110,6 +2126,10 @@ public class GamepadFragment extends Fragment {
             }
             GamepadLayoutPresetDocument shareDoc = new Gson().fromJson(
                     new Gson().toJson(doc), GamepadLayoutPresetDocument.class);
+            if (shareDoc.meta == null) {
+                shareDoc.meta = new GamepadLayoutPresetDocument.Meta();
+            }
+            GamepadPresetExportCreator.stampMeta(requireContext(), shareDoc.meta);
             String bgBasename = shareDoc.layout != null ? shareDoc.layout.backgroundImageFile : null;
             if (id != null && id.equals(active) && (bgBasename == null || bgBasename.isEmpty())) {
                 bgBasename = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
@@ -6367,7 +6387,112 @@ public class GamepadFragment extends Fragment {
         if (gamepadMappingHintsToolbarButton != null) {
             gamepadMappingHintsToolbarButton.setVisibility(vis);
         }
+        if (gamepadExportCreatorChip != null) {
+            gamepadExportCreatorChip.setVisibility(vis);
+            if (visible) {
+                refreshExportCreatorChipUi();
+            }
+        }
         refreshGamepadToolbarScrimHeight();
+    }
+
+    private void refreshExportCreatorChipUi() {
+        if (gamepadExportCreatorChip == null || !isAdded()) {
+            return;
+        }
+        String t = GamepadPresetExportCreator.readTrimmed(requireContext());
+        if (t.isEmpty()) {
+            gamepadExportCreatorChip.setText(R.string.gamepad_creator_chip_placeholder);
+        } else {
+            gamepadExportCreatorChip.setText(t);
+        }
+    }
+
+    private boolean tryPersistExportCreatorFromInput(
+            @NonNull TextInputEditText input, @NonNull TextInputLayout til) {
+        String raw = input.getText() != null ? input.getText().toString() : "";
+        GamepadLayoutPresetDocument.Meta scratch = new GamepadLayoutPresetDocument.Meta();
+        scratch.creator = raw;
+        try {
+            GamepadLayoutPresetDocument.validateMetaCreatorForUi(scratch);
+        } catch (IllegalArgumentException ex) {
+            til.setError(ex.getMessage());
+            return false;
+        }
+        til.setError(null);
+        GamepadPresetExportCreator.putExportCreatorValue(requireContext(), scratch.creator);
+        return true;
+    }
+
+    private void ensureExportCreatorNameThen(@NonNull Runnable onReady) {
+        if (prefs == null || !isAdded()) {
+            return;
+        }
+        if (GamepadPresetExportCreator.hasStoredExportCreatorPreference(requireContext())) {
+            onReady.run();
+            return;
+        }
+        showFirstTimeExportCreatorDialog(onReady);
+    }
+
+    private void showFirstTimeExportCreatorDialog(@NonNull Runnable onReady) {
+        Context ctx = gamepadUiContext();
+        View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
+        TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
+        TextInputEditText input = wrap.findViewById(R.id.gamepad_text_input);
+        til.setHint(R.string.gamepad_export_creator_prompt_hint);
+        input.setText("");
+        AlertDialog dlg = new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_export_creator_prompt_title)
+                .setView(wrap)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dlg.setOnShowListener(d -> {
+            Button ok = dlg.getButton(DialogInterface.BUTTON_POSITIVE);
+            ok.setOnClickListener(v -> {
+                if (!tryPersistExportCreatorFromInput(input, til)) {
+                    return;
+                }
+                dlg.dismiss();
+                if (isAdded()) {
+                    refreshExportCreatorChipUi();
+                    onReady.run();
+                }
+            });
+        });
+        dlg.show();
+    }
+
+    private void showEditExportCreatorDialog() {
+        Context ctx = gamepadUiContext();
+        View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
+        TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
+        TextInputEditText input = wrap.findViewById(R.id.gamepad_text_input);
+        til.setHint(R.string.gamepad_creator_hint);
+        String current = GamepadPresetExportCreator.readTrimmed(requireContext());
+        input.setText(current);
+        input.setSelection(current.length());
+        AlertDialog dlg = new AlertDialog.Builder(ctx)
+                .setTitle(R.string.gamepad_creator_edit_title)
+                .setView(wrap)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dlg.setOnShowListener(d -> {
+            Button ok = dlg.getButton(DialogInterface.BUTTON_POSITIVE);
+            ok.setOnClickListener(v -> {
+                if (!tryPersistExportCreatorFromInput(input, til)) {
+                    return;
+                }
+                dlg.dismiss();
+                if (isAdded()) {
+                    refreshExportCreatorChipUi();
+                    Toast.makeText(requireContext(), R.string.gamepad_creator_saved, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+        dlg.show();
     }
 
     /** TalkBack: distinguish customize (off) vs editing (on). */

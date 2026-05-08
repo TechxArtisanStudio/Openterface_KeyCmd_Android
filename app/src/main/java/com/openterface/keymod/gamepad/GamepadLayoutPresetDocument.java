@@ -76,6 +76,8 @@ public class GamepadLayoutPresetDocument {
         public String description;
         public String exportedAt;
         public String sourceAppVersion;
+        /** Optional human-readable author for exported JSON; null when unset. */
+        @Nullable public String creator;
     }
 
     public static class LayoutGlobals {
@@ -328,6 +330,7 @@ public class GamepadLayoutPresetDocument {
         }
         validateBackgroundEmbed(d.layout);
         validateBackgroundFillAndPattern(d.layout);
+        validateMetaCreator(d.meta);
         if (d.modules == null) {
             d.modules = new ArrayList<>();
         }
@@ -657,6 +660,35 @@ public class GamepadLayoutPresetDocument {
     /** ARGB packed int; JVM-safe (no {@code android.graphics.Color} stub needed in unit tests). */
     private static int argbAlphaFromPackedInt(int colorArgb) {
         return (colorArgb >>> 24) & 0xFF;
+    }
+
+    private static void validateMetaCreator(@Nullable Meta meta) throws IllegalArgumentException {
+        if (meta == null || meta.creator == null) {
+            return;
+        }
+        String c = meta.creator.trim();
+        if (c.isEmpty()) {
+            meta.creator = null;
+            return;
+        }
+        if (c.length() > GamepadLayoutPresetConstants.META_CREATOR_MAX_CHARS) {
+            throw new IllegalArgumentException(
+                    "meta.creator exceeds " + GamepadLayoutPresetConstants.META_CREATOR_MAX_CHARS + " characters");
+        }
+        for (int i = 0; i < c.length(); i++) {
+            char ch = c.charAt(i);
+            if (ch == '\n' || ch == '\r' || ch == '\t') {
+                throw new IllegalArgumentException("meta.creator must not contain line breaks or tabs");
+            }
+        }
+        meta.creator = c;
+    }
+
+    /**
+     * Validates and normalizes {@code meta.creator} (trim, length, no line breaks) for UI / prefs persistence.
+     */
+    public static void validateMetaCreatorForUi(@NonNull Meta meta) throws IllegalArgumentException {
+        validateMetaCreator(meta);
     }
 
     private static void validateBackgroundEmbed(LayoutGlobals L) {
