@@ -2855,7 +2855,8 @@ public class GamepadFragment extends Fragment {
         }
         applyGamepadModuleConfigSheetSurface(shell);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(shell);
-        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx).setView(sheetWrapped);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
+                .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
         if (title != null && !title.isEmpty()) {
             b.setTitle(title);
         }
@@ -3077,7 +3078,7 @@ public class GamepadFragment extends Fragment {
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_size_title)
-                .setView(sheetWrapped);
+                .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
         AlertDialog dialog = b.create();
         Runnable syncSeeksFromTp = () -> {
             int wp2 = Math.round((tp.widthNorm != null ? tp.widthNorm
@@ -3148,7 +3149,7 @@ public class GamepadFragment extends Fragment {
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_touchpad_mouse_btn_size_title)
-                .setView(sheetWrapped);
+                .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
         AlertDialog dialog = b.create();
         appendGamepadModuleSheetFooter(ctx, root, null,
                 () -> {
@@ -3203,7 +3204,7 @@ public class GamepadFragment extends Fragment {
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_mouse_btn_module_size_title)
-                .setView(sheetWrapped);
+                .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
         AlertDialog dialog = b.create();
         appendGamepadModuleSheetFooter(ctx, root, m.id,
                 () -> {
@@ -4503,6 +4504,24 @@ public class GamepadFragment extends Fragment {
         outer.addView(inner, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         return outer;
+    }
+
+    /**
+     * Wraps programmatic module sheets so they scroll when the dialog body is shorter than content
+     * (e.g. touchpad size with name + color + two seekbars). {@link MaterialAlertDialogBuilder} does
+     * not scroll a plain {@link LinearLayout} reliably.
+     */
+    @NonNull
+    private MaxHeightNestedScrollView wrapGamepadModuleConfigSheetInScroll(@NonNull FrameLayout sheetWrapped) {
+        Context ctx = sheetWrapped.getContext();
+        MaxHeightNestedScrollView scrollRoot = new MaxHeightNestedScrollView(ctx);
+        scrollRoot.setFillViewport(false);
+        scrollRoot.setClipToPadding(false);
+        scrollRoot.setBackgroundColor(Color.TRANSPARENT);
+        scrollRoot.addView(sheetWrapped, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        applyGamepadModuleConfigScrollMaxHeight(scrollRoot);
+        return scrollRoot;
     }
 
     /** Sets {@link R.id#gamepad_module_id_text} when present on {@code root} (inflated button / stick sheets). */
