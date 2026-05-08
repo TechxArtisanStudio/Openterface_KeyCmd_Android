@@ -25,7 +25,7 @@
         android:focusable="false"
         android:importantForAccessibility="no" />
 
-    <!-- Menu + customize + connection (top); top margin applied in code with status bar insets -->
+    <!-- Menu + customize + active preset + spacer + connection (top); top margin applied in code with status bar insets -->
     <LinearLayout
         android:id="@+id/gamepad_chrome_bar"
         android:layout_width="match_parent"
@@ -67,6 +67,31 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_active_preset_chip"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:ellipsize="end"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:maxWidth="@dimen/gamepad_preset_chip_max_width"
+            android:maxLines="1"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="13sp"
+            app:backgroundTint="@android:color/transparent"
+            app:icon="@drawable/ic_expand_more_24"
+            app:iconGravity="end"
+            app:iconPadding="4dp"
+            app:iconSize="18dp"
+            app:iconTint="?attr/colorOnSurfaceVariant"
+            tools:text="Default" />
 
         <View
             android:layout_width="0dp"
@@ -132,7 +157,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Edit-only: background, add module, layouts, cycle, mapping hints (centered when visible) -->
+    <!-- Edit-only: background, add module, cycle preset, mapping hints (centered when visible) -->
     <LinearLayout
         android:id="@+id/toggle_row"
         android:layout_width="wrap_content"
@@ -177,25 +202,6 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconTint="?android:attr/textColorSecondary" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/gamepad_active_preset_chip"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_marginStart="@dimen/spacing_small"
-            android:ellipsize="end"
-            android:maxWidth="@dimen/gamepad_preset_chip_max_width"
-            android:maxLines="1"
-            android:textAllCaps="false"
-            android:textSize="13sp"
-            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
-            app:icon="@drawable/ic_expand_more_24"
-            app:iconGravity="end"
-            app:iconPadding="4dp"
-            app:iconSize="18dp"
-            app:iconTint="?android:attr/textColorSecondary"
-            tools:text="Default" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/gamepad_presets_btn"

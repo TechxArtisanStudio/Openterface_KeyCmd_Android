@@ -125,6 +125,12 @@ public class GamepadLayoutPresetDocument {
          * {@link GamepadLayoutPresetConstants#DPAD_SPLIT_OUTER_REACH_RATIO_DEFAULT}.
          */
         @Nullable public Float dpadSplitOuterReachRatio;
+        /**
+         * DPAD cross-style arms only ({@code cross}, {@code floating}, {@code clicky}): when {@code true}, draw Material
+         * direction arrows on each arm and lay out mapped-key labels alongside; {@code null} or {@code false} uses
+         * centered labels only. Ignored for {@code split}, {@code disc}, and {@code pivot}.
+         */
+        @Nullable public Boolean dpadDirectionIconsVisible;
         /** Optional thumbstick cap look (reserved; null = default). */
         @Nullable public String stickVisualVariant;
         /** BUTTON: primary HID key and modifier bitmask (same encoding as GamepadFragment). */

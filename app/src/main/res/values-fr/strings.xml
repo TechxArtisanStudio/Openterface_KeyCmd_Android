@@ -911,6 +911,12 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_stick_mode_dpad_split"><![CDATA[D-pad (split segments)
     ]]></string>
+    <string name="gamepad_dpad_direction_icons_title"><![CDATA[Direction arrows
+    ]]></string>
+    <string name="gamepad_dpad_direction_icons_summary"><![CDATA[Show Material arrow icons on each arm of the cross D-pad. Mapped key labels stay aligned with the arrows. Requires key mapping hints on in the gamepad toolbar.
+    ]]></string>
+    <string name="gamepad_dpad_direction_icons_switch"><![CDATA[Show direction icons
+    ]]></string>
     <string name="gamepad_stick_mode_key"><![CDATA[Direction keys (virtual stick)
     ]]></string>
     <string name="gamepad_touchpad_height_pct"><![CDATA[Height (%)

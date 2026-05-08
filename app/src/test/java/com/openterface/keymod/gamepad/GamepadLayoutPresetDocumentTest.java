@@ -411,6 +411,21 @@ public class GamepadLayoutPresetDocumentTest {
         assertEquals(Boolean.FALSE, parsed.modules.get(1).mappedKeyLabelVisible);
     }
 
+    @Test
+    public void roundTripJsonPreservesDpadDirectionIconsVisible() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule left = doc.modules.get(0);
+        left.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        left.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        left.dpadDirectionIconsVisible = Boolean.TRUE;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertNotNull(parsed.modules.get(0).dpadDirectionIconsVisible);
+        assertEquals(Boolean.TRUE, parsed.modules.get(0).dpadDirectionIconsVisible);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void validateRejectsModuleAccentTooTransparent() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();

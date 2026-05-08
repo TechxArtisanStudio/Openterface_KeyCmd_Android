@@ -871,6 +871,9 @@ by TechxArtisan</string>
     <string name="gamepad_stick_mode_key">Direction keys (virtual stick)</string>
     <string name="gamepad_stick_mode_dpad_cross">D-pad (cross, digital)</string>
     <string name="gamepad_stick_mode_dpad_split">D-pad (split segments)</string>
+    <string name="gamepad_dpad_direction_icons_title">Direction arrows</string>
+    <string name="gamepad_dpad_direction_icons_summary">Show Material arrow icons on each arm of the cross D-pad. Mapped key labels move to stay aligned with the arrows. Requires key mapping hints on in the gamepad toolbar.</string>
+    <string name="gamepad_dpad_direction_icons_switch">Show direction icons</string>
     <string name="gamepad_dpad_split_gap_title">Split spacing</string>
     <string name="gamepad_dpad_split_gap_summary">Size of the empty diamond in the middle (wider = more space between the inner corners of the four pads). Pad thickness stays fixed.</string>
     <string name="gamepad_dpad_split_gap_tight">Tight</string>

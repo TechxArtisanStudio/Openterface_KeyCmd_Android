@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
@@ -97,6 +98,7 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
 import com.openterface.keymod.GamepadView;
+import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutDocumentStore;
@@ -2994,6 +2996,8 @@ public class GamepadFragment extends Fragment {
         final LinearLayout pointerMouseSensSection =
                 dialogView.findViewById(R.id.stick_pointer_mouse_sensitivity_section);
         final SeekBar pointerMouseSeek = dialogView.findViewById(R.id.stick_pointer_mouse_sensitivity_seek);
+        final LinearLayout dpadDirectionIconsSection = dialogView.findViewById(R.id.dpad_direction_icons_section);
+        final MaterialSwitch dpadDirectionIconsSwitch = dialogView.findViewById(R.id.dpad_direction_icons_switch);
         if (pointerMouseSeek != null && ("stick_right".equals(stickConfigModuleId)
                 || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(stickConfigModuleId))) {
             pointerMouseSeek.setProgress(stickPointerMouseGainToSeek(stickPointerMouseSensitivity));
@@ -3065,7 +3069,8 @@ public class GamepadFragment extends Fragment {
                 }
             }
             updateStickConfigSections(modeGroup, keySection, splitGapSection, splitOuterSection, pointerMouseSensSection,
-                    stickCenterKeySection, stickCenterSummaryTv, pointerHubMouseRow, pointerHubMouseGroup);
+                    stickCenterKeySection, stickCenterSummaryTv, pointerHubMouseRow, pointerHubMouseGroup,
+                    dpadDirectionIconsSection);
         };
         refreshCenterHubUi.run();
         if ("stick_left".equals(stickConfigModuleId)
@@ -3115,6 +3120,16 @@ public class GamepadFragment extends Fragment {
             if (cm != null) {
                 bindGamepadModuleColorSection(colorSection, cm);
             }
+        }
+
+        GamepadLayoutPresetDocument.GamepadModule stickModForIcons = findModuleById(stickConfigModuleId);
+        if (dpadDirectionIconsSwitch != null && stickModForIcons != null) {
+            dpadDirectionIconsSwitch.setOnCheckedChangeListener(null);
+            dpadDirectionIconsSwitch.setChecked(Boolean.TRUE.equals(stickModForIcons.dpadDirectionIconsVisible));
+            dpadDirectionIconsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                stickModForIcons.dpadDirectionIconsVisible = isChecked ? Boolean.TRUE : null;
+                syncGamepadViewFromDoc();
+            });
         }
 
         // Stick size seekbar
@@ -3295,6 +3310,7 @@ public class GamepadFragment extends Fragment {
                 if (m != null) {
                     m.scale = 1.0f;
                     m.moduleAccentArgb = null;
+                    m.dpadDirectionIconsVisible = null;
                 }
                 syncGamepadViewFromDoc();
             } else if (gamepadView != null) {
@@ -4257,11 +4273,18 @@ public class GamepadFragment extends Fragment {
             @Nullable View stickCenterKeySection,
             @Nullable android.widget.TextView stickCenterSummaryTv,
             @Nullable View pointerHubMouseRow,
-            @Nullable RadioGroup pointerHubMouseGroup) {
+            @Nullable RadioGroup pointerHubMouseGroup,
+            @Nullable LinearLayout dpadDirectionIconsSection) {
         int checked = modeGroup.getCheckedRadioButtonId();
         boolean keys = checked == R.id.stick_mode_key || checked == R.id.stick_mode_dpad_cross
                 || checked == R.id.stick_mode_dpad_split;
         keySection.setVisibility(keys ? View.VISIBLE : View.GONE);
+        boolean showDpadDirIcons = keys && checked == R.id.stick_mode_dpad_cross
+                && ("stick_left".equals(stickConfigModuleId)
+                || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(stickConfigModuleId));
+        if (dpadDirectionIconsSection != null) {
+            dpadDirectionIconsSection.setVisibility(showDpadDirIcons ? View.VISIBLE : View.GONE);
+        }
         boolean mouseLike = checked == R.id.stick_mode_analog;
         boolean showPointerMouse = mouseLike && ("stick_right".equals(stickConfigModuleId)
                 || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(stickConfigModuleId));
@@ -4390,6 +4413,10 @@ public class GamepadFragment extends Fragment {
             rightStickLeftKey = stickLeftKey;
             rightStickDownKey = stickDownKey;
             rightStickRightKey = stickRightKey;
+        }
+        if (!GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)
+                || !com.openterface.keymod.gamepad.GamepadDpadVariantArt.usesCrossArmDecoration(m.dpadVariant)) {
+            m.dpadDirectionIconsVisible = null;
         }
         applyLayoutDocFromMemory();
     }
@@ -5357,9 +5384,6 @@ public class GamepadFragment extends Fragment {
         if (editAddModuleToolbarButton != null) {
             editAddModuleToolbarButton.setVisibility(vis);
         }
-        if (activePresetChipButton != null) {
-            activePresetChipButton.setVisibility(vis);
-        }
         if (gamepadPresetsToolbarButton != null) {
             gamepadPresetsToolbarButton.setVisibility(vis);
         }
@@ -5379,164 +5403,286 @@ public class GamepadFragment extends Fragment {
                 : getString(R.string.gamepad_customize_cd));
     }
 
-    /** Edit-mode toolbar: gallery, fill color, pattern, clear background. */
+    /** Edit-mode toolbar: unified canvas background (colors, patterns, gallery, clear). */
     private void showEditBackgroundMenu() {
-        String[] options = new String[]{
-                getString(R.string.gamepad_bg_pick_gallery),
-                getString(R.string.gamepad_bg_color_title),
-                getString(R.string.gamepad_bg_pattern_title),
-                getString(R.string.gamepad_bg_remove),
-        };
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.gamepad_edit_canvas_menu_title)
-                .setItems(options, (dialog, which) -> {
-                    if (which == 0) {
-                        android.content.Intent intent = new android.content.Intent(
-                                android.content.Intent.ACTION_PICK,
-                                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-                        intent.setType("image/*");
-                        startActivityForResult(intent, PICK_BG_IMAGE);
-                    } else if (which == 1) {
-                        showBackgroundColorDialog();
-                    } else if (which == 2) {
-                        showBackgroundPatternDialog();
-                    } else if (which == 3) {
-                        if (gamepadView != null) {
-                            gamepadView.setBackgroundBitmap(null);
-                            gamepadView.setBackgroundFillArgb(null);
-                            gamepadView.setBackgroundPatternId(null);
-                        }
-                        if (currentBgPath != null) {
-                            java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
-                            if (file.exists()) {
-                                file.delete();
-                            }
-                        }
-                        currentBgPath = null;
-                        prefs.edit()
-                                .remove(GamepadPreferenceKeys.BG_IMAGE)
-                                .remove(GamepadPreferenceKeys.BG_SCALE)
-                                .remove(GamepadPreferenceKeys.BG_OFFSET_X)
-                                .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
-                                .remove(GamepadPreferenceKeys.BG_FILL_ARGB)
-                                .remove(GamepadPreferenceKeys.BG_PATTERN)
-                                .apply();
-                        if (layoutDoc != null && layoutDoc.layout != null) {
-                            layoutDoc.layout.backgroundImageFile = null;
-                            layoutDoc.layout.backgroundScale = 1.0f;
-                            layoutDoc.layout.backgroundOffsetX = 0f;
-                            layoutDoc.layout.backgroundOffsetY = 0f;
-                            layoutDoc.layout.backgroundFillArgb = null;
-                            layoutDoc.layout.backgroundPattern = null;
-                            try {
-                                GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
-                            } catch (IllegalArgumentException ignored) {
-                            }
-                        }
-                        persistActivePresetSnapshot();
-                    }
-                })
-                .show();
-    }
-
-    private void showBackgroundColorDialog() {
         Context ctx = requireContext();
         float density = ctx.getResources().getDisplayMetrics().density;
         DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
         int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, dm);
         int chip = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, dm);
         int gap = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, dm);
+        int strokeSel = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3f, dm);
+        int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary, Color.RED);
 
         final int[] presets = new int[]{
                 0xFF1A1C22, 0xFF2D3142, 0xFF1E3A2F, 0xFF3D2E4A, 0xFF262C36,
                 0xFFECEFF4, 0xFFD0D7DE, 0xFFC9DCE8, 0xFFE8DFD5, 0xFF1B2838, 0xFF3E2723,
         };
 
-        int screenW = dm.widthPixels;
-        int shorter = Math.min(screenW, dm.heightPixels);
-        boolean landscape = ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        // Guess inner dialog width so column count uses horizontal space in landscape.
-        int innerGuess = landscape
-                ? (int) (screenW * 0.82f)
-                : (int) (Math.min(screenW, dm.heightPixels) * 0.90f);
-        int cell = chip + 2 * gap;
-        int columnCount = Math.max(3, Math.min(8, Math.max(1, innerGuess / cell)));
+        final String[] patternIds = new String[]{
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH,
+                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NOISE,
+        };
+        final int[] patternDescIds = new int[]{
+                R.string.gamepad_bg_pattern_none,
+                R.string.gamepad_bg_pattern_dots,
+                R.string.gamepad_bg_pattern_micro_grid,
+                R.string.gamepad_bg_pattern_diagonal_hatch,
+                R.string.gamepad_bg_pattern_noise,
+        };
 
-        int maxScrollHRaw = (int) (shorter * (landscape ? 0.46f : 0.52f));
-        final int maxScrollH = Math.max(maxScrollHRaw, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 120f, dm));
+        int screenW = dm.widthPixels;
+        boolean landscape = ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        int cell = chip + 2 * gap;
+        int maxDialogBodyPx =
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 560f, dm);
+        int dialogChromePadPx =
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24f, dm);
+        int estimatedContentPx =
+                Math.min(
+                        maxDialogBodyPx,
+                        landscape ? screenW : Math.min(screenW, dm.heightPixels));
+        estimatedContentPx -= 2 * pad + 2 * dialogChromePadPx;
+        estimatedContentPx -= (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, dm);
+        estimatedContentPx = Math.max(estimatedContentPx, cell * 3);
+        int columnCount = Math.max(3, Math.min(8, estimatedContentPx / cell));
 
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad, pad, pad);
 
-        TextView hint = new TextView(ctx);
-        hint.setText(R.string.gamepad_bg_color_presets_hint);
-        root.addView(hint);
+        TextView colorSection = new TextView(ctx);
+        colorSection.setTextAppearance(ctx, com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
+        colorSection.setText(R.string.gamepad_bg_color_title);
+        root.addView(colorSection);
 
-        GridLayout grid = new GridLayout(ctx);
-        grid.setColumnCount(columnCount);
-        grid.setUseDefaultMargins(false);
-        grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+        GridLayout colorGrid = new GridLayout(ctx);
+        colorGrid.setColumnCount(columnCount);
+        colorGrid.setUseDefaultMargins(false);
+        colorGrid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
 
-        NestedScrollView scroll = new NestedScrollView(ctx) {
-            @Override
-            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-                int hMode = MeasureSpec.getMode(heightMeasureSpec);
-                int hSize = MeasureSpec.getSize(heightMeasureSpec);
-                if (hMode == MeasureSpec.UNSPECIFIED) {
-                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(maxScrollH, MeasureSpec.AT_MOST);
-                } else {
-                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(Math.min(hSize, maxScrollH), MeasureSpec.AT_MOST);
+        final Runnable[] refreshRef = new Runnable[1];
+
+        final FrameLayout[] colorFrames = new FrameLayout[presets.length];
+        for (int i = 0; i < presets.length; i++) {
+            int color = presets[i];
+            FrameLayout wrap = new FrameLayout(ctx);
+            int innerPad = strokeSel;
+            wrap.setPadding(innerPad, innerPad, innerPad, innerPad);
+            View swatch = new View(ctx);
+            GradientDrawable gd = new GradientDrawable();
+            gd.setColor(color);
+            gd.setCornerRadius(8f * density);
+            swatch.setBackground(gd);
+            FrameLayout.LayoutParams innerLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            wrap.addView(swatch, innerLp);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = chip + 2 * innerPad;
+            lp.height = chip + 2 * innerPad;
+            lp.setMargins(gap, gap, gap, gap);
+            final int c = color;
+            wrap.setOnClickListener(v -> {
+                persistCanvasBackgroundFillAndPattern(c | 0xFF000000, readCurrentBackgroundPatternId());
+                if (refreshRef[0] != null) {
+                    refreshRef[0].run();
                 }
-                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-            }
-        };
-        scroll.setFillViewport(false);
-        scroll.setNestedScrollingEnabled(true);
-        scroll.addView(grid, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scroll, new LinearLayout.LayoutParams(
+            });
+            colorGrid.addView(wrap, lp);
+            colorFrames[i] = wrap;
+        }
+        root.addView(colorGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         MaterialButton customBtn = new MaterialButton(ctx);
         customBtn.setText(R.string.gamepad_bg_color_custom);
-        LinearLayout.LayoutParams lpBtn = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams customLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lpBtn.topMargin = gap * 2;
-        root.addView(customBtn, lpBtn);
+        customLp.topMargin = gap;
+        root.addView(customBtn, customLp);
+
+        TextView patternSection = new TextView(ctx);
+        patternSection.setTextAppearance(ctx, com.google.android.material.R.style.TextAppearance_Material3_TitleSmall);
+        patternSection.setText(R.string.gamepad_bg_pattern_title);
+        LinearLayout.LayoutParams patTitleLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        patTitleLp.topMargin = gap * 2;
+        root.addView(patternSection, patTitleLp);
+
+        GridLayout patternGrid = new GridLayout(ctx);
+        patternGrid.setColumnCount(columnCount);
+        patternGrid.setUseDefaultMargins(false);
+        patternGrid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
+
+        final FrameLayout[] patternFrames = new FrameLayout[patternIds.length];
+        final BackgroundPatternPreviewView[] patternPreviews = new BackgroundPatternPreviewView[patternIds.length];
+        for (int i = 0; i < patternIds.length; i++) {
+            FrameLayout wrap = new FrameLayout(ctx);
+            int innerPad = strokeSel;
+            wrap.setPadding(innerPad, innerPad, innerPad, innerPad);
+            BackgroundPatternPreviewView pv = new BackgroundPatternPreviewView(ctx, patternIds[i]);
+            pv.setContentDescription(getString(patternDescIds[i]));
+            FrameLayout.LayoutParams pvLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            wrap.addView(pv, pvLp);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = chip + 2 * innerPad;
+            lp.height = chip + 2 * innerPad;
+            lp.setMargins(gap, gap, gap, gap);
+            final String pid = patternIds[i];
+            wrap.setOnClickListener(v -> {
+                persistCanvasBackgroundFillAndPattern(readCurrentBackgroundFillArgb(), pid);
+                if (refreshRef[0] != null) {
+                    refreshRef[0].run();
+                }
+            });
+            patternGrid.addView(wrap, lp);
+            patternFrames[i] = wrap;
+            patternPreviews[i] = pv;
+        }
+        root.addView(patternGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        MaterialButton galleryBtn = new MaterialButton(ctx);
+        galleryBtn.setText(R.string.gamepad_bg_pick_gallery);
+        LinearLayout.LayoutParams galLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        galLp.topMargin = gap * 2;
+        root.addView(galleryBtn, galLp);
+
+        MaterialButton removeBtn = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        removeBtn.setText(R.string.gamepad_bg_remove);
+        LinearLayout.LayoutParams remLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        remLp.topMargin = gap;
+        root.addView(removeBtn, remLp);
+
+        NestedScrollView scroll = new NestedScrollView(ctx);
+        scroll.setFillViewport(false);
+        scroll.addView(root, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
-                .setTitle(R.string.gamepad_bg_color_title)
-                .setView(root)
+                .setTitle(R.string.gamepad_edit_canvas_menu_title)
+                .setView(scroll)
                 .setNegativeButton(android.R.string.cancel, null);
         androidx.appcompat.app.AlertDialog dlg = builder.create();
 
-        for (int color : presets) {
-            View v = new View(ctx);
-            GradientDrawable gd = new GradientDrawable();
-            gd.setColor(color);
-            gd.setCornerRadius(8f * density);
-            v.setBackground(gd);
-            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = chip;
-            lp.height = chip;
-            lp.setMargins(gap, gap, gap, gap);
-            int c = color;
-            v.setOnClickListener(x -> {
-                dlg.dismiss();
-                persistCanvasBackgroundFillAndPattern(c, readCurrentBackgroundPatternId());
-            });
-            grid.addView(v, lp);
-        }
+        refreshRef[0] = () -> {
+            Integer curFill = readCurrentBackgroundFillArgb();
+            for (int i = 0; i < presets.length; i++) {
+                boolean sel = curFill != null && (curFill | 0xFF000000) == (presets[i] | 0xFF000000);
+                applyBackgroundSwatchSelectionRing(colorFrames[i], sel, strokeSel, primary, density);
+            }
+            String np = normalizedPatternSelectionId();
+            for (int i = 0; i < patternIds.length; i++) {
+                boolean sel = np.equals(patternIds[i]);
+                applyBackgroundSwatchSelectionRing(patternFrames[i], sel, strokeSel, primary, density);
+                patternPreviews[i].invalidate();
+            }
+        };
 
-        customBtn.setOnClickListener(v -> {
-            dlg.dismiss();
-            showBackgroundCustomRgbDialog();
+        customBtn.setOnClickListener(v -> showBackgroundCustomRgbDialog(refreshRef[0]));
+        galleryBtn.setOnClickListener(v -> {
+            android.content.Intent intent = new android.content.Intent(
+                    android.content.Intent.ACTION_PICK,
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            intent.setType("image/*");
+            startActivityForResult(intent, PICK_BG_IMAGE);
         });
+        removeBtn.setOnClickListener(v -> {
+            clearGamepadCanvasBackground();
+            if (refreshRef[0] != null) {
+                refreshRef[0].run();
+            }
+        });
+
         dlg.show();
+        refreshRef[0].run();
     }
 
-    private void showBackgroundCustomRgbDialog() {
+    private String normalizedPatternSelectionId() {
+        String p = readCurrentBackgroundPatternId();
+        if (p == null || p.trim().isEmpty()) {
+            return GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE;
+        }
+        return p.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static void applyBackgroundSwatchSelectionRing(
+            FrameLayout frame,
+            boolean selected,
+            int strokePx,
+            int primaryColor,
+            float density) {
+        GradientDrawable ring = new GradientDrawable();
+        ring.setCornerRadius(11f * density);
+        ring.setStroke(selected ? strokePx : 0, selected ? primaryColor : Color.TRANSPARENT);
+        frame.setBackground(ring);
+    }
+
+    private void clearGamepadCanvasBackground() {
+        if (gamepadView != null) {
+            gamepadView.setBackgroundBitmap(null);
+            gamepadView.setBackgroundFillArgb(null);
+            gamepadView.setBackgroundPatternId(null);
+        }
+        if (currentBgPath != null) {
+            java.io.File file = new java.io.File(requireContext().getFilesDir(), currentBgPath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
+        currentBgPath = null;
+        prefs.edit()
+                .remove(GamepadPreferenceKeys.BG_IMAGE)
+                .remove(GamepadPreferenceKeys.BG_SCALE)
+                .remove(GamepadPreferenceKeys.BG_OFFSET_X)
+                .remove(GamepadPreferenceKeys.BG_OFFSET_Y)
+                .remove(GamepadPreferenceKeys.BG_FILL_ARGB)
+                .remove(GamepadPreferenceKeys.BG_PATTERN)
+                .apply();
+        if (layoutDoc != null && layoutDoc.layout != null) {
+            layoutDoc.layout.backgroundImageFile = null;
+            layoutDoc.layout.backgroundScale = 1.0f;
+            layoutDoc.layout.backgroundOffsetX = 0f;
+            layoutDoc.layout.backgroundOffsetY = 0f;
+            layoutDoc.layout.backgroundFillArgb = null;
+            layoutDoc.layout.backgroundPattern = null;
+            try {
+                GamepadLayoutDocumentStore.save(requireContext(), layoutDoc);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        persistActivePresetSnapshot();
+        updateGamepadToolbarScrimForBackground();
+    }
+
+    private final class BackgroundPatternPreviewView extends View {
+        private final String patternId;
+
+        BackgroundPatternPreviewView(Context context, String patternId) {
+            super(context);
+            this.patternId = patternId;
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            int w = getWidth();
+            int h = getHeight();
+            if (w <= 1 || h <= 1) {
+                return;
+            }
+            float d = getResources().getDisplayMetrics().density;
+            GamepadCanvasBackgroundPreview.drawThumbnail(canvas, w, h, d, readCurrentBackgroundFillArgb(), patternId);
+        }
+    }
+
+    private void showBackgroundCustomRgbDialog(@Nullable Runnable afterApply) {
         Context ctx = requireContext();
         int pad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16f, ctx.getResources().getDisplayMetrics());
         Integer cur = readCurrentBackgroundFillArgb();
@@ -5614,31 +5760,9 @@ public class GamepadFragment extends Fragment {
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
                     int rgb = Color.rgb(sr.getProgress(), sg.getProgress(), sb.getProgress());
                     persistCanvasBackgroundFillAndPattern(rgb | 0xFF000000, readCurrentBackgroundPatternId());
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void showBackgroundPatternDialog() {
-        String[] labels = new String[]{
-                getString(R.string.gamepad_bg_pattern_none),
-                getString(R.string.gamepad_bg_pattern_dots),
-                getString(R.string.gamepad_bg_pattern_micro_grid),
-                getString(R.string.gamepad_bg_pattern_diagonal_hatch),
-                getString(R.string.gamepad_bg_pattern_noise),
-        };
-        final String[] ids = new String[]{
-                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE,
-                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS,
-                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID,
-                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH,
-                GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NOISE,
-        };
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.gamepad_bg_pattern_title)
-                .setItems(labels, (d, which) -> {
-                    String id = ids[which];
-                    persistCanvasBackgroundFillAndPattern(readCurrentBackgroundFillArgb(), id);
+                    if (afterApply != null) {
+                        afterApply.run();
+                    }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();

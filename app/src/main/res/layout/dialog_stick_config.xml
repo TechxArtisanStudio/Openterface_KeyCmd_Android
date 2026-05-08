@@ -265,6 +265,36 @@
             </LinearLayout>
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/dpad_direction_icons_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_direction_icons_title"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_direction_icons_summary"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/dpad_direction_icons_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_direction_icons_switch"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+
         <!-- D-Pad Key Mapping Section -->
         <LinearLayout
             android:id="@+id/key_mapping_section"

@@ -837,6 +837,9 @@
     <string name="gamepad_stick_mode_analog">相對指針（滑鼠）</string>
     <string name="gamepad_stick_mode_dpad_cross">十字鍵（一體，數字）</string>
     <string name="gamepad_stick_mode_dpad_split">十字鍵（分離段）</string>
+    <string name="gamepad_dpad_direction_icons_title">方向箭頭</string>
+    <string name="gamepad_dpad_direction_icons_summary">在一體十字鍵各臂上顯示 Material 箭頭圖示；映射鍵標籤會隨箭頭對齊。需在工具列開啟鍵位映射提示。</string>
+    <string name="gamepad_dpad_direction_icons_switch">顯示方向圖示</string>
     <string name="gamepad_stick_mode_key">方嚮鍵（虛擬搖桿）</string>
     <string name="gamepad_touchpad_height_pct">高度（%）</string>
     <string name="gamepad_touchpad_mouse_btn_size_title">觸控闆滑鼠鍵（全部）</string>

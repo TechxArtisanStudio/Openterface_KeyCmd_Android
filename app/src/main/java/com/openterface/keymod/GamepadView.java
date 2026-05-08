@@ -42,6 +42,7 @@ import java.util.Set;
 import com.google.android.material.color.MaterialColors;
 
 import com.openterface.keymod.GamepadConfigManager.ComponentPosition;
+import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
@@ -244,6 +245,8 @@ public class GamepadView extends View {
     private final Paint retroDpadFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path retroWorkPath = new Path();
     private Typeface retroLabelTypeface;
+    /** Lazily loaded Material arrow drawables for cross D-pad arms ({@code mutate()} per element). */
+    @Nullable private Drawable[] dpadDirectionIconPool;
 
     public GamepadView(Context context) {
         super(context);
@@ -489,23 +492,7 @@ public class GamepadView extends View {
     private void drawSolidOrDefaultBackground(Canvas canvas) {
         int vw = getWidth();
         int vh = getHeight();
-        if (vw <= 0 || vh <= 0) {
-            return;
-        }
-        int topColor;
-        int bottomColor;
-        if (backgroundFillArgb != null) {
-            int c = backgroundFillArgb;
-            topColor = c;
-            bottomColor = isLightFace(c) ? darkenArgb(c, 0.9f) : ColorUtils.blendARGB(c, Color.WHITE, 0.1f);
-        } else {
-            topColor = Color.parseColor("#F5F5F5");
-            bottomColor = Color.parseColor("#ECECEC");
-        }
-        Shader sh = new LinearGradient(0, 0, 0, vh, topColor, bottomColor, Shader.TileMode.CLAMP);
-        bgPaint.setShader(sh);
-        canvas.drawRect(0, 0, vw, vh, bgPaint);
-        bgPaint.setShader(null);
+        GamepadCanvasBackgroundPreview.drawSolidOrGradientFill(canvas, vw, vh, backgroundFillArgb, bgPaint);
     }
 
     private void drawProceduralBackgroundPattern(Canvas canvas) {
@@ -518,64 +505,8 @@ public class GamepadView extends View {
             return;
         }
         float density = getResources().getDisplayMetrics().density;
-        int ref = backgroundFillArgb != null ? backgroundFillArgb : Color.parseColor("#F0F0F0");
-        double lum = ColorUtils.calculateLuminance(ref);
-        int strokeRgb = lum > 0.52 ? 0xFF000000 : 0xFFFFFFFF;
-        int strokeA = lum > 0.52 ? 14 : 18;
-        patternOverlayPaint.setColor(Color.argb(strokeA, Color.red(strokeRgb), Color.green(strokeRgb), Color.blue(strokeRgb)));
-
-        switch (backgroundPatternId) {
-            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DOTS: {
-                patternOverlayPaint.setStyle(Paint.Style.FILL);
-                float step = 24f * density;
-                float r = Math.max(0.55f, 0.35f * density);
-                for (float x = step * 0.5f; x < vw; x += step) {
-                    for (float y = step * 0.5f; y < vh; y += step) {
-                        canvas.drawCircle(x, y, r, patternOverlayPaint);
-                    }
-                }
-                patternOverlayPaint.setStyle(Paint.Style.STROKE);
-                break;
-            }
-            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID: {
-                patternOverlayPaint.setStrokeWidth(Math.max(0.5f, 0.35f * density));
-                float g = 14f * density;
-                for (float x = 0; x <= vw; x += g) {
-                    canvas.drawLine(x, 0, x, vh, patternOverlayPaint);
-                }
-                for (float y = 0; y <= vh; y += g) {
-                    canvas.drawLine(0, y, vw, y, patternOverlayPaint);
-                }
-                break;
-            }
-            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH: {
-                patternOverlayPaint.setStrokeWidth(Math.max(0.5f, 0.4f * density));
-                float spacing = 18f * density;
-                for (float k = -vh; k < vw + vh; k += spacing) {
-                    canvas.drawLine(k, 0, k + vh, vh, patternOverlayPaint);
-                }
-                break;
-            }
-            case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NOISE: {
-                patternOverlayPaint.setStyle(Paint.Style.FILL);
-                float cell = 5f * density;
-                float dotR = Math.max(0.45f, 0.28f * density);
-                for (int ix = 0; ix * cell < vw; ix++) {
-                    for (int iy = 0; iy * cell < vh; iy++) {
-                        int h = (ix * 92837111 ^ iy * 689287499) & 0x7fffffff;
-                        if ((h % 11) < 3) {
-                            float cx = ix * cell + cell * 0.5f;
-                            float cy = iy * cell + cell * 0.5f;
-                            canvas.drawCircle(cx, cy, dotR, patternOverlayPaint);
-                        }
-                    }
-                }
-                patternOverlayPaint.setStyle(Paint.Style.STROKE);
-                break;
-            }
-            default:
-                break;
-        }
+        GamepadCanvasBackgroundPreview.drawPatternOverlay(
+                canvas, vw, vh, density, backgroundPatternId, backgroundFillArgb, patternOverlayPaint);
     }
 
     private void drawComponents(Canvas canvas) {
@@ -1159,8 +1090,17 @@ public class GamepadView extends View {
             dynamicLeftDpadVariant = GamepadDpadVariantArt.normalizeVariant(variant);
         }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
+        boolean showCrossDirectionIcons = keyMappingHintsVisible
+                && Boolean.TRUE.equals(m.dpadDirectionIconsVisible)
+                && GamepadDpadVariantArt.usesCrossArmDecoration(variant);
+        Drawable[] iconPool = null;
+        if (showCrossDirectionIcons) {
+            ensureDpadDirectionIconDrawables();
+            iconPool = dpadDirectionIconPool;
+        }
         drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
-                m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent);
+                m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent,
+                showCrossDirectionIcons, iconPool);
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -1473,7 +1413,8 @@ public class GamepadView extends View {
     private void drawDpadForModule(Canvas canvas, float cx, float cy, float baseRadius, float moduleScale,
                                    String boundsId, String dpadVariant, String upLabel, String downLabel,
                                    String leftLabel, String rightLabel, @Nullable Float dpadSplitGapRatio,
-                                   @Nullable Float dpadSplitOuterReachRatio, int accentPrimary) {
+                                   @Nullable Float dpadSplitOuterReachRatio, int accentPrimary,
+                                   boolean showDpadDirectionIcons, @Nullable Drawable[] dpadDirectionIcons) {
         float density = getResources().getDisplayMetrics().density;
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, globalStickMul, moduleScale,
@@ -1482,7 +1423,28 @@ public class GamepadView extends View {
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
                 retroLabelTypeface, componentBounds, dynamicHitTestOrder, dpadSplitGapRatio,
                 dpadSplitOuterReachRatio, keyMappingHintsVisible,
-                keyMappingHintsVisible ? 1.12f : 1f);
+                keyMappingHintsVisible ? 1.12f : 1f,
+                showDpadDirectionIcons, dpadDirectionIcons);
+    }
+
+    private void ensureDpadDirectionIconDrawables() {
+        if (dpadDirectionIconPool != null) {
+            return;
+        }
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        Drawable up = AppCompatResources.getDrawable(ctx, R.drawable.ic_dpad_arrow_up);
+        Drawable dn = AppCompatResources.getDrawable(ctx, R.drawable.ic_dpad_arrow_down);
+        Drawable lf = AppCompatResources.getDrawable(ctx, R.drawable.ic_dpad_arrow_left);
+        Drawable rt = AppCompatResources.getDrawable(ctx, R.drawable.ic_dpad_arrow_right);
+        dpadDirectionIconPool = new Drawable[] {
+                up != null ? up.mutate() : null,
+                dn != null ? dn.mutate() : null,
+                lf != null ? lf.mutate() : null,
+                rt != null ? rt.mutate() : null,
+        };
     }
 
     private void drawShoulderCapsuleForModule(Canvas canvas, float cx, float cy, float width, float height,
