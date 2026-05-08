@@ -38,6 +38,11 @@
     <dimen name="basic_compose_editor_min_height">120dp</dimen>
 
     <!-- Gamepad toolbar -->
+    <!-- Full-width fade behind chrome + centered toggle (same vertical band); not a solid bar. -->
+    <!-- Taller band so the top fade reads softer over more of the canvas. -->
+    <dimen name="gamepad_toolbar_scrim_height">160dp</dimen>
+    <!-- When edit row is hidden (play mode), still a bit taller than chrome for a gentle falloff. -->
+    <dimen name="gamepad_toolbar_scrim_height_play">108dp</dimen>
     <dimen name="gamepad_toolbar_margin_top">8dp</dimen>
     <dimen name="gamepad_toolbar_padding_h">4dp</dimen>
     <dimen name="gamepad_toolbar_button_min_height">40dp</dimen>

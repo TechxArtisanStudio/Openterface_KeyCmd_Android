@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/gamepad_window_system_bar"
     android:theme="@style/ThemeOverlay.KeyMod.Gamepad">
 
     <!-- Gamepad View -->
@@ -13,67 +13,88 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Menu + connection (top); opaque strip so icons stay readable over any canvas background -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Soft top veil for HUD readability; does not block touches (falls through to GamepadView). -->
+    <View
+        android:id="@+id/gamepad_toolbar_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/gamepad_toolbar_scrim_height"
+        android:layout_gravity="top"
+        android:layout_marginTop="0dp"
+        android:background="@drawable/gamepad_top_toolbar_scrim"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no" />
+
+    <!-- Menu + customize + connection (top); top margin applied in code with status bar insets -->
+    <LinearLayout
         android:id="@+id/gamepad_chrome_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:layout_marginHorizontal="@dimen/spacing_small"
         android:layout_marginTop="0dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="@dimen/gamepad_toolbar_corner_radius"
-        app:cardElevation="4dp"
-        app:cardUseCompatPadding="true"
-        app:contentPaddingBottom="4dp"
-        app:contentPaddingLeft="4dp"
-        app:contentPaddingRight="4dp"
-        app:contentPaddingTop="4dp"
-        app:strokeWidth="0dp">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <ImageButton
+            android:id="@+id/gamepad_chrome_menu"
+            android:layout_width="@dimen/header_icon_size"
+            android:layout_height="@dimen/header_icon_size"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/menu"
+            android:padding="@dimen/button_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_menu"
+            android:tint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/edit_mode_toggle"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:checkable="true"
+            android:checked="false"
+            android:contentDescription="@string/gamepad_customize_cd"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
+            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
+            app:icon="@drawable/ic_edit"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint"
+            app:strokeColor="@color/gamepad_edit_toggle_stroke_tint" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/gamepad_chrome_connection_wrap"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="4dp">
 
-            <ImageButton
-                android:id="@+id/gamepad_chrome_menu"
-                android:layout_width="@dimen/header_icon_size"
-                android:layout_height="@dimen/header_icon_size"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/menu"
-                android:padding="@dimen/button_icon_padding"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_menu"
-                android:tint="?attr/colorOnSurface" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <LinearLayout
-                android:id="@+id/gamepad_chrome_connection_wrap"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="4dp">
-
-                <ImageView
-                    android:id="@+id/gamepad_chrome_connection_icon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="@string/connection"
-                    android:src="@drawable/ic_bluetooth"
-                    android:tint="?attr/colorOnSurfaceVariant" />
-            </LinearLayout>
+            <ImageView
+                android:id="@+id/gamepad_chrome_connection_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@string/connection"
+                android:src="@drawable/ic_bluetooth"
+                android:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
     <!-- Slim bar while repositioning modules (move mode) -->
     <com.google.android.material.card.MaterialCardView
@@ -113,57 +134,24 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Control toggles row (center top); opaque strip over canvas for stable contrast -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Edit-only: background, add module, layouts, cycle, mapping hints (centered when visible) -->
+    <LinearLayout
         android:id="@+id/toggle_row"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginHorizontal="@dimen/spacing_small"
         android:layout_marginTop="0dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-        app:cardCornerRadius="@dimen/gamepad_toolbar_corner_radius"
-        app:cardElevation="4dp"
-        app:cardUseCompatPadding="true"
-        app:contentPaddingBottom="6dp"
-        app:contentPaddingLeft="@dimen/gamepad_toolbar_padding_h"
-        app:contentPaddingRight="@dimen/gamepad_toolbar_padding_h"
-        app:contentPaddingTop="6dp"
-        app:strokeWidth="0dp">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/edit_mode_toggle"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:checkable="true"
-            android:checked="false"
-            android:contentDescription="@string/gamepad_customize_cd"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
-            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
-            app:icon="@drawable/ic_edit"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconTint="@color/gamepad_edit_toggle_icon_tint"
-            app:strokeColor="@color/gamepad_edit_toggle_stroke_tint" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/gamepad_toolbar_padding_h"
+        android:visibility="gone"
+        tools:visibility="visible">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/gamepad_edit_background_btn"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="@dimen/gamepad_toolbar_button_min_height"
             android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_marginStart="@dimen/spacing_small"
             android:contentDescription="@string/gamepad_edit_background_cd"
             android:minWidth="0dp"
             android:paddingStart="10dp"
@@ -243,7 +231,6 @@
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconTint="?android:attr/textColorSecondary" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
 </FrameLayout>

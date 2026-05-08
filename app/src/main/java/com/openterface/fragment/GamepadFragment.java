@@ -275,6 +275,14 @@ public class GamepadFragment extends Fragment {
     private LinearLayout gamepadChromeConnectionWrap;
     @Nullable
     private ImageView gamepadChromeConnectionIcon;
+    @Nullable
+    private View gamepadToolbarScrim;
+    @Nullable
+    private LinearLayout gamepadEditToolbarRow;
+    @Nullable
+    private MaterialButton gamepadPresetsToolbarButton;
+    @Nullable
+    private MaterialButton gamepadMappingHintsToolbarButton;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -359,17 +367,19 @@ public class GamepadFragment extends Fragment {
             activePresetChipButton.setOnClickListener(v -> showGamepadPresetsBottomSheet());
         }
 
-        MaterialButton presetsBtn = view.findViewById(R.id.gamepad_presets_btn);
-        presetsBtn.setOnClickListener(v -> cycleToNextPreset());
+        gamepadPresetsToolbarButton = view.findViewById(R.id.gamepad_presets_btn);
+        if (gamepadPresetsToolbarButton != null) {
+            gamepadPresetsToolbarButton.setOnClickListener(v -> cycleToNextPreset());
+        }
 
-        MaterialButton mappingHintsToggle = view.findViewById(R.id.gamepad_mapping_hints_toggle);
-        if (mappingHintsToggle != null && prefs != null && gamepadView != null) {
+        gamepadMappingHintsToolbarButton = view.findViewById(R.id.gamepad_mapping_hints_toggle);
+        if (gamepadMappingHintsToolbarButton != null && prefs != null && gamepadView != null) {
             boolean hintsOn = prefs.getBoolean(GamepadPreferenceKeys.SHOW_KEY_MAPPING_HINTS, true);
-            mappingHintsToggle.setChecked(hintsOn);
-            mappingHintsToggle.setIconResource(
+            gamepadMappingHintsToolbarButton.setChecked(hintsOn);
+            gamepadMappingHintsToolbarButton.setIconResource(
                     hintsOn ? R.drawable.ic_visibility_24 : R.drawable.ic_visibility_off_24);
             gamepadView.setKeyMappingHintsVisible(hintsOn);
-            mappingHintsToggle.addOnCheckedChangeListener((button, isChecked) -> {
+            gamepadMappingHintsToolbarButton.addOnCheckedChangeListener((button, isChecked) -> {
                 prefs.edit().putBoolean(GamepadPreferenceKeys.SHOW_KEY_MAPPING_HINTS, isChecked).apply();
                 button.setIconResource(
                         isChecked ? R.drawable.ic_visibility_24 : R.drawable.ic_visibility_off_24);
@@ -378,6 +388,9 @@ public class GamepadFragment extends Fragment {
                 }
             });
         }
+
+        gamepadToolbarScrim = view.findViewById(R.id.gamepad_toolbar_scrim);
+        gamepadEditToolbarRow = view.findViewById(R.id.toggle_row);
 
         editModeMaterialButton = view.findViewById(R.id.edit_mode_toggle);
         editBackgroundToolbarButton = view.findViewById(R.id.gamepad_edit_background_btn);
@@ -412,6 +425,7 @@ public class GamepadFragment extends Fragment {
 
         wireGamepadEmbeddedChrome(view);
         applyGamepadToolbarTopInsets(view);
+        updateGamepadToolbarScrimForBackground();
 
         setupListeners();
         updateActivePresetNameUi();
@@ -472,16 +486,65 @@ public class GamepadFragment extends Fragment {
                 root,
                 (v, windowInsets) -> {
                     Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                    Insets cutout = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                    int statusOrCutoutTop = Math.max(bars.top, cutout.top);
                     int top =
-                            bars.top
+                            statusOrCutoutTop
                                     + getResources()
                                             .getDimensionPixelSize(R.dimen.gamepad_toolbar_margin_top);
+                    refreshGamepadToolbarScrimHeight();
                     setFrameLayoutTopMargin(chromeBar, top);
                     setFrameLayoutTopMargin(toggleRow, top);
                     setFrameLayoutTopMargin(editBar, top);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(root);
+    }
+
+    /**
+     * Scrim starts at y=0 so the gradient covers the status-bar region; without this, a light canvas
+     * shows through above the fade (thin “white strip”). Height = toolbar top inset + fade body.
+     */
+    private static void applyGamepadToolbarScrimLayout(
+            @Nullable View scrim, int toolbarTopPx, int baseScrimHeightPx) {
+        if (scrim == null) {
+            return;
+        }
+        ViewGroup.LayoutParams lp = scrim.getLayoutParams();
+        if (!(lp instanceof FrameLayout.LayoutParams)) {
+            return;
+        }
+        FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
+        flp.topMargin = 0;
+        flp.height = toolbarTopPx + baseScrimHeightPx;
+        scrim.setLayoutParams(flp);
+    }
+
+    /** Recompute scrim height from current insets and whether the edit-only toolbar row is shown. */
+    private void refreshGamepadToolbarScrimHeight() {
+        View root = getView();
+        if (root == null || gamepadToolbarScrim == null) {
+            return;
+        }
+        WindowInsetsCompat wi = ViewCompat.getRootWindowInsets(root);
+        if (wi == null) {
+            return;
+        }
+        Insets bars = wi.getInsets(WindowInsetsCompat.Type.systemBars());
+        Insets cutout = wi.getInsets(WindowInsetsCompat.Type.displayCutout());
+        int statusOrCutoutTop = Math.max(bars.top, cutout.top);
+        int top =
+                statusOrCutoutTop
+                        + getResources().getDimensionPixelSize(R.dimen.gamepad_toolbar_margin_top);
+        boolean editRowVisible =
+                gamepadEditToolbarRow != null
+                        && gamepadEditToolbarRow.getVisibility() == View.VISIBLE;
+        int baseH =
+                editRowVisible
+                        ? getResources().getDimensionPixelSize(R.dimen.gamepad_toolbar_scrim_height)
+                        : getResources()
+                                .getDimensionPixelSize(R.dimen.gamepad_toolbar_scrim_height_play);
+        applyGamepadToolbarScrimLayout(gamepadToolbarScrim, top, baseH);
     }
 
     private static void setFrameLayoutTopMargin(@Nullable View child, int topMargin) {
@@ -1230,6 +1293,43 @@ public class GamepadFragment extends Fragment {
         }
         gamepadView.setBackgroundFillArgb(fill);
         gamepadView.setBackgroundPatternId(pattern);
+        updateGamepadToolbarScrimForBackground();
+    }
+
+    /**
+     * Stronger top gradient when the canvas is a light solid color; default when image/pattern/dark.
+     */
+    private void updateGamepadToolbarScrimForBackground() {
+        View scrim = gamepadToolbarScrim;
+        if (scrim == null || gamepadView == null) {
+            return;
+        }
+        boolean hasBitmap = gamepadView.getBackgroundBitmap() != null
+                || (currentBgPath != null && !currentBgPath.isEmpty())
+                || (prefs != null && prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null) != null);
+        if (hasBitmap) {
+            scrim.setBackgroundResource(R.drawable.gamepad_top_toolbar_scrim);
+            return;
+        }
+        Integer fill = readCurrentBackgroundFillArgb();
+        if (fill != null && relativeLuminanceArgb(fill) > 0.58) {
+            scrim.setBackgroundResource(R.drawable.gamepad_top_toolbar_scrim_strong);
+        } else {
+            scrim.setBackgroundResource(R.drawable.gamepad_top_toolbar_scrim);
+        }
+    }
+
+    /** WCAG relative luminance for sRGB (0=black, 1=white). */
+    private static double relativeLuminanceArgb(int argb) {
+        double r = srgbChannelToLinear(Color.red(argb));
+        double g = srgbChannelToLinear(Color.green(argb));
+        double b = srgbChannelToLinear(Color.blue(argb));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double srgbChannelToLinear(int channel) {
+        double x = channel / 255.0;
+        return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
     }
 
     @Nullable
@@ -1287,6 +1387,7 @@ public class GamepadFragment extends Fragment {
             Log.e(TAG, "save layout after canvas background", e);
         }
         persistActivePresetSnapshot();
+        updateGamepadToolbarScrimForBackground();
     }
 
     private void showGamepadPresetsBottomSheet() {
@@ -2774,12 +2875,8 @@ public class GamepadFragment extends Fragment {
         View v = getView();
         if (v != null) {
             View sessionBar = v.findViewById(R.id.gamepad_edit_session_bar);
-            View toggleRow = v.findViewById(R.id.toggle_row);
             if (sessionBar != null) {
                 sessionBar.setVisibility(View.GONE);
-            }
-            if (toggleRow != null) {
-                toggleRow.setVisibility(View.VISIBLE);
             }
         }
         Log.d(TAG, "Exited layout edit / move session");
@@ -5232,6 +5329,7 @@ public class GamepadFragment extends Fragment {
                     persistActivePresetSnapshot();
                     applyCanvasBackgroundStyleFromPrefsAndDoc();
                 }
+                updateGamepadToolbarScrimForBackground();
             });
             gamepadView.setBackgroundViewportCallback(() -> {
                 prefs.edit()
@@ -5250,12 +5348,25 @@ public class GamepadFragment extends Fragment {
 
     private void setEditModeToolbarExtrasVisible(boolean visible) {
         int vis = visible ? View.VISIBLE : View.GONE;
+        if (gamepadEditToolbarRow != null) {
+            gamepadEditToolbarRow.setVisibility(vis);
+        }
         if (editBackgroundToolbarButton != null) {
             editBackgroundToolbarButton.setVisibility(vis);
         }
         if (editAddModuleToolbarButton != null) {
             editAddModuleToolbarButton.setVisibility(vis);
         }
+        if (activePresetChipButton != null) {
+            activePresetChipButton.setVisibility(vis);
+        }
+        if (gamepadPresetsToolbarButton != null) {
+            gamepadPresetsToolbarButton.setVisibility(vis);
+        }
+        if (gamepadMappingHintsToolbarButton != null) {
+            gamepadMappingHintsToolbarButton.setVisibility(vis);
+        }
+        refreshGamepadToolbarScrimHeight();
     }
 
     /** TalkBack: distinguish customize (off) vs editing (on). */
