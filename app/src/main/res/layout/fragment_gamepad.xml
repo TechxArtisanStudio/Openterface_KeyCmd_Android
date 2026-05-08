@@ -25,7 +25,7 @@
         android:focusable="false"
         android:importantForAccessibility="no" />
 
-    <!-- Menu + customize + active preset + cycle preset + spacer + connection (top); top margin applied in code with status bar insets -->
+    <!-- Menu + customize + cycle preset + active preset + spacer + connection (top); top margin applied in code with status bar insets -->
     <LinearLayout
         android:id="@+id/gamepad_chrome_bar"
         android:layout_width="match_parent"
@@ -69,6 +69,24 @@
             app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_presets_btn"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:contentDescription="@string/gamepad_cycle_next_preset_cd"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
+            app:icon="@drawable/ic_swap_horiz_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/gamepad_active_preset_chip"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
@@ -92,24 +110,6 @@
             app:iconSize="18dp"
             app:iconTint="@color/gamepad_edit_toggle_icon_tint"
             tools:text="Default" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/gamepad_presets_btn"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_marginStart="@dimen/spacing_tiny"
-            android:contentDescription="@string/gamepad_cycle_next_preset_cd"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
-            app:icon="@drawable/ic_swap_horiz_24"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
         <View
             android:layout_width="0dp"
