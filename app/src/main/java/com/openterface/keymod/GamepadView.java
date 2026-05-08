@@ -54,8 +54,6 @@ import com.openterface.keymod.gamepad.GamepadStickVisualArt;
 import com.openterface.keymod.gamepad.render.GamepadDynamicLayoutRegistry;
 import com.openterface.keymod.basic.BasicHoldLockPopup;
 
-import java.util.Collection;
-
 /**
  * Gamepad View - Custom view for rendering and interacting with gamepad components
  * Supports Xbox, PlayStation, and NES layouts
@@ -64,6 +62,17 @@ import java.util.Collection;
 public class GamepadView extends View {
 
     private static final String TAG = "GamepadView";
+
+    /** On-canvas latch badge: keyboard hold-lock vs turbo gesture latch. */
+    public enum LatchBadgeKind {
+        HOLD,
+        TURBO
+    }
+
+    private static final float LATCH_BADGE_MIN_DP = 24f;
+    private static final float LATCH_BADGE_MAX_DP = 44f;
+    private static final float LATCH_BADGE_FRACTION_OF_MIN_SIDE = 0.42f;
+    private static final int LATCH_BADGE_DRAWABLE_ALPHA = 210;
 
     // Paint objects
     private Paint bgPaint;
@@ -121,7 +130,7 @@ public class GamepadView extends View {
     @Nullable
     private KeyboardHoldLockListener keyboardHoldLockListener;
     private final Map<Integer, HoldLockTracking> keyboardHoldLockByPointer = new HashMap<>();
-    private final Set<String> keyboardHoldLockedVisualIds = new HashSet<>();
+    private final Map<String, LatchBadgeKind> gestureLatchBadgesByModuleId = new HashMap<>();
 
     private static final class HoldLockTracking {
         @NonNull final String moduleId;
@@ -1729,7 +1738,8 @@ public class GamepadView extends View {
     }
 
     private void drawKeyboardHoldLockBadgeIfNeeded(Canvas canvas, String moduleId) {
-        if (!keyboardHoldLockedVisualIds.contains(moduleId)) {
+        LatchBadgeKind kind = gestureLatchBadgesByModuleId.get(moduleId);
+        if (kind == null) {
             return;
         }
         RectF hb = componentBounds.get(moduleId);
@@ -1737,17 +1747,25 @@ public class GamepadView extends View {
             return;
         }
         float density = getResources().getDisplayMetrics().density;
-        int size = Math.round(14f * density);
-        Drawable d = AppCompatResources.getDrawable(getContext(), R.drawable.ic_lock_24);
+        float minSide = Math.min(hb.width(), hb.height());
+        float sizePx = minSide * LATCH_BADGE_FRACTION_OF_MIN_SIDE;
+        float minPx = LATCH_BADGE_MIN_DP * density;
+        float maxPx = LATCH_BADGE_MAX_DP * density;
+        sizePx = Math.max(minPx, Math.min(sizePx, maxPx));
+        int size = Math.max(1, Math.round(sizePx));
+        int resId = kind == LatchBadgeKind.TURBO ? R.drawable.ic_gamepad_turbo_latch_24 : R.drawable.ic_lock_24;
+        Drawable d = AppCompatResources.getDrawable(getContext(), resId);
         if (d == null) {
             return;
         }
         d = d.mutate();
         int tint = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, Color.WHITE);
         d.setTint(tint);
-        int pad = Math.round(2f * density);
-        int left = Math.round(hb.right - size - pad);
-        int top = Math.round(hb.top + pad);
+        d.setAlpha(LATCH_BADGE_DRAWABLE_ALPHA);
+        float cx = hb.centerX();
+        float cy = hb.centerY();
+        int left = Math.round(cx - size * 0.5f);
+        int top = Math.round(cy - size * 0.5f);
         d.setBounds(left, top, left + size, top + size);
         d.draw(canvas);
     }
@@ -2266,10 +2284,14 @@ public class GamepadView extends View {
         this.keyboardHoldLockListener = listener;
     }
 
-    public void setKeyboardHoldLockedVisualIds(@Nullable Collection<String> moduleIds) {
-        keyboardHoldLockedVisualIds.clear();
-        if (moduleIds != null) {
-            keyboardHoldLockedVisualIds.addAll(moduleIds);
+    /**
+     * Shows centered latch badges on modules (hold-lock vs turbo). Turbo wins if the same id were
+     * present in both latch sets.
+     */
+    public void setGestureLatchBadges(@Nullable Map<String, LatchBadgeKind> badges) {
+        gestureLatchBadgesByModuleId.clear();
+        if (badges != null && !badges.isEmpty()) {
+            gestureLatchBadgesByModuleId.putAll(badges);
         }
         invalidate();
     }

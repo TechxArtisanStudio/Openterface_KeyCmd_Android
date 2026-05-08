@@ -83,12 +83,24 @@ public class RepoRootDefaultGamepadJsonTest {
         assertEquals("preset_pack_minecraft_java", doc.meta.id);
         assertNotNull(find(doc, "stick_left"));
         assertNotNull(find(doc, "touchpad_1"));
-        assertNotNull(find(doc, "mouse_btn_m"));
-        assertNotNull(find(doc, "shoulder_l"));
-        assertNotNull(find(doc, "trigger_r"));
+        assertNotNull(find(doc, "mouse_btn_l"));
+        assertNotNull(find(doc, "mouse_btn_r"));
         GamepadLayoutPresetDocument.GamepadModule sneak = find(doc, "button_x");
         assertNotNull(sneak);
         assertTrue(Boolean.TRUE.equals(sneak.keyboardHoldLock));
+        assertNotNull(sneak.gestureLock);
+        assertEquals(
+                GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_HOLD_LOCK,
+                GamepadGestureLock.slotAction(
+                        GamepadGestureLock.slotForKey(
+                                sneak.gestureLock,
+                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_RIGHT)));
+        assertEquals(
+                GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO,
+                GamepadGestureLock.slotAction(
+                        GamepadGestureLock.slotForKey(
+                                sneak.gestureLock,
+                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT)));
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(

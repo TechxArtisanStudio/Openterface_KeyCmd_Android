@@ -1332,9 +1332,14 @@ public class GamepadFragment extends Fragment {
 
     private void syncKeyboardHoldLockVisuals() {
         if (gamepadView != null) {
-            java.util.HashSet<String> vis = new java.util.HashSet<>(keyboardHoldLockedModuleIds);
-            vis.addAll(turboLockedModuleIds);
-            gamepadView.setKeyboardHoldLockedVisualIds(vis);
+            java.util.HashMap<String, GamepadView.LatchBadgeKind> badges = new java.util.HashMap<>();
+            for (String id : keyboardHoldLockedModuleIds) {
+                badges.put(id, GamepadView.LatchBadgeKind.HOLD);
+            }
+            for (String id : turboLockedModuleIds) {
+                badges.put(id, GamepadView.LatchBadgeKind.TURBO);
+            }
+            gamepadView.setGestureLatchBadges(badges);
         }
     }
 
@@ -1346,7 +1351,7 @@ public class GamepadFragment extends Fragment {
                 && pendingKeyboardHoldUnlockTap.isEmpty()) {
             if (gamepadView != null) {
                 gamepadView.cancelAllKeyboardHoldLockTracking();
-                gamepadView.setKeyboardHoldLockedVisualIds(Collections.emptySet());
+                gamepadView.setGestureLatchBadges(Collections.emptyMap());
             }
             return;
         }
@@ -1359,7 +1364,7 @@ public class GamepadFragment extends Fragment {
         pendingKeyboardHoldUnlockTap.clear();
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
-            gamepadView.setKeyboardHoldLockedVisualIds(Collections.emptySet());
+            gamepadView.setGestureLatchBadges(Collections.emptyMap());
         }
         sendCombinedKeyReport();
     }
@@ -4156,6 +4161,12 @@ public class GamepadFragment extends Fragment {
         };
         android.widget.Spinner[] spins = new android.widget.Spinner[4];
         GamepadLayoutPresetDocument.GestureLockConfig g = m.gestureLock;
+        String[] slotKeys = {
+            GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT,
+            GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_RIGHT,
+            GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_DOWN_LEFT,
+            GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_DOWN_RIGHT,
+        };
         GamepadLayoutPresetDocument.GestureLockSlot[] slots = new GamepadLayoutPresetDocument.GestureLockSlot[4];
         if (g != null) {
             slots[0] = g.upLeft;
@@ -4173,7 +4184,11 @@ public class GamepadFragment extends Fragment {
             container.addView(rowLabel);
             android.widget.Spinner sp = new android.widget.Spinner(ctx);
             sp.setAdapter(ad);
-            String cur = GamepadGestureLock.slotAction(slots[i]);
+            // When JSON omits a slot, show the same action runtime will use (e.g. hold/turbo defaults).
+            String cur =
+                    slots[i] != null
+                            ? GamepadGestureLock.slotAction(slots[i])
+                            : GamepadGestureLock.resolvedActionForSlot(m, slotKeys[i]);
             int sel = 0;
             for (int j = 0; j < GESTURE_LOCK_SPINNER_ACTIONS.length; j++) {
                 if (GESTURE_LOCK_SPINNER_ACTIONS[j].equalsIgnoreCase(cur)) {
@@ -4193,36 +4208,36 @@ public class GamepadFragment extends Fragment {
         if (spins == null || spins.length != 4) {
             return;
         }
-        boolean[] any = {false};
         GamepadLayoutPresetDocument.GestureLockConfig g =
                 new GamepadLayoutPresetDocument.GestureLockConfig();
-        g.upLeft = gestureSlotFromSpinner(spins[0], any);
-        g.upRight = gestureSlotFromSpinner(spins[1], any);
-        g.downLeft = gestureSlotFromSpinner(spins[2], any);
-        g.downRight = gestureSlotFromSpinner(spins[3], any);
-        if (!any[0]) {
+        g.upLeft = gestureSlotFromSpinnerExplicit(spins[0]);
+        g.upRight = gestureSlotFromSpinnerExplicit(spins[1]);
+        g.downLeft = gestureSlotFromSpinnerExplicit(spins[2]);
+        g.downRight = gestureSlotFromSpinnerExplicit(spins[3]);
+        if (!GamepadGestureLock.hasAnyNonNoneAction(g) && !Boolean.TRUE.equals(m.keyboardHoldLock)) {
             m.gestureLock = null;
         } else {
             m.gestureLock = g;
         }
     }
 
-    @Nullable
-    private static GamepadLayoutPresetDocument.GestureLockSlot gestureSlotFromSpinner(
-            @Nullable android.widget.Spinner sp, @NonNull boolean[] anyNonNoneFlag) {
+    /** Always returns a slot object so JSON matches the spinner; {@code none} is explicit, not omitted. */
+    @NonNull
+    private static GamepadLayoutPresetDocument.GestureLockSlot gestureSlotFromSpinnerExplicit(
+            @Nullable android.widget.Spinner sp) {
+        GamepadLayoutPresetDocument.GestureLockSlot s = new GamepadLayoutPresetDocument.GestureLockSlot();
         if (sp == null) {
-            return null;
+            s.action = GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE;
+            return s;
         }
         Object selObj = sp.getSelectedItem();
         String sel =
                 selObj != null
                         ? selObj.toString().trim()
                         : GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE;
-        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE.equalsIgnoreCase(sel)) {
-            return null;
+        if (sel.isEmpty()) {
+            sel = GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE;
         }
-        anyNonNoneFlag[0] = true;
-        GamepadLayoutPresetDocument.GestureLockSlot s = new GamepadLayoutPresetDocument.GestureLockSlot();
         s.action = sel;
         return s;
     }
@@ -6223,7 +6238,7 @@ public class GamepadFragment extends Fragment {
         pendingKeyboardHoldUnlockTap.clear();
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
-            gamepadView.setKeyboardHoldLockedVisualIds(Collections.emptySet());
+            gamepadView.setGestureLatchBadges(Collections.emptyMap());
             gamepadView.clearStickDirections("l");
             gamepadView.clearStickDirections("r");
             for (String aid : auxIds) {

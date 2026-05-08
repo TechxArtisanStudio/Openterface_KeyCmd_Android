@@ -15,7 +15,7 @@
     "touchpadMouseButtonScale": 1.02
   },
   "meta": {
-    "description": "Minecraft Java (US QWERTY defaults): WASD move, touchpad + right stick look, L/M/R mouse, ABXY Jump/Inv/Sneak/Sprint, Tab/Esc, bumpers Q/F, triggers hotbar 1-2. Gyro off; enable in layout if you want tilt-aim. Modules with hold lock use schema v8 gestureLock: swipe up-right to latch hold, up-left for turbo (连发), down diagonals unused.",
+    "description": "Minecraft Java (US QWERTY): left stick WASD; Xbox face Run (Y+Shift), Sneak (X), Inv (B), Jump (A); touchpad look with L/R mouse on the pad and extra L/R copies for the left thumb; Tab, Esc, second Jump, Swap (F); hotbar strip 1–8 and Drop (Q); duplicate Sneak. Gyro off (toggle in layout for tilt-aim). Hold-lock modules use schema v8 gestureLock: up-right latches hold, up-left turbo (连发), down diagonals none unless you change them.",
     "displayName": "Minecraft Java",
     "exportedAt": "2026-05-08T20:00:00Z",
     "id": "preset_pack_minecraft_java",
