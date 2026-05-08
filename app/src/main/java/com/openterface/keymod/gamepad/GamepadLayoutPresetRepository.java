@@ -539,29 +539,31 @@ public class GamepadLayoutPresetRepository {
     }
 
     /**
-     * Imports JSON shipped under assets/{@link GamepadLayoutPresetConstants#BUNDLED_GAMEPAD_ASSET_DIR}.
-     * Stable ids {@code preset_pack_<slug>} from filenames; skips slugs the user deleted (until reinstall).
+     * Imports JSON shipped under assets/{@link GamepadLayoutPresetConstants#BUNDLED_GAMEPAD_ASSET_DIR}
+     * (recursively; subfolders are supported — slug is derived from the path under that dir).
+     * Stable ids {@code preset_pack_<slug>} from relative paths; skips slugs the user deleted (until reinstall).
      * Safe to call on every launch (cheap when nothing new).
      * <p>
-     * {@code default.json} in that folder is reserved for the built-in {@link GamepadLayoutPresetConstants#DEFAULT_PRESET_ID}
-     * layout and is intentionally skipped here so optional pack presets import does not overwrite it.
+     * {@code default.json} at the root of that folder is reserved for the built-in
+     * {@link GamepadLayoutPresetConstants#DEFAULT_PRESET_ID} layout and is intentionally skipped here so optional pack
+     * presets import does not overwrite it.
      * Refreshing the on-disk default preset from a new build asset is {@link #resetDefaultPresetFromBundled()}.
      */
     public void syncBundledPresetsFromAssets() {
         String dir = GamepadLayoutPresetConstants.BUNDLED_GAMEPAD_ASSET_DIR;
-        String[] names;
+        List<String> relativeJsonPaths = new ArrayList<>();
         try {
-            names = context.getAssets().list(dir);
+            collectBundledJsonRelativePaths(dir, "", relativeJsonPaths);
         } catch (IOException e) {
             Log.w(TAG, "list bundled gamepad assets", e);
             maybeRefreshBuiltInDefaultFromBundledFingerprint();
             return;
         }
-        if (names == null || names.length == 0) {
+        if (relativeJsonPaths.isEmpty()) {
             maybeRefreshBuiltInDefaultFromBundledFingerprint();
             return;
         }
-        Arrays.sort(names, String.CASE_INSENSITIVE_ORDER);
+        relativeJsonPaths.sort(String.CASE_INSENSITIVE_ORDER);
         Set<String> deletedSlugs = readDeletedBundledSlugs();
         List<PresetRef> index = readIndex();
         Set<String> indexIds = new HashSet<>();
@@ -571,11 +573,11 @@ public class GamepadLayoutPresetRepository {
             }
         }
         boolean indexDirty = false;
-        for (String name : names) {
-            if (name == null || !name.toLowerCase(Locale.ROOT).endsWith(".json")) {
+        for (String rel : relativeJsonPaths) {
+            if (rel == null || rel.isEmpty()) {
                 continue;
             }
-            String slug = bundledSlugFromAssetFilename(name);
+            String slug = bundledSlugFromBundledAssetRelativePath(rel);
             if (slug.isEmpty()) {
                 continue;
             }
@@ -598,10 +600,10 @@ public class GamepadLayoutPresetRepository {
                 }
                 continue;
             }
-            String assetPath = dir + "/" + name;
+            String assetPath = dir + "/" + rel;
             String err = importBundledAssetAtPath(assetPath, id, slug, index);
             if (err != null) {
-                Log.w(TAG, "bundled preset " + name + ": " + err);
+                Log.w(TAG, "bundled preset " + rel + ": " + err);
                 continue;
             }
             indexIds.add(id);
@@ -611,6 +613,37 @@ public class GamepadLayoutPresetRepository {
             saveIndex(index);
         }
         maybeRefreshBuiltInDefaultFromBundledFingerprint();
+    }
+
+    /**
+     * Depth-first collect of {@code *.json} paths relative to {@code listPathRoot} (e.g. {@code bundled_gamepad}),
+     * using {@code AssetManager.list}. Non-JSON entries are treated as subdirectories when {@code list} returns a
+     * non-empty array.
+     */
+    private void collectBundledJsonRelativePaths(
+            @NonNull String listPathRoot,
+            @NonNull String relativePrefix,
+            @NonNull List<String> out) throws IOException {
+        String[] names = context.getAssets().list(listPathRoot);
+        if (names == null || names.length == 0) {
+            return;
+        }
+        Arrays.sort(names, String.CASE_INSENSITIVE_ORDER);
+        for (String name : names) {
+            if (name == null || name.isEmpty()) {
+                continue;
+            }
+            String rel = relativePrefix.isEmpty() ? name : relativePrefix + "/" + name;
+            if (name.toLowerCase(Locale.ROOT).endsWith(".json")) {
+                out.add(rel);
+                continue;
+            }
+            String childListPath = listPathRoot + "/" + name;
+            String[] sub = context.getAssets().list(childListPath);
+            if (sub != null && sub.length > 0) {
+                collectBundledJsonRelativePaths(childListPath, rel, out);
+            }
+        }
     }
 
     /**
@@ -704,6 +737,22 @@ public class GamepadLayoutPresetRepository {
             s = s.substring(0, s.length() - 1);
         }
         return s;
+    }
+
+    /**
+     * Slug for a preset file path under {@code bundled_gamepad/} (may include subdirs), e.g.
+     * {@code packs/foo.json} → {@code packs_foo}. Used with {@link GamepadLayoutPresetConstants#BUNDLED_PRESET_ID_PREFIX}.
+     */
+    static String bundledSlugFromBundledAssetRelativePath(String relativePathUnderBundledDir) {
+        if (relativePathUnderBundledDir == null) {
+            return "";
+        }
+        String p = relativePathUnderBundledDir.trim().toLowerCase(Locale.ROOT).replace('\\', '/');
+        if (p.endsWith(".json")) {
+            p = p.substring(0, p.length() - 5);
+        }
+        p = p.replace('/', '_');
+        return bundledSlugFromAssetFilename(p + ".json");
     }
 
     private static String displayNameForBundled(GamepadLayoutPresetDocument doc, String slug) {

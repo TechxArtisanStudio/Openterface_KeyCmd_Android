@@ -107,9 +107,10 @@ public final class GamepadLayoutPresetConstants {
     public static final String DEFAULT_PRESET_ID = "preset_default";
 
     /**
-     * Shipped JSON lives under assets/bundled_gamepad/; imported preset ids are {@code preset_pack_<slug>}
-     * derived from the filename (see {@link GamepadLayoutPresetRepository#syncBundledPresetsFromAssets()}).
-     * To ship a preset again after the user removed it, use a new filename so the slug changes.
+     * Shipped JSON lives under assets/bundled_gamepad/ (recursively); imported preset ids are
+     * {@code preset_pack_<slug>} derived from the path under that dir (see
+     * {@link GamepadLayoutPresetRepository#syncBundledPresetsFromAssets()}).
+     * To ship a preset again after the user removed it, use a new filename or path so the slug changes.
      */
     public static final String BUNDLED_GAMEPAD_ASSET_DIR = "bundled_gamepad";
     public static final String BUNDLED_PRESET_ID_PREFIX = "preset_pack_";

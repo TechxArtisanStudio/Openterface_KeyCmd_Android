@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.PathSensitivity
+
 plugins {
     alias(libs.plugins.android.application)
 }
@@ -55,6 +57,10 @@ if (gamepadDefaultFingerprintFile.exists()) {
 
 tasks.register('syncBundledGamepadPresets') {
     description = 'Copy repo-root gamepad/*.json into generated assets bundled_gamepad/. BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT tracks gamepad/default.json so the app can re-seed preset_default when it changes. Other JSON files become optional pack presets.'
+    // Without inputs, Gradle can mark this task UP-TO-DATE after the first build, so new gamepad/*.json
+    // files never get copied into assets and bundled pack presets disappear from the app.
+    def gamepadSrcDir = rootProject.file('gamepad')
+    inputs.dir(gamepadSrcDir).withPathSensitivity(PathSensitivity.RELATIVE).optional()
     outputs.dir(bundledGamepadAssetsRoot)
     doLast {
         def outRoot = bundledGamepadAssetsRoot.get().asFile

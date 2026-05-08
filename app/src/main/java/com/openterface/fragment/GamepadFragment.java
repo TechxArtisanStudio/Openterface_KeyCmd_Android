@@ -5581,9 +5581,6 @@ public class GamepadFragment extends Fragment {
         if (editAddModuleToolbarButton != null) {
             editAddModuleToolbarButton.setVisibility(vis);
         }
-        if (gamepadPresetsToolbarButton != null) {
-            gamepadPresetsToolbarButton.setVisibility(vis);
-        }
         if (gamepadMappingHintsToolbarButton != null) {
             gamepadMappingHintsToolbarButton.setVisibility(vis);
         }

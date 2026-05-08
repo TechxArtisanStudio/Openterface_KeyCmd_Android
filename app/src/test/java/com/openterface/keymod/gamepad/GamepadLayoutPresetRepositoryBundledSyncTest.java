@@ -22,6 +22,7 @@ import java.io.File;
 public class GamepadLayoutPresetRepositoryBundledSyncTest {
 
     private static final String BUNDLED_TEST_ID = "preset_pack_bundled_sync_test_only";
+    private static final String NESTED_BUNDLED_TEST_ID = "preset_pack_subpack_nested_bundled_sync";
 
     private GamepadLayoutPresetRepository repo;
 
@@ -85,5 +86,20 @@ public class GamepadLayoutPresetRepositoryBundledSyncTest {
             assertFalse(BUNDLED_TEST_ID.equals(r.id));
         }
         assertNull(repo.loadDocument(BUNDLED_TEST_ID));
+    }
+
+    @Test
+    public void syncBundled_importsNestedAssetOnce() {
+        repo.syncBundledPresetsFromAssets();
+
+        boolean found = false;
+        for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
+            if (NESTED_BUNDLED_TEST_ID.equals(r.id)) {
+                assertEquals("NestedSubpackTest", r.displayName);
+                found = true;
+            }
+        }
+        assertTrue(found);
+        assertNotNull(repo.loadDocument(NESTED_BUNDLED_TEST_ID));
     }
 }

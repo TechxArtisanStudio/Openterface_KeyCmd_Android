@@ -108,7 +108,7 @@ public class GamepadView extends View {
     private float longPressDownY = 0;
     private boolean longPressCancelled = false;
     private ComponentLongPressListener longPressListener;
-    /** Dynamic edit mode: tap target below module outline; opens module config (replaces long-press there). */
+    /** Dynamic edit mode: tap target at top-right of module outline; opens module config (replaces long-press there). */
     private ModuleConfigEditTapListener moduleConfigEditTapListener;
 
     // Component bounds (for touch detection)
@@ -975,7 +975,7 @@ public class GamepadView extends View {
     }
 
     /**
-     * Small edit affordance centered under each module’s dashed outline (dynamic SIMPLE presets only).
+     * Small edit affordance at the top-right inside each module’s dashed outline (dynamic SIMPLE presets only).
      */
     private void drawEditModeModuleConfigChips(Canvas canvas) {
         if (layoutDocument == null || layoutDocument.modules == null) {
@@ -1014,8 +1014,8 @@ public class GamepadView extends View {
             if (b == null) {
                 continue;
             }
-            float cx = b.centerX();
-            float cy = b.bottom + gap + drawR;
+            float cx = b.right - gap - drawR;
+            float cy = b.top + gap + drawR;
             moduleEditChips.add(new ModuleEditChip(m.id, cx, cy, drawR, hitR));
 
             retroBodyPaint.setShader(null);
@@ -2692,7 +2692,7 @@ public class GamepadView extends View {
     }
 
     /**
-     * Dynamic layout edit mode: tap the small edit chip under a module to open its configuration.
+     * Dynamic layout edit mode: tap the small edit chip at a module’s top-right to open its configuration.
      * Long-press on the module body is not used for that path (avoids accidental drags).
      */
     public void setModuleConfigEditTapListener(@Nullable ModuleConfigEditTapListener listener) {

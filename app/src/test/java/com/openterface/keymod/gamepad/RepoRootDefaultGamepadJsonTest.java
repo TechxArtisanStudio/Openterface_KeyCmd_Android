@@ -32,6 +32,23 @@ public class RepoRootDefaultGamepadJsonTest {
         assertNotNull(find(doc, "button_b"));
     }
 
+    @Test
+    public void repoRootXyabJson_loadsAndValidates() throws Exception {
+        File appDir = new File(System.getProperty("user.dir"));
+        File repoRoot = appDir.getName().equals("app") ? appDir.getParentFile() : appDir;
+        File f = new File(repoRoot, "gamepad/xyab.json");
+        assertTrue("Expected gamepad/xyab.json under " + repoRoot, f.isFile());
+        String json = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+        GamepadLayoutPresetDocument doc = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(doc);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+        assertNotNull(find(doc, "button_a"));
+        assertNotNull(find(doc, "button_b"));
+        assertNotNull(find(doc, "button_x"));
+        assertNotNull(find(doc, "button_y"));
+    }
+
     private static GamepadLayoutPresetDocument.GamepadModule find(
             GamepadLayoutPresetDocument doc, String id) {
         if (doc.modules == null) {

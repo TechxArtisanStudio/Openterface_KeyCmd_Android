@@ -43,6 +43,12 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
+    public void bundledSlugFromBundledAssetRelativePath_flattensNestedPaths() {
+        assertEquals("packs_foo", GamepadLayoutPresetRepository.bundledSlugFromBundledAssetRelativePath("packs/foo.json"));
+        assertEquals("xyab", GamepadLayoutPresetRepository.bundledSlugFromBundledAssetRelativePath("xyab.json"));
+    }
+
+    @Test
     public void deletePreset_rejectsBuiltInDefault() {
         assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID));
     }
