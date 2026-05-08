@@ -206,6 +206,24 @@ public final class GamepadLayoutDocumentStore {
         return "touchpad_" + (maxNum + 1);
     }
 
+    /** Next id {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … for duplicated {@code MOUSE_BUTTON} modules. */
+    public static String nextMouseButtonCopyModuleId(@Nullable GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            String p = GamepadLayoutPresetConstants.MOUSE_BTN_COPY_ID_PREFIX;
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith(p)) {
+                    continue;
+                }
+                String suffix = m.id.substring(p.length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return GamepadLayoutPresetConstants.MOUSE_BTN_COPY_ID_PREFIX + (maxNum + 1);
+    }
+
     /**
      * Next id {@code stick_left_2}, {@code stick_left_3}, … for optional extra left thumb modules.
      */

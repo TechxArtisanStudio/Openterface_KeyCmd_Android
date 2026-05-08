@@ -910,6 +910,8 @@ by TechxArtisan</string>
     <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
     <string name="gamepad_button_config_show_mapped_key_label">Show mapped key label under button</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Toggle whether the mapped key name appears in a label under this button</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">Hold lock gesture (long-press, swipe up)</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">Allow KM Basic-style hold lock on this key so it can stay down until you tap again</string>
     <string name="gamepad_button_config_size">Button size</string>
     <!-- Default layout: primary lower-right module (id button_a). Title is role-based; exact id is shown above "Name on button". -->
     <string name="gamepad_button_config_dialog_title_slot_a">Main button</string>

@@ -57,6 +57,7 @@
       "displayLabel": "Sneak",
       "hidKey": 225,
       "id": "button_x",
+      "keyboardHoldLock": true,
       "mappedKeyLabelVisible": false,
       "modifierMask": 2,
       "moduleAccentArgb": -14575807,

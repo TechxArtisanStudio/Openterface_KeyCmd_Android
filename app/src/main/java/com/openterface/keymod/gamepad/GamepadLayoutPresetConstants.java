@@ -94,13 +94,16 @@ public final class GamepadLayoutPresetConstants {
     public static final String MOUSE_BTN_LEFT_ID = "mouse_btn_l";
     public static final String MOUSE_BTN_MIDDLE_ID = "mouse_btn_m";
     public static final String MOUSE_BTN_RIGHT_ID = "mouse_btn_r";
+    /** Non-canonical {@code MOUSE_BUTTON} duplicate ids: {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … */
+    public static final String MOUSE_BTN_COPY_ID_PREFIX = "mouse_btn_copy_";
 
     public static final String SHOULDER_L_ID = "shoulder_l";
     public static final String SHOULDER_R_ID = "shoulder_r";
     public static final String TRIGGER_L_ID = "trigger_l";
     public static final String TRIGGER_R_ID = "trigger_r";
 
-    public static final int MAX_MOUSE_BUTTON_MODULES = 3;
+    /** Canonical L/M/R plus user-duplicated {@link #MOUSE_BTN_COPY_ID_PREFIX} modules. */
+    public static final int MAX_MOUSE_BUTTON_MODULES = 24;
     public static final int MAX_SHOULDER_MODULES = 2;
     public static final int MAX_TRIGGER_MODULES = 2;
 
@@ -156,6 +159,15 @@ public final class GamepadLayoutPresetConstants {
     /** Preset touchpad modules use ids {@code touchpad_1}, {@code touchpad_2}, … */
     public static boolean isTouchpadModuleId(@Nullable String id) {
         return id != null && id.matches("touchpad_[0-9]+");
+    }
+
+    /** {@code true} for ids {@code mouse_btn_copy_}<em>n</em> with positive integer {@code n}. */
+    public static boolean isMouseButtonCopyModuleId(@Nullable String id) {
+        if (id == null || !id.startsWith(MOUSE_BTN_COPY_ID_PREFIX)) {
+            return false;
+        }
+        String suffix = id.substring(MOUSE_BTN_COPY_ID_PREFIX.length());
+        return !suffix.isEmpty() && suffix.matches("[0-9]+");
     }
 
     /**

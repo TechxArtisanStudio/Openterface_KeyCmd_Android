@@ -23,6 +23,29 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateRejectsKeyboardHoldLockOnNonButtonFamily() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule stick = findModule(doc, "stick_left");
+        assertNotNull(stick);
+        stick.keyboardHoldLock = true;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("keyboardHoldLock"));
+        }
+    }
+
+    @Test
+    public void validateAcceptsKeyboardHoldLockOnMouseButton() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        GamepadLayoutPresetDocument.GamepadModule leftMouse = findModule(doc, "mouse_btn_l");
+        assertNotNull(leftMouse);
+        leftMouse.keyboardHoldLock = true;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
     public void validateAcceptsLayoutWithoutLeftThumbModule() {
         GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
         GamepadLayoutPresetDocument.validateOrThrow(doc);
@@ -664,6 +687,40 @@ public class GamepadLayoutPresetDocumentTest {
         mb.mouseButton = 3;
         doc.modules.add(mb);
         GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateAcceptsMouseButtonCopyModule() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        doc.modules.add(mouseModule(GamepadLayoutPresetConstants.MOUSE_BTN_COPY_ID_PREFIX + "1", 1, 20));
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsNonCanonicalNonCopyMouseButtonId() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule bad = new GamepadLayoutPresetDocument.GamepadModule();
+        bad.id = "mouse_btn_extra";
+        bad.type = GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON;
+        bad.zIndex = 5;
+        bad.scale = 1f;
+        bad.anchorX = 0.5f;
+        bad.anchorY = 0.5f;
+        bad.mouseButton = 1;
+        doc.modules.add(bad);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void duplicateMouseButtonModuleAllocatesCopyId() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        String newId = GamepadLayoutDocEditor.duplicateModule(doc,
+                GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID);
+        assertNotNull(newId);
+        assertTrue(GamepadLayoutPresetConstants.isMouseButtonCopyModuleId(newId));
+        GamepadLayoutPresetDocument.GamepadModule copy = findModule(doc, newId);
+        assertNotNull(copy);
+        assertEquals(Integer.valueOf(1), copy.mouseButton);
     }
 
     @Test

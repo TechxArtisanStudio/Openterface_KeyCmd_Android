@@ -203,7 +203,10 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
-    private static int countMouseButtonModules(GamepadLayoutPresetDocument doc) {
+    public static int countMouseButtonModules(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
         int n = 0;
         for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
             if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
@@ -289,7 +292,8 @@ public final class GamepadLayoutDocEditor {
     }
 
     /**
-     * Whether the module can be deep-copied with a new id (fixed-id modules and {@code stick_right} are excluded).
+     * Whether the module can be deep-copied with a new id ({@code stick_right} and fixed shoulder/trigger ids are
+     * excluded; {@code MOUSE_BUTTON} copies use {@link GamepadLayoutPresetConstants#MOUSE_BTN_COPY_ID_PREFIX} ids).
      * Extra left DPAD modules must stay cross-only; duplicating a non–cross-DPAD left thumb would produce an invalid doc.
      */
     public static boolean canDuplicateModule(@Nullable String moduleId, @Nullable GamepadLayoutPresetDocument doc) {
@@ -301,11 +305,6 @@ public final class GamepadLayoutDocEditor {
             return false;
         }
         if ("stick_right".equals(moduleId)) {
-            return false;
-        }
-        if (GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(moduleId)
-                || GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(moduleId)
-                || GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(moduleId)) {
             return false;
         }
         if (GamepadLayoutPresetConstants.SHOULDER_L_ID.equals(moduleId)
@@ -329,6 +328,9 @@ public final class GamepadLayoutDocEditor {
         }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(src.type)) {
             return true;
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(src.type)) {
+            return countMouseButtonModules(doc) < GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES;
         }
         return false;
     }
@@ -380,6 +382,9 @@ public final class GamepadLayoutDocEditor {
         }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(clone.type)) {
             return GamepadLayoutDocumentStore.nextTouchpadModuleId(doc);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextMouseButtonCopyModuleId(doc);
         }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(clone.type)
                 || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(clone.type)

@@ -132,6 +132,79 @@ public final class BasicHoldLockPopup {
                 });
     }
 
+    /**
+     * Same gesture semantics as {@link #show(View, float, float)}, but positions the popup from raw screen
+     * coordinates (for canvas controls such as the gamepad that have no per-key {@link View} anchor).
+     *
+     * @param host root used for {@link PopupWindow#showAtLocation}; typically the gamepad surface
+     * @param anchorRawCenterX raw screen X of the gesture anchor (finger / control center)
+     * @param anchorRawCenterY raw screen Y of the gesture anchor
+     */
+    public void showAboveScreenPoint(View host, float anchorRawCenterX, float anchorRawCenterY) {
+        dismiss();
+        anchorView = host;
+        this.gestureOriginRawX = anchorRawCenterX;
+        this.gestureOriginRawY = anchorRawCenterY;
+        currentPick = AlternatePopupGeometry.RESULT_DEFAULT;
+        lastAppliedVisualPick = Integer.MIN_VALUE;
+        Context context = host.getContext();
+        float density = context.getResources().getDisplayMetrics().density;
+
+        GridLayout grid = new GridLayout(context);
+        popupContent = grid;
+        grid.setColumnCount(1);
+        grid.setRowCount(1);
+        grid.setBackgroundResource(R.drawable.alternate_popup_background);
+        int padPx = (int) (ALT_POPUP_CONTAINER_PADDING_DP * density + 0.5f);
+        grid.setPadding(padPx, padPx, padPx, padPx);
+
+        AppCompatImageView lock = new AppCompatImageView(context);
+        lockIconView = lock;
+        lock.setImageResource(R.drawable.ic_lock_24);
+        lock.setContentDescription(context.getString(R.string.km_basic_hold_lock_popup_lock_cd));
+        applyPickVisual(AlternatePopupGeometry.RESULT_DEFAULT);
+        int minCell = (int) (ALT_POPUP_CELL_MIN_SIZE_DP * density + 0.5f);
+        lock.setMinimumWidth(minCell);
+        lock.setMinimumHeight(minCell);
+        lock.setPadding(padPx, padPx, padPx, padPx);
+        GridLayout.LayoutParams glp =
+                new GridLayout.LayoutParams(GridLayout.spec(0), GridLayout.spec(0));
+        glp.width = GridLayout.LayoutParams.WRAP_CONTENT;
+        glp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+        lock.setLayoutParams(glp);
+        grid.addView(lock);
+
+        popupWindow =
+                new PopupWindow(
+                        grid,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        false);
+        popupWindow.setTouchable(false);
+        popupWindow.setOutsideTouchable(false);
+        popupWindow.setClippingEnabled(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            popupWindow.setElevation(12f * density);
+        }
+        grid.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        host.post(
+                () -> {
+                    if (anchorView == null || popupWindow == null) {
+                        return;
+                    }
+                    int popupX =
+                            (int) (anchorRawCenterX - (grid.getMeasuredWidth() / 2f));
+                    int popupY =
+                            (int)
+                                    (anchorRawCenterY
+                                            - (ALT_POPUP_VERTICAL_OFFSET_DP * density + 0.5f)
+                                            - grid.getMeasuredHeight());
+                    popupWindow.showAtLocation(host, Gravity.NO_GRAVITY, popupX, popupY);
+                });
+    }
+
     public boolean isShowing() {
         return popupWindow != null && popupWindow.isShowing();
     }

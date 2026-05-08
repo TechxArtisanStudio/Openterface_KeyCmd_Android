@@ -201,6 +201,12 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Boolean mappedKeyLabelVisible;
         /**
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, long-press then swipe up (KM Basic
+         * hold-lock gesture) can latch this control until the next tap on the same module (keyboard key or
+         * relative mouse button). {@code null} or {@code false} = off.
+         */
+        @Nullable public Boolean keyboardHoldLock;
+        /**
          * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
          * {@link GamepadLayoutPresetConstants#clampButtonCornerRadiusNorm}.
          */
@@ -562,18 +568,21 @@ public class GamepadLayoutPresetDocument {
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
                 mouseButtonCount++;
-                if (!GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id)
-                        && !GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id)
-                        && !GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id)) {
+                boolean canonicalMouseBtn = GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id)
+                        || GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id)
+                        || GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id);
+                if (!canonicalMouseBtn && !GamepadLayoutPresetConstants.isMouseButtonCopyModuleId(m.id)) {
                     throw new IllegalArgumentException("Invalid MOUSE_BUTTON id: " + m.id);
                 }
                 if (m.mouseButton == null || m.mouseButton < 1 || m.mouseButton > 3) {
                     throw new IllegalArgumentException("Module " + m.id + ": MOUSE_BUTTON needs mouseButton 1–3");
                 }
-                if ((GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id) && m.mouseButton != 1)
-                        || (GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id) && m.mouseButton != 2)
-                        || (GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id) && m.mouseButton != 3)) {
-                    throw new IllegalArgumentException("Module " + m.id + ": id does not match mouseButton value");
+                if (canonicalMouseBtn) {
+                    if ((GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id) && m.mouseButton != 1)
+                            || (GamepadLayoutPresetConstants.MOUSE_BTN_MIDDLE_ID.equals(m.id) && m.mouseButton != 2)
+                            || (GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID.equals(m.id) && m.mouseButton != 3)) {
+                        throw new IllegalArgumentException("Module " + m.id + ": id does not match mouseButton value");
+                    }
                 }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)) {
                 shoulderCount++;
@@ -599,6 +608,15 @@ public class GamepadLayoutPresetDocument {
                 }
             } else {
                 throw new IllegalArgumentException("Unknown module type: " + m.type);
+            }
+            if (Boolean.TRUE.equals(m.keyboardHoldLock)) {
+                if (!GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type)
+                        && !GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
+                    throw new IllegalArgumentException(
+                            "Module " + m.id + ": keyboardHoldLock is only valid for BUTTON, SHOULDER, TRIGGER, or MOUSE_BUTTON");
+                }
             }
         }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {

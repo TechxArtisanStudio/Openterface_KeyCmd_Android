@@ -51,6 +51,9 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadStickVisualArt;
 import com.openterface.keymod.gamepad.render.GamepadDynamicLayoutRegistry;
+import com.openterface.keymod.basic.BasicHoldLockPopup;
+
+import java.util.Collection;
 
 /**
  * Gamepad View - Custom view for rendering and interacting with gamepad components
@@ -110,6 +113,38 @@ public class GamepadView extends View {
     private ComponentLongPressListener longPressListener;
     /** Dynamic edit mode: tap target at top-right of module outline; opens module config (replaces long-press there). */
     private ModuleConfigEditTapListener moduleConfigEditTapListener;
+
+    /** Match {@link com.openterface.keymod.basic.BasicPhysicalKeyboardView} hold-lock delay. */
+    private static final long KEYBOARD_HOLD_LOCK_POPUP_MS = 1000L;
+    private static final float KEYBOARD_HOLD_LOCK_CANCEL_MOVE_DP = 24f;
+    private final Handler keyboardHoldLockHandler = new Handler(Looper.getMainLooper());
+    @Nullable
+    private KeyboardHoldLockListener keyboardHoldLockListener;
+    private final Map<Integer, HoldLockTracking> keyboardHoldLockByPointer = new HashMap<>();
+    private final Set<String> keyboardHoldLockedVisualIds = new HashSet<>();
+
+    private static final class HoldLockTracking {
+        @NonNull final String moduleId;
+        final float downRawX;
+        final float downRawY;
+        float lastRawX;
+        float lastRawY;
+        @NonNull final Runnable showPopupRunnable;
+        @Nullable BasicHoldLockPopup popup;
+
+        HoldLockTracking(
+                @NonNull String moduleId,
+                float downRawX,
+                float downRawY,
+                @NonNull Runnable showPopupRunnable) {
+            this.moduleId = moduleId;
+            this.downRawX = downRawX;
+            this.downRawY = downRawY;
+            this.lastRawX = downRawX;
+            this.lastRawY = downRawY;
+            this.showPopupRunnable = showPopupRunnable;
+        }
+    }
 
     // Component bounds (for touch detection)
     private Map<String, RectF> componentBounds;
@@ -1375,6 +1410,7 @@ public class GamepadView extends View {
             float hintY = hb != null ? hb.bottom + 6f * density : cy + halfH + 6f * density;
             drawMappingHintCallout(canvas, cx, hintY, mappingHint);
         }
+        drawKeyboardHoldLockBadgeIfNeeded(canvas, id);
     }
 
     private void drawTouchpadModule(Canvas canvas, @NonNull GamepadLayoutPresetDocument.GamepadModule m,
@@ -1686,6 +1722,31 @@ public class GamepadView extends View {
         if (keyMappingHintsVisible && mappingHint != null && !mappingHint.isEmpty()) {
             drawMappingHintCallout(canvas, cx, bounds.bottom + 4f * density, mappingHint);
         }
+        drawKeyboardHoldLockBadgeIfNeeded(canvas, moduleId);
+    }
+
+    private void drawKeyboardHoldLockBadgeIfNeeded(Canvas canvas, String moduleId) {
+        if (!keyboardHoldLockedVisualIds.contains(moduleId)) {
+            return;
+        }
+        RectF hb = componentBounds.get(moduleId);
+        if (hb == null) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int size = Math.round(14f * density);
+        Drawable d = AppCompatResources.getDrawable(getContext(), R.drawable.ic_lock_24);
+        if (d == null) {
+            return;
+        }
+        d = d.mutate();
+        int tint = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, Color.WHITE);
+        d.setTint(tint);
+        int pad = Math.round(2f * density);
+        int left = Math.round(hb.right - size - pad);
+        int top = Math.round(hb.top + pad);
+        d.setBounds(left, top, left + size, top + size);
+        d.draw(canvas);
     }
 
     private void drawXboxLayout(Canvas canvas) {
@@ -2154,13 +2215,17 @@ public class GamepadView extends View {
                 }
 
                 // Release component for this pointer
-                releasePointerComponent(pointerId);
+                int legacyUpIdx = event.findPointerIndex(pointerId);
+                float legacyUpRawX = legacyUpIdx >= 0 ? event.getRawX(legacyUpIdx) : event.getRawX();
+                float legacyUpRawY = legacyUpIdx >= 0 ? event.getRawY(legacyUpIdx) : event.getRawY();
+                releasePointerComponent(pointerId, legacyUpRawX, legacyUpRawY);
 
                 // For ACTION_UP (last finger), clear all remaining state
                 if (action == MotionEvent.ACTION_UP) {
                     pointerComponents.clear();
                     dpadPressedSet.clear();
                     buttonsPressedSet.clear();
+                    cancelAllKeyboardHoldLockTracking();
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
                     }
@@ -2184,14 +2249,146 @@ public class GamepadView extends View {
                     dragPointerId = -1;
                 }
                 // Release component for the lifted pointer
-                releasePointerComponent(pointerId);
+                int legacyIdx = event.findPointerIndex(pointerId);
+                float legacyRawX = legacyIdx >= 0 ? event.getRawX(legacyIdx) : event.getRawX();
+                float legacyRawY = legacyIdx >= 0 ? event.getRawY(legacyIdx) : event.getRawY();
+                releasePointerComponent(pointerId, legacyRawX, legacyRawY);
                 return true;
             }
         }
         return true;
     }
 
-    private void releasePointerComponent(int pointerId) {
+    public void setKeyboardHoldLockListener(@Nullable KeyboardHoldLockListener listener) {
+        this.keyboardHoldLockListener = listener;
+    }
+
+    public void setKeyboardHoldLockedVisualIds(@Nullable Collection<String> moduleIds) {
+        keyboardHoldLockedVisualIds.clear();
+        if (moduleIds != null) {
+            keyboardHoldLockedVisualIds.addAll(moduleIds);
+        }
+        invalidate();
+    }
+
+    /** Dismiss pending hold-lock UI without committing (preset change, detach, edit mode). */
+    public void cancelAllKeyboardHoldLockTracking() {
+        for (HoldLockTracking t : keyboardHoldLockByPointer.values()) {
+            keyboardHoldLockHandler.removeCallbacks(t.showPopupRunnable);
+            if (t.popup != null) {
+                t.popup.dismiss();
+                t.popup = null;
+            }
+        }
+        keyboardHoldLockByPointer.clear();
+    }
+
+    private boolean moduleHasKeyboardHoldLock(@Nullable String moduleId) {
+        if (moduleId == null || layoutDocument == null || layoutDocument.modules == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDocument.modules) {
+            if (m != null && moduleId.equals(m.id) && Boolean.TRUE.equals(m.keyboardHoldLock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void maybeStartKeyboardHoldLockTracking(
+            int pointerId, String moduleId, MotionEvent event, int pointerIndex) {
+        if (!useDynamicLayout() || isEditMode) {
+            return;
+        }
+        if (!moduleHasKeyboardHoldLock(moduleId)) {
+            return;
+        }
+        if (keyboardHoldLockListener != null && keyboardHoldLockListener.isKeyboardHoldLockLatched(moduleId)) {
+            return;
+        }
+        Runnable r = () -> showHoldLockPopupForPointer(pointerId);
+        HoldLockTracking t =
+                new HoldLockTracking(
+                        moduleId,
+                        event.getRawX(pointerIndex),
+                        event.getRawY(pointerIndex),
+                        r);
+        keyboardHoldLockHandler.postDelayed(r, KEYBOARD_HOLD_LOCK_POPUP_MS);
+        keyboardHoldLockByPointer.put(pointerId, t);
+    }
+
+    private void showHoldLockPopupForPointer(int pointerId) {
+        HoldLockTracking t = keyboardHoldLockByPointer.get(pointerId);
+        if (t == null) {
+            return;
+        }
+        String fingerComp = pointerComponents.get(pointerId);
+        if (fingerComp == null || !fingerComp.equals(t.moduleId)) {
+            keyboardHoldLockByPointer.remove(pointerId);
+            return;
+        }
+        if (componentBounds.get(t.moduleId) == null) {
+            return;
+        }
+        if (t.popup != null) {
+            return;
+        }
+        t.popup = new BasicHoldLockPopup();
+        t.popup.showAboveScreenPoint(this, t.lastRawX, t.lastRawY);
+    }
+
+    private void updateKeyboardHoldLockOnDynamicMove(MotionEvent event) {
+        if (keyboardHoldLockByPointer.isEmpty()) {
+            return;
+        }
+        float cancelPx = KEYBOARD_HOLD_LOCK_CANCEL_MOVE_DP * getResources().getDisplayMetrics().density;
+        for (Integer pid : new ArrayList<>(keyboardHoldLockByPointer.keySet())) {
+            int idx = event.findPointerIndex(pid);
+            if (idx < 0) {
+                continue;
+            }
+            HoldLockTracking t = keyboardHoldLockByPointer.get(pid);
+            if (t == null) {
+                continue;
+            }
+            float rx = event.getRawX(idx);
+            float ry = event.getRawY(idx);
+            t.lastRawX = rx;
+            t.lastRawY = ry;
+            if (t.popup != null) {
+                t.popup.updatePointer(rx, ry);
+            } else {
+                float ddx = rx - t.downRawX;
+                float ddy = ry - t.downRawY;
+                if (Math.hypot(ddx, ddy) > cancelPx) {
+                    keyboardHoldLockHandler.removeCallbacks(t.showPopupRunnable);
+                    keyboardHoldLockByPointer.remove(pid);
+                }
+            }
+        }
+    }
+
+    private boolean endKeyboardHoldLockForPointerIfAny(int pointerId, float rawX, float rawY) {
+        HoldLockTracking t = keyboardHoldLockByPointer.remove(pointerId);
+        if (t == null) {
+            return false;
+        }
+        keyboardHoldLockHandler.removeCallbacks(t.showPopupRunnable);
+        boolean committed = false;
+        if (t.popup != null) {
+            t.popup.updatePointer(rawX, rawY);
+            committed = t.popup.commitIfLockSelected();
+            t.popup.dismiss();
+            t.popup = null;
+        }
+        if (committed && keyboardHoldLockListener != null) {
+            keyboardHoldLockListener.onKeyboardHoldLockCommitted(t.moduleId);
+        }
+        return committed;
+    }
+
+    private void releasePointerComponent(int pointerId, float rawX, float rawY) {
+        boolean suppressButtonRelease = endKeyboardHoldLockForPointerIfAny(pointerId, rawX, rawY);
         String releasedComponent = pointerComponents.remove(pointerId);
         if (releasedComponent != null) {
             if (isDpadComponent(releasedComponent)) {
@@ -2201,7 +2398,7 @@ public class GamepadView extends View {
                 }
             } else if (buttonsPressedSet.remove(releasedComponent)) {
                 int keyCode = getKeyCodeForComponent(releasedComponent);
-                if (buttonReleaseListener != null) {
+                if (!suppressButtonRelease && buttonReleaseListener != null) {
                     buttonReleaseListener.onButtonRelease(releasedComponent, keyCode);
                 }
             }
@@ -2339,6 +2536,7 @@ public class GamepadView extends View {
                             int keyCode = getKeyCodeForComponent(componentId);
                             buttonPressListener.onButtonPress(componentId, keyCode);
                         }
+                        maybeStartKeyboardHoldLockTracking(pointerId, componentId, event, pointerIndex);
                         invalidate();
                     }
                 }
@@ -2371,6 +2569,7 @@ public class GamepadView extends View {
                         buttonsPressedSet.add(componentId);
                         int keyCode = getKeyCodeForComponent(componentId);
                         buttonPressListener.onButtonPress(componentId, keyCode);
+                        maybeStartKeyboardHoldLockTracking(pointerId, componentId, event, pointerIndex);
                     }
                 } else if (event.getPointerCount() >= 2 && backgroundBitmap != null) {
                     int otherIdx = pointerIndex == 0 ? 1 : 0;
@@ -2404,6 +2603,7 @@ public class GamepadView extends View {
                         }
                     }
                 }
+                updateKeyboardHoldLockOnDynamicMove(event);
                 if (isManipulatingBg && event.getPointerCount() >= 2) {
                     float x0 = event.getX(0), y0 = event.getY(0);
                     float x1 = event.getX(1), y1 = event.getY(1);
@@ -2511,12 +2711,16 @@ public class GamepadView extends View {
                     draggedComponentId = null;
                     dragPointerId = -1;
                 }
-                releasePointerComponent(pointerId);
+                int dynUpIdx = event.findPointerIndex(pointerId);
+                float dynUpRawX = dynUpIdx >= 0 ? event.getRawX(dynUpIdx) : event.getRawX();
+                float dynUpRawY = dynUpIdx >= 0 ? event.getRawY(dynUpIdx) : event.getRawY();
+                releasePointerComponent(pointerId, dynUpRawX, dynUpRawY);
                 if (action == MotionEvent.ACTION_UP) {
                     pointerComponents.clear();
                     dpadPressedSet.clear();
                     buttonsPressedSet.clear();
                     touchpadPointerId = -1;
+                    cancelAllKeyboardHoldLockTracking();
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
                     }
@@ -2545,7 +2749,10 @@ public class GamepadView extends View {
                 if (touchpadPointerId == pointerId) {
                     touchpadPointerId = -1;
                 }
-                releasePointerComponent(pointerId);
+                int dynPuIdx = event.findPointerIndex(pointerId);
+                float dynPuRawX = dynPuIdx >= 0 ? event.getRawX(dynPuIdx) : event.getRawX();
+                float dynPuRawY = dynPuIdx >= 0 ? event.getRawY(dynPuIdx) : event.getRawY();
+                releasePointerComponent(pointerId, dynPuRawX, dynPuRawY);
                 invalidate();
                 return true;
             }
@@ -2742,6 +2949,9 @@ public class GamepadView extends View {
     public void setEditMode(boolean editMode) {
         if (!editMode && editModeExitListener != null) {
             editModeExitListener.onEditModeExit(componentPositions);
+        }
+        if (editMode) {
+            cancelAllKeyboardHoldLockTracking();
         }
         isEditMode = editMode;
         invalidate();
@@ -2978,6 +3188,16 @@ public class GamepadView extends View {
     }
 
     // Listener interfaces
+    /**
+     * Host (typically {@link com.openterface.fragment.GamepadFragment}) tracks latched keyboard keys from the
+     * KM Basic-style hold-lock gesture on eligible modules.
+     */
+    public interface KeyboardHoldLockListener {
+        void onKeyboardHoldLockCommitted(String moduleId);
+
+        boolean isKeyboardHoldLockLatched(String moduleId);
+    }
+
     public interface ButtonPressListener {
         void onButtonPress(String buttonId, int keyCode);
     }
@@ -3012,5 +3232,11 @@ public class GamepadView extends View {
 
     public interface TouchpadDeltaListener {
         void onTouchpadDelta(float dxPixels, float dyPixels);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        cancelAllKeyboardHoldLockTracking();
+        super.onDetachedFromWindow();
     }
 }

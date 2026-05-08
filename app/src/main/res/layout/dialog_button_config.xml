@@ -75,6 +75,14 @@
                 android:contentDescription="@string/gamepad_button_config_show_mapped_key_label_cd"
                 android:layout_marginBottom="10dp" />
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/button_keyboard_hold_lock_switch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_button_config_keyboard_hold_lock"
+                android:contentDescription="@string/gamepad_button_config_keyboard_hold_lock_cd"
+                android:layout_marginBottom="10dp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_key_label"
                 style="@style/Widget.Material3.Button.OutlinedButton"
