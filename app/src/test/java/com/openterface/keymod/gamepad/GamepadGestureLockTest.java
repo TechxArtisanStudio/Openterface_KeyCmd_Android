@@ -31,6 +31,18 @@ public class GamepadGestureLockTest {
         assertNull(GamepadGestureLock.classifyDiagonalSlot(2f, -3f, d));
     }
 
+    /**
+     * With rMin = 9dp, at density 2 the threshold is 18px. A flick just above that should classify
+     * (would have been null when rMin was 14dp → 28px).
+     */
+    @Test
+    public void classifyAcceptsDiagonalJustAboveMinRadius() {
+        float d = 2f;
+        assertEquals(
+                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT,
+                GamepadGestureLock.classifyDiagonalSlot(-11f, -16f, d));
+    }
+
     @Test
     public void classifyCancelBeyondMaxRadius() {
         float d = 2f;

@@ -11,8 +11,13 @@ import androidx.annotation.Nullable;
  */
 public final class GamepadGestureLock {
 
-    /** Minimum finger travel (px) before a diagonal sector is chosen. */
-    public static final float DIAGONAL_R_MIN_DP = 14f;
+    /**
+     * Minimum Euclidean distance from press to release (in dp, multiplied by {@code density} in
+     * {@link #classifyDiagonalSlot}) before a diagonal sector is chosen; shorter vectors return
+     * {@code null} (no commit). This is a distance gate, not a time delay; lowering it makes
+     * quick diagonal flicks register more easily.
+     */
+    public static final float DIAGONAL_R_MIN_DP = 9f;
     /** Beyond this radius (px) the gesture is treated as cancel. */
     public static final float DIAGONAL_R_CANCEL_DP = 200f;
 
