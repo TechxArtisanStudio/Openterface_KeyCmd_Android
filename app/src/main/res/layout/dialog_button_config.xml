@@ -83,6 +83,13 @@
                 android:contentDescription="@string/gamepad_button_config_keyboard_hold_lock_cd"
                 android:layout_marginBottom="10dp" />
 
+            <LinearLayout
+                android:id="@+id/button_gesture_lock_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="10dp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_key_label"
                 style="@style/Widget.Material3.Button.OutlinedButton"

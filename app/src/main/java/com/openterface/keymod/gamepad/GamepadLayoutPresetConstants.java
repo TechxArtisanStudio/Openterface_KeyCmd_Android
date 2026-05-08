@@ -17,10 +17,41 @@ public final class GamepadLayoutPresetConstants {
     /** v6 removes legacy extra-thumb ids (see {@link #isObsoleteRemovedThumbStickId(String)}). */
     public static final int SCHEMA_VERSION_V6 = 6;
     /**
-     * Current preset schema; v7 makes the primary left thumb ({@code stick_left}) optional alongside
+     * v7 makes the primary left thumb ({@code stick_left}) optional alongside
      * {@code stick_left_2+} (validation only; no automatic module rewrites).
      */
-    public static final int SCHEMA_VERSION = 7;
+    public static final int SCHEMA_VERSION_V7 = 7;
+    /**
+     * v8 adds optional per-module {@link GamepadLayoutPresetDocument.GamepadModule#gestureLock} (diagonal
+     * swipe actions: hold lock, turbo, optional alternate key).
+     */
+    public static final int SCHEMA_VERSION_V8 = 8;
+    /** Current preset schema. */
+    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
+
+    /** JSON / Gson field names on {@link GamepadLayoutPresetDocument.GestureLockConfig}. */
+    public static final String GESTURE_LOCK_SLOT_UP_LEFT = "upLeft";
+    public static final String GESTURE_LOCK_SLOT_UP_RIGHT = "upRight";
+    public static final String GESTURE_LOCK_SLOT_DOWN_LEFT = "downLeft";
+    public static final String GESTURE_LOCK_SLOT_DOWN_RIGHT = "downRight";
+
+    public static final String GESTURE_LOCK_ACTION_NONE = "none";
+    public static final String GESTURE_LOCK_ACTION_HOLD_LOCK = "hold_lock";
+    public static final String GESTURE_LOCK_ACTION_TURBO = "turbo";
+    public static final String GESTURE_LOCK_ACTION_KEY_HOLD = "key_hold";
+    public static final String GESTURE_LOCK_ACTION_KEY_TURBO = "key_turbo";
+
+    public static boolean isAllowedGestureLockAction(@Nullable String action) {
+        if (action == null || action.trim().isEmpty()) {
+            return false;
+        }
+        String a = action.trim();
+        return GESTURE_LOCK_ACTION_NONE.equals(a)
+                || GESTURE_LOCK_ACTION_HOLD_LOCK.equals(a)
+                || GESTURE_LOCK_ACTION_TURBO.equals(a)
+                || GESTURE_LOCK_ACTION_KEY_HOLD.equals(a)
+                || GESTURE_LOCK_ACTION_KEY_TURBO.equals(a);
+    }
 
     /** Max decoded bytes for embedded gamepad background image (JSON interchange). */
     public static final int MAX_BACKGROUND_EMBED_DECODED_BYTES = 6 * 1024 * 1024;

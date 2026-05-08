@@ -46,6 +46,51 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateAcceptsGestureLockOnButton() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btnA = findModule(doc, "button_a");
+        assertNotNull(btnA);
+        btnA.keyboardHoldLock = true;
+        GamepadLayoutPresetDocument.GestureLockConfig g = new GamepadLayoutPresetDocument.GestureLockConfig();
+        GamepadLayoutPresetDocument.GestureLockSlot ul = new GamepadLayoutPresetDocument.GestureLockSlot();
+        ul.action = GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO;
+        g.upLeft = ul;
+        GamepadLayoutPresetDocument.GestureLockSlot ur = new GamepadLayoutPresetDocument.GestureLockSlot();
+        ur.action = GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_HOLD_LOCK;
+        g.upRight = ur;
+        btnA.gestureLock = g;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateRejectsKeyHoldOnMouseButton() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        GamepadLayoutPresetDocument.GamepadModule leftMouse = findModule(doc, "mouse_btn_l");
+        assertNotNull(leftMouse);
+        leftMouse.keyboardHoldLock = true;
+        GamepadLayoutPresetDocument.GestureLockConfig g = new GamepadLayoutPresetDocument.GestureLockConfig();
+        GamepadLayoutPresetDocument.GestureLockSlot ul = new GamepadLayoutPresetDocument.GestureLockSlot();
+        ul.action = GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_KEY_HOLD;
+        ul.hidKey = 20;
+        g.upLeft = ul;
+        leftMouse.gestureLock = g;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("MOUSE_BUTTON"));
+        }
+    }
+
+    @Test
+    public void upgradeV7ToV8BumpsSchemaVersion() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V7;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION_V8, doc.schemaVersion);
+    }
+
+    @Test
     public void validateAcceptsLayoutWithoutLeftThumbModule() {
         GamepadLayoutPresetDocument doc = minimalDocumentButtonAOnly();
         GamepadLayoutPresetDocument.validateOrThrow(doc);

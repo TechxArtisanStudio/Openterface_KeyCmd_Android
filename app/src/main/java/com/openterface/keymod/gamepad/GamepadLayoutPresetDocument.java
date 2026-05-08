@@ -126,6 +126,21 @@ public class GamepadLayoutPresetDocument {
         @Nullable public String backgroundPattern;
     }
 
+    /** Preset JSON object {@code gestureLock}: four diagonal slots. */
+    public static class GestureLockConfig {
+        @Nullable public GestureLockSlot upLeft;
+        @Nullable public GestureLockSlot upRight;
+        @Nullable public GestureLockSlot downLeft;
+        @Nullable public GestureLockSlot downRight;
+    }
+
+    /** One slot: {@code action} plus optional override HID codes for {@code key_*} actions. */
+    public static class GestureLockSlot {
+        @Nullable public String action;
+        @Nullable public Integer hidKey;
+        @Nullable public Integer modifierMask;
+    }
+
     /**
      * One drawable plus touch target on the gamepad canvas.
      * <p><b>Layers:</b> {@code id} is <em>which</em> control (e.g. {@code stick_left}, {@code stick_right}).
@@ -201,11 +216,18 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Boolean mappedKeyLabelVisible;
         /**
-         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, long-press then swipe up (KM Basic
-         * hold-lock gesture) can latch this control until the next tap on the same module (keyboard key or
-         * relative mouse button). {@code null} or {@code false} = off.
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, swipe hold-lock gesture is enabled
+         * (legacy: vertical up/down only when {@link #gestureLock} is absent or has no non-{@code none}
+         * actions). {@code null} or {@code false} = off unless {@link #gestureLock} supplies actions.
          */
         @Nullable public Boolean keyboardHoldLock;
+        /**
+         * Optional per-diagonal swipe actions (hold lock, turbo, alternate key). When present with any
+         * non-{@code none} slot, diagonal classification is used; otherwise legacy vertical hold-lock
+         * applies if {@link #keyboardHoldLock} is true.
+         */
+        @Nullable public GestureLockConfig gestureLock;
+
         /**
          * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
          * {@link GamepadLayoutPresetConstants#clampButtonCornerRadiusNorm}.
@@ -609,15 +631,14 @@ public class GamepadLayoutPresetDocument {
             } else {
                 throw new IllegalArgumentException("Unknown module type: " + m.type);
             }
-            if (Boolean.TRUE.equals(m.keyboardHoldLock)) {
-                if (!GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type)
-                        && !GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
+            if (GamepadGestureLock.moduleGesturesEnabled(m)) {
+                if (!GamepadGestureLock.gesturesAllowedModuleType(m.type)) {
                     throw new IllegalArgumentException(
-                            "Module " + m.id + ": keyboardHoldLock is only valid for BUTTON, SHOULDER, TRIGGER, or MOUSE_BUTTON");
+                            "Module " + m.id
+                                    + ": keyboardHoldLock / gestureLock is only valid for BUTTON, SHOULDER, TRIGGER, or MOUSE_BUTTON");
                 }
             }
+            GamepadGestureLock.validateGestureLockOnModule(m);
         }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "

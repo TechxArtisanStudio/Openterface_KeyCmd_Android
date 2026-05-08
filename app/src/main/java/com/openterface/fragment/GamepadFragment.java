@@ -113,6 +113,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutDocumentStore;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetBackgroundCodec;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetApplier;
+import com.openterface.keymod.gamepad.GamepadGestureLock;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
@@ -130,6 +131,7 @@ import com.openterface.keymod.GamepadView.DpadStateListener;
 public class GamepadFragment extends Fragment {
 
     private static final String TAG = "GamepadFragment";
+    private static final long TURBO_PULSE_PERIOD_MS = 70L;
 
     // Stick modes
     private static final String MODE_ANALOG = "analog";
@@ -255,6 +257,31 @@ public class GamepadFragment extends Fragment {
     private final Map<String, Boolean> faceButtonPressed = new HashMap<>();
     /** Latched keyboard keys from hold-lock gesture (module id). */
     private final Set<String> keyboardHoldLockedModuleIds = new HashSet<>();
+    /** Latched turbo (连发) for module native output or key_turbo override (module id). */
+    private final Set<String> turboLockedModuleIds = new HashSet<>();
+    /** When latched via key_hold / diagonal: use HID key [0] and modifier mask [1] instead of module mapping. */
+    private final java.util.Map<String, int[]> gestureHoldAlternateHid = new java.util.HashMap<>();
+    /** When latched key_turbo: HID key [0] and modifier mask [1] for pulse output. */
+    private final java.util.Map<String, int[]> gestureTurboAlternateHid = new java.util.HashMap<>();
+    private final android.os.Handler turboHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean turboPulsePhaseHigh = false;
+    private final Runnable turboPulseStep =
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    if (turboLockedModuleIds.isEmpty()) {
+                        turboPulsePhaseHigh = false;
+                        return;
+                    }
+                    turboPulsePhaseHigh = !turboPulsePhaseHigh;
+                    applyTurboMousePulsePhase();
+                    sendCombinedKeyReport();
+                    turboHandler.postDelayed(this, TURBO_PULSE_PERIOD_MS);
+                }
+            };
     /** Finger-down on a latched module: release completes unlock (no momentary press). */
     private final Set<String> pendingKeyboardHoldUnlockTap = new HashSet<>();
     private boolean keyRUpPressed;
@@ -643,13 +670,68 @@ public class GamepadFragment extends Fragment {
                     public boolean isKeyboardHoldLockLatched(String moduleId) {
                         return keyboardHoldLockedModuleIds.contains(moduleId);
                     }
+
+                    @Override
+                    public void onGestureLockActionCommitted(
+                            @NonNull String moduleId,
+                            @NonNull String slotKey,
+                            @NonNull String action,
+                            @Nullable Integer hidKeyOverride,
+                            @Nullable Integer modifierMaskOverride) {
+                        String a = action.trim();
+                        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_HOLD_LOCK.equalsIgnoreCase(a)) {
+                            onKeyboardHoldLockCommitted(moduleId);
+                            return;
+                        }
+                        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO.equalsIgnoreCase(a)) {
+                            turboLockedModuleIds.add(moduleId);
+                            gestureTurboAlternateHid.remove(moduleId);
+                            syncKeyboardHoldLockVisuals();
+                            startTurboRepeatingIfNeeded();
+                            return;
+                        }
+                        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_KEY_TURBO.equalsIgnoreCase(a)) {
+                            if (hidKeyOverride == null) {
+                                return;
+                            }
+                            turboLockedModuleIds.add(moduleId);
+                            gestureTurboAlternateHid.put(
+                                    moduleId,
+                                    new int[] {hidKeyOverride, intOr(modifierMaskOverride, 0)});
+                            syncKeyboardHoldLockVisuals();
+                            startTurboRepeatingIfNeeded();
+                            return;
+                        }
+                        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_KEY_HOLD.equalsIgnoreCase(a)) {
+                            if (hidKeyOverride == null) {
+                                return;
+                            }
+                            if (mouseButtonForComponentId(moduleId) != null) {
+                                return;
+                            }
+                            faceButtonPressed.put(moduleId, false);
+                            keyboardHoldLockedModuleIds.add(moduleId);
+                            gestureHoldAlternateHid.put(
+                                    moduleId,
+                                    new int[] {hidKeyOverride, intOr(modifierMaskOverride, 0)});
+                            syncKeyboardHoldLockVisuals();
+                            sendCombinedKeyReport();
+                        }
+                    }
+
+                    @Override
+                    public boolean isGestureLatchedAny(@NonNull String moduleId) {
+                        return keyboardHoldLockedModuleIds.contains(moduleId)
+                                || turboLockedModuleIds.contains(moduleId);
+                    }
                 });
 
         // Button press listener (face buttons only, D-pad handled by dpadStateListener)
         gamepadView.setButtonPressListener((buttonId, keyCode) -> {
             Log.d(TAG, "Button pressed: " + buttonId + " -> keyCode: " + keyCode);
 
-            if (keyboardHoldLockedModuleIds.contains(buttonId)) {
+            if (keyboardHoldLockedModuleIds.contains(buttonId)
+                    || turboLockedModuleIds.contains(buttonId)) {
                 pendingKeyboardHoldUnlockTap.add(buttonId);
                 return;
             }
@@ -682,6 +764,15 @@ public class GamepadFragment extends Fragment {
             Log.d(TAG, "Button released: " + buttonId);
             if (pendingKeyboardHoldUnlockTap.remove(buttonId)) {
                 keyboardHoldLockedModuleIds.remove(buttonId);
+                turboLockedModuleIds.remove(buttonId);
+                gestureHoldAlternateHid.remove(buttonId);
+                gestureTurboAlternateHid.remove(buttonId);
+                if (turboLockedModuleIds.isEmpty()) {
+                    turboHandler.removeCallbacks(turboPulseStep);
+                    turboPulsePhaseHigh = false;
+                } else {
+                    startTurboRepeatingIfNeeded();
+                }
                 syncKeyboardHoldLockVisuals();
                 Integer unlockMouse = mouseButtonForComponentId(buttonId);
                 if (unlockMouse != null) {
@@ -903,7 +994,43 @@ public class GamepadFragment extends Fragment {
                 mask |= semanticMouseButtonToHidMask(mb);
             }
         }
+        if (turboPulsePhaseHigh) {
+            for (String moduleId : turboLockedModuleIds) {
+                Integer mb = mouseButtonForComponentId(moduleId);
+                if (mb != null) {
+                    mask |= semanticMouseButtonToHidMask(mb);
+                }
+            }
+        }
         return mask;
+    }
+
+    private void applyTurboMousePulsePhase() {
+        if (!(getActivity() instanceof MainActivity)) {
+            return;
+        }
+        ConnectionManager cm = ((MainActivity) getActivity()).getConnectionManager();
+        if (cm == null || !cm.isConnected()) {
+            return;
+        }
+        for (String moduleId : turboLockedModuleIds) {
+            Integer mb = mouseButtonForComponentId(moduleId);
+            if (mb == null) {
+                continue;
+            }
+            int hidMask = semanticMouseButtonToHidMask(mb);
+            sendMouseClick(hidMask, turboPulsePhaseHigh);
+        }
+    }
+
+    private void startTurboRepeatingIfNeeded() {
+        turboHandler.removeCallbacks(turboPulseStep);
+        if (turboLockedModuleIds.isEmpty()) {
+            turboPulsePhaseHigh = false;
+            return;
+        }
+        turboPulsePhaseHigh = false;
+        turboHandler.post(turboPulseStep);
     }
 
     private static int intOr(@Nullable Integer v, int def) {
@@ -1205,12 +1332,18 @@ public class GamepadFragment extends Fragment {
 
     private void syncKeyboardHoldLockVisuals() {
         if (gamepadView != null) {
-            gamepadView.setKeyboardHoldLockedVisualIds(keyboardHoldLockedModuleIds);
+            java.util.HashSet<String> vis = new java.util.HashSet<>(keyboardHoldLockedModuleIds);
+            vis.addAll(turboLockedModuleIds);
+            gamepadView.setKeyboardHoldLockedVisualIds(vis);
         }
     }
 
     private void clearRuntimeKeyboardHoldLocksForLayoutChange() {
-        if (keyboardHoldLockedModuleIds.isEmpty() && pendingKeyboardHoldUnlockTap.isEmpty()) {
+        if (keyboardHoldLockedModuleIds.isEmpty()
+                && turboLockedModuleIds.isEmpty()
+                && gestureHoldAlternateHid.isEmpty()
+                && gestureTurboAlternateHid.isEmpty()
+                && pendingKeyboardHoldUnlockTap.isEmpty()) {
             if (gamepadView != null) {
                 gamepadView.cancelAllKeyboardHoldLockTracking();
                 gamepadView.setKeyboardHoldLockedVisualIds(Collections.emptySet());
@@ -1218,6 +1351,11 @@ public class GamepadFragment extends Fragment {
             return;
         }
         keyboardHoldLockedModuleIds.clear();
+        turboLockedModuleIds.clear();
+        gestureHoldAlternateHid.clear();
+        gestureTurboAlternateHid.clear();
+        turboHandler.removeCallbacks(turboPulseStep);
+        turboPulsePhaseHigh = false;
         pendingKeyboardHoldUnlockTap.clear();
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
@@ -1228,6 +1366,9 @@ public class GamepadFragment extends Fragment {
 
     private boolean isModuleKeyboardActiveForReport(@Nullable String moduleId) {
         if (moduleId == null) {
+            return false;
+        }
+        if (turboLockedModuleIds.contains(moduleId)) {
             return false;
         }
         return Boolean.TRUE.equals(faceButtonPressed.get(moduleId))
@@ -2046,7 +2187,12 @@ public class GamepadFragment extends Fragment {
                         continue;
                     }
                     if (isModuleKeyboardActiveForReport(m.id)) {
-                        modifiers |= intOr(m.modifierMask, 0);
+                        int mod = intOr(m.modifierMask, 0);
+                        int[] altH = gestureHoldAlternateHid.get(m.id);
+                        if (altH != null && altH.length > 1) {
+                            mod = intOr(altH[1], 0);
+                        }
+                        modifiers |= mod;
                     }
                 }
             } else {
@@ -2151,7 +2297,12 @@ public class GamepadFragment extends Fragment {
                         continue;
                     }
                     if (isModuleKeyboardActiveForReport(m.id)) {
-                        addKeyOrMod(regularKeys, m.hidKey);
+                        int key = m.hidKey;
+                        int[] altH = gestureHoldAlternateHid.get(m.id);
+                        if (altH != null && altH.length > 0) {
+                            key = altH[0];
+                        }
+                        addKeyOrMod(regularKeys, key);
                     }
                 }
             } else {
@@ -2160,6 +2311,31 @@ public class GamepadFragment extends Fragment {
                 }
                 if (buttonBPressed) {
                     addKeyOrMod(regularKeys, buttonBKey);
+                }
+            }
+
+            if (layoutDoc != null && layoutDoc.modules != null) {
+                for (String tid : turboLockedModuleIds) {
+                    if (!turboPulsePhaseHigh) {
+                        continue;
+                    }
+                    GamepadLayoutPresetDocument.GamepadModule m = findModuleById(tid);
+                    if (m == null) {
+                        continue;
+                    }
+                    int[] altT = gestureTurboAlternateHid.get(tid);
+                    if (altT != null && altT.length > 0) {
+                        if (altT.length > 1) {
+                            modifiers |= intOr(altT[1], 0);
+                        }
+                        addKeyOrMod(regularKeys, altT[0]);
+                    } else if (m.hidKey != null
+                            && (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
+                                    || GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
+                                    || GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type))) {
+                        modifiers |= intOr(m.modifierMask, 0);
+                        addKeyOrMod(regularKeys, m.hidKey);
+                    }
                 }
             }
 
@@ -2239,6 +2415,14 @@ public class GamepadFragment extends Fragment {
                     GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
                     faceButtonPressed.remove(moduleId);
                     keyboardHoldLockedModuleIds.remove(moduleId);
+                    turboLockedModuleIds.remove(moduleId);
+                    gestureHoldAlternateHid.remove(moduleId);
+                    gestureTurboAlternateHid.remove(moduleId);
+                    if (turboLockedModuleIds.isEmpty()) {
+                        turboHandler.removeCallbacks(turboPulseStep);
+                    } else {
+                        startTurboRepeatingIfNeeded();
+                    }
                     pendingKeyboardHoldUnlockTap.remove(moduleId);
                     applyLayoutDocFromMemory();
                     if (parentDialog != null) {
@@ -3323,6 +3507,13 @@ public class GamepadFragment extends Fragment {
         holdLockSwitch.setLayoutParams(hlp);
         root.addView(holdLockSwitch);
 
+        LinearLayout gestureMouseBox = new LinearLayout(ctx);
+        gestureMouseBox.setOrientation(LinearLayout.VERTICAL);
+        gestureMouseBox.setLayoutParams(hlp);
+        root.addView(gestureMouseBox);
+        final android.widget.Spinner[] gestureSpinnersMouse =
+                bindGestureLockSpinnerRows(ctx, gestureMouseBox, m);
+
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
@@ -3334,6 +3525,7 @@ public class GamepadFragment extends Fragment {
             commitModuleDisplayLabelFromEdit(root.findViewById(R.id.module_name_edit), m);
             m.scale = (moduleScaleSeek.getProgress() + 50) / 100f;
             m.keyboardHoldLock = holdLockSwitch.isChecked() ? Boolean.TRUE : null;
+            applyGestureLockFromSpinners(m, gestureSpinnersMouse);
             if (layoutWideMouseSeek != null) {
                 layoutDoc.layout.touchpadMouseButtonScale =
                         (layoutWideMouseSeek.getProgress() + 50) / 100f;
@@ -3347,6 +3539,8 @@ public class GamepadFragment extends Fragment {
                     m.displayLabel = null;
                     m.displayLabelColorArgb = null;
                     m.keyboardHoldLock = null;
+                    m.gestureLock = null;
+                    resetGestureLockSpinners(gestureSpinnersMouse);
                     holdLockSwitch.setChecked(false);
                     moduleScaleSeek.setProgress(50);
                     if (layoutWideMouseSeek != null) {
@@ -3940,6 +4134,110 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    private static final String[] GESTURE_LOCK_SPINNER_ACTIONS = {
+        GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE,
+        GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_HOLD_LOCK,
+        GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO,
+    };
+
+    @Nullable
+    private android.widget.Spinner[] bindGestureLockSpinnerRows(
+            @NonNull Context ctx, @NonNull LinearLayout container, GamepadLayoutPresetDocument.GamepadModule m) {
+        container.removeAllViews();
+        TextView section = new TextView(ctx);
+        section.setText(R.string.gamepad_gesture_lock_section);
+        section.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        container.addView(section);
+        int[] labelIds = {
+            R.string.gamepad_gesture_slot_up_left,
+            R.string.gamepad_gesture_slot_up_right,
+            R.string.gamepad_gesture_slot_down_left,
+            R.string.gamepad_gesture_slot_down_right,
+        };
+        android.widget.Spinner[] spins = new android.widget.Spinner[4];
+        GamepadLayoutPresetDocument.GestureLockConfig g = m.gestureLock;
+        GamepadLayoutPresetDocument.GestureLockSlot[] slots = new GamepadLayoutPresetDocument.GestureLockSlot[4];
+        if (g != null) {
+            slots[0] = g.upLeft;
+            slots[1] = g.upRight;
+            slots[2] = g.downLeft;
+            slots[3] = g.downRight;
+        }
+        android.widget.ArrayAdapter<String> ad =
+                new android.widget.ArrayAdapter<>(
+                        ctx, android.R.layout.simple_spinner_dropdown_item, GESTURE_LOCK_SPINNER_ACTIONS);
+        for (int i = 0; i < 4; i++) {
+            TextView rowLabel = new TextView(ctx);
+            rowLabel.setText(labelIds[i]);
+            rowLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+            container.addView(rowLabel);
+            android.widget.Spinner sp = new android.widget.Spinner(ctx);
+            sp.setAdapter(ad);
+            String cur = GamepadGestureLock.slotAction(slots[i]);
+            int sel = 0;
+            for (int j = 0; j < GESTURE_LOCK_SPINNER_ACTIONS.length; j++) {
+                if (GESTURE_LOCK_SPINNER_ACTIONS[j].equalsIgnoreCase(cur)) {
+                    sel = j;
+                    break;
+                }
+            }
+            sp.setSelection(sel);
+            container.addView(sp);
+            spins[i] = sp;
+        }
+        return spins;
+    }
+
+    private static void applyGestureLockFromSpinners(
+            GamepadLayoutPresetDocument.GamepadModule m, @Nullable android.widget.Spinner[] spins) {
+        if (spins == null || spins.length != 4) {
+            return;
+        }
+        boolean[] any = {false};
+        GamepadLayoutPresetDocument.GestureLockConfig g =
+                new GamepadLayoutPresetDocument.GestureLockConfig();
+        g.upLeft = gestureSlotFromSpinner(spins[0], any);
+        g.upRight = gestureSlotFromSpinner(spins[1], any);
+        g.downLeft = gestureSlotFromSpinner(spins[2], any);
+        g.downRight = gestureSlotFromSpinner(spins[3], any);
+        if (!any[0]) {
+            m.gestureLock = null;
+        } else {
+            m.gestureLock = g;
+        }
+    }
+
+    @Nullable
+    private static GamepadLayoutPresetDocument.GestureLockSlot gestureSlotFromSpinner(
+            @Nullable android.widget.Spinner sp, @NonNull boolean[] anyNonNoneFlag) {
+        if (sp == null) {
+            return null;
+        }
+        Object selObj = sp.getSelectedItem();
+        String sel =
+                selObj != null
+                        ? selObj.toString().trim()
+                        : GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE;
+        if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE.equalsIgnoreCase(sel)) {
+            return null;
+        }
+        anyNonNoneFlag[0] = true;
+        GamepadLayoutPresetDocument.GestureLockSlot s = new GamepadLayoutPresetDocument.GestureLockSlot();
+        s.action = sel;
+        return s;
+    }
+
+    private static void resetGestureLockSpinners(@Nullable android.widget.Spinner[] spins) {
+        if (spins == null) {
+            return;
+        }
+        for (android.widget.Spinner sp : spins) {
+            if (sp != null) {
+                sp.setSelection(0);
+            }
+        }
+    }
+
     /** Hides face-button-only sliders, divider, and mapped-key-under-button switch for shoulder/trigger config. */
     private static void applyGamepadFaceGeometrySectionVisibility(
             @NonNull View dialogView, boolean faceButtonSectionsVisible) {
@@ -4038,6 +4336,11 @@ public class GamepadFragment extends Fragment {
                 syncGamepadViewFromDoc();
             });
         }
+        LinearLayout gestureLockContainer = dialogView.findViewById(R.id.button_gesture_lock_container);
+        final android.widget.Spinner[] gestureSpinners =
+                gestureLockContainer != null
+                        ? bindGestureLockSpinnerRows(requireContext(), gestureLockContainer, m)
+                        : null;
 
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
         sizeSeekbar.setProgress((int) (buttonSizeScale * 100));
@@ -4184,6 +4487,8 @@ public class GamepadFragment extends Fragment {
             m.displayLabel = null;
             m.displayLabelColorArgb = null;
             m.keyboardHoldLock = null;
+            m.gestureLock = null;
+            resetGestureLockSpinners(gestureSpinners);
             if (keyboardHoldLockSwitch != null) {
                 keyboardHoldLockSwitch.setChecked(false);
             }
@@ -4232,6 +4537,7 @@ public class GamepadFragment extends Fragment {
                 if (keyboardHoldLockSwitch != null) {
                     m.keyboardHoldLock = keyboardHoldLockSwitch.isChecked() ? Boolean.TRUE : null;
                 }
+                applyGestureLockFromSpinners(m, gestureSpinners);
                 if (isFaceButtonConfig) {
                     m.buttonCornerRadiusNorm = buttonCornerNorm[0];
                     if (mappedKeyLabelSwitch != null) {
@@ -4259,6 +4565,7 @@ public class GamepadFragment extends Fragment {
             if (keyboardHoldLockSwitch != null) {
                 m.keyboardHoldLock = keyboardHoldLockSwitch.isChecked() ? Boolean.TRUE : null;
             }
+            applyGestureLockFromSpinners(m, gestureSpinners);
             if (isFaceButtonConfig) {
                 m.buttonCornerRadiusNorm = buttonCornerNorm[0];
                 applyButtonShapeFromSeeks(m, widthRatioSeek, heightRatioSeek, rotationSeek);
@@ -5850,11 +6157,12 @@ public class GamepadFragment extends Fragment {
         }
         boolean anyPointerHubKey = !pointerStickHubKeyHeld.isEmpty();
         boolean anyHoldLocked = !keyboardHoldLockedModuleIds.isEmpty();
+        boolean anyTurbo = !turboLockedModuleIds.isEmpty();
         boolean anyKey = keyUpPressed || keyLeftPressed || keyDownPressed || keyRightPressed
                 || keyRUpPressed || keyRLeftPressed || keyRDownPressed || keyRRightPressed
                 || keyCenterPressed || keyRCenterPressed
                 || buttonAPressed || buttonBPressed || anyFace || anyAux || anyAuxCenter
-                || anyPointerHubKey || anyHoldLocked;
+                || anyPointerHubKey || anyHoldLocked || anyTurbo;
         if (getActivity() instanceof MainActivity) {
             ConnectionManager cm = ((MainActivity) getActivity()).getConnectionManager();
             if (cm != null && cm.isConnected() && anyKey) {
@@ -5875,8 +6183,19 @@ public class GamepadFragment extends Fragment {
                         sendMouseClick(semanticMouseButtonToHidMask(mb), false);
                     }
                 }
+                for (String tid : new java.util.ArrayList<>(turboLockedModuleIds)) {
+                    Integer mb = mouseButtonForComponentId(tid);
+                    if (mb != null) {
+                        sendMouseClick(semanticMouseButtonToHidMask(mb), false);
+                    }
+                }
             }
         }
+        turboHandler.removeCallbacks(turboPulseStep);
+        turboPulsePhaseHigh = false;
+        turboLockedModuleIds.clear();
+        gestureHoldAlternateHid.clear();
+        gestureTurboAlternateHid.clear();
         pointerStickMouseMaskHeld.clear();
         pointerStickHubKeyHeld.clear();
         java.util.ArrayList<String> auxIds = new java.util.ArrayList<>(auxLeftThumbDirHeld.keySet());
