@@ -138,9 +138,22 @@
     <style name="ThemeOverlay.KeyMod.Gamepad" parent="ThemeOverlay.Material3.Dark" />
 
     <!-- Layouts sheet: presentation_card is a light (or night) surface; gamepad overlay uses Dark
-         tokens so colorOnSurface was light-on-white. No window enter/exit animation here so the
-         BottomSheetBehavior slide is the only motion (avoids alpha + slide fighting). -->
+         tokens so colorOnSurface was light-on-white. (Legacy overlay kept for reference.) -->
     <style name="ThemeOverlay.KeyMod.GamepadPresetSheet" parent="ThemeOverlay.Material3.Dark">
+        <item name="android:colorBackground">@color/presentation_card_bg</item>
+        <item name="colorSurface">@color/presentation_card_bg</item>
+        <item name="colorOnSurface">@color/presentation_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/presentation_text_secondary</item>
+        <item name="colorOutline">@color/text_secondary</item>
+        <item name="colorOutlineVariant">@color/divider</item>
+    </style>
+
+    <!-- Layouts picker: floating dialog (no BottomSheet CoordinatorLayout) so the preset list scrolls reliably. -->
+    <style name="Theme.KeyMod.GamepadPresetPickerDialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowIsFloating">true</item>
         <item name="android:colorBackground">@color/presentation_card_bg</item>
         <item name="colorSurface">@color/presentation_card_bg</item>
         <item name="colorOnSurface">@color/presentation_text_primary</item>

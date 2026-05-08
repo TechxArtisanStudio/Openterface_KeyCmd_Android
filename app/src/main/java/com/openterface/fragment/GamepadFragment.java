@@ -39,9 +39,11 @@ import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -60,13 +62,14 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.app.Dialog;
+
+import androidx.appcompat.app.AppCompatDialog;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
@@ -96,7 +99,6 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.core.content.FileProvider;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
@@ -1685,43 +1687,37 @@ public class GamepadFragment extends Fragment {
     }
 
     private void showGamepadPresetsBottomSheet() {
-        // Gamepad root uses ThemeOverlay.Material3.Dark; sheet background is presentation_card (light or night).
-        // Use a small overlay so colorOnSurface / dividers match the card, while colorPrimary stays from the theme.
-        Context sheetCtx = new ContextThemeWrapper(
-                gamepadUiContext(), R.style.ThemeOverlay_KeyMod_GamepadPresetSheet);
-        BottomSheetDialog dialog = new GamepadPresetsBottomSheetDialog(sheetCtx);
-        View sheet = LayoutInflater.from(sheetCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
+        // AppCompatDialog (not BottomSheetDialog): avoids CoordinatorLayout/BottomSheetBehavior
+        // stealing vertical gestures so the preset RecyclerView scrolls reliably; no second settle pass.
+        Context dlgCtx = new ContextThemeWrapper(
+                gamepadUiContext(), R.style.Theme_KeyMod_GamepadPresetPickerDialog);
+        AppCompatDialog dialog = new AppCompatDialog(dlgCtx);
+        View sheet = LayoutInflater.from(dlgCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
         dialog.setContentView(sheet);
-        // Avoid Material's slide-away dismiss; clear window transitions so dim + sheet are not
-        // double-animated. Request EXPANDED before first layout so behavior lays out at the final
-        // offset immediately (deferring setState to post() forced smoothSlide + dim and felt choppy).
-        dialog.setDismissWithAnimation(false);
         Window dw = dialog.getWindow();
         if (dw != null) {
             dw.setWindowAnimations(0);
+            dw.setBackgroundDrawableResource(android.R.color.transparent);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 dw.setEnterTransition(null);
                 dw.setExitTransition(null);
             }
+            applyGamepadPresetsPickerWindowLayout(dw, dlgCtx);
         }
-        BottomSheetBehavior<?> presetSheetBehavior = dialog.getBehavior();
-        presetSheetBehavior.setSkipCollapsed(true);
-        presetSheetBehavior.setFitToContents(true);
-        presetSheetBehavior.setMaxHeight(computeGamepadPresetsSheetMaxHeight(sheetCtx));
-        presetSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-        // Let vertical gestures scroll the RecyclerView instead of dragging/dismissing the sheet.
-        presetSheetBehavior.setDraggable(false);
-        dialog.setOnShowListener(d -> {
-            View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (bottom != null) {
-                // Let the inflated sheet use {@code bg_presentation_touchpad_dialog} without a second surface behind it.
-                bottom.setBackgroundResource(android.R.color.transparent);
-            }
-        });
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        // Fixed-height list so BottomSheetBehavior does not resize mid-drag; nested scrolling stays
-        // enabled on the RecyclerView (XML) so vertical gestures scroll the list inside the sheet.
+        recycler.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
+            @Override
+            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                int action = e.getActionMasked();
+                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+                    for (ViewParent p = rv.getParent(); p != null; p = p.getParent()) {
+                        p.requestDisallowInterceptTouchEvent(true);
+                    }
+                }
+                return false;
+            }
+        });
         recycler.setHasFixedSize(true);
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
@@ -1736,10 +1732,10 @@ public class GamepadFragment extends Fragment {
                 String err = presetRepository.activateAndApply(id);
                 if (err == null) {
                     reloadFromPrefsAndApplyView();
-                    Toast.makeText(sheetCtx, R.string.gamepad_presets_activated, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(dlgCtx, R.string.gamepad_presets_activated, Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
                 } else {
-                    Toast.makeText(sheetCtx, err, Toast.LENGTH_LONG).show();
+                    Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
                 }
             }
 
@@ -1773,7 +1769,7 @@ public class GamepadFragment extends Fragment {
             }
         });
         GamepadPresetListAdapter adapter = presetListAdapterRef[0];
-        recycler.setLayoutManager(new LinearLayoutManager(sheetCtx));
+        recycler.setLayoutManager(new LinearLayoutManager(dlgCtx));
         recycler.setAdapter(adapter);
         refreshPresetSheetAdapter(adapter);
 
@@ -1804,17 +1800,6 @@ public class GamepadFragment extends Fragment {
             @Override
             public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
                 super.onSelectedChanged(viewHolder, actionState);
-                View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-                if (bottom == null) {
-                    return;
-                }
-                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
-                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    behavior.setDraggable(false);
-                    behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                } else if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
-                    behavior.setDraggable(false);
-                }
             }
 
             @Override
@@ -1826,7 +1811,7 @@ public class GamepadFragment extends Fragment {
                     String err = presetRepository.reorderPresets(ids);
                     if (err != null) {
                         refreshPresetSheetAdapter(adapter);
-                        Toast.makeText(sheetCtx, err, Toast.LENGTH_LONG).show();
+                        Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
                     }
                 }
             }
@@ -1841,15 +1826,15 @@ public class GamepadFragment extends Fragment {
             });
         }
         if (resetShippedBtn != null) {
-            resetShippedBtn.setOnClickListener(v -> new AlertDialog.Builder(sheetCtx)
+            resetShippedBtn.setOnClickListener(v -> new AlertDialog.Builder(dlgCtx)
                     .setTitle(R.string.gamepad_presets_reset_shipped_title)
                     .setMessage(R.string.gamepad_presets_reset_shipped_message)
                     .setPositiveButton(R.string.gamepad_presets_reset_shipped_confirm, (d, w) -> {
                         String err = presetRepository.resetAllShippedGamepadLayoutsFromAssets();
                         if (err != null) {
-                            Toast.makeText(sheetCtx, err, Toast.LENGTH_LONG).show();
+                            Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
                         } else {
-                            Toast.makeText(sheetCtx, R.string.gamepad_presets_reset_shipped_done,
+                            Toast.makeText(dlgCtx, R.string.gamepad_presets_reset_shipped_done,
                                             Toast.LENGTH_SHORT)
                                     .show();
                             refreshPresetSheetAdapterAndResetListPresentation(
@@ -1876,15 +1861,14 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Refreshes preset rows then resets scroll and forces a layout pass on the sheet and bottom
-     * sheet container. Needed after bulk list changes (e.g. reset shipped layouts) so the list
-     * and sheet present correctly.
+     * Refreshes preset rows then resets scroll and forces a layout pass on the sheet root.
+     * Needed after bulk list changes (e.g. reset shipped layouts) so the list presents correctly.
      */
     private void refreshPresetSheetAdapterAndResetListPresentation(
             @NonNull RecyclerView recycler,
             @NonNull View sheetRoot,
             @NonNull GamepadPresetListAdapter adapter,
-            @NonNull BottomSheetDialog presetSheetDialog) {
+            @NonNull Dialog presetSheetDialog) {
         refreshPresetSheetAdapter(adapter);
         // Two posts: first runs after the current frame; second runs after DiffUtil + child layout
         // so scroll/remeasure see the updated item count and heights.
@@ -1898,22 +1882,16 @@ public class GamepadFragment extends Fragment {
             }
             recycler.requestLayout();
             sheetRoot.requestLayout();
-            View designBottom = presetSheetDialog.findViewById(
-                    com.google.android.material.R.id.design_bottom_sheet);
-            if (designBottom != null) {
-                designBottom.requestLayout();
-                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(designBottom);
-                behavior.setSkipCollapsed(true);
-                behavior.setFitToContents(true);
-                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                behavior.setDraggable(false);
+            Window w = presetSheetDialog.getWindow();
+            if (w != null) {
+                w.getDecorView().requestLayout();
             }
         }));
     }
 
     private void confirmDeletePreset(
             @NonNull String presetId,
-            @NonNull BottomSheetDialog hostDialog,
+            @NonNull Dialog hostDialog,
             @NonNull GamepadPresetListAdapter adapter) {
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
             return;
@@ -1938,7 +1916,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void confirmResetDefaultPreset(
-            @NonNull BottomSheetDialog hostDialog,
+            @NonNull Dialog hostDialog,
             @NonNull GamepadPresetListAdapter adapter) {
         Context ctx = hostDialog.getContext();
         new AlertDialog.Builder(ctx)
@@ -1965,7 +1943,7 @@ public class GamepadFragment extends Fragment {
     private void showPresetOverflowMenu(
             @NonNull String presetId,
             @NonNull View anchor,
-            @NonNull BottomSheetDialog hostDialog,
+            @NonNull Dialog hostDialog,
             @NonNull GamepadPresetListAdapter adapter) {
         PopupMenu pm = new PopupMenu(anchor.getContext(), anchor);
         pm.getMenuInflater().inflate(R.menu.menu_gamepad_preset_row, pm.getMenu());
@@ -7004,67 +6982,28 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Landscape: set {@code design_bottom_sheet} width and horizontal gravity before the first
-     * layout frame so the sheet does not jump after {@code onShow}.
+     * Positions the Layouts picker like the old bottom sheet: bottom-centered; landscape uses the
+     * same width band as {@code gamepad_presets_bottom_sheet_* } dimens.
      */
-    /**
-     * Caps the Layouts bottom sheet so a fixed-height list + toolbar cannot exceed the visible
-     * window (short landscape / game overlays), avoiding clipped content above the recycler.
-     */
-    private static int computeGamepadPresetsSheetMaxHeight(@NonNull Context ctx) {
-        int screenH;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowManager wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
-            if (wm != null) {
-                screenH = wm.getCurrentWindowMetrics().getBounds().height();
-            } else {
-                screenH = ctx.getResources().getDisplayMetrics().heightPixels;
-            }
+    private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, @NonNull Context ctx) {
+        if (window == null) {
+            return;
+        }
+        WindowManager.LayoutParams lp = window.getAttributes();
+        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        int screenW = dm.widthPixels;
+        if (ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            int maxW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_max_width);
+            int minW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_min_width);
+            int targetW = Math.min(Math.max(Math.round(screenW * 0.38f), minW), maxW);
+            targetW = Math.min(targetW, screenW);
+            lp.width = targetW > 0 ? targetW : WindowManager.LayoutParams.MATCH_PARENT;
         } else {
-            screenH = ctx.getResources().getDisplayMetrics().heightPixels;
+            lp.width = WindowManager.LayoutParams.MATCH_PARENT;
         }
-        return Math.round(screenH * 0.92f);
-    }
-
-    private static void applyGamepadPresetsSheetLandscapeSizing(@NonNull View bottom, @NonNull Context ctx) {
-        if (ctx.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
-            return;
-        }
-        ViewGroup.LayoutParams lp = bottom.getLayoutParams();
-        int screenW = ctx.getResources().getDisplayMetrics().widthPixels;
-        int maxW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_max_width);
-        int minW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_min_width);
-        int targetW = Math.min(Math.max(Math.round(screenW * 0.38f), minW), maxW);
-        targetW = Math.min(targetW, screenW);
-        if (targetW <= 0) {
-            return;
-        }
-        if (lp.width != targetW) {
-            lp.width = targetW;
-        }
-        if (lp instanceof CoordinatorLayout.LayoutParams) {
-            ((CoordinatorLayout.LayoutParams) lp).gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        }
-        bottom.setLayoutParams(lp);
-    }
-
-    private static final class GamepadPresetsBottomSheetDialog extends BottomSheetDialog {
-        GamepadPresetsBottomSheetDialog(@NonNull Context context) {
-            super(context);
-        }
-
-        @Override
-        protected void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            applyLandscapeSizingIfReady();
-        }
-
-        private void applyLandscapeSizingIfReady() {
-            View bottom = findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (bottom != null) {
-                applyGamepadPresetsSheetLandscapeSizing(bottom, getContext());
-            }
-        }
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        window.setAttributes(lp);
     }
 
     private static class KeyInfo {
