@@ -894,6 +894,18 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    /** HID button mask for all MOUSE_BUTTON modules in keyboard hold lock (for rel-mouse moves). */
+    private int keyboardHoldLatchedMouseButtonMask() {
+        int mask = 0;
+        for (String moduleId : keyboardHoldLockedModuleIds) {
+            Integer mb = mouseButtonForComponentId(moduleId);
+            if (mb != null) {
+                mask |= semanticMouseButtonToHidMask(mb);
+            }
+        }
+        return mask;
+    }
+
     private static int intOr(@Nullable Integer v, int def) {
         return v != null ? v : def;
     }
@@ -1159,7 +1171,7 @@ public class GamepadFragment extends Fragment {
         int mx = (int) Math.max(-127, Math.min(127, -gy * k));
         int my = (int) Math.max(-127, Math.min(127, gx * k));
         if (mx != 0 || my != 0) {
-            cm.sendMouseMovement(mx, my, 0);
+            cm.sendMouseMovement(mx, my, keyboardHoldLatchedMouseButtonMask());
         }
     }
 
@@ -1187,7 +1199,7 @@ public class GamepadFragment extends Fragment {
         int cdx = (int) Math.max(-127, Math.min(127, dx * s));
         int cdy = (int) Math.max(-127, Math.min(127, dy * s));
         if (cdx != 0 || cdy != 0) {
-            cm.sendMouseMovement(cdx, cdy, 0);
+            cm.sendMouseMovement(cdx, cdy, keyboardHoldLatchedMouseButtonMask());
         }
     }
 
@@ -2987,11 +2999,6 @@ public class GamepadFragment extends Fragment {
             if (GamepadLayoutDocEditor.addTouchpadMouseButtonRight(layoutDoc)) {
                 applyLayoutDocFromMemory();
             }
-        } else if (choice.equals(getString(R.string.gamepad_menu_mouse_btn_module_size))) {
-            showMouseButtonModuleSizeDialog(componentId);
-        } else if (choice.equals(getString(R.string.gamepad_config_duplicate))) {
-            applyGamepadModuleDuplicateResult(
-                    GamepadLayoutDocEditor.duplicateModule(layoutDoc, moduleId), null);
         } else if (choice.equals(getString(R.string.gamepad_menu_configure_stick))) {
             showConfigDialog(moduleId);
         } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
@@ -3005,6 +3012,10 @@ public class GamepadFragment extends Fragment {
 
     private void showLongPressMenu(String componentId) {
         final String moduleId = resolveLongPressMenuModuleId(componentId);
+        if (mouseButtonForComponentId(componentId) != null) {
+            showMouseButtonModuleConfigSheet(componentId);
+            return;
+        }
         String componentName;
         final boolean hasKeyMapping;
         if ("stick_left".equals(moduleId)) {
@@ -3035,9 +3046,6 @@ public class GamepadFragment extends Fragment {
             hasKeyMapping = true;
         } else if (componentId != null && GamepadLayoutPresetConstants.isTouchpadModuleId(componentId)) {
             componentName = getString(R.string.gamepad_component_touchpad);
-            hasKeyMapping = false;
-        } else if (mouseButtonForComponentId(componentId) != null) {
-            componentName = getString(R.string.gamepad_component_mouse_button);
             hasKeyMapping = false;
         } else {
             if (moduleId != null) {
@@ -3073,15 +3081,6 @@ public class GamepadFragment extends Fragment {
             }
             if (findModuleById(GamepadLayoutPresetConstants.MOUSE_BTN_RIGHT_ID) == null) {
                 opts.add(getString(R.string.gamepad_menu_add_touchpad_mouse_r));
-            }
-        }
-        if (mouseButtonForComponentId(componentId) != null) {
-            opts.add(getString(R.string.gamepad_menu_mouse_btn_module_size));
-            if (GamepadLayoutDocEditor.hasTouchpad(layoutDoc)) {
-                opts.add(getString(R.string.gamepad_menu_touchpad_mouse_btn_size));
-            }
-            if (GamepadLayoutDocEditor.canDuplicateModule(moduleId, layoutDoc)) {
-                opts.add(getString(R.string.gamepad_config_duplicate));
             }
         }
         if (hasKeyMapping) {
@@ -3254,8 +3253,11 @@ public class GamepadFragment extends Fragment {
         dialog.show();
     }
 
-    /** Per-module radius scale for one MOUSE_BUTTON (50%–200%). */
-    private void showMouseButtonModuleSizeDialog(String componentId) {
+    /**
+     * Single scrollable sheet for a {@code MOUSE_BUTTON} (long-press): per-button size, optional layout-wide
+     * touchpad mouse-button scale when a touchpad exists, hold lock, Remove / Reset / Duplicate / Done.
+     */
+    private void showMouseButtonModuleConfigSheet(String componentId) {
         GamepadLayoutPresetDocument.GamepadModule m = findModuleById(componentId);
         if (m == null || layoutDoc == null || layoutDoc.layout == null) {
             return;
@@ -3277,15 +3279,33 @@ public class GamepadFragment extends Fragment {
             bindGamepadModuleColorSection(mouseColorSection, m);
         }
 
-        TextView title = new TextView(ctx);
-        title.setText(R.string.gamepad_mouse_btn_size_pct);
-        title.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
-        android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
-        seek.setMax(150);
-        seek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
+        TextView moduleSizeTitle = new TextView(ctx);
+        moduleSizeTitle.setText(R.string.gamepad_mouse_btn_size_pct);
+        moduleSizeTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        android.widget.SeekBar moduleScaleSeek = new android.widget.SeekBar(ctx);
+        moduleScaleSeek.setMax(150);
+        moduleScaleSeek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
 
-        root.addView(title);
-        root.addView(seek);
+        root.addView(moduleSizeTitle);
+        root.addView(moduleScaleSeek);
+
+        final android.widget.SeekBar layoutWideMouseSeek;
+        if (GamepadLayoutDocEditor.hasTouchpad(layoutDoc)) {
+            TextView globalTitle = new TextView(ctx);
+            globalTitle.setText(R.string.gamepad_touchpad_mouse_btn_size_title);
+            globalTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+            root.addView(globalTitle);
+
+            android.widget.SeekBar globalSeek = new android.widget.SeekBar(ctx);
+            globalSeek.setMax(150);
+            float cur = layoutDoc.layout.touchpadMouseButtonScale != null
+                    ? layoutDoc.layout.touchpadMouseButtonScale : 1.0f;
+            globalSeek.setProgress(Math.max(0, Math.min(150, Math.round(cur * 100f) - 50)));
+            root.addView(globalSeek);
+            layoutWideMouseSeek = globalSeek;
+        } else {
+            layoutWideMouseSeek = null;
+        }
 
         MaterialSwitch holdLockSwitch = new MaterialSwitch(ctx);
         holdLockSwitch.setText(R.string.gamepad_button_config_keyboard_hold_lock);
@@ -3306,9 +3326,20 @@ public class GamepadFragment extends Fragment {
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
-                .setTitle(R.string.gamepad_mouse_btn_module_size_title)
+                .setTitle(R.string.gamepad_component_mouse_button)
                 .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
         AlertDialog dialog = b.create();
+
+        Runnable commitEditsFromSeeks = () -> {
+            commitModuleDisplayLabelFromEdit(root.findViewById(R.id.module_name_edit), m);
+            m.scale = (moduleScaleSeek.getProgress() + 50) / 100f;
+            m.keyboardHoldLock = holdLockSwitch.isChecked() ? Boolean.TRUE : null;
+            if (layoutWideMouseSeek != null) {
+                layoutDoc.layout.touchpadMouseButtonScale =
+                        (layoutWideMouseSeek.getProgress() + 50) / 100f;
+            }
+        };
+
         appendGamepadModuleSheetFooter(ctx, root, m.id,
                 () -> {
                     m.scale = 1.0f;
@@ -3317,7 +3348,11 @@ public class GamepadFragment extends Fragment {
                     m.displayLabelColorArgb = null;
                     m.keyboardHoldLock = null;
                     holdLockSwitch.setChecked(false);
-                    seek.setProgress(50);
+                    moduleScaleSeek.setProgress(50);
+                    if (layoutWideMouseSeek != null) {
+                        layoutDoc.layout.touchpadMouseButtonScale = 1.0f;
+                        layoutWideMouseSeek.setProgress(50);
+                    }
                     TextInputEditText mouseName = root.findViewById(R.id.module_name_edit);
                     if (mouseName != null) {
                         mouseName.setText("");
@@ -3328,11 +3363,15 @@ public class GamepadFragment extends Fragment {
                     }
                     syncGamepadViewFromDoc();
                 },
-                null,
+                GamepadLayoutDocEditor.canDuplicateModule(m.id, layoutDoc)
+                        ? () -> {
+                            commitEditsFromSeeks.run();
+                            applyGamepadModuleDuplicateResult(
+                                    GamepadLayoutDocEditor.duplicateModule(layoutDoc, m.id), dialog);
+                        }
+                        : null,
                 () -> {
-                    commitModuleDisplayLabelFromEdit(root.findViewById(R.id.module_name_edit), m);
-                    m.scale = (seek.getProgress() + 50) / 100f;
-                    m.keyboardHoldLock = holdLockSwitch.isChecked() ? Boolean.TRUE : null;
+                    commitEditsFromSeeks.run();
                     applyLayoutDocFromMemory();
                     dialog.dismiss();
                 },
@@ -5383,7 +5422,8 @@ public class GamepadFragment extends Fragment {
         xAdj = Math.max(-1.0f, Math.min(1.0f, xAdj));
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
-        cm.sendMouseMovement((int) (xAdj * 127), (int) (yAdj * 127), 0);
+        cm.sendMouseMovement(
+                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
     }
 
     private void sendLeftStickMouse(ConnectionManager cm, float x, float y) {
@@ -5421,7 +5461,8 @@ public class GamepadFragment extends Fragment {
         xAdj = Math.max(-1.0f, Math.min(1.0f, xAdj));
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
-        cm.sendMouseMovement((int)(xAdj * 127), (int)(yAdj * 127), 0);
+        cm.sendMouseMovement(
+                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
     }
 
     private void sendLeftStickKeys(ConnectionManager cm, float x, float y, boolean isConnected) {
