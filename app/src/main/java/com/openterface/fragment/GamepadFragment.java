@@ -1433,7 +1433,9 @@ public class GamepadFragment extends Fragment {
         });
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        // Do not call setHasFixedSize(true): layout uses wrap_content height (lint InvalidSetHasFixedSize).
+        // Sheet uses a fixed-height list so BottomSheetBehavior does not resize mid-drag; size does not
+        // depend on adapter count, so fixed size is allowed and avoids extra layout passes.
+        recycler.setHasFixedSize(true);
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
@@ -1509,6 +1511,22 @@ public class GamepadFragment extends Fragment {
             }
 
             @Override
+            public void onSelectedChanged(@Nullable RecyclerView.ViewHolder viewHolder, int actionState) {
+                super.onSelectedChanged(viewHolder, actionState);
+                View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+                if (bottom == null) {
+                    return;
+                }
+                BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                    behavior.setDraggable(false);
+                    behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                } else if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
+                    behavior.setDraggable(true);
+                }
+            }
+
+            @Override
             public void clearView(@NonNull RecyclerView recyclerView,
                     @NonNull RecyclerView.ViewHolder viewHolder) {
                 super.clearView(recyclerView, viewHolder);
@@ -1568,8 +1586,8 @@ public class GamepadFragment extends Fragment {
 
     /**
      * Refreshes preset rows then resets scroll and forces a layout pass on the sheet and bottom
-     * sheet container. Needed after bulk list changes (e.g. reset shipped layouts) so a
-     * {@code wrap_content} RecyclerView and the sheet height present the full list correctly.
+     * sheet container. Needed after bulk list changes (e.g. reset shipped layouts) so the list
+     * and sheet present correctly.
      */
     private void refreshPresetSheetAdapterAndResetListPresentation(
             @NonNull RecyclerView recycler,
