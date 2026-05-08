@@ -50,7 +50,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/edit_mode_toggle"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="@dimen/gamepad_toolbar_button_min_height"
             android:layout_height="@dimen/gamepad_toolbar_button_min_height"
             android:layout_marginStart="@dimen/spacing_tiny"
@@ -60,15 +60,14 @@
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:minWidth="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
             app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
             app:icon="@drawable/ic_edit"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
-            app:iconTint="@color/gamepad_edit_toggle_icon_tint"
-            app:strokeColor="@color/gamepad_edit_toggle_stroke_tint" />
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
         <View
             android:layout_width="0dp"
