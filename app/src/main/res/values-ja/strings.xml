@@ -937,6 +937,8 @@ TechxArtisan により</string>
     <string name="gamepad_module_color_custom_selected_cd">カスタム RGB（選択中）</string>
     <string name="gamepad_button_cap_label_hint">ボタン上の名前（任意、最大 6 文字または絵文字）</string>
     <string name="gamepad_button_cap_label_color_title">ボタン上の名前の色</string>
+    <string name="gamepad_module_name_hint">モジュール上の名前（任意、最大 6 文字または絵文字）</string>
+    <string name="gamepad_module_name_color_title">名前テキストの色</string>
     <string name="gamepad_button_shape_title">形状と傾き</string>
     <string name="gamepad_button_shape_summary">面を横・縦に伸ばします（1.0 は円形の足跡）。傾きを設定します。角のスライダーは四角・カプセル・楕円の角の立ち上がりを制御します。</string>
     <string name="gamepad_button_shape_width">幅</string>

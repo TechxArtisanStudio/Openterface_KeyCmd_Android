@@ -975,6 +975,8 @@ von TechxArtisan</string>
     <string name="gamepad_module_color_custom_selected_cd">Benutzerdefiniertes RGB (ausgewählt)</string>
     <string name="gamepad_button_cap_label_hint">Name auf der Taste (optional, bis zu 6 Zeichen oder Emoji)</string>
     <string name="gamepad_button_cap_label_color_title">Farbe des Namens auf der Taste</string>
+    <string name="gamepad_module_name_hint">Name auf dem Modul (optional, bis zu 6 Zeichen oder Emoji)</string>
+    <string name="gamepad_module_name_color_title">Textfarbe des Namens</string>
     <string name="gamepad_button_shape_title">Form und Neigung</string>
     <string name="gamepad_button_shape_summary">Taste horizontal und vertikal strecken (1.0 = runde Grundform), dann Neigung setzen. Der Ecken-Schieberegler steuert weiterhin eckig, Pille oder oval.</string>
     <string name="gamepad_button_shape_width">Breite</string>

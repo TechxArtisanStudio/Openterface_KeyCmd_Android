@@ -840,6 +840,44 @@ public class GamepadView extends View {
         }
     }
 
+    /** Fitted 1–2 line text centered on the analog stick inner thumb cap. */
+    private void drawStickInnerCapLabel(Canvas canvas, float innerCx, float innerCy, float capR, String raw, int argb) {
+        String text = normalizeCapText(raw);
+        if (text.isEmpty()) {
+            return;
+        }
+        float maxW = capR * 1.65f;
+        float maxH = capR * 1.25f;
+        float maxSp = capR * 0.52f;
+        float minSp = capR * 0.14f;
+        boolean useBold = !mostlyEmojiOrSymbol(text);
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setColor(argb);
+        tp.setTextAlign(Paint.Align.LEFT);
+        tp.setTypeface(useBold ? retroLabelTypeface : Typeface.DEFAULT);
+        tp.setShadowLayer(1f, 0f, 0.5f, applyAlphaInt(0xFF000000, 35));
+        for (int iter = 0; iter < 30; iter++) {
+            float sp = maxSp - (maxSp - minSp) * iter / 29f;
+            tp.setTextSize(sp);
+            tp.setFakeBoldText(useBold);
+            StaticLayout sl = StaticLayout.Builder.obtain(text, 0, text.length(), tp, (int) maxW)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setMaxLines(2)
+                    .setEllipsize(TextUtils.TruncateAt.END)
+                    .setIncludePad(false)
+                    .build();
+            if (sl.getHeight() <= maxH || iter == 29) {
+                float dy = innerCy - sl.getHeight() / 2f + capR * 0.06f;
+                canvas.save();
+                canvas.translate(innerCx - maxW / 2f, dy);
+                sl.draw(canvas);
+                canvas.restore();
+                tp.clearShadowLayer();
+                return;
+            }
+        }
+    }
+
     private void drawFittedCapsuleLabel(Canvas canvas, RectF bounds, String raw, int textColorArgb) {
         String text = normalizeCapText(raw);
         if (text.isEmpty()) {
@@ -1196,7 +1234,8 @@ public class GamepadView extends View {
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? lfL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? rtL : null,
                 m.stickVisualVariant,
-                accent);
+                accent,
+                m);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1235,7 +1274,8 @@ public class GamepadView extends View {
         }
         drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
                 m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent,
-                keyMappingHintsVisible, labelRadialScale, crossArmDec, iconPool);
+                keyMappingHintsVisible, labelRadialScale, crossArmDec, iconPool,
+                presetDisplayLabel(m), m.displayLabelColorArgb);
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -1262,7 +1302,7 @@ public class GamepadView extends View {
         float y = m.anchorY * h;
         float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
         float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
-        drawTouchpadModule(canvas, m.id, x, y, ww, hh, m.moduleAccentArgb);
+        drawTouchpadModule(canvas, m, x, y, ww, hh);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1297,7 +1337,7 @@ public class GamepadView extends View {
             hint = null;
         }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
-        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, cap, hint, accent);
+        drawShoulderCapsuleForModule(canvas, x, y, ww, hh, m.id, cap, hint, accent, m.displayLabelColorArgb);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1337,8 +1377,10 @@ public class GamepadView extends View {
         }
     }
 
-    private void drawTouchpadModule(Canvas canvas, String id, float cx, float cy, float ww, float hh,
-                                    @Nullable Integer moduleAccentArgb) {
+    private void drawTouchpadModule(Canvas canvas, @NonNull GamepadLayoutPresetDocument.GamepadModule m,
+                                    float cx, float cy, float ww, float hh) {
+        String id = m.id;
+        @Nullable Integer moduleAccentArgb = m.moduleAccentArgb;
         float density = getResources().getDisplayMetrics().density;
         float corner = 10f * density;
         float borderW = 1f * density;
@@ -1362,6 +1404,9 @@ public class GamepadView extends View {
             surfBot = ColorUtils.blendARGB(surfBot, ac, 0.42f);
             borderCol = ColorUtils.blendARGB(borderCol, ac, 0.45f);
             labelCol = ColorUtils.blendARGB(labelCol, ac, 0.35f);
+        }
+        if (m.displayLabelColorArgb != null) {
+            labelCol = GamepadModuleAccent.toOpaqueArgb(m.displayLabelColorArgb);
         }
         Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
                 surfTop, surfBot, Shader.TileMode.CLAMP);
@@ -1392,13 +1437,17 @@ public class GamepadView extends View {
         canvas.drawRoundRect(inset, ir, ir, retroRingPaint);
 
         if (keyMappingHintsVisible) {
+            String title = presetDisplayLabel(m);
+            if (title == null || title.isEmpty()) {
+                title = "TOUCHPAD";
+            }
             retroTextPaint.setColor(labelCol);
             retroTextPaint.setTextAlign(Paint.Align.CENTER);
             retroTextPaint.setTextSize(Math.min(ww, hh) * 0.095f);
             retroTextPaint.setFakeBoldText(true);
             retroTextPaint.setLetterSpacing(0.12f);
             retroTextPaint.setTypeface(retroLabelTypeface);
-            canvas.drawText("TOUCHPAD", cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
+            canvas.drawText(title, cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
             retroTextPaint.setLetterSpacing(0f);
         }
     }
@@ -1412,7 +1461,8 @@ public class GamepadView extends View {
                                           String boundsId, String shortLabel,
                                           String upLabel, String downLabel, String leftLabel, String rightLabel,
                                           @androidx.annotation.Nullable String stickVisualVariant,
-                                          int accentPrimary) {
+                                          int accentPrimary,
+                                          @Nullable GamepadLayoutPresetDocument.GamepadModule stickModule) {
         // Preset modules carry size in {@code moduleScale}; legacy SIMPLE uses global {@link #stickSizeScale}.
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         float scaledRadius = baseRadius * globalStickMul * moduleScale;
@@ -1502,6 +1552,13 @@ public class GamepadView extends View {
         GamepadStickVisualArt.drawCapOverlay(canvas, rightStickFlatUi ? null : stickVisualVariant, innerCx, innerCy, capR,
                 accentPrimary, retroBodyPaint, retroRingPaint, retroGlossPaint);
 
+        String presetCap = stickModule != null ? presetDisplayLabel(stickModule) : null;
+        boolean hasPresetCap = presetCap != null && !presetCap.isEmpty();
+        int presetCapArgb = Color.parseColor("#F2F1F5");
+        if (hasPresetCap && stickModule != null && stickModule.displayLabelColorArgb != null) {
+            presetCapArgb = GamepadModuleAccent.toOpaqueArgb(stickModule.displayLabelColorArgb);
+        }
+
         if (upLabel != null) {
             if (keyMappingHintsVisible) {
                 float lr = scaledRadius * 1.08f;
@@ -1523,7 +1580,10 @@ public class GamepadView extends View {
                 canvas.drawText(rightLabel, cx + lr * 0.74f, cy + lr * 0.12f, dirPaint);
                 dirPaint.clearShadowLayer();
             }
-        } else if (!rightStickFlatUi) {
+        }
+        if (hasPresetCap) {
+            drawStickInnerCapLabel(canvas, innerCx, innerCy, capR, presetCap, presetCapArgb);
+        } else if (upLabel == null && !rightStickFlatUi) {
             Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             labelPaint.setColor(Color.parseColor("#F2F1F5"));
             labelPaint.setTextSize(baseRadius * moduleScale * 0.48f);
@@ -1540,6 +1600,8 @@ public class GamepadView extends View {
                 l3Paint.setTextAlign(Paint.Align.CENTER);
                 canvas.drawText("CLICK", cx, cy + baseRadius * moduleScale * 0.58f, l3Paint);
             }
+        } else if (upLabel == null && rightStickFlatUi) {
+            drawStickInnerCapLabel(canvas, innerCx, innerCy, capR, shortLabel, Color.parseColor("#F2F1F5"));
         }
     }
 
@@ -1552,7 +1614,9 @@ public class GamepadView extends View {
                                    @Nullable Float dpadSplitOuterReachRatio, int accentPrimary,
                                    boolean showMappingHints, float labelRadialScale,
                                    @NonNull String crossArmDecoration,
-                                   @Nullable Drawable[] dpadDirectionIcons) {
+                                   @Nullable Drawable[] dpadDirectionIcons,
+                                   @Nullable String centerHubLabel,
+                                   @Nullable Integer centerHubLabelArgb) {
         float density = getResources().getDisplayMetrics().density;
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, globalStickMul, moduleScale,
@@ -1561,7 +1625,7 @@ public class GamepadView extends View {
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
                 retroLabelTypeface, componentBounds, dynamicHitTestOrder, dpadSplitGapRatio,
                 dpadSplitOuterReachRatio, showMappingHints, labelRadialScale,
-                crossArmDecoration, dpadDirectionIcons);
+                crossArmDecoration, dpadDirectionIcons, centerHubLabel, centerHubLabelArgb);
     }
 
     private void ensureDpadDirectionIconDrawables() {
@@ -1586,7 +1650,8 @@ public class GamepadView extends View {
 
     private void drawShoulderCapsuleForModule(Canvas canvas, float cx, float cy, float width, float height,
                                               String moduleId, @Nullable String capOnCapsule,
-                                              @Nullable String mappingHint, int accentPrimary) {
+                                              @Nullable String mappingHint, int accentPrimary,
+                                              @Nullable Integer capLabelColorArgb) {
         float density = getResources().getDisplayMetrics().density;
         RectF bounds = new RectF(cx - width / 2f, cy - height / 2f, cx + width / 2f, cy + height / 2f);
         componentBounds.put(moduleId, bounds);
@@ -1613,7 +1678,10 @@ public class GamepadView extends View {
         canvas.drawRoundRect(bounds, cr, cr, retroRingPaint);
 
         if (capOnCapsule != null && !capOnCapsule.isEmpty()) {
-            drawFittedCapsuleLabel(canvas, bounds, capOnCapsule, Color.WHITE);
+            int capCol = capLabelColorArgb != null
+                    ? GamepadModuleAccent.toOpaqueArgb(capLabelColorArgb)
+                    : Color.WHITE;
+            drawFittedCapsuleLabel(canvas, bounds, capOnCapsule, capCol);
         }
         if (keyMappingHintsVisible && mappingHint != null && !mappingHint.isEmpty()) {
             drawMappingHintCallout(canvas, cx, bounds.bottom + 4f * density, mappingHint);
@@ -1806,7 +1874,7 @@ public class GamepadView extends View {
                                  String upLabel, String downLabel, String leftLabel, String rightLabel) {
         String boundsId = "stick_" + label.toLowerCase();
         drawAnalogStickForModule(canvas, cx, cy, radius, 1f, boundsId, label,
-                upLabel, downLabel, leftLabel, rightLabel, null, themeAccentPrimary);
+                upLabel, downLabel, leftLabel, rightLabel, null, themeAccentPrimary, null);
     }
 
     private void drawButton(Canvas canvas, float cx, float cy, float radius, String label, int color) {

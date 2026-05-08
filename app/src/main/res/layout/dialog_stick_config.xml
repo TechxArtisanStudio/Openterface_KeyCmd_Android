@@ -55,6 +55,8 @@
             android:layout_marginBottom="8dp"
             tools:text="Module ID: stick_left" />
 
+        <include layout="@layout/include_gamepad_module_name_section" />
+
         <TextView
             android:id="@+id/stick_config_dpad_hint"
             android:layout_width="match_parent"

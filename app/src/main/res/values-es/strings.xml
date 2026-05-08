@@ -976,6 +976,8 @@ por TechxArtisan</string>
     <string name="gamepad_module_color_custom_selected_cd">RGB personalizado (seleccionado)</string>
     <string name="gamepad_button_cap_label_hint">Nombre en el botón (opcional, hasta 6 caracteres o emoji)</string>
     <string name="gamepad_button_cap_label_color_title">Color del nombre en el botón</string>
+    <string name="gamepad_module_name_hint">Nombre en el módulo (opcional, hasta 6 caracteres o emoji)</string>
+    <string name="gamepad_module_name_color_title">Color del texto del nombre</string>
     <string name="gamepad_button_shape_title">Forma e inclinación</string>
     <string name="gamepad_button_shape_summary">Estire la cara horizontal y verticalmente (1.0 = huella circular) y defina la inclinación. El control de esquinas sigue definiendo cuadrado, píldora u ovalo.</string>
     <string name="gamepad_button_shape_width">Anchura</string>

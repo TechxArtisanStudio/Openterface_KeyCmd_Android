@@ -146,13 +146,15 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Float widthNorm;
         @Nullable public Float heightNorm;
         /**
-         * Optional short label centered on the control cap (BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON).
-         * At most {@link GamepadCapLabels#MAX_CAP_LABEL_CODE_POINTS} Unicode code points (emoji usually counts as one each).
+         * Optional short label (max {@link GamepadCapLabels#MAX_CAP_LABEL_CODE_POINTS} code points): centered on
+         * BUTTON / MOUSE_BUTTON / SHOULDER / TRIGGER caps; STICK_KEY / STICK_MOUSE thumb cap center; DPAD hub center;
+         * TOUCHPAD center title (defaults to {@code TOUCHPAD} when null).
          */
         @Nullable public String displayLabel;
         /**
-         * Optional ARGB for {@link #displayLabel} when drawn on a BUTTON / MOUSE_BUTTON cap. Null = use the preset face
-         * style’s default label color (same as layouts that omit this field).
+         * Optional ARGB for {@link #displayLabel}. Null = theme / module-style default (face button cap style for
+         * BUTTON / MOUSE_BUTTON; blended accent for touchpad title; white on shoulder/trigger when unset; stick /
+         * D-pad hub uses theme-appropriate contrast).
          */
         @Nullable public Integer displayLabelColorArgb;
         /** STICK_* / DPAD: HID key codes for four-way digital input (virtual stick ring or D-pad). */

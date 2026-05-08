@@ -896,6 +896,8 @@
     <string name="gamepad_module_color_custom_selected_cd">自定义 RGB（已选）</string>
     <string name="gamepad_button_cap_label_hint">按键上的名称（可选，最多 6 个字符或表情符号）</string>
     <string name="gamepad_button_cap_label_color_title">按键上名称的颜色</string>
+    <string name="gamepad_module_name_hint">模块上的名称（可选，最多 6 个字符或表情符号）</string>
+    <string name="gamepad_module_name_color_title">名称文字颜色</string>
     <string name="gamepad_button_config_dialog_title_slot_a">主按键</string>
     <string name="gamepad_button_config_dialog_title_slot_b">第二按键</string>
     <string name="gamepad_button_config_show_mapped_key_label">在按键下方显示映射按键标签</string>

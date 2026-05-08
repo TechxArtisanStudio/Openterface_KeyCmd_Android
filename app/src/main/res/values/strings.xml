@@ -904,6 +904,9 @@ by TechxArtisan</string>
     <string name="gamepad_button_config_title_placeholder">Button</string>
     <string name="gamepad_button_cap_label_hint">Name on button (optional, up to 6 characters or emoji)</string>
     <string name="gamepad_button_cap_label_color_title">Name on button color</string>
+    <!-- Shared gamepad module name + color (buttons, sticks, D-pad, touchpad, mouse buttons, shoulders/triggers). -->
+    <string name="gamepad_module_name_hint">Name on module (optional, up to 6 characters or emoji)</string>
+    <string name="gamepad_module_name_color_title">Name text color</string>
     <string name="gamepad_button_config_mapped_key">Mapped key (tap to change)</string>
     <string name="gamepad_button_config_show_mapped_key_label">Show mapped key label under button</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Toggle whether the mapped key name appears in a label under this button</string>

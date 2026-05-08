@@ -11,6 +11,10 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
+import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -126,7 +130,9 @@ public final class GamepadDpadVariantArt {
             boolean showMappingHints,
             float labelRadialScale,
             @NonNull String crossArmDecoration,
-            @Nullable Drawable[] dpadDirectionIcons) {
+            @Nullable Drawable[] dpadDirectionIcons,
+            @Nullable String centerHubLabel,
+            @Nullable Integer centerHubLabelArgb) {
         String v = normalizeVariant(variant);
         float gapRatio = GamepadLayoutPresetConstants.clampDpadSplitGapRatio(dpadSplitGapRatio);
         float outerReachRatio = GamepadLayoutPresetConstants.clampDpadSplitOuterReachRatio(dpadSplitOuterReachRatio);
@@ -144,17 +150,19 @@ public final class GamepadDpadVariantArt {
                 drawSplit(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
                         retroShadowPaint, labelTypeface, componentBounds, hitOrder, gapRatio, outerReachRatio,
-                        showMappingHints, labelRadialScale);
+                        showMappingHints, labelRadialScale, centerHubLabel, centerHubLabelArgb);
                 break;
             case GamepadLayoutPresetConstants.DPAD_VARIANT_DISC:
                 drawDisc(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
-                        retroShadowPaint, labelTypeface, showMappingHints, labelRadialScale);
+                        retroShadowPaint, labelTypeface, showMappingHints, labelRadialScale,
+                        centerHubLabel, centerHubLabelArgb);
                 break;
             case GamepadLayoutPresetConstants.DPAD_VARIANT_PIVOT:
                 drawPivot(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
-                        retroShadowPaint, labelTypeface, showMappingHints, labelRadialScale);
+                        retroShadowPaint, labelTypeface, showMappingHints, labelRadialScale,
+                        centerHubLabel, centerHubLabelArgb);
                 break;
             case GamepadLayoutPresetConstants.DPAD_VARIANT_FLOATING:
                 canvas.save();
@@ -162,21 +170,21 @@ public final class GamepadDpadVariantArt {
                 drawCross(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
                         retroShadowPaint, retroBodyPaint, labelTypeface, true, labelRadialScale,
-                        crossArmDecoration, dpadDirectionIcons);
+                        crossArmDecoration, dpadDirectionIcons, centerHubLabel, centerHubLabelArgb);
                 canvas.restore();
                 break;
             case GamepadLayoutPresetConstants.DPAD_VARIANT_CLICKY:
                 drawCross(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
                         retroShadowPaint, retroBodyPaint, labelTypeface, true, labelRadialScale,
-                        crossArmDecoration, dpadDirectionIcons);
+                        crossArmDecoration, dpadDirectionIcons, centerHubLabel, centerHubLabelArgb);
                 break;
             case GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS:
             default:
                 drawCross(canvas, cx, cy, scaledHalf, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                         activeStickDirections, themeAccentPrimary, retroDpadFillPaint, retroRingPaint, retroGlossPaint,
                         retroShadowPaint, retroBodyPaint, labelTypeface, false, labelRadialScale,
-                        crossArmDecoration, dpadDirectionIcons);
+                        crossArmDecoration, dpadDirectionIcons, centerHubLabel, centerHubLabelArgb);
                 break;
         }
     }
@@ -188,7 +196,9 @@ public final class GamepadDpadVariantArt {
             Paint retroDpadFillPaint, Paint retroRingPaint, Paint retroGlossPaint, Paint retroShadowPaint,
             Typeface labelTypeface, java.util.Map<String, RectF> componentBounds, List<String> hitOrder,
             float gapRatio, float outerReachRatio,
-            boolean showMappingHints, float labelRadialScale) {
+            boolean showMappingHints, float labelRadialScale,
+            @Nullable String centerHubLabel,
+            @Nullable Integer centerHubLabelArgb) {
         float outerDist = registerSplitDpadHitRects(cx, cy, half, gapRatio, outerReachRatio, componentBounds, hitOrder);
         RectF up = componentBounds.get("dpad_up");
         RectF dn = componentBounds.get("dpad_down");
@@ -209,6 +219,9 @@ public final class GamepadDpadVariantArt {
         float labelR = Math.max(outerDist, half * 0.35f);
         drawDirectionLabels(canvas, cx, cy, labelR, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, labelTypeface, showMappingHints, labelRadialScale);
+        float gapPx = half * gapRatio;
+        drawOptionalCenterHubLabel(canvas, cx, cy, Math.max(6f * density, gapPx * 0.42f), labelTypeface,
+                centerHubLabel, centerHubLabelArgb, Color.WHITE);
     }
 
     private static void drawSplitPad(
@@ -246,7 +259,9 @@ public final class GamepadDpadVariantArt {
             Set<String> activeStickDirections, int themeAccentPrimary,
             Paint retroDpadFillPaint, Paint retroRingPaint, Paint retroGlossPaint, Paint retroShadowPaint,
             Typeface labelTypeface,
-            boolean showMappingHints, float labelRadialScale) {
+            boolean showMappingHints, float labelRadialScale,
+            @Nullable String centerHubLabel,
+            @Nullable Integer centerHubLabelArgb) {
         retroShadowPaint.setMaskFilter(new BlurMaskFilter(4f * density, BlurMaskFilter.Blur.NORMAL));
         retroShadowPaint.setColor(0x48000000);
         canvas.save();
@@ -272,6 +287,8 @@ public final class GamepadDpadVariantArt {
         canvas.drawCircle(cx, cy, half * 0.98f, retroRingPaint);
         drawDirectionLabels(canvas, cx, cy, half, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, labelTypeface, showMappingHints, labelRadialScale);
+        drawOptionalCenterHubLabel(canvas, cx, cy, Math.max(8f * density, half * 0.18f), labelTypeface,
+                centerHubLabel, centerHubLabelArgb, Color.WHITE);
     }
 
     private static void drawDiscWedge(
@@ -299,7 +316,9 @@ public final class GamepadDpadVariantArt {
             Set<String> activeStickDirections, int themeAccentPrimary,
             Paint retroDpadFillPaint, Paint retroRingPaint, Paint retroGlossPaint, Paint retroShadowPaint,
             Typeface labelTypeface,
-            boolean showMappingHints, float labelRadialScale) {
+            boolean showMappingHints, float labelRadialScale,
+            @Nullable String centerHubLabel,
+            @Nullable Integer centerHubLabelArgb) {
         float rh = half * 0.42f;
         float rw = half * 0.88f;
         RectF hbar = new RectF(cx - rw, cy - rh, cx + rw, cy + rh);
@@ -348,6 +367,8 @@ public final class GamepadDpadVariantArt {
         canvas.drawCircle(cx, cy, hub, retroDpadFillPaint);
         drawDirectionLabels(canvas, cx, cy, half, density, boundsId, upLabel, downLabel, leftLabel, rightLabel,
                 activeStickDirections, labelTypeface, showMappingHints, labelRadialScale);
+        drawOptionalCenterHubLabel(canvas, cx, cy, Math.max(8f * density, hub * 0.85f), labelTypeface,
+                centerHubLabel, centerHubLabelArgb, Color.WHITE);
     }
 
     private static void drawCross(
@@ -358,7 +379,9 @@ public final class GamepadDpadVariantArt {
             Paint retroBodyPaint, Typeface labelTypeface, boolean thickRim,
             float labelRadialScale,
             @NonNull String crossArmDecoration,
-            @Nullable Drawable[] dpadDirectionIcons) {
+            @Nullable Drawable[] dpadDirectionIcons,
+            @Nullable String centerHubLabel,
+            @Nullable Integer centerHubLabelArgb) {
         float barHalf = half * 0.36f;
         float corner = Math.min(11f * density, barHalf * 0.55f);
         RectF vert = new RectF(cx - barHalf, cy - half, cx + barHalf, cy + half);
@@ -420,6 +443,8 @@ public final class GamepadDpadVariantArt {
         drawCrossDirectionDecorations(canvas, cx, cy, half, barHalf, hub, density, boundsId,
                 upLabel, downLabel, leftLabel, rightLabel, activeStickDirections, labelTypeface,
                 labelRadialScale, crossArmDecoration, dpadDirectionIcons);
+        drawOptionalCenterHubLabel(canvas, cx, cy, Math.max(6f * density, hub * 0.92f), labelTypeface,
+                centerHubLabel, centerHubLabelArgb, Color.WHITE);
     }
 
     private static void drawCrossDirectionDecorations(
@@ -559,6 +584,54 @@ public final class GamepadDpadVariantArt {
         dirPaint.setColor(activeStickDirections.contains(boundsId + "_right") ? activeLabel : dim);
         canvas.drawText(rightLabel != null ? rightLabel : "D", cx + lr * 0.70f, cy + lr * 0.14f + labelLift, dirPaint);
         dirPaint.clearShadowLayer();
+    }
+
+    private static void drawOptionalCenterHubLabel(
+            Canvas canvas,
+            float cx,
+            float cy,
+            float maxRadiusPx,
+            Typeface labelTypeface,
+            @Nullable String raw,
+            @Nullable Integer labelArgb,
+            int fallbackArgb) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return;
+        }
+        String text = GamepadCapLabels.clampToMaxCodePoints(raw.trim(), GamepadCapLabels.MAX_CAP_LABEL_CODE_POINTS);
+        if (text.isEmpty()) {
+            return;
+        }
+        int argb = labelArgb != null ? GamepadModuleAccent.toOpaqueArgb(labelArgb) : fallbackArgb;
+        float maxW = maxRadiusPx * 1.85f;
+        float maxH = maxRadiusPx * 1.35f;
+        float maxSp = maxRadiusPx * 0.58f;
+        float minSp = maxRadiusPx * 0.14f;
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setColor(argb);
+        tp.setTextAlign(Paint.Align.LEFT);
+        tp.setTypeface(labelTypeface);
+        tp.setFakeBoldText(true);
+        tp.setShadowLayer(1f, 0f, 0.75f, applyAlphaInt(0xFF000000, 45));
+        for (int iter = 0; iter < 28; iter++) {
+            float sp = maxSp - (maxSp - minSp) * iter / 27f;
+            tp.setTextSize(sp);
+            StaticLayout sl = StaticLayout.Builder.obtain(text, 0, text.length(), tp, (int) maxW)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                    .setMaxLines(2)
+                    .setEllipsize(TextUtils.TruncateAt.END)
+                    .setIncludePad(false)
+                    .build();
+            if (sl.getHeight() <= maxH || iter == 27) {
+                float dy = cy - sl.getHeight() / 2f + maxRadiusPx * 0.05f;
+                canvas.save();
+                canvas.translate(cx - maxW / 2f, dy);
+                sl.draw(canvas);
+                canvas.restore();
+                tp.clearShadowLayer();
+                return;
+            }
+        }
     }
 
     private static int applyAlphaInt(int color, int alpha) {

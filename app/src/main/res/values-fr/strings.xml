@@ -975,6 +975,8 @@ par TechxArtisan</string>
     <string name="gamepad_module_color_custom_selected_cd">RVB personnalisé (sélectionné)</string>
     <string name="gamepad_button_cap_label_hint">Nom sur le bouton (facultatif, jusqu’à 6 caractères ou un émoji)</string>
     <string name="gamepad_button_cap_label_color_title">Couleur du nom sur le bouton</string>
+    <string name="gamepad_module_name_hint">Nom sur le module (facultatif, jusqu’à 6 caractères ou un émoji)</string>
+    <string name="gamepad_module_name_color_title">Couleur du texte du nom</string>
     <string name="gamepad_button_shape_title">Forme et inclinaison</string>
     <string name="gamepad_button_shape_summary">Étirez la face horizontalement et verticalement (1,0 = empreinte circulaire), puis définissez l’inclinaison. Le curseur des coins contrôle toujours carré, pilule ou ovale.</string>
     <string name="gamepad_button_shape_width">Largeur</string>
