@@ -56,6 +56,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.widget.PopupMenu;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -1482,6 +1483,47 @@ public class GamepadFragment extends Fragment {
         recycler.setLayoutManager(new LinearLayoutManager(sheetCtx));
         recycler.setAdapter(adapter);
         refreshPresetSheetAdapter(adapter);
+
+        ItemTouchHelper presetReorderTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                    @NonNull RecyclerView.ViewHolder viewHolder,
+                    @NonNull RecyclerView.ViewHolder target) {
+                int from = viewHolder.getBindingAdapterPosition();
+                int to = target.getBindingAdapterPosition();
+                if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
+                    return false;
+                }
+                adapter.moveItem(from, to);
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView,
+                    @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                List<String> ids = adapter.consumePendingReorderIds();
+                if (ids != null) {
+                    String err = presetRepository.reorderPresets(ids);
+                    if (err != null) {
+                        refreshPresetSheetAdapter(adapter);
+                        Toast.makeText(sheetCtx, err, Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        });
+        adapter.setDragHelper(presetReorderTouchHelper);
+        presetReorderTouchHelper.attachToRecyclerView(recycler);
 
         if (newLayoutBtn != null) {
             newLayoutBtn.setOnClickListener(v -> {

@@ -589,6 +589,7 @@
     <string name="gamepad_presets_reset_shipped_confirm">重置内置</string>
     <string name="gamepad_presets_reset_shipped_done">已重置内置布局</string>
     <string name="gamepad_preset_row_menu_cd">布局选项</string>
+    <string name="gamepad_preset_row_drag_handle_cd">拖动以调整布局顺序</string>
     <string name="gamepad_preset_row_share_cd">分享布局</string>
     <string name="gamepad_preset_menu_rename">重命名</string>
     <string name="gamepad_preset_menu_duplicate">复制</string>

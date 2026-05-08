@@ -436,6 +436,7 @@ TechxArtisan により</string>
     <string name="gamepad_presets_reset_shipped_confirm">同梱をリセット</string>
     <string name="gamepad_presets_reset_shipped_done">同梱レイアウトをリセットしました</string>
     <string name="gamepad_preset_row_menu_cd">レイアウトのオプション</string>
+    <string name="gamepad_preset_row_drag_handle_cd">ドラッグしてレイアウトの順序を変更</string>
     <string name="gamepad_preset_row_share_cd">レイアウトを共有</string>
     <string name="gamepad_preset_menu_rename">名前を変更</string>
     <string name="gamepad_preset_menu_duplicate">複製</string>

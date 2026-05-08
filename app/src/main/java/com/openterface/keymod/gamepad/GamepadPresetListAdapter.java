@@ -3,6 +3,7 @@ package com.openterface.keymod.gamepad;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -10,7 +11,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatImageView;
 import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
@@ -79,13 +82,54 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     private final List<Row> rows = new ArrayList<>();
     @Nullable
     private final Listener listener;
+    @Nullable
+    private ItemTouchHelper dragHelper;
+    private boolean reorderPending;
 
     public GamepadPresetListAdapter(@Nullable Listener listener) {
         this.listener = listener;
     }
 
+    public void setDragHelper(@Nullable ItemTouchHelper helper) {
+        this.dragHelper = helper;
+    }
+
+    /**
+     * Reorders the in-memory row list during a drag. Call {@link #consumePendingReorderIds()} after the
+     * gesture ends to persist via {@link GamepadLayoutPresetRepository#reorderPresets}.
+     */
+    public void moveItem(int fromPosition, int toPosition) {
+        if (fromPosition < 0 || toPosition < 0 || fromPosition >= rows.size() || toPosition >= rows.size()) {
+            return;
+        }
+        if (fromPosition == toPosition) {
+            return;
+        }
+        Row item = rows.remove(fromPosition);
+        rows.add(toPosition, item);
+        notifyItemMoved(fromPosition, toPosition);
+        reorderPending = true;
+    }
+
+    /**
+     * @return ordered preset ids if the list changed during the last drag; otherwise {@code null}.
+     */
+    @Nullable
+    public List<String> consumePendingReorderIds() {
+        if (!reorderPending) {
+            return null;
+        }
+        reorderPending = false;
+        List<String> ids = new ArrayList<>(rows.size());
+        for (Row r : rows) {
+            ids.add(r.id);
+        }
+        return ids;
+    }
+
     public void setData(@NonNull List<GamepadLayoutPresetRepository.PresetRef> presets,
                         @Nullable String activeId) {
+        reorderPending = false;
         List<Row> newRows = new ArrayList<>(presets.size());
         for (GamepadLayoutPresetRepository.PresetRef r : presets) {
             if (r == null || r.id == null) {
@@ -165,6 +209,19 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
                 listener.onOverflow(row.id, h.overflow);
             }
         });
+
+        boolean showReorder = dragHelper != null && rows.size() > 1;
+        h.dragHandle.setVisibility(showReorder ? View.VISIBLE : View.GONE);
+        if (showReorder) {
+            h.dragHandle.setOnTouchListener((v, event) -> {
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    dragHelper.startDrag(h);
+                }
+                return false;
+            });
+        } else {
+            h.dragHandle.setOnTouchListener(null);
+        }
     }
 
     @Override
@@ -176,6 +233,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         final LinearLayout row;
         final TextView title;
         final View check;
+        final AppCompatImageView dragHandle;
         final MaterialButton overflow;
 
         VH(@NonNull View itemView) {
@@ -183,6 +241,7 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             row = itemView.findViewById(R.id.preset_row_root);
             check = itemView.findViewById(R.id.preset_row_check);
             title = itemView.findViewById(R.id.preset_row_title);
+            dragHandle = itemView.findViewById(R.id.preset_row_drag_handle);
             overflow = itemView.findViewById(R.id.preset_row_overflow);
         }
     }

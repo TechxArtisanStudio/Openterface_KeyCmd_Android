@@ -852,6 +852,8 @@ por TechxArtisan</string>
     ]]></string>
     <string name="gamepad_preset_row_menu_cd"><![CDATA[Layout options
     ]]></string>
+    <string name="gamepad_preset_row_drag_handle_cd"><![CDATA[Arrastrar para reordenar diseños
+    ]]></string>
     <string name="gamepad_preset_row_share_cd"><![CDATA[Compartir diseño
     ]]></string>
     <string name="gamepad_presets_activated"><![CDATA[Preset applied

@@ -36,6 +36,18 @@
         android:textColor="?attr/colorOnSurface"
         tools:text="Classic_1" />
 
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/preset_row_drag_handle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/gamepad_preset_row_drag_handle_cd"
+        android:focusable="false"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        app:srcCompat="@drawable/ic_drag_handle_24"
+        app:tint="?attr/colorOnSurfaceVariant" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/preset_row_overflow"
         style="@style/Widget.Material3.Button.IconButton"

@@ -769,6 +769,7 @@ by TechxArtisan</string>
     <string name="gamepad_presets_reset_shipped_confirm">Reset built-in</string>
     <string name="gamepad_presets_reset_shipped_done">Built-in layouts reset</string>
     <string name="gamepad_preset_row_menu_cd">Layout options</string>
+    <string name="gamepad_preset_row_drag_handle_cd">Drag to reorder layouts</string>
     <string name="gamepad_preset_row_share_cd">Share layout</string>
     <string name="gamepad_preset_row_save_cd">Save layout to device</string>
     <string name="gamepad_preset_row_delete_cd">Delete layout</string>
