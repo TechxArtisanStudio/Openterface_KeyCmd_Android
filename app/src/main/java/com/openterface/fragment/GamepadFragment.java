@@ -44,6 +44,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.view.Window;
+import android.view.WindowManager;
 import android.content.res.ColorStateList;
 import android.widget.ImageView;
 import android.widget.Button;
@@ -1443,6 +1444,7 @@ public class GamepadFragment extends Fragment {
         BottomSheetBehavior<?> presetSheetBehavior = dialog.getBehavior();
         presetSheetBehavior.setSkipCollapsed(true);
         presetSheetBehavior.setFitToContents(true);
+        presetSheetBehavior.setMaxHeight(computeGamepadPresetsSheetMaxHeight(sheetCtx));
         presetSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         dialog.setOnShowListener(d -> {
             View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -1453,8 +1455,8 @@ public class GamepadFragment extends Fragment {
         });
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        // Sheet uses a fixed-height list so BottomSheetBehavior does not resize mid-drag; size does not
-        // depend on adapter count, so fixed size is allowed and avoids extra layout passes.
+        // Fixed-height list so BottomSheetBehavior does not resize mid-drag; nested scrolling stays
+        // enabled on the RecyclerView (XML) so vertical gestures scroll the list inside the sheet.
         recycler.setHasFixedSize(true);
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
@@ -6346,6 +6348,25 @@ public class GamepadFragment extends Fragment {
      * Landscape: set {@code design_bottom_sheet} width and horizontal gravity before the first
      * layout frame so the sheet does not jump after {@code onShow}.
      */
+    /**
+     * Caps the Layouts bottom sheet so a fixed-height list + toolbar cannot exceed the visible
+     * window (short landscape / game overlays), avoiding clipped content above the recycler.
+     */
+    private static int computeGamepadPresetsSheetMaxHeight(@NonNull Context ctx) {
+        int screenH;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
+            if (wm != null) {
+                screenH = wm.getCurrentWindowMetrics().getBounds().height();
+            } else {
+                screenH = ctx.getResources().getDisplayMetrics().heightPixels;
+            }
+        } else {
+            screenH = ctx.getResources().getDisplayMetrics().heightPixels;
+        }
+        return Math.round(screenH * 0.92f);
+    }
+
     private static void applyGamepadPresetsSheetLandscapeSizing(@NonNull View bottom, @NonNull Context ctx) {
         if (ctx.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
             return;
