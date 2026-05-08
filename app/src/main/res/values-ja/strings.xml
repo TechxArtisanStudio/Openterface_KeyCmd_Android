@@ -40,7 +40,7 @@ TechxArtisan により</string>
     <string name="main_toast_usb_serial_connection_failed">USBデバイス接続を開けませんでした</string>
     <string name="main_toast_serial_port_open_success">シリアルポートを開きました</string>
     <string name="main_toast_serial_port_open_failed">シリアルポートを開けませんでした</string>
-    <string name="launch_panel_remember_choice">このモードを記憶し、自動的に入力します</string>
+    <string name="launch_panel_remember_choice">次回、選択したモードで自動起動</string>
     <string name="launch_panel_start">始める</string>
     <string name="launch_panel_skip">今のところスキップしてください</string>
     <string name="PrtSc">PrtSc</string>

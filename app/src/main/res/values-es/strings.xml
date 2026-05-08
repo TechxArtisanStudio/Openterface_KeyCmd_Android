@@ -40,7 +40,7 @@ por TechxArtisan</string>
     <string name="main_toast_usb_serial_connection_failed">No se pudo abrir la conexión del dispositivo USB</string>
     <string name="main_toast_serial_port_open_success">Puerto serie abierto correctamente</string>
     <string name="main_toast_serial_port_open_failed">No se pudo abrir el puerto serie</string>
-    <string name="launch_panel_remember_choice">Recordar e ingresar automáticamente a este modo</string>
+    <string name="launch_panel_remember_choice">Abrir automáticamente el modo seleccionado</string>
     <string name="launch_panel_start">Iniciar</string>
     <string name="launch_panel_skip">Saltar por ahora</string>
     <string name="launch_panel_will_remember">Se recordará: %1$s</string>

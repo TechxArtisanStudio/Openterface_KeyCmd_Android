@@ -142,7 +142,7 @@
     <string name="main_toast_usb_serial_connection_failed">無法開啟 USB 裝置連線</string>
     <string name="main_toast_serial_port_open_success">序列埠已成功開啟</string>
     <string name="main_toast_serial_port_open_failed">無法開啟序列埠</string>
-    <string name="launch_panel_remember_choice">記住並自動進入該模式</string>
+    <string name="launch_panel_remember_choice">下次自動進入所選模式</string>
     <string name="launch_panel_start">開始</string>
     <string name="launch_panel_skip">暫時跳過</string>
     <string name="PrtSc">普羅特斯克</string>

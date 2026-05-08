@@ -176,7 +176,7 @@ by TechxArtisan</string>
     <string name="main_toast_serial_port_open_success">Serial port opened successfully</string>
     <string name="main_toast_serial_port_open_failed">Failed to open serial port</string>
 
-    <string name="launch_panel_remember_choice">Remember and auto-enter this mode</string>
+    <string name="launch_panel_remember_choice">Auto-enter selected mode</string>
     <string name="launch_panel_start">Start</string>
     <string name="launch_panel_skip">Skip for now</string>
     <string name="launch_panel_will_remember">Will remember: %1$s</string>

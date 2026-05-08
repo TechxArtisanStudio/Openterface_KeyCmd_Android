@@ -40,7 +40,7 @@ von TechxArtisan</string>
     <string name="main_toast_usb_serial_connection_failed">USB-Geräteverbindung konnte nicht geöffnet werden</string>
     <string name="main_toast_serial_port_open_success">Serieller Port erfolgreich geöffnet</string>
     <string name="main_toast_serial_port_open_failed">Serieller Port konnte nicht geöffnet werden</string>
-    <string name="launch_panel_remember_choice">Merken Sie sich diesen Modus und rufen Sie ihn automatisch auf</string>
+    <string name="launch_panel_remember_choice">Ausgewählten Modus automatisch öffnen</string>
     <string name="launch_panel_start">Start</string>
     <string name="launch_panel_skip">Überspringen Sie es vorerst</string>
     <string name="launch_panel_will_remember">Wird gemerkt: %1$s</string>
