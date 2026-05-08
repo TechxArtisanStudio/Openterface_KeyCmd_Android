@@ -598,6 +598,23 @@ public class GamepadFragment extends Fragment {
         return root != null ? root.getContext() : requireContext();
     }
 
+    /**
+     * Dynamic-layout modules whose press state is merged into {@link #sendCombinedKeyReport}
+     * via {@link #faceButtonPressed} (face {@code button_*} plus shoulder / trigger ids).
+     */
+    private static boolean isPresetKeyboardHoldToggleId(@Nullable String componentId) {
+        if (componentId == null) {
+            return false;
+        }
+        if (componentId.startsWith("button_")) {
+            return true;
+        }
+        return GamepadLayoutPresetConstants.SHOULDER_L_ID.equals(componentId)
+                || GamepadLayoutPresetConstants.SHOULDER_R_ID.equals(componentId)
+                || GamepadLayoutPresetConstants.TRIGGER_L_ID.equals(componentId)
+                || GamepadLayoutPresetConstants.TRIGGER_R_ID.equals(componentId);
+    }
+
     private void setupListeners() {
         // Button press listener (face buttons only, D-pad handled by dpadStateListener)
         gamepadView.setButtonPressListener((buttonId, keyCode) -> {
@@ -611,7 +628,7 @@ public class GamepadFragment extends Fragment {
             if (keyCode == 1001 || keyCode == 1002) {
                 return;
             } else {
-                if (buttonId != null && buttonId.startsWith("button_")) {
+                if (isPresetKeyboardHoldToggleId(buttonId)) {
                     faceButtonPressed.put(buttonId, true);
                     if ("button_a".equals(buttonId)) {
                         buttonAPressed = true;
@@ -621,7 +638,7 @@ public class GamepadFragment extends Fragment {
                 }
                 sendCombinedKeyReport();
                 if (vibrator != null && vibrator.hasVibrator()
-                        && buttonId != null && buttonId.startsWith("button_")) {
+                        && isPresetKeyboardHoldToggleId(buttonId)) {
                     vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
                 }
             }
@@ -636,7 +653,7 @@ public class GamepadFragment extends Fragment {
                 return;
             }
             Log.d(TAG, "Button released: " + buttonId);
-            if (buttonId != null && buttonId.startsWith("button_")) {
+            if (isPresetKeyboardHoldToggleId(buttonId)) {
                 faceButtonPressed.put(buttonId, false);
                 if ("button_a".equals(buttonId)) {
                     buttonAPressed = false;
@@ -1931,7 +1948,12 @@ public class GamepadFragment extends Fragment {
             int modifiers = 0;
             if (layoutDoc != null && layoutDoc.modules != null) {
                 for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
-                    if (m == null || m.id == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)) {
+                    if (m == null || m.id == null) {
+                        continue;
+                    }
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
+                            && !GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
+                            && !GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type)) {
                         continue;
                     }
                     if (Boolean.TRUE.equals(faceButtonPressed.get(m.id))) {
@@ -2031,8 +2053,12 @@ public class GamepadFragment extends Fragment {
             }
             if (layoutDoc != null && layoutDoc.modules != null) {
                 for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
-                    if (m == null || m.id == null || !GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
-                            || m.hidKey == null) {
+                    if (m == null || m.id == null || m.hidKey == null) {
+                        continue;
+                    }
+                    if (!GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
+                            && !GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
+                            && !GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type)) {
                         continue;
                     }
                     if (Boolean.TRUE.equals(faceButtonPressed.get(m.id))) {
