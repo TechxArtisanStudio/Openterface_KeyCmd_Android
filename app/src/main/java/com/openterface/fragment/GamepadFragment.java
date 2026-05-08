@@ -11,6 +11,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.util.TypedValue;
@@ -36,6 +37,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -5519,12 +5521,26 @@ public class GamepadFragment extends Fragment {
 
         final FrameLayout[] patternFrames = new FrameLayout[patternIds.length];
         final BackgroundPatternPreviewView[] patternPreviews = new BackgroundPatternPreviewView[patternIds.length];
+        final float patternPreviewCornerPx = 8f * density;
         for (int i = 0; i < patternIds.length; i++) {
             FrameLayout wrap = new FrameLayout(ctx);
             int innerPad = strokeSel;
             wrap.setPadding(innerPad, innerPad, innerPad, innerPad);
             BackgroundPatternPreviewView pv = new BackgroundPatternPreviewView(ctx, patternIds[i]);
             pv.setContentDescription(getString(patternDescIds[i]));
+            pv.setClipToOutline(true);
+            pv.setOutlineProvider(
+                    new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            outline.setRoundRect(
+                                    0,
+                                    0,
+                                    view.getWidth(),
+                                    view.getHeight(),
+                                    patternPreviewCornerPx);
+                        }
+                    });
             FrameLayout.LayoutParams pvLp = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             wrap.addView(pv, pvLp);
@@ -5602,6 +5618,7 @@ public class GamepadFragment extends Fragment {
         });
 
         dlg.show();
+        tightenMaterialAlertDialogButtonBar(dlg);
         refreshRef[0].run();
     }
 
@@ -5611,6 +5628,55 @@ public class GamepadFragment extends Fragment {
             return GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE;
         }
         return p.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static void tightenMaterialAlertDialogButtonBar(@Nullable androidx.appcompat.app.AlertDialog dlg) {
+        if (dlg == null) {
+            return;
+        }
+        Context ctx = dlg.getContext();
+        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        int panelVPadTop = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, dm);
+        int panelVPadBottom = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, dm);
+        int barVPad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 0f, dm);
+        int btnVPad = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, dm);
+        int minBtnH = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40f, dm);
+
+        View buttonPanel = dlg.findViewById(com.google.android.material.R.id.buttonPanel);
+        if (buttonPanel != null) {
+            // M3 uses a ScrollView here with top|bottom scroll indicators — they read as a stray hairline
+            // under the action buttons; turn them off for this compact bar.
+            ViewCompat.setScrollIndicators(
+                    buttonPanel,
+                    0,
+                    View.SCROLL_INDICATOR_TOP | View.SCROLL_INDICATOR_BOTTOM);
+            buttonPanel.setPadding(
+                    buttonPanel.getPaddingLeft(),
+                    panelVPadTop,
+                    buttonPanel.getPaddingRight(),
+                    panelVPadBottom);
+            if (buttonPanel instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) buttonPanel;
+                for (int i = 0; i < vg.getChildCount(); i++) {
+                    View row = vg.getChildAt(i);
+                    row.setPadding(row.getPaddingLeft(), barVPad, row.getPaddingRight(), barVPad);
+                }
+            }
+        }
+        for (int which :
+                new int[]{
+                        AlertDialog.BUTTON_POSITIVE,
+                        AlertDialog.BUTTON_NEGATIVE,
+                        AlertDialog.BUTTON_NEUTRAL,
+                }) {
+            android.widget.Button b = dlg.getButton(which);
+            if (b == null || b.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            b.setMinHeight(minBtnH);
+            b.setMinimumHeight(minBtnH);
+            b.setPadding(b.getPaddingLeft(), btnVPad, b.getPaddingRight(), btnVPad);
+        }
     }
 
     private static void applyBackgroundSwatchSelectionRing(
@@ -5754,7 +5820,8 @@ public class GamepadFragment extends Fragment {
         root.addView(lb);
         root.addView(sb);
 
-        new MaterialAlertDialogBuilder(ctx)
+        androidx.appcompat.app.AlertDialog rgbDlg =
+                new MaterialAlertDialogBuilder(ctx)
                 .setTitle(R.string.gamepad_bg_color_custom)
                 .setView(root)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -5765,7 +5832,9 @@ public class GamepadFragment extends Fragment {
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create();
+        rgbDlg.show();
+        tightenMaterialAlertDialogButtonBar(rgbDlg);
     }
 
     private void vibrateGamepadTick() {

@@ -48,6 +48,7 @@ public final class GamepadCanvasBackgroundPreview {
 
     /**
      * Pattern overlay; {@code patternId} null or {@link GamepadLayoutPresetConstants#BACKGROUND_PATTERN_NONE} draws nothing.
+     * Full-canvas path uses {@code compactPreview == false} (subtle overlay); small swatches use {@code true} for readable lines.
      */
     public static void drawPatternOverlay(
             Canvas canvas,
@@ -57,6 +58,18 @@ public final class GamepadCanvasBackgroundPreview {
             @Nullable String patternId,
             @Nullable Integer fillArgbForContrast,
             Paint patternPaint) {
+        drawPatternOverlay(canvas, vw, vh, density, patternId, fillArgbForContrast, patternPaint, false);
+    }
+
+    public static void drawPatternOverlay(
+            Canvas canvas,
+            int vw,
+            int vh,
+            float density,
+            @Nullable String patternId,
+            @Nullable Integer fillArgbForContrast,
+            Paint patternPaint,
+            boolean compactPreview) {
         if (vw <= 0 || vh <= 0 || patternId == null || patternId.trim().isEmpty()) {
             return;
         }
@@ -64,10 +77,15 @@ public final class GamepadCanvasBackgroundPreview {
         if (GamepadLayoutPresetConstants.BACKGROUND_PATTERN_NONE.equalsIgnoreCase(id)) {
             return;
         }
-        int ref = fillArgbForContrast != null ? fillArgbForContrast : Color.parseColor("#F0F0F0");
+        int ref = referenceColorForPatternContrast(fillArgbForContrast);
         double lum = ColorUtils.calculateLuminance(ref);
         int strokeRgb = lum > 0.52 ? 0xFF000000 : 0xFFFFFFFF;
-        int strokeA = lum > 0.52 ? 14 : 18;
+        int strokeA;
+        if (compactPreview) {
+            strokeA = lum > 0.52 ? 50 : 68;
+        } else {
+            strokeA = lum > 0.52 ? 14 : 18;
+        }
         patternPaint.setColor(Color.argb(strokeA, Color.red(strokeRgb), Color.green(strokeRgb), Color.blue(strokeRgb)));
 
         switch (id) {
@@ -84,7 +102,11 @@ public final class GamepadCanvasBackgroundPreview {
                 break;
             }
             case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_MICRO_GRID: {
-                patternPaint.setStrokeWidth(Math.max(0.5f, 0.35f * density));
+                if (compactPreview) {
+                    patternPaint.setStrokeWidth(Math.max(1f, 0.55f * density));
+                } else {
+                    patternPaint.setStrokeWidth(Math.max(0.5f, 0.35f * density));
+                }
                 float g = 14f * density;
                 for (float x = 0; x <= vw; x += g) {
                     canvas.drawLine(x, 0, x, vh, patternPaint);
@@ -95,7 +117,11 @@ public final class GamepadCanvasBackgroundPreview {
                 break;
             }
             case GamepadLayoutPresetConstants.BACKGROUND_PATTERN_DIAGONAL_HATCH: {
-                patternPaint.setStrokeWidth(Math.max(0.5f, 0.4f * density));
+                if (compactPreview) {
+                    patternPaint.setStrokeWidth(Math.max(1f, 0.55f * density));
+                } else {
+                    patternPaint.setStrokeWidth(Math.max(0.5f, 0.4f * density));
+                }
                 float spacing = 18f * density;
                 for (float k = -vh; k < vw + vh; k += spacing) {
                     canvas.drawLine(k, 0, k + vh, vh, patternPaint);
@@ -124,6 +150,24 @@ public final class GamepadCanvasBackgroundPreview {
         }
     }
 
+    /**
+     * Opaque blend of top/bottom gradient colors (same rules as {@link #drawSolidOrGradientFill}) for luminance-based
+     * pattern ink (black vs white).
+     */
+    private static int referenceColorForPatternContrast(@Nullable Integer backgroundFillArgb) {
+        int topColor;
+        int bottomColor;
+        if (backgroundFillArgb != null) {
+            int c = backgroundFillArgb | 0xFF000000;
+            topColor = c;
+            bottomColor = isLightFace(c) ? darkenArgb(c, 0.9f) : (ColorUtils.blendARGB(c, Color.WHITE, 0.1f) | 0xFF000000);
+        } else {
+            topColor = Color.parseColor("#F5F5F5");
+            bottomColor = Color.parseColor("#ECECEC");
+        }
+        return ColorUtils.blendARGB(topColor, bottomColor, 0.5f) | 0xFF000000;
+    }
+
     /** Fill + optional pattern for small preview surfaces. */
     public static void drawThumbnail(
             Canvas canvas,
@@ -135,7 +179,9 @@ public final class GamepadCanvasBackgroundPreview {
         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         drawSolidOrGradientFill(canvas, vw, vh, fillArgb, fill);
         Paint overlay = new Paint(Paint.ANTI_ALIAS_FLAG);
-        drawPatternOverlay(canvas, vw, vh, density, patternId, fillArgb, overlay);
+        int compactThresholdPx = Math.round(72f * density);
+        boolean compactPreview = Math.min(vw, vh) <= compactThresholdPx;
+        drawPatternOverlay(canvas, vw, vh, density, patternId, fillArgb, overlay, compactPreview);
     }
 
     private static int darkenArgb(int color, float valueMul) {

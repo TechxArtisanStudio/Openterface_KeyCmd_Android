@@ -506,7 +506,14 @@ public class GamepadView extends View {
         }
         float density = getResources().getDisplayMetrics().density;
         GamepadCanvasBackgroundPreview.drawPatternOverlay(
-                canvas, vw, vh, density, backgroundPatternId, backgroundFillArgb, patternOverlayPaint);
+                canvas,
+                vw,
+                vh,
+                density,
+                backgroundPatternId,
+                backgroundFillArgb,
+                patternOverlayPaint,
+                false);
     }
 
     private void drawComponents(Canvas canvas) {
