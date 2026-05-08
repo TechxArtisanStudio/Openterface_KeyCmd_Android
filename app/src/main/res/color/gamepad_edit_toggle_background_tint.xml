@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Editing on: solid primary (no outline). -->
-    <item android:color="?attr/colorPrimary" android:state_checked="true" />
-    <!-- Customize off: soft surface chip, borderless. -->
-    <item android:color="?attr/colorSurfaceContainerHighest" />
+    <!-- No filled chip: ripple only (same idea as chrome menu). -->
+    <item android:color="@android:color/transparent" android:state_checked="true" />
+    <item android:color="@android:color/transparent" />
 </selector>

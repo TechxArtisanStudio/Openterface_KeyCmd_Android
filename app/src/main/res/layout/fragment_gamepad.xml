@@ -63,7 +63,6 @@
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
             app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
-            app:cornerRadius="@dimen/gamepad_toolbar_corner_radius"
             app:icon="@drawable/ic_edit"
             app:iconGravity="textStart"
             app:iconPadding="0dp"

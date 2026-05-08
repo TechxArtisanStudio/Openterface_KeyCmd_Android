@@ -146,6 +146,15 @@ public class GamepadView extends View {
 
     /** Openterface wordmark on the background plane (drawn under sticks/buttons). */
     private Drawable brandWatermarkDrawable;
+    /** When true, re-sample background luminance for adaptive wordmark tint/alpha. */
+    private boolean brandWatermarkContrastDirty = true;
+    private int cachedBrandWatermarkTint = Color.GRAY;
+    private int cachedBrandWatermarkAlpha = 130;
+    private static final double BRAND_WATERMARK_LUMA_THRESHOLD = 0.45;
+    /** Dark glyph on light canvas (ARGB). */
+    private static final int BRAND_WATERMARK_TINT_ON_LIGHT_BG = 0xDE1A1C22;
+    /** Light glyph on dark canvas (ARGB). */
+    private static final int BRAND_WATERMARK_TINT_ON_DARK_BG = 0xD9F5F6F8;
 
     // Background viewport (pan and zoom)
     private float bgScale = 1.0f;
@@ -300,6 +309,14 @@ public class GamepadView extends View {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w != oldw || h != oldh) {
+            markBrandWatermarkContrastDirty();
+        }
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         refreshThemeAccent();
@@ -340,16 +357,112 @@ public class GamepadView extends View {
         int left = (vw - wPx) / 2;
         int bottomPad = Math.round(14f * density);
         int top = vh - hPx - bottomPad;
-        int tint =
-                MaterialColors.getColor(
-                        this,
-                        com.google.android.material.R.attr.colorOnSurfaceVariant,
-                        Color.parseColor("#757575"));
-        brandWatermarkDrawable.setTint(tint);
-        brandWatermarkDrawable.setAlpha(100);
+
+        if (brandWatermarkContrastDirty) {
+            recomputeBrandWatermarkContrast(vw, vh, left, top, wPx, hPx);
+        }
+
+        brandWatermarkDrawable.setTint(cachedBrandWatermarkTint);
+        brandWatermarkDrawable.setAlpha(cachedBrandWatermarkAlpha);
         brandWatermarkDrawable.setBounds(left, top, left + wPx, top + hPx);
         brandWatermarkDrawable.draw(canvas);
         brandWatermarkDrawable.setAlpha(255);
+    }
+
+    private void markBrandWatermarkContrastDirty() {
+        brandWatermarkContrastDirty = true;
+    }
+
+    /**
+     * Samples the same background the user sees (solid/gradient or bitmap under the wordmark) and
+     * caches tint + alpha for readable contrast.
+     */
+    private void recomputeBrandWatermarkContrast(int vw, int vh, int left, int top, int wPx, int hPx) {
+        double lum;
+        if (backgroundBitmap != null && !backgroundBitmap.isRecycled()) {
+            lum = sampleBitmapAverageLuminanceUnderWordmark(vw, vh, left, top, wPx, hPx);
+        } else {
+            lum = solidBackgroundAverageLuminanceUnderWordmark(vh, left, top, wPx, hPx);
+        }
+        boolean lightBackdrop = lum > BRAND_WATERMARK_LUMA_THRESHOLD;
+        if (lightBackdrop) {
+            cachedBrandWatermarkTint = BRAND_WATERMARK_TINT_ON_LIGHT_BG;
+            cachedBrandWatermarkAlpha = 168;
+        } else {
+            cachedBrandWatermarkTint = BRAND_WATERMARK_TINT_ON_DARK_BG;
+            cachedBrandWatermarkAlpha = 148;
+        }
+        brandWatermarkContrastDirty = false;
+    }
+
+    /** Matches {@link #drawSolidOrDefaultBackground} top/bottom colors; samples a small grid in the wordmark rect. */
+    private double solidBackgroundAverageLuminanceUnderWordmark(
+            int vh, int left, int top, int wPx, int hPx) {
+        int topColor;
+        int bottomColor;
+        if (backgroundFillArgb != null) {
+            int c = backgroundFillArgb;
+            topColor = c;
+            bottomColor = isLightFace(c) ? darkenArgb(c, 0.9f) : ColorUtils.blendARGB(c, Color.WHITE, 0.1f);
+        } else {
+            topColor = Color.parseColor("#F5F5F5");
+            bottomColor = Color.parseColor("#ECECEC");
+        }
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < 3; i++) {
+            float sx = left + (wPx * (i / 2f));
+            for (int j = 0; j < 3; j++) {
+                float sy = top + (hPx * (j / 2f));
+                float t = vh > 1 ? sy / (float) vh : 0f;
+                if (t < 0f) {
+                    t = 0f;
+                } else if (t > 1f) {
+                    t = 1f;
+                }
+                int c = ColorUtils.blendARGB(topColor, bottomColor, t);
+                sum += ColorUtils.calculateLuminance(c);
+                count++;
+            }
+        }
+        return count > 0 ? sum / count : BRAND_WATERMARK_LUMA_THRESHOLD;
+    }
+
+    /** Inverse of {@link #drawBackgroundWithPanZoom} transform; averages luminance over a 3×3 grid. */
+    private double sampleBitmapAverageLuminanceUnderWordmark(
+            int vw, int vh, int left, int top, int wPx, int hPx) {
+        android.graphics.Bitmap bm = backgroundBitmap;
+        if (bm == null || bm.isRecycled()) {
+            return BRAND_WATERMARK_LUMA_THRESHOLD;
+        }
+        int bw = bm.getWidth();
+        int bh = bm.getHeight();
+        float cx = vw / 2f + bgOffsetX;
+        float cy = vh / 2f + bgOffsetY;
+        float invScale = bgScale != 0f ? 1f / bgScale : 1f;
+        double sum = 0.0;
+        int count = 0;
+        for (int i = 0; i < 3; i++) {
+            float sx = left + (wPx * (i / 2f));
+            for (int j = 0; j < 3; j++) {
+                float sy = top + (hPx * (j / 2f));
+                float bx = (sx - cx) * invScale + bw / 2f;
+                float by = (sy - cy) * invScale + bh / 2f;
+                int x = Math.round(bx);
+                int y = Math.round(by);
+                if (x < 0 || y < 0 || x >= bw || y >= bh) {
+                    continue;
+                }
+                int p = bm.getPixel(x, y);
+                int a = Color.alpha(p);
+                if (a < 16) {
+                    continue;
+                }
+                sum += ColorUtils.calculateLuminance(p);
+                count++;
+            }
+        }
+        return count > 0 ? sum / count : BRAND_WATERMARK_LUMA_THRESHOLD;
     }
 
     private void drawBackgroundWithPanZoom(Canvas canvas) {
@@ -2558,6 +2671,7 @@ public class GamepadView extends View {
             bgOffsetX = 0f;
             bgOffsetY = 0f;
         }
+        markBrandWatermarkContrastDirty();
         invalidate();
         if (onBackgroundChanged != null) onBackgroundChanged.run();
     }
@@ -2566,6 +2680,7 @@ public class GamepadView extends View {
         bgScale = 1.0f;
         bgOffsetX = 0f;
         bgOffsetY = 0f;
+        markBrandWatermarkContrastDirty();
         invalidate();
     }
 
@@ -2589,12 +2704,14 @@ public class GamepadView extends View {
         this.bgScale = scale;
         this.bgOffsetX = offsetX;
         this.bgOffsetY = offsetY;
+        markBrandWatermarkContrastDirty();
         invalidate();
     }
 
     /** Null clears custom fill (default gradient when no bitmap). */
     public void setBackgroundFillArgb(@Nullable Integer argb) {
         this.backgroundFillArgb = argb;
+        markBrandWatermarkContrastDirty();
         invalidate();
     }
 
@@ -2611,6 +2728,7 @@ public class GamepadView extends View {
         } else {
             this.backgroundPatternId = patternId.trim().toLowerCase(Locale.ROOT);
         }
+        markBrandWatermarkContrastDirty();
         invalidate();
     }
 
@@ -2622,6 +2740,7 @@ public class GamepadView extends View {
     private Runnable onBackgroundViewportChanged;
 
     void notifyBackgroundViewportChanged() {
+        markBrandWatermarkContrastDirty();
         if (onBackgroundViewportChanged != null) onBackgroundViewportChanged.run();
     }
 
