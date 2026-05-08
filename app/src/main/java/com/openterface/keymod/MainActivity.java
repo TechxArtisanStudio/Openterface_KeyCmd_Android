@@ -606,6 +606,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         updateImmersiveForTopFragment();
         applyWindowSystemBarAppearanceForHostFragment(f);
+        if (drawerLayout != null) {
+            int lockMode =
+                    f instanceof GamepadFragment
+                            ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                            : DrawerLayout.LOCK_MODE_UNLOCKED;
+            drawerLayout.setDrawerLockMode(lockMode, GravityCompat.START);
+        }
     }
 
     /**
