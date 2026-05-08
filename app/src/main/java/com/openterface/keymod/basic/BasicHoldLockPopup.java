@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.os.Build;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.GridLayout;
 import android.widget.PopupWindow;
@@ -21,6 +20,9 @@ import com.openterface.keymod.R;
  * Minimal 3×3 gesture popup for KM Basic hold-lock: only the {@link AlternatePopupGeometry#SLOT_UP}
  * cell is selectable (Material lock icon). Same geometry as Pro alternates.
  *
+ * <p>Gamepad mode ({@code new BasicHoldLockPopup(true)}): lock commits on swipe up <em>or</em> down
+ * (including diagonals into those wedges), with looser axis/radius tuning.
+ *
  * <p>Gesture deltas use {@code gestureOriginRaw*} from the finger position when the lock UI
  * appears (callers pass the latest raw coords at popup time — same moment as Pro shows alternates).
  * {@link #updatePointer} does not depend on {@link PopupWindow#isShowing()}.
@@ -36,6 +38,10 @@ public final class BasicHoldLockPopup {
     private static final int ALT_GESTURE_R_CANCEL_DP = 228;
     /** Same as {@link com.openterface.keymod.CustomKeyboardView} alternate axis deadzone. */
     private static final int ALT_GESTURE_AXIS_DEADZONE_DP = 18;
+    /** Looser inner radius for gamepad hold-lock (easier to leave default toward up/down). */
+    private static final int GAMEPAD_HOLD_LOCK_R_MIN_DP = 10;
+    /** Looser axis deadzone for gamepad so slightly off-vertical swipes still hit up/down/corners. */
+    private static final int GAMEPAD_HOLD_LOCK_AXIS_DEADZONE_DP = 11;
     private static final int ALT_POPUP_VERTICAL_OFFSET_DP = 96;
     private static final int ALT_POPUP_CONTAINER_PADDING_DP = 6;
     private static final int ALT_POPUP_CELL_MIN_SIZE_DP = 40;
@@ -48,11 +54,31 @@ public final class BasicHoldLockPopup {
     private int currentPick = AlternatePopupGeometry.RESULT_DEFAULT;
     private int lastAppliedVisualPick = Integer.MIN_VALUE;
     private final boolean[] slotOccupied = new boolean[AlternatePopupGeometry.SLOT_COUNT];
+    private final boolean gamepadRelaxedVerticalHoldLock;
     @Nullable private AppCompatImageView lockIconView;
     @Nullable private View popupContent;
 
     public BasicHoldLockPopup() {
-        slotOccupied[AlternatePopupGeometry.SLOT_UP] = true;
+        this(false);
+    }
+
+    /**
+     * @param gamepadRelaxedVerticalHoldLock if true, swipe up or down (with corner tolerance)
+     *     commits lock; uses looser {@link AlternatePopupGeometry#pickSlot} tuning. KM Basic uses
+     *     {@code false}.
+     */
+    public BasicHoldLockPopup(boolean gamepadRelaxedVerticalHoldLock) {
+        this.gamepadRelaxedVerticalHoldLock = gamepadRelaxedVerticalHoldLock;
+        if (gamepadRelaxedVerticalHoldLock) {
+            slotOccupied[AlternatePopupGeometry.SLOT_UP] = true;
+            slotOccupied[AlternatePopupGeometry.SLOT_DOWN] = true;
+            slotOccupied[AlternatePopupGeometry.SLOT_UP_LEFT] = true;
+            slotOccupied[AlternatePopupGeometry.SLOT_UP_RIGHT] = true;
+            slotOccupied[AlternatePopupGeometry.SLOT_DOWN_LEFT] = true;
+            slotOccupied[AlternatePopupGeometry.SLOT_DOWN_RIGHT] = true;
+        } else {
+            slotOccupied[AlternatePopupGeometry.SLOT_UP] = true;
+        }
     }
 
     /**
@@ -217,20 +243,36 @@ public final class BasicHoldLockPopup {
         float density = context.getResources().getDisplayMetrics().density;
         float dx = rawX - gestureOriginRawX;
         float dy = rawY - gestureOriginRawY;
-        float rMinPx = ALT_GESTURE_R_MIN_DP * density;
+        float rMinPx =
+                (gamepadRelaxedVerticalHoldLock ? GAMEPAD_HOLD_LOCK_R_MIN_DP : ALT_GESTURE_R_MIN_DP)
+                        * density;
         float rCancelPx = ALT_GESTURE_R_CANCEL_DP * density;
-        float axisDeadPx = ALT_GESTURE_AXIS_DEADZONE_DP * density;
+        float axisDeadPx =
+                (gamepadRelaxedVerticalHoldLock
+                                ? GAMEPAD_HOLD_LOCK_AXIS_DEADZONE_DP
+                                : ALT_GESTURE_AXIS_DEADZONE_DP)
+                        * density;
         int pick =
                 AlternatePopupGeometry.pickSlot(
                         dx, dy, rMinPx, rCancelPx, axisDeadPx, slotOccupied);
-        currentPick = normalizeDiagonalUpToLock(pick);
+        currentPick =
+                gamepadRelaxedVerticalHoldLock
+                        ? normalizeGamepadVerticalCorners(pick)
+                        : normalizeDiagonalUpToLock(pick);
         applyPickVisual(currentPick);
     }
 
-    /** @return true if user committed the lock gesture (swipe to up slot). */
+    /**
+     * @return true if user committed the lock gesture (swipe to up slot for KM Basic; up or down
+     *     for gamepad relaxed mode).
+     */
     public boolean commitIfLockSelected() {
         if (anchorView == null) {
             return false;
+        }
+        if (gamepadRelaxedVerticalHoldLock) {
+            return currentPick == AlternatePopupGeometry.SLOT_UP
+                    || currentPick == AlternatePopupGeometry.SLOT_DOWN;
         }
         return currentPick == AlternatePopupGeometry.SLOT_UP;
     }
@@ -259,6 +301,19 @@ public final class BasicHoldLockPopup {
         return rawPick;
     }
 
+    /** Map corner wedges to vertical slots when up/down and corners are occupied (gamepad mode). */
+    private static int normalizeGamepadVerticalCorners(int rawPick) {
+        if (rawPick == AlternatePopupGeometry.SLOT_UP_LEFT
+                || rawPick == AlternatePopupGeometry.SLOT_UP_RIGHT) {
+            return AlternatePopupGeometry.SLOT_UP;
+        }
+        if (rawPick == AlternatePopupGeometry.SLOT_DOWN_LEFT
+                || rawPick == AlternatePopupGeometry.SLOT_DOWN_RIGHT) {
+            return AlternatePopupGeometry.SLOT_DOWN;
+        }
+        return rawPick;
+    }
+
     private void applyPickVisual(int pick) {
         if (lockIconView == null) {
             return;
@@ -279,7 +334,7 @@ public final class BasicHoldLockPopup {
                         com.google.android.material.R.attr.colorOnPrimary,
                         ContextCompat.getColor(ctx, R.color.white));
         int secondary = ContextCompat.getColor(ctx, R.color.text_secondary);
-        if (pick == AlternatePopupGeometry.SLOT_UP) {
+        if (pick == AlternatePopupGeometry.SLOT_UP || pick == AlternatePopupGeometry.SLOT_DOWN) {
             lockIconView.setAlpha(1f);
             lockIconView.setScaleX(1.08f);
             lockIconView.setScaleY(1.08f);

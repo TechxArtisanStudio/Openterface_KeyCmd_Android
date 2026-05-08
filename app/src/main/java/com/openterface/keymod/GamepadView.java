@@ -114,9 +114,8 @@ public class GamepadView extends View {
     /** Dynamic edit mode: tap target at top-right of module outline; opens module config (replaces long-press there). */
     private ModuleConfigEditTapListener moduleConfigEditTapListener;
 
-    /** Match {@link com.openterface.keymod.basic.BasicPhysicalKeyboardView} hold-lock delay. */
-    private static final long KEYBOARD_HOLD_LOCK_POPUP_MS = 1000L;
-    private static final float KEYBOARD_HOLD_LOCK_CANCEL_MOVE_DP = 24f;
+    /** Cancel hold-lock tracking if finger drifts this far before the popup is shown (popup is posted immediately). */
+    private static final float KEYBOARD_HOLD_LOCK_CANCEL_MOVE_DP = 52f;
     private final Handler keyboardHoldLockHandler = new Handler(Looper.getMainLooper());
     @Nullable
     private KeyboardHoldLockListener keyboardHoldLockListener;
@@ -2313,8 +2312,8 @@ public class GamepadView extends View {
                         event.getRawX(pointerIndex),
                         event.getRawY(pointerIndex),
                         r);
-        keyboardHoldLockHandler.postDelayed(r, KEYBOARD_HOLD_LOCK_POPUP_MS);
         keyboardHoldLockByPointer.put(pointerId, t);
+        keyboardHoldLockHandler.post(r);
     }
 
     private void showHoldLockPopupForPointer(int pointerId) {
@@ -2333,7 +2332,7 @@ public class GamepadView extends View {
         if (t.popup != null) {
             return;
         }
-        t.popup = new BasicHoldLockPopup();
+        t.popup = new BasicHoldLockPopup(true);
         t.popup.showAboveScreenPoint(this, t.lastRawX, t.lastRawY);
     }
 
