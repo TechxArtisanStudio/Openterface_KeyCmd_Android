@@ -10,6 +10,8 @@ import androidx.annotation.Nullable;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import com.openterface.keymod.BuildConfig;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,6 +41,11 @@ public class GamepadLayoutPresetRepository {
     private static final String KEY_STORE_VERSION = "store_version";
     /** Slugs (filename-based) for bundled presets the user removed; sync skips these until reinstall. */
     private static final String KEY_DELETED_BUNDLED_SLUGS = "deleted_bundled_pack_slugs";
+    /**
+     * Last {@link BuildConfig#BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT} applied to {@code preset_default.json};
+     * when the repo file changes and the app is rebuilt, we re-import bundled default from assets.
+     */
+    private static final String KEY_BUNDLED_DEFAULT_FINGERPRINT_APPLIED = "bundled_default_fingerprint_applied";
     /**
      * v1–v6: preset store evolution (default, two-button, classic built-ins, relabels, Classic_1 geometry).
      * v7: removes built-in {@code preset_two_buttons} and four {@code preset_classic_*} presets from index and disk.
@@ -376,6 +383,9 @@ public class GamepadLayoutPresetRepository {
                 return e.getMessage();
             }
         }
+        storePrefs.edit()
+                .putString(KEY_BUNDLED_DEFAULT_FINGERPRINT_APPLIED, BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT)
+                .apply();
         return null;
     }
 
@@ -544,9 +554,11 @@ public class GamepadLayoutPresetRepository {
             names = context.getAssets().list(dir);
         } catch (IOException e) {
             Log.w(TAG, "list bundled gamepad assets", e);
+            maybeRefreshBuiltInDefaultFromBundledFingerprint();
             return;
         }
         if (names == null || names.length == 0) {
+            maybeRefreshBuiltInDefaultFromBundledFingerprint();
             return;
         }
         Arrays.sort(names, String.CASE_INSENSITIVE_ORDER);
@@ -597,6 +609,56 @@ public class GamepadLayoutPresetRepository {
         }
         if (indexDirty) {
             saveIndex(index);
+        }
+        maybeRefreshBuiltInDefaultFromBundledFingerprint();
+    }
+
+    /**
+     * Re-writes {@link GamepadLayoutPresetConstants#DEFAULT_PRESET_ID} from {@code assets/.../default.json}
+     * when the file at build time (fingerprint in {@link BuildConfig}) differs from what we last applied.
+     * Ensures dev installs and upgrades pick up {@code gamepad/default.json} without clearing app data.
+     */
+    private void maybeRefreshBuiltInDefaultFromBundledFingerprint() {
+        String fp = BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT;
+        if (fp == null) {
+            return;
+        }
+        String applied = storePrefs.getString(KEY_BUNDLED_DEFAULT_FINGERPRINT_APPLIED, "");
+        if (fp.equals(applied)) {
+            return;
+        }
+        GamepadLayoutPresetDocument bundled = loadBundledDefaultPresetFromAssets();
+        if (bundled == null) {
+            Log.w(TAG, "Bundled default.json missing or invalid; cannot sync fingerprint " + fp);
+            return;
+        }
+        String displayKeep = "Default";
+        for (PresetRef r : readIndex()) {
+            if (r != null && GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(r.id)) {
+                if (r.displayName != null && !r.displayName.trim().isEmpty()) {
+                    displayKeep = r.displayName.trim();
+                }
+                break;
+            }
+        }
+        if (bundled.meta == null) {
+            bundled.meta = new GamepadLayoutPresetDocument.Meta();
+        }
+        bundled.meta.id = GamepadLayoutPresetConstants.DEFAULT_PRESET_ID;
+        bundled.meta.displayName = displayKeep;
+        try {
+            writeFile(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID, bundled);
+        } catch (IOException e) {
+            Log.e(TAG, "Could not write preset_default for bundled fingerprint sync", e);
+            return;
+        }
+        storePrefs.edit().putString(KEY_BUNDLED_DEFAULT_FINGERPRINT_APPLIED, fp).apply();
+        if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(getActivePresetId())) {
+            try {
+                GamepadLayoutPresetApplier.apply(context, bundled, true);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "apply after bundled default fingerprint sync", e);
+            }
         }
     }
 

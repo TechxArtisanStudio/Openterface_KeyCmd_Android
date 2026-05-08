@@ -44,8 +44,17 @@ tasks.withType(Test).configureEach { task ->
 
 def bundledGamepadAssetsRoot = layout.buildDirectory.dir('generated/bundled-gamepad-assets')
 
+/** When this changes, {@link com.openterface.keymod.gamepad.GamepadLayoutPresetRepository} re-seeds preset_default from assets. */
+def gamepadDefaultFingerprintFile = rootProject.file('gamepad/default.json')
+def bundledGamepadDefaultFingerprint = '0'
+if (gamepadDefaultFingerprintFile.exists()) {
+    def crc = new java.util.zip.CRC32()
+    crc.update(gamepadDefaultFingerprintFile.bytes)
+    bundledGamepadDefaultFingerprint = Long.toUnsignedString(crc.getValue())
+}
+
 tasks.register('syncBundledGamepadPresets') {
-    description = 'Copy repo-root gamepad/*.json into generated assets bundled_gamepad/. default.json seeds built-in preset_default (Default); other JSON files become optional pack presets. Edits to default.json require rebuild; on-device preset_default + prefs refresh via in-app reset-default or clear data (syncBundledPresetsFromAssets skips default.json).'
+    description = 'Copy repo-root gamepad/*.json into generated assets bundled_gamepad/. BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT tracks gamepad/default.json so the app can re-seed preset_default when it changes. Other JSON files become optional pack presets.'
     outputs.dir(bundledGamepadAssetsRoot)
     doLast {
         def outRoot = bundledGamepadAssetsRoot.get().asFile
@@ -75,6 +84,8 @@ android {
         versionName "0.14"
 
         setProperty("archivesBaseName", "KeyMod")
+
+        buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
