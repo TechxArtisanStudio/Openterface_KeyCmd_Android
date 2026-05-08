@@ -1,15 +1,17 @@
 {
   "format": "openterface.gamepad.layout.v1",
   "layout": {
+    "backgroundFillArgb": -1515563,
     "backgroundOffsetX": 0.0,
     "backgroundOffsetY": 0.0,
+    "backgroundPattern": "dots",
     "backgroundScale": 1.0,
     "mouseSensitivity": 1.0,
     "showTwoButtons": false
   },
   "meta": {
     "displayName": "Default",
-    "exportedAt": "2026-05-07T19:56:52Z",
+    "exportedAt": "2026-05-08T12:44:54Z",
     "id": "preset_default",
     "sourceAppVersion": "0.14"
   },
@@ -17,6 +19,7 @@
     {
       "anchorX": 0.2,
       "anchorY": 0.5,
+      "dpadCrossArmDecoration": "labels",
       "dpadVariant": "cross",
       "id": "stick_left",
       "moduleAccentArgb": -13154481,
@@ -33,9 +36,9 @@
       "anchorY": 0.51415855,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "B",
+      "displayLabelColorArgb": -1,
       "hidKey": 40,
       "id": "button_a",
-      "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -43230,
       "scale": 1.41,
@@ -45,6 +48,10 @@
     {
       "anchorX": 0.43033707,
       "anchorY": 0.8333252,
+      "buttonCornerRadiusNorm": 0.51,
+      "buttonHeightRatio": 0.62,
+      "buttonRotationDeg": -35.0,
+      "buttonWidthRatio": 1.39,
       "displayLabel": "Select",
       "hidKey": 20,
       "id": "button_select",
@@ -56,6 +63,10 @@
     {
       "anchorX": 0.57340825,
       "anchorY": 0.8274919,
+      "buttonCornerRadiusNorm": 0.51,
+      "buttonHeightRatio": 0.62,
+      "buttonRotationDeg": -35.0,
+      "buttonWidthRatio": 1.39,
       "displayLabel": "Start",
       "hidKey": 8,
       "id": "button_start",
@@ -69,9 +80,8 @@
       "anchorY": 0.5124919,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "A",
-      "hidKey": 41,
+      "hidKey": 44,
       "id": "button_b",
-      "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -1499549,
       "scale": 1.41,

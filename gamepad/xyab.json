@@ -1,22 +1,25 @@
 {
   "format": "openterface.gamepad.layout.v1",
   "layout": {
+    "backgroundFillArgb": -12767670,
     "backgroundOffsetX": 0.0,
     "backgroundOffsetY": 0.0,
+    "backgroundPattern": "diagonal_hatch",
     "backgroundScale": 1.0,
     "mouseSensitivity": 1.0,
     "showTwoButtons": false
   },
   "meta": {
     "displayName": "XYAB",
-    "exportedAt": "2026-05-08T00:00:00Z",
-    "id": "preset_xyab",
+    "exportedAt": "2026-05-08T12:45:00Z",
+    "id": "preset_pack_xyab",
     "sourceAppVersion": "0.14"
   },
   "modules": [
     {
       "anchorX": 0.2,
       "anchorY": 0.5,
+      "dpadCrossArmDecoration": "labels",
       "dpadVariant": "cross",
       "id": "stick_left",
       "moduleAccentArgb": -13154481,

@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -1410,25 +1411,27 @@ public class GamepadFragment extends Fragment {
         BottomSheetDialog dialog = new GamepadPresetsBottomSheetDialog(sheetCtx);
         View sheet = LayoutInflater.from(sheetCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
         dialog.setContentView(sheet);
-        // Avoid Material's slide-away dismiss; do not add window enter/exit alpha so the sheet's
-        // single BottomSheetBehavior slide stays smooth (window fade + sheet slide felt choppy).
+        // Avoid Material's slide-away dismiss; clear window transitions so dim + sheet are not
+        // double-animated. Request EXPANDED before first layout so behavior lays out at the final
+        // offset immediately (deferring setState to post() forced smoothSlide + dim and felt choppy).
         dialog.setDismissWithAnimation(false);
         Window dw = dialog.getWindow();
         if (dw != null) {
             dw.setWindowAnimations(0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                dw.setEnterTransition(null);
+                dw.setExitTransition(null);
+            }
         }
+        BottomSheetBehavior<?> presetSheetBehavior = dialog.getBehavior();
+        presetSheetBehavior.setSkipCollapsed(true);
+        presetSheetBehavior.setFitToContents(true);
+        presetSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
         dialog.setOnShowListener(d -> {
             View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
             if (bottom != null) {
                 // Let the inflated sheet use {@code bg_presentation_touchpad_dialog} without a second surface behind it.
                 bottom.setBackgroundResource(android.R.color.transparent);
-                // Defer expand to the next frame so it does not compete with the initial attach/layout.
-                bottom.post(() -> {
-                    BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
-                    behavior.setSkipCollapsed(true);
-                    behavior.setFitToContents(true);
-                    behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                });
             }
         });
 

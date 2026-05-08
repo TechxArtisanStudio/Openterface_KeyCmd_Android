@@ -1,8 +1,10 @@
 {
   "format": "openterface.gamepad.layout.v1",
   "layout": {
+    "backgroundFillArgb": -14997448,
     "backgroundOffsetX": 0.0,
     "backgroundOffsetY": 0.0,
+    "backgroundPattern": "micro_grid",
     "backgroundScale": 1.0,
     "faceButtonTemplate": "xbox_abxy",
     "mouseSensitivity": 1.0,
@@ -10,7 +12,7 @@
   },
   "meta": {
     "displayName": "XYAB Trackpad",
-    "exportedAt": "2026-05-08T12:03:15Z",
+    "exportedAt": "2026-05-08T12:45:09Z",
     "id": "preset_pack_xyab_touchpad",
     "sourceAppVersion": "0.14"
   },
