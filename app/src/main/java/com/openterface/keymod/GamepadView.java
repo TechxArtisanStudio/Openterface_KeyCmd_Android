@@ -69,9 +69,10 @@ public class GamepadView extends View {
         TURBO
     }
 
-    private static final float LATCH_BADGE_MIN_DP = 24f;
-    private static final float LATCH_BADGE_MAX_DP = 44f;
-    private static final float LATCH_BADGE_FRACTION_OF_MIN_SIDE = 0.42f;
+    /** Centered hold / turbo badge on latched modules (drawn in {@link #drawKeyboardHoldLockBadgeIfNeeded}). */
+    private static final float LATCH_BADGE_MIN_DP = 32f;
+    private static final float LATCH_BADGE_MAX_DP = 56f;
+    private static final float LATCH_BADGE_FRACTION_OF_MIN_SIDE = 0.52f;
     private static final int LATCH_BADGE_DRAWABLE_ALPHA = 210;
 
     // Paint objects
