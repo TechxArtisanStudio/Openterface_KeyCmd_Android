@@ -673,10 +673,16 @@ public class GamepadFragment extends Fragment {
             sendAnalogInput(stickId.toString(), x, y);
         });
 
-        // Long press listener for config
+        // Long press listener for config (legacy non-dynamic SIMPLE layouts only)
         gamepadView.setComponentLongPressListener(componentId -> {
             Log.d(TAG, "Long press on: " + componentId);
             showLongPressMenu(componentId);
+        });
+
+        gamepadView.setModuleConfigEditTapListener(moduleId -> {
+            Log.d(TAG, "Module config chip: " + moduleId);
+            gamepadView.announceForAccessibility(getString(R.string.gamepad_edit_module_config_chip_cd));
+            showLongPressMenu(moduleId);
         });
 
         // Save positions when exiting edit mode
@@ -3121,8 +3127,10 @@ public class GamepadFragment extends Fragment {
         final LinearLayout pointerMouseSensSection =
                 dialogView.findViewById(R.id.stick_pointer_mouse_sensitivity_section);
         final SeekBar pointerMouseSeek = dialogView.findViewById(R.id.stick_pointer_mouse_sensitivity_seek);
-        final LinearLayout dpadDirectionIconsSection = dialogView.findViewById(R.id.dpad_direction_icons_section);
-        final MaterialSwitch dpadDirectionIconsSwitch = dialogView.findViewById(R.id.dpad_direction_icons_switch);
+        final LinearLayout dpadCrossArmDecorationSection =
+                dialogView.findViewById(R.id.dpad_cross_arm_decoration_section);
+        final RadioGroup dpadCrossArmDecorationGroup =
+                dialogView.findViewById(R.id.dpad_cross_arm_decoration_group);
         if (pointerMouseSeek != null && ("stick_right".equals(stickConfigModuleId)
                 || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(stickConfigModuleId))) {
             pointerMouseSeek.setProgress(stickPointerMouseGainToSeek(stickPointerMouseSensitivity));
@@ -3195,7 +3203,7 @@ public class GamepadFragment extends Fragment {
             }
             updateStickConfigSections(modeGroup, keySection, splitGapSection, splitOuterSection, pointerMouseSensSection,
                     stickCenterKeySection, stickCenterSummaryTv, pointerHubMouseRow, pointerHubMouseGroup,
-                    dpadDirectionIconsSection);
+                    dpadCrossArmDecorationSection);
         };
         refreshCenterHubUi.run();
         if ("stick_left".equals(stickConfigModuleId)
@@ -3247,15 +3255,8 @@ public class GamepadFragment extends Fragment {
             }
         }
 
-        GamepadLayoutPresetDocument.GamepadModule stickModForIcons = findModuleById(stickConfigModuleId);
-        if (dpadDirectionIconsSwitch != null && stickModForIcons != null) {
-            dpadDirectionIconsSwitch.setOnCheckedChangeListener(null);
-            dpadDirectionIconsSwitch.setChecked(Boolean.TRUE.equals(stickModForIcons.dpadDirectionIconsVisible));
-            dpadDirectionIconsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                stickModForIcons.dpadDirectionIconsVisible = isChecked ? Boolean.TRUE : null;
-                syncGamepadViewFromDoc();
-            });
-        }
+        GamepadLayoutPresetDocument.GamepadModule stickModForDecoration = findModuleById(stickConfigModuleId);
+        bindDpadCrossArmDecorationGroup(dpadCrossArmDecorationGroup, stickModForDecoration);
 
         // Stick size seekbar
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.stick_size_seekbar);
@@ -3435,8 +3436,10 @@ public class GamepadFragment extends Fragment {
                 if (m != null) {
                     m.scale = 1.0f;
                     m.moduleAccentArgb = null;
+                    m.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_LABELS;
                     m.dpadDirectionIconsVisible = null;
                 }
+                bindDpadCrossArmDecorationGroup(dpadCrossArmDecorationGroup, m);
                 syncGamepadViewFromDoc();
             } else if (gamepadView != null) {
                 gamepadView.setStickSizeScale(1.0f);
@@ -4433,6 +4436,33 @@ public class GamepadFragment extends Fragment {
         }
     }
 
+    private void bindDpadCrossArmDecorationGroup(@Nullable RadioGroup group,
+            @Nullable GamepadLayoutPresetDocument.GamepadModule mod) {
+        if (group == null || mod == null) {
+            return;
+        }
+        group.setOnCheckedChangeListener(null);
+        String eff = GamepadLayoutPresetDocument.effectiveDpadCrossArmDecoration(mod);
+        int checkId = R.id.dpad_cross_arm_option_labels;
+        if (GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE.equals(eff)) {
+            checkId = R.id.dpad_cross_arm_option_none;
+        } else if (GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS.equals(eff)) {
+            checkId = R.id.dpad_cross_arm_option_icons;
+        }
+        group.check(checkId);
+        group.setOnCheckedChangeListener((g, checkedId) -> {
+            if (checkedId == R.id.dpad_cross_arm_option_none) {
+                mod.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE;
+            } else if (checkedId == R.id.dpad_cross_arm_option_icons) {
+                mod.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS;
+            } else {
+                mod.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_LABELS;
+            }
+            mod.dpadDirectionIconsVisible = null;
+            syncGamepadViewFromDoc();
+        });
+    }
+
     private void updateStickConfigSections(
             RadioGroup modeGroup, LinearLayout keySection, LinearLayout splitGapSection,
             LinearLayout splitOuterSection, LinearLayout pointerMouseSensSection,
@@ -4440,16 +4470,16 @@ public class GamepadFragment extends Fragment {
             @Nullable android.widget.TextView stickCenterSummaryTv,
             @Nullable View pointerHubMouseRow,
             @Nullable RadioGroup pointerHubMouseGroup,
-            @Nullable LinearLayout dpadDirectionIconsSection) {
+            @Nullable LinearLayout dpadCrossArmDecorationSection) {
         int checked = modeGroup.getCheckedRadioButtonId();
         boolean keys = checked == R.id.stick_mode_key || checked == R.id.stick_mode_dpad_cross
                 || checked == R.id.stick_mode_dpad_split;
         keySection.setVisibility(keys ? View.VISIBLE : View.GONE);
-        boolean showDpadDirIcons = keys && checked == R.id.stick_mode_dpad_cross
+        boolean showCrossArmDecoration = keys && checked == R.id.stick_mode_dpad_cross
                 && ("stick_left".equals(stickConfigModuleId)
                 || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(stickConfigModuleId));
-        if (dpadDirectionIconsSection != null) {
-            dpadDirectionIconsSection.setVisibility(showDpadDirIcons ? View.VISIBLE : View.GONE);
+        if (dpadCrossArmDecorationSection != null) {
+            dpadCrossArmDecorationSection.setVisibility(showCrossArmDecoration ? View.VISIBLE : View.GONE);
         }
         boolean mouseLike = checked == R.id.stick_mode_analog;
         boolean showPointerMouse = mouseLike && ("stick_right".equals(stickConfigModuleId)
@@ -4582,6 +4612,7 @@ public class GamepadFragment extends Fragment {
         }
         if (!GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)
                 || !com.openterface.keymod.gamepad.GamepadDpadVariantArt.usesCrossArmDecoration(m.dpadVariant)) {
+            m.dpadCrossArmDecoration = null;
             m.dpadDirectionIconsVisible = null;
         }
         applyLayoutDocFromMemory();

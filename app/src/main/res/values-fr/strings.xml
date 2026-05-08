@@ -911,11 +911,15 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_stick_mode_dpad_split"><![CDATA[D-pad (split segments)
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_title"><![CDATA[Direction arrows
+    <string name="gamepad_dpad_cross_arm_decoration_title"><![CDATA[Branches du D-pad en croix
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_summary"><![CDATA[Show Material arrow icons on each arm of the cross D-pad. Mapped key labels appear when key mapping hints are on in the gamepad toolbar; icons show whenever this option is enabled.
+    <string name="gamepad_dpad_cross_arm_decoration_summary"><![CDATA[Ce qui est dessiné sur chaque branche du D-pad en croix unifié (variantes cross, flottant et clicky). Les D-pad segmentés, disque et pivot ne changent pas.
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_switch"><![CDATA[Show direction icons
+    <string name="gamepad_dpad_cross_arm_option_none"><![CDATA[Rien
+    ]]></string>
+    <string name="gamepad_dpad_cross_arm_option_labels"><![CDATA[Libellés des touches mappées
+    ]]></string>
+    <string name="gamepad_dpad_cross_arm_option_icons"><![CDATA[Icônes de direction
     ]]></string>
     <string name="gamepad_stick_mode_key"><![CDATA[Direction keys (virtual stick)
     ]]></string>

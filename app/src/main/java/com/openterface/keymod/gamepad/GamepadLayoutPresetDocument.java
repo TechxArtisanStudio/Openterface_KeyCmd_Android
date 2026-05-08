@@ -1,5 +1,6 @@
 package com.openterface.keymod.gamepad;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
@@ -22,6 +23,52 @@ public class GamepadLayoutPresetDocument {
     public Meta meta;
     public LayoutGlobals layout;
     public List<GamepadModule> modules;
+
+    /**
+     * Cross / floating / clicky DPAD arm overlay for rendering (handles legacy {@link GamepadModule#dpadDirectionIconsVisible}).
+     */
+    @NonNull
+    public static String effectiveDpadCrossArmDecoration(@Nullable GamepadModule m) {
+        if (m == null || !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+            return GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE;
+        }
+        if (!GamepadDpadVariantArt.usesCrossArmDecoration(m.dpadVariant)) {
+            return GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE;
+        }
+        if (m.dpadCrossArmDecoration != null && !m.dpadCrossArmDecoration.trim().isEmpty()) {
+            return GamepadLayoutPresetConstants.normalizeDpadCrossArmDecoration(m.dpadCrossArmDecoration);
+        }
+        if (Boolean.TRUE.equals(m.dpadDirectionIconsVisible)) {
+            return GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS;
+        }
+        return GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_LABELS;
+    }
+
+    private static void normalizeDpadCrossArmDecorationOnModule(@Nullable GamepadModule m) {
+        if (m == null || !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+            return;
+        }
+        if (!GamepadDpadVariantArt.usesCrossArmDecoration(m.dpadVariant)) {
+            m.dpadCrossArmDecoration = null;
+            m.dpadDirectionIconsVisible = null;
+            return;
+        }
+        if (m.dpadCrossArmDecoration != null && !m.dpadCrossArmDecoration.trim().isEmpty()) {
+            if (!GamepadLayoutPresetConstants.isAllowedDpadCrossArmDecoration(m.dpadCrossArmDecoration)) {
+                throw new IllegalArgumentException("Module " + m.id + ": invalid dpadCrossArmDecoration");
+            }
+            m.dpadCrossArmDecoration =
+                    GamepadLayoutPresetConstants.normalizeDpadCrossArmDecoration(m.dpadCrossArmDecoration);
+            m.dpadDirectionIconsVisible = null;
+            return;
+        }
+        if (Boolean.TRUE.equals(m.dpadDirectionIconsVisible)) {
+            m.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS;
+        } else {
+            m.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_LABELS;
+        }
+        m.dpadDirectionIconsVisible = null;
+    }
 
     public static class Meta {
         public String id;
@@ -131,9 +178,14 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Float dpadSplitOuterReachRatio;
         /**
-         * DPAD cross-style arms only ({@code cross}, {@code floating}, {@code clicky}): when {@code true}, draw Material
-         * direction arrows on each arm and lay out mapped-key labels alongside; {@code null} or {@code false} uses
-         * centered labels only. Ignored for {@code split}, {@code disc}, and {@code pivot}.
+         * DPAD cross-style arms only ({@code cross}, {@code floating}, {@code clicky}): {@link GamepadLayoutPresetConstants#DPAD_CROSS_ARM_DECORATION_NONE},
+         * {@link GamepadLayoutPresetConstants#DPAD_CROSS_ARM_DECORATION_LABELS}, or {@link GamepadLayoutPresetConstants#DPAD_CROSS_ARM_DECORATION_ICONS}.
+         * Ignored for split/disc/pivot; normalized when validating presets.
+         */
+        @Nullable public String dpadCrossArmDecoration;
+        /**
+         * Legacy: when {@code true} and {@link #dpadCrossArmDecoration} is unset, treated as {@code icons}.
+         * Cleared during validation when {@link #dpadCrossArmDecoration} is canonical.
          */
         @Nullable public Boolean dpadDirectionIconsVisible;
         /** Optional thumbstick cap look (reserved; null = default). */
@@ -409,6 +461,7 @@ public class GamepadLayoutPresetDocument {
                                     + ": dpadSplitOuterReachRatio too small for this dpadSplitGapRatio");
                         }
                     }
+                    normalizeDpadCrossArmDecorationOnModule(m);
                 }
                 if (m.stickMouseSensitivity != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {

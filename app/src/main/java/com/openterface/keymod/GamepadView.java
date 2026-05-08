@@ -21,6 +21,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -107,6 +108,8 @@ public class GamepadView extends View {
     private float longPressDownY = 0;
     private boolean longPressCancelled = false;
     private ComponentLongPressListener longPressListener;
+    /** Dynamic edit mode: tap target below module outline; opens module config (replaces long-press there). */
+    private ModuleConfigEditTapListener moduleConfigEditTapListener;
 
     // Component bounds (for touch detection)
     private Map<String, RectF> componentBounds;
@@ -200,6 +203,36 @@ public class GamepadView extends View {
 
     /** Last drawn {@code stick_left} D-pad variant (for clicky haptics). */
     private String dynamicLeftDpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+
+    /** z-order low → high; hit-test from end to start. Cleared each frame in {@link #drawComponents}. */
+    private final List<ModuleEditChip> moduleEditChips = new ArrayList<>();
+    @Nullable private Drawable moduleConfigEditIconDrawable;
+
+    private static final float MODULE_CONFIG_CHIP_RADIUS_DP = 12f;
+    private static final float MODULE_CONFIG_CHIP_GAP_DP = 4f;
+    private static final float MODULE_CONFIG_CHIP_HIT_SLOP_DP = 4f;
+
+    private static final class ModuleEditChip {
+        final String moduleId;
+        final float cx;
+        final float cy;
+        final float drawRadius;
+        final float hitRadius;
+
+        ModuleEditChip(String moduleId, float cx, float cy, float drawRadius, float hitRadius) {
+            this.moduleId = moduleId;
+            this.cx = cx;
+            this.cy = cy;
+            this.drawRadius = drawRadius;
+            this.hitRadius = hitRadius;
+        }
+
+        boolean containsPoint(float x, float y) {
+            float dx = x - cx;
+            float dy = y - cy;
+            return dx * dx + dy * dy <= hitRadius * hitRadius;
+        }
+    }
 
     /** Base radius in dp before per-module {@code scale} and {@link #touchpadMouseButtonLayoutScale}. */
     private static final float MOUSE_BUTTON_BASE_RADIUS_DP = 52f;
@@ -517,6 +550,7 @@ public class GamepadView extends View {
     }
 
     private void drawComponents(Canvas canvas) {
+        moduleEditChips.clear();
         // Clear stale bounds from previous draw before re-registering all hit areas
         componentBounds.clear();
         switch (currentLayout) {
@@ -539,6 +573,9 @@ public class GamepadView extends View {
         }
         if (isEditMode) {
             drawEditModeOutlines(canvas);
+            if (useDynamicLayout()) {
+                drawEditModeModuleConfigChips(canvas);
+            }
         }
     }
 
@@ -937,6 +974,87 @@ public class GamepadView extends View {
         retroRingPaint.setPathEffect(null);
     }
 
+    /**
+     * Small edit affordance centered under each module’s dashed outline (dynamic SIMPLE presets only).
+     */
+    private void drawEditModeModuleConfigChips(Canvas canvas) {
+        if (layoutDocument == null || layoutDocument.modules == null) {
+            return;
+        }
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        float drawR = MODULE_CONFIG_CHIP_RADIUS_DP * density;
+        float gap = MODULE_CONFIG_CHIP_GAP_DP * density;
+        float hitSlop = MODULE_CONFIG_CHIP_HIT_SLOP_DP * density;
+        float hitR = drawR + hitSlop;
+
+        if (moduleConfigEditIconDrawable == null) {
+            Drawable d = AppCompatResources.getDrawable(ctx, R.drawable.ic_edit);
+            moduleConfigEditIconDrawable = d != null ? d.mutate() : null;
+        }
+
+        List<GamepadLayoutPresetDocument.GamepadModule> mods = new ArrayList<>(layoutDocument.modules);
+        Collections.sort(mods, Comparator.comparingInt(m -> m.zIndex));
+
+        int fillCol = ColorUtils.blendARGB(themeAccentPrimary, Color.WHITE, 0.72f);
+        int strokeCol = ColorUtils.blendARGB(themeAccentPrimary, Color.BLACK, 0.35f);
+        int iconTint = ColorUtils.blendARGB(themeAccentPrimary, Color.BLACK, 0.55f);
+
+        for (GamepadLayoutPresetDocument.GamepadModule m : mods) {
+            if (m == null || m.id == null) {
+                continue;
+            }
+            if (isComponentDisabled(m.id)) {
+                continue;
+            }
+            RectF b = componentBounds.get(m.id);
+            if (b == null) {
+                continue;
+            }
+            float cx = b.centerX();
+            float cy = b.bottom + gap + drawR;
+            moduleEditChips.add(new ModuleEditChip(m.id, cx, cy, drawR, hitR));
+
+            retroBodyPaint.setShader(null);
+            retroBodyPaint.setColor(fillCol);
+            canvas.drawCircle(cx, cy, drawR, retroBodyPaint);
+
+            retroRingPaint.setStyle(Paint.Style.STROKE);
+            retroRingPaint.setStrokeWidth(Math.max(1f, density));
+            retroRingPaint.setColor(strokeCol);
+            retroRingPaint.setPathEffect(null);
+            canvas.drawCircle(cx, cy, drawR, retroRingPaint);
+
+            if (moduleConfigEditIconDrawable != null) {
+                float inset = drawR * 0.38f;
+                int left = Math.round(cx - drawR + inset);
+                int top = Math.round(cy - drawR + inset);
+                int right = Math.round(cx + drawR - inset);
+                int bottom = Math.round(cy + drawR - inset);
+                moduleConfigEditIconDrawable.setTint(iconTint);
+                moduleConfigEditIconDrawable.setBounds(left, top, right, bottom);
+                moduleConfigEditIconDrawable.draw(canvas);
+            }
+        }
+    }
+
+    @Nullable
+    private String findModuleIdForConfigChipHit(float x, float y) {
+        if (!isEditMode || !useDynamicLayout() || moduleEditChips.isEmpty()) {
+            return null;
+        }
+        for (int i = moduleEditChips.size() - 1; i >= 0; i--) {
+            ModuleEditChip chip = moduleEditChips.get(i);
+            if (chip.containsPoint(x, y)) {
+                return chip.moduleId;
+            }
+        }
+        return null;
+    }
+
     private boolean isDpadDirPressed(String dir) {
         String id = "dpad_" + dir;
         return dpadPressedSet.contains(id) || id.equals(pressedComponentId);
@@ -1103,16 +1221,21 @@ public class GamepadView extends View {
             dynamicLeftDpadVariant = GamepadDpadVariantArt.normalizeVariant(variant);
         }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
-        boolean moduleWantsDirectionIcons = Boolean.TRUE.equals(m.dpadDirectionIconsVisible)
-                && GamepadDpadVariantArt.usesCrossArmDecoration(variant);
+        String crossArmDec = GamepadLayoutPresetDocument.effectiveDpadCrossArmDecoration(m);
+        String normDec = GamepadLayoutPresetConstants.normalizeDpadCrossArmDecoration(crossArmDec);
         Drawable[] iconPool = null;
-        if (moduleWantsDirectionIcons) {
+        if (GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS.equals(normDec)) {
             ensureDpadDirectionIconDrawables();
             iconPool = dpadDirectionIconPool;
         }
+        float labelRadialScale = keyMappingHintsVisible ? 1.12f : 1f;
+        if (GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_LABELS.equals(normDec)
+                || GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS.equals(normDec)) {
+            labelRadialScale = Math.max(labelRadialScale, 1.12f);
+        }
         drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
                 m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent,
-                moduleWantsDirectionIcons, iconPool);
+                keyMappingHintsVisible, labelRadialScale, crossArmDec, iconPool);
     }
 
     /** @see GamepadDynamicLayoutRegistry */
@@ -1427,7 +1550,9 @@ public class GamepadView extends View {
                                    String boundsId, String dpadVariant, String upLabel, String downLabel,
                                    String leftLabel, String rightLabel, @Nullable Float dpadSplitGapRatio,
                                    @Nullable Float dpadSplitOuterReachRatio, int accentPrimary,
-                                   boolean showDpadDirectionIcons, @Nullable Drawable[] dpadDirectionIcons) {
+                                   boolean showMappingHints, float labelRadialScale,
+                                   @NonNull String crossArmDecoration,
+                                   @Nullable Drawable[] dpadDirectionIcons) {
         float density = getResources().getDisplayMetrics().density;
         float globalStickMul = useDynamicLayout() ? 1f : stickSizeScale;
         GamepadDpadVariantArt.draw(canvas, cx, cy, baseRadius, density, globalStickMul, moduleScale,
@@ -1435,9 +1560,8 @@ public class GamepadView extends View {
                 activeStickDirections, accentPrimary,
                 retroDpadFillPaint, retroRingPaint, retroGlossPaint, retroShadowPaint, retroBodyPaint,
                 retroLabelTypeface, componentBounds, dynamicHitTestOrder, dpadSplitGapRatio,
-                dpadSplitOuterReachRatio, keyMappingHintsVisible,
-                keyMappingHintsVisible ? 1.12f : 1f,
-                showDpadDirectionIcons, dpadDirectionIcons);
+                dpadSplitOuterReachRatio, showMappingHints, labelRadialScale,
+                crossArmDecoration, dpadDirectionIcons);
     }
 
     private void ensureDpadDirectionIconDrawables() {
@@ -2109,24 +2233,17 @@ public class GamepadView extends View {
 
         switch (action) {
             case MotionEvent.ACTION_DOWN: {
+                if (isEditMode && useDynamicLayout()) {
+                    String chipModuleId = findModuleIdForConfigChipHit(x, y);
+                    if (chipModuleId != null && moduleConfigEditTapListener != null) {
+                        performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+                        moduleConfigEditTapListener.onModuleConfigEditTap(chipModuleId);
+                        return true;
+                    }
+                }
                 String componentId = getComponentAt(x, y);
                 if (componentId != null && !isComponentDisabled(componentId)) {
                     pointerComponents.put(pointerId, componentId);
-                    // In edit mode, touchpad is repositioned by drag, not scroll; allow long-press menu too.
-                    boolean skipTouchpadLongPress = !isEditMode && componentId.startsWith("touchpad_")
-                            && touchpadDeltaListener != null;
-                    if (longPressEnabled && isEditMode && !skipTouchpadLongPress) {
-                        longPressComponentId = componentId;
-                        longPressDownX = x;
-                        longPressDownY = y;
-                        longPressCancelled = false;
-                        longPressRunnable = () -> {
-                            if (longPressListener != null && longPressComponentId != null && !longPressCancelled) {
-                                longPressListener.onComponentLongPress(longPressComponentId);
-                            }
-                        };
-                        longPressHandler.postDelayed(longPressRunnable, longPressThresholdMs);
-                    }
                     if (isDpadComponent(componentId)) {
                         if (dpadPressedSet.add(componentId) && dpadStateListener != null) {
                             dpadStateListener.onDpadStateChanged(getCurrentDpadKeys());
@@ -2574,6 +2691,14 @@ public class GamepadView extends View {
         this.longPressListener = listener;
     }
 
+    /**
+     * Dynamic layout edit mode: tap the small edit chip under a module to open its configuration.
+     * Long-press on the module body is not used for that path (avoids accidental drags).
+     */
+    public void setModuleConfigEditTapListener(@Nullable ModuleConfigEditTapListener listener) {
+        this.moduleConfigEditTapListener = listener;
+    }
+
     public void setDpadStateListener(DpadStateListener listener) {
         this.dpadStateListener = listener;
     }
@@ -2611,7 +2736,8 @@ public class GamepadView extends View {
     }
 
     /**
-     * Tunes customize-mode long-press before module configuration menus. Values are clamped for safety.
+     * Tunes customize-mode long-press before module configuration menus on non-dynamic SIMPLE layouts.
+     * Dynamic presets use {@link #setModuleConfigEditTapListener} instead. Values are clamped for safety.
      * Persisted keys: {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_MS},
      * {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#EDIT_LONG_PRESS_CANCEL_DP}.
      */
@@ -2794,6 +2920,10 @@ public class GamepadView extends View {
 
     public interface ComponentLongPressListener {
         void onComponentLongPress(String componentId);
+    }
+
+    public interface ModuleConfigEditTapListener {
+        void onModuleConfigEditTap(String moduleId);
     }
 
     public interface DpadStateListener {

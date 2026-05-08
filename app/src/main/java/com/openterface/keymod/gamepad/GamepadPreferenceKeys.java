@@ -42,7 +42,8 @@ public final class GamepadPreferenceKeys {
     public static final String RIGHT_STICK_MOUSE_GAIN = "gamepad_right_stick_mouse_gain";
 
     /**
-     * Customize mode: long-press duration before module / empty-area menu (ms). Applied via
+     * Customize mode: long-press duration before module menu (ms) on non-dynamic SIMPLE layouts only.
+     * Dynamic presets use the per-module edit chip instead. Applied via
      * {@code GamepadView#setEditLongPressConfig} (clamped 250–1200). Default 600.
      */
     public static final String EDIT_LONG_PRESS_MS = "gamepad_edit_long_press_ms";

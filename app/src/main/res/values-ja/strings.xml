@@ -879,11 +879,15 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_stick_mode_dpad_split"><![CDATA[D-pad (split segments)
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_title"><![CDATA[Direction arrows
+    <string name="gamepad_dpad_cross_arm_decoration_title"><![CDATA[十字一体 D-pad の各腕
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_summary"><![CDATA[Show Material arrow icons on each arm of the cross D-pad. Mapped key labels appear when key mapping hints are on in the gamepad toolbar; icons show whenever this option is enabled.
+    <string name="gamepad_dpad_cross_arm_decoration_summary"><![CDATA[一体十字・フローティング・クリッキー型の各腕に表示する内容です。分割・ディスク・ピボット型は変わりません。
     ]]></string>
-    <string name="gamepad_dpad_direction_icons_switch"><![CDATA[Show direction icons
+    <string name="gamepad_dpad_cross_arm_option_none"><![CDATA[なし
+    ]]></string>
+    <string name="gamepad_dpad_cross_arm_option_labels"><![CDATA[割り当てキーのラベル
+    ]]></string>
+    <string name="gamepad_dpad_cross_arm_option_icons"><![CDATA[方向アイコン
     ]]></string>
     <string name="gamepad_stick_mode_key"><![CDATA[Direction keys (virtual stick)
     ]]></string>

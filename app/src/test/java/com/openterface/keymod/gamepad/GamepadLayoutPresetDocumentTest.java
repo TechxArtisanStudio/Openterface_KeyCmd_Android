@@ -433,7 +433,7 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
-    public void roundTripJsonPreservesDpadDirectionIconsVisible() {
+    public void validateMigratesLegacyDpadDirectionIconsVisibleToCrossArmDecoration() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         GamepadLayoutPresetDocument.GamepadModule left = doc.modules.get(0);
         left.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
@@ -443,8 +443,24 @@ public class GamepadLayoutPresetDocumentTest {
         GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
         assertNotNull(parsed);
         GamepadLayoutPresetDocument.validateOrThrow(parsed);
-        assertNotNull(parsed.modules.get(0).dpadDirectionIconsVisible);
-        assertEquals(Boolean.TRUE, parsed.modules.get(0).dpadDirectionIconsVisible);
+        assertNull(parsed.modules.get(0).dpadDirectionIconsVisible);
+        assertEquals(GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS,
+                parsed.modules.get(0).dpadCrossArmDecoration);
+    }
+
+    @Test
+    public void roundTripJsonPreservesDpadCrossArmDecoration() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule left = doc.modules.get(0);
+        left.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        left.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
+        left.dpadCrossArmDecoration = GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertEquals(GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_NONE,
+                parsed.modules.get(0).dpadCrossArmDecoration);
     }
 
     @Test(expected = IllegalArgumentException.class)

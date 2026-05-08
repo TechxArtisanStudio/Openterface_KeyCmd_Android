@@ -278,7 +278,7 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/dpad_direction_icons_section"
+            android:id="@+id/dpad_cross_arm_decoration_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -288,23 +288,47 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_dpad_direction_icons_title"
+                android:text="@string/gamepad_dpad_cross_arm_decoration_title"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_dpad_direction_icons_summary"
+                android:text="@string/gamepad_dpad_cross_arm_decoration_summary"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/dpad_direction_icons_switch"
+            <RadioGroup
+                android:id="@+id/dpad_cross_arm_decoration_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_dpad_direction_icons_switch"
-                android:textColor="?attr/colorOnSurface" />
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_none"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_none"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_labels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_labels"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_icons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_icons"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+            </RadioGroup>
         </LinearLayout>
 
         <!-- D-Pad Key Mapping Section -->

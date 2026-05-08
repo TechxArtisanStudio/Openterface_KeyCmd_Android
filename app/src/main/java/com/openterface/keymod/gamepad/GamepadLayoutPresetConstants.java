@@ -1,5 +1,6 @@
 package com.openterface.keymod.gamepad;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public final class GamepadLayoutPresetConstants {
@@ -67,6 +68,16 @@ public final class GamepadLayoutPresetConstants {
     public static final String DPAD_VARIANT_FLOATING = "floating";
     public static final String DPAD_VARIANT_CLICKY = "clicky";
     public static final String DPAD_VARIANT_PIVOT = "pivot";
+
+    /**
+     * Cross / floating / clicky D-pad arms only: draw nothing on the four arms (hub unchanged).
+     */
+    public static final String DPAD_CROSS_ARM_DECORATION_NONE = "none";
+    /** Cross / floating / clicky D-pad arms only: mapped HID key label per arm. */
+    public static final String DPAD_CROSS_ARM_DECORATION_LABELS = "labels";
+    /** Cross / floating / clicky D-pad arms only: Material direction arrow per arm. */
+    public static final String DPAD_CROSS_ARM_DECORATION_ICONS = "icons";
+
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
@@ -259,6 +270,34 @@ public final class GamepadLayoutPresetConstants {
                 || DPAD_VARIANT_FLOATING.equals(v)
                 || DPAD_VARIANT_CLICKY.equals(v)
                 || DPAD_VARIANT_PIVOT.equals(v);
+    }
+
+    public static boolean isAllowedDpadCrossArmDecoration(@Nullable String v) {
+        if (v == null || v.trim().isEmpty()) {
+            return true;
+        }
+        String x = v.trim().toLowerCase(java.util.Locale.ROOT);
+        return DPAD_CROSS_ARM_DECORATION_NONE.equals(x)
+                || DPAD_CROSS_ARM_DECORATION_LABELS.equals(x)
+                || DPAD_CROSS_ARM_DECORATION_ICONS.equals(x);
+    }
+
+    /**
+     * Canonical cross-arm decoration string for JSON ({@link #DPAD_CROSS_ARM_DECORATION_LABELS} if unknown).
+     */
+    @NonNull
+    public static String normalizeDpadCrossArmDecoration(@Nullable String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return DPAD_CROSS_ARM_DECORATION_LABELS;
+        }
+        String x = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (DPAD_CROSS_ARM_DECORATION_NONE.equals(x)) {
+            return DPAD_CROSS_ARM_DECORATION_NONE;
+        }
+        if (DPAD_CROSS_ARM_DECORATION_ICONS.equals(x)) {
+            return DPAD_CROSS_ARM_DECORATION_ICONS;
+        }
+        return DPAD_CROSS_ARM_DECORATION_LABELS;
     }
 
     public static boolean isAllowedFaceButtonTemplate(@Nullable String t) {
