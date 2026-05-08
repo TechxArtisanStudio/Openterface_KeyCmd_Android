@@ -1,0 +1,377 @@
+{
+  "format": "openterface.gamepad.layout.v1",
+  "layout": {
+    "backgroundFillArgb": -14796241,
+    "backgroundOffsetX": 0.0,
+    "backgroundOffsetY": 0.0,
+    "backgroundPattern": "micro_grid",
+    "backgroundScale": 1.0,
+    "faceButtonTemplate": "xbox_abxy",
+    "gyroEnabled": false,
+    "mouseSensitivity": 1.12,
+    "rightStickMouseGain": 1.18,
+    "showTwoButtons": false,
+    "stickLayoutTemplate": "offset",
+    "touchpadMouseButtonScale": 1.0
+  },
+  "meta": {
+    "creator": "Openterface",
+    "description": "Minecraft Java (US QWERTY defaults): WASD move, touchpad + right stick look, L/M/R mouse, ABXY Jump/Inv/Sneak/Sprint, Tab/Esc, bumpers Q/F, triggers hotbar 1-2. Gyro off; enable in layout if you want tilt-aim.",
+    "displayName": "Minecraft Java",
+    "exportedAt": "2026-05-08T20:33:52Z",
+    "id": "preset_pack_minecraft_java",
+    "sourceAppVersion": "0.14"
+  },
+  "modules": [
+    {
+      "anchorX": 0.10995143,
+      "anchorY": 0.71499187,
+      "id": "stick_left",
+      "moduleAccentArgb": -13154481,
+      "scale": 1.59,
+      "stickDownKey": 22,
+      "stickLeftKey": 4,
+      "stickRightKey": 7,
+      "stickUpKey": 26,
+      "type": "STICK_KEY",
+      "zIndex": 0
+    },
+    {
+      "anchorX": 0.60636705,
+      "anchorY": 0.54749185,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Run",
+      "hidKey": 224,
+      "id": "button_y",
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 1,
+      "moduleAccentArgb": -20443,
+      "scale": 1.26,
+      "type": "BUTTON",
+      "zIndex": 1
+    },
+    {
+      "anchorX": 0.17303371,
+      "anchorY": 0.3916585,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Sneak",
+      "hidKey": 225,
+      "id": "button_x",
+      "keyboardHoldLock": true,
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 2,
+      "moduleAccentArgb": -14575807,
+      "scale": 1.49,
+      "type": "BUTTON",
+      "zIndex": 2
+    },
+    {
+      "anchorX": 0.48501873,
+      "anchorY": 0.22915854,
+      "buttonCornerRadiusNorm": 0.57,
+      "buttonHeightRatio": 0.87,
+      "buttonWidthRatio": 1.47,
+      "displayLabel": "Inv",
+      "hidKey": 8,
+      "id": "button_b",
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 0,
+      "moduleAccentArgb": -43230,
+      "scale": 1.26,
+      "type": "BUTTON",
+      "zIndex": 3
+    },
+    {
+      "anchorX": 0.92134833,
+      "anchorY": 0.37665853,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Jump",
+      "gestureLock": {
+        "downLeft": {
+          "action": "turbo"
+        },
+        "downRight": {
+          "action": "none"
+        },
+        "upLeft": {
+          "action": "hold_lock"
+        },
+        "upRight": {
+          "action": "none"
+        }
+      },
+      "hidKey": 44,
+      "id": "button_a",
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 0,
+      "moduleAccentArgb": -11684126,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 4
+    },
+    {
+      "anchorX": 0.8558052,
+      "anchorY": 0.7308252,
+      "displayLabel": "Look",
+      "heightNorm": 0.44,
+      "id": "touchpad_1",
+      "moduleAccentArgb": -13154481,
+      "scale": 1.0,
+      "type": "TOUCHPAD",
+      "widthNorm": 0.25,
+      "zIndex": 5
+    },
+    {
+      "anchorX": 0.6543071,
+      "anchorY": 0.79749185,
+      "displayLabel": "L",
+      "id": "mouse_btn_l",
+      "keyboardHoldLock": true,
+      "mouseButton": 1,
+      "scale": 1.09,
+      "type": "MOUSE_BUTTON",
+      "zIndex": 6
+    },
+    {
+      "anchorX": 0.70037454,
+      "anchorY": 0.5224919,
+      "displayLabel": "R",
+      "id": "mouse_btn_r",
+      "keyboardHoldLock": true,
+      "mouseButton": 3,
+      "scale": 0.94,
+      "type": "MOUSE_BUTTON",
+      "zIndex": 8
+    },
+    {
+      "anchorX": 0.67094964,
+      "anchorY": 0.3021281,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Tab",
+      "hidKey": 43,
+      "id": "button_select",
+      "modifierMask": 0,
+      "scale": 1.02,
+      "type": "BUTTON",
+      "zIndex": 9
+    },
+    {
+      "anchorX": 0.7456929,
+      "anchorY": 0.19582519,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Esc",
+      "hidKey": 41,
+      "id": "button_start",
+      "modifierMask": 0,
+      "scale": 1.1,
+      "type": "BUTTON",
+      "zIndex": 10
+    },
+    {
+      "anchorX": 0.062172286,
+      "anchorY": 0.37749186,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Jump",
+      "hidKey": 44,
+      "id": "button_3",
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 0,
+      "moduleAccentArgb": -11684126,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 20
+    },
+    {
+      "anchorX": 0.84157306,
+      "anchorY": 0.14915852,
+      "buttonCornerRadiusNorm": 0.18,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "Swap",
+      "hidKey": 9,
+      "id": "button_4",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 21
+    },
+    {
+      "anchorX": 0.16011237,
+      "anchorY": 0.17790852,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "1",
+      "hidKey": 30,
+      "id": "button_5",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 22
+    },
+    {
+      "anchorX": 0.06254682,
+      "anchorY": 0.17999186,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "Drop",
+      "hidKey": 20,
+      "id": "button_6",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 23
+    },
+    {
+      "anchorX": 0.2539326,
+      "anchorY": 0.17999186,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "2",
+      "hidKey": 31,
+      "id": "button_7",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 24
+    },
+    {
+      "anchorX": 0.30786517,
+      "anchorY": 0.2745752,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "3",
+      "hidKey": 32,
+      "id": "button_8",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 25
+    },
+    {
+      "anchorX": 0.34531835,
+      "anchorY": 0.3958252,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "4",
+      "hidKey": 33,
+      "id": "button_9",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 26
+    },
+    {
+      "anchorX": 0.36404493,
+      "anchorY": 0.527474,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "5",
+      "hidKey": 34,
+      "id": "button_10",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 27
+    },
+    {
+      "anchorX": 0.3895131,
+      "anchorY": 0.66999185,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "6",
+      "hidKey": 35,
+      "id": "button_11",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 28
+    },
+    {
+      "anchorX": 0.39513108,
+      "anchorY": 0.8016585,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "7",
+      "hidKey": 36,
+      "id": "button_12",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 29
+    },
+    {
+      "anchorX": 0.3741573,
+      "anchorY": 0.9216585,
+      "buttonCornerRadiusNorm": 0.88,
+      "buttonHeightRatio": 0.49,
+      "buttonWidthRatio": 0.8,
+      "displayLabel": "8",
+      "hidKey": 37,
+      "id": "button_13",
+      "modifierMask": 0,
+      "scale": 1.51,
+      "type": "BUTTON",
+      "zIndex": 30
+    },
+    {
+      "anchorX": 0.26666668,
+      "anchorY": 0.81249183,
+      "displayLabel": "L",
+      "id": "mouse_btn_copy_1",
+      "keyboardHoldLock": true,
+      "mouseButton": 1,
+      "scale": 1.09,
+      "type": "MOUSE_BUTTON",
+      "zIndex": 31
+    },
+    {
+      "anchorX": 0.246608,
+      "anchorY": 0.54809326,
+      "displayLabel": "R",
+      "id": "mouse_btn_copy_2",
+      "keyboardHoldLock": true,
+      "mouseButton": 3,
+      "scale": 0.94,
+      "type": "MOUSE_BUTTON",
+      "zIndex": 32
+    },
+    {
+      "anchorX": 0.81423223,
+      "anchorY": 0.41499186,
+      "buttonCornerRadiusNorm": 1.0,
+      "displayLabel": "Sneak",
+      "gestureLock": {
+        "downLeft": {
+          "action": "none"
+        },
+        "downRight": {
+          "action": "none"
+        },
+        "upLeft": {
+          "action": "turbo"
+        },
+        "upRight": {
+          "action": "hold_lock"
+        }
+      },
+      "hidKey": 225,
+      "id": "button_14",
+      "keyboardHoldLock": true,
+      "mappedKeyLabelVisible": false,
+      "modifierMask": 2,
+      "moduleAccentArgb": -14575807,
+      "scale": 1.49,
+      "type": "BUTTON",
+      "zIndex": 33
+    }
+  ],
+  "schemaVersion": 8
+}

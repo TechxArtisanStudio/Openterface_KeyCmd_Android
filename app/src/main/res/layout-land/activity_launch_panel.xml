@@ -47,12 +47,12 @@
 
                 <ImageView
                     android:layout_width="wrap_content"
-                    android:layout_height="30dp"
+                    android:layout_height="28dp"
                     android:layout_marginTop="4dp"
-                    android:maxWidth="260dp"
+                    android:maxWidth="280dp"
                     android:adjustViewBounds="true"
                     android:contentDescription="@string/app_name"
-                    android:src="@drawable/ic_openterface_wordmark"
+                    android:src="@drawable/ic_keymod_wordmark"
                     android:tint="@color/launch_panel_brand_tint" />
 
             </LinearLayout>
@@ -114,22 +114,24 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Right: mode grid; Show tutorial directly under the grid -->
-    <androidx.core.widget.NestedScrollView
+    <!-- Right: scrollable grid; tutorial + credit pinned below -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="7"
+        android:orientation="vertical"
         android:clipToPadding="false"
         android:paddingTop="12dp"
         android:paddingStart="2dp"
-        android:paddingEnd="6dp"
-        android:scrollbars="vertical"
-        android:fillViewport="true">
+        android:paddingEnd="6dp">
 
-        <LinearLayout
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:scrollbars="vertical"
+            android:fillViewport="true">
 
         <GridLayout
             android:layout_width="match_parent"
@@ -478,6 +480,8 @@
 
         </GridLayout>
 
+        </androidx.core.widget.NestedScrollView>
+
         <TextView
             android:id="@+id/show_tutorial_link"
             android:layout_width="wrap_content"
@@ -506,7 +510,6 @@
             android:autoLink="web"
             android:lineSpacingMultiplier="1.15" />
 
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
 
 </LinearLayout>

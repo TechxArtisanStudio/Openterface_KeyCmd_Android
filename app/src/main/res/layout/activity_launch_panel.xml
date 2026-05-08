@@ -33,12 +33,12 @@
 
             <ImageView
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
+                android:layout_height="32dp"
                 android:layout_marginTop="4dp"
-                android:maxWidth="280dp"
+                android:maxWidth="300dp"
                 android:adjustViewBounds="true"
                 android:contentDescription="@string/app_name"
-                android:src="@drawable/ic_openterface_wordmark"
+                android:src="@drawable/ic_keymod_wordmark"
                 android:tint="@color/launch_panel_brand_tint" />
 
         </LinearLayout>

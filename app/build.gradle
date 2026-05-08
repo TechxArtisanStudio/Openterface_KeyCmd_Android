@@ -1,5 +1,81 @@
+import org.gradle.api.tasks.PathSensitivity
+
 plugins {
     alias(libs.plugins.android.application)
+}
+
+// Robolectric resolves android-all jars via Maven local layout (not Gradle test classpath). Sync the
+// pre-instrumented jar here so unit tests do not hit Maven Central from the JVM (SSL/proxy issues).
+configurations {
+    robolectricMavenLocalJars {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+def robolectricMavenLocalRoot = layout.buildDirectory.dir('robolectric-m2-local')
+
+tasks.register('prepareRobolectricMavenLocal') {
+    group = 'verification'
+    description = 'Stage Robolectric android-all-instrumented jars into a local Maven repo for unit tests.'
+    dependsOn configurations.robolectricMavenLocalJars
+    outputs.dir(robolectricMavenLocalRoot)
+    doLast {
+        def root = robolectricMavenLocalRoot.get().asFile
+        configurations.robolectricMavenLocalJars.resolvedConfiguration.resolvedArtifacts.each { ra ->
+            def mid = ra.moduleVersion.id
+            if (mid.group != 'org.robolectric' || mid.name != 'android-all-instrumented') {
+                return
+            }
+            def version = mid.version
+            def destDir = file("${root}/org/robolectric/android-all-instrumented/${version}")
+            destDir.mkdirs()
+            copy {
+                from ra.file
+                into destDir
+            }
+        }
+    }
+}
+
+tasks.withType(Test).configureEach { task ->
+    if (task.name.contains('UnitTest')) {
+        task.dependsOn('prepareRobolectricMavenLocal')
+    }
+}
+
+def bundledGamepadAssetsRoot = layout.buildDirectory.dir('generated/bundled-gamepad-assets')
+
+/** When this changes, {@link com.openterface.keymod.gamepad.GamepadLayoutPresetRepository} re-seeds preset_default from assets. */
+def gamepadDefaultFingerprintFile = rootProject.file('gamepad/default.json')
+def bundledGamepadDefaultFingerprint = '0'
+if (gamepadDefaultFingerprintFile.exists()) {
+    def crc = new java.util.zip.CRC32()
+    crc.update(gamepadDefaultFingerprintFile.bytes)
+    bundledGamepadDefaultFingerprint = Long.toUnsignedString(crc.getValue())
+}
+
+tasks.register('syncBundledGamepadPresets') {
+    description = 'Copy repo-root gamepad/*.json into generated assets bundled_gamepad/. BuildConfig.BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT tracks gamepad/default.json so the app can re-seed preset_default when it changes. Other JSON files become optional pack presets.'
+    // Without inputs, Gradle can mark this task UP-TO-DATE after the first build, so new gamepad/*.json
+    // files never get copied into assets and bundled pack presets disappear from the app.
+    def gamepadSrcDir = rootProject.file('gamepad')
+    inputs.dir(gamepadSrcDir).withPathSensitivity(PathSensitivity.RELATIVE).optional()
+    outputs.dir(bundledGamepadAssetsRoot)
+    doLast {
+        def outRoot = bundledGamepadAssetsRoot.get().asFile
+        def outDir = new File(outRoot, 'bundled_gamepad')
+        outDir.deleteDir()
+        outDir.mkdirs()
+        def src = rootProject.file('gamepad')
+        if (src.isDirectory()) {
+            copy {
+                from(src)
+                include '**/*.json'
+                into outDir
+            }
+        }
+    }
 }
 
 android {
@@ -10,10 +86,12 @@ android {
         applicationId "com.openterface.keymod"
         minSdk 26
         targetSdk 35
-        versionCode 14
-        versionName "0.14"
+        versionCode 15
+        versionName "0.15"
 
         setProperty("archivesBaseName", "KeyMod")
+
+        buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,7 +120,23 @@ android {
         buildConfig true
     }
 
+    testOptions {
+        unitTests {
+            all {
+                systemProperty 'maven.repo.local', robolectricMavenLocalRoot.get().asFile.absolutePath
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir(bundledGamepadAssetsRoot)
+        }
+    }
+
 }
+
+tasks.named('preBuild').configure { dependsOn('syncBundledGamepadPresets') }
 
 dependencies {
 
@@ -53,6 +147,9 @@ dependencies {
     implementation libs.viewpager2
     testImplementation libs.junit
     testImplementation libs.robolectric
+    // API 28 (@Config in GamepadLayoutPresetRepositoryTest) + compileSdk 35 app package loading.
+    robolectricMavenLocalJars 'org.robolectric:android-all-instrumented:9-robolectric-4913185-2-i6'
+    robolectricMavenLocalJars 'org.robolectric:android-all-instrumented:14-robolectric-10818077-i6'
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 

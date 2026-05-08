@@ -1,37 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Rounded sheet wraps scroll + pinned footer so Remove/Reset/Done stay visible. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/gamepad_module_config_sheet"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:fillViewport="true"
-    android:background="@color/background_light"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="20dp">
+    android:orientation="vertical"
+    android:background="@drawable/bg_presentation_touchpad_dialog"
+    android:padding="@dimen/spacing_medium"
+    android:layout_marginHorizontal="@dimen/spacing_small"
+    android:layout_marginVertical="@dimen/spacing_small"
+    android:clipToOutline="true">
 
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="3dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/divider"
-        app:cardBackgroundColor="@color/card_background">
+<com.openterface.keymod.widget.MaxHeightNestedScrollView
+    android:id="@+id/gamepad_module_config_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="false"
+    android:scrollbars="vertical"
+    android:fadeScrollbars="true"
+    android:overScrollMode="ifContentScrolls"
+    android:clipToPadding="false"
+    android:background="@android:color/transparent">
 
     <LinearLayout
+        android:id="@+id/gamepad_module_config_body"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingBottom="@dimen/spacing_small">
 
         <TextView
             android:id="@+id/stick_config_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_title"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
-            android:layout_marginBottom="16dp" />
+            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/gamepad_module_id_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+            android:textColor="?android:attr/textColorSecondary"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:layout_marginBottom="8dp"
+            tools:text="Module ID: stick_left" />
+
+        <include layout="@layout/include_gamepad_module_name_section" />
 
         <TextView
             android:id="@+id/stick_config_dpad_hint"
@@ -64,37 +88,37 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_analog"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_key"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_dpad_cross"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_dpad_cross"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
 
             <RadioButton
                 android:id="@+id/stick_mode_dpad_split"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_mode_dpad_split"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/primary" />
+                android:textColor="?attr/colorOnSurface"
+                android:buttonTint="?attr/colorPrimary" />
         </RadioGroup>
 
-        <!-- Arrow stick: mouse-direction sensitivity (STICK_MOUSE only) -->
+        <!-- Right stick: pointer (mouse-direction) sensitivity when type is STICK_MOUSE -->
         <LinearLayout
-            android:id="@+id/arrow_stick_mouse_sensitivity_section"
+            android:id="@+id/stick_pointer_mouse_sensitivity_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -104,14 +128,14 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_arrow_stick_mouse_sensitivity_title"
+                android:text="@string/gamepad_stick_pointer_mouse_sensitivity_title"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/gamepad_arrow_stick_mouse_sensitivity_summary"
+                android:text="@string/gamepad_stick_pointer_mouse_sensitivity_summary"
                 android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
@@ -129,14 +153,14 @@
                     android:layout_marginEnd="8dp" />
 
                 <SeekBar
-                    android:id="@+id/arrow_stick_mouse_sensitivity_seek"
+                    android:id="@+id/stick_pointer_mouse_sensitivity_seek"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:max="150"
                     android:progress="50"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -189,8 +213,8 @@
                     android:layout_weight="1"
                     android:max="100"
                     android:progress="50"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -243,8 +267,8 @@
                     android:layout_weight="1"
                     android:max="100"
                     android:progress="100"
-                    android:progressTint="@color/primary"
-                    android:thumbTint="@color/primary" />
+                    android:progressTint="?attr/colorPrimary"
+                    android:thumbTint="?attr/colorPrimary" />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -253,6 +277,60 @@
                     android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/dpad_cross_arm_decoration_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_cross_arm_decoration_title"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gamepad_dpad_cross_arm_decoration_summary"
+                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/dpad_cross_arm_decoration_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_none"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_none"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_labels"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_labels"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+
+                <RadioButton
+                    android:id="@+id/dpad_cross_arm_option_icons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_dpad_cross_arm_option_icons"
+                    android:textColor="?attr/colorOnSurface"
+                    android:buttonTint="?attr/colorPrimary" />
+            </RadioGroup>
         </LinearLayout>
 
         <!-- D-Pad Key Mapping Section -->
@@ -360,7 +438,101 @@
                         android:layout_margin="4dp" />
                 </LinearLayout>
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/stick_center_key_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_stick_center_key_title"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/stick_center_key_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_stick_center_key_summary"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/stick_pointer_hub_mouse_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/gamepad_stick_pointer_hub_mouse_title"
+                        android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                        android:layout_marginBottom="4dp" />
+
+                    <RadioGroup
+                        android:id="@+id/stick_pointer_hub_mouse_group"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/stick_pointer_hub_mouse_left"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/gamepad_stick_pointer_hub_mouse_left" />
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/stick_pointer_hub_mouse_middle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="@string/gamepad_stick_pointer_hub_mouse_middle" />
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/stick_pointer_hub_mouse_right"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:text="@string/gamepad_stick_pointer_hub_mouse_right" />
+                    </RadioGroup>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <Button
+                        android:id="@+id/stick_center_key_btn"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/function_button_background"
+                        android:textColor="@android:color/white"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/stick_center_key_clear_btn"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/gamepad_stick_center_key_clear"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
+
+        <include layout="@layout/include_gamepad_module_color_section" />
 
         <!-- Stick Size Slider -->
         <TextView
@@ -391,8 +563,8 @@
                 android:layout_weight="1"
                 android:max="200"
                 android:progress="100"
-                android:progressTint="@color/primary"
-                android:thumbTint="@color/primary" />
+                android:progressTint="?attr/colorPrimary"
+                android:thumbTint="?attr/colorPrimary" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -402,36 +574,61 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
-        <!-- Buttons -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/stick_reset_btn"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_config_reset"
-                android:textColor="@color/primary"
-                app:strokeColor="@color/primary"
-                app:strokeWidth="1dp"
-                app:cornerRadius="10dp"
-                android:layout_marginEnd="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/stick_done_btn"
-                style="@style/Widget.MaterialComponents.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_config_done"
-                android:textColor="@android:color/white"
-                app:backgroundTint="@color/primary"
-                app:cornerRadius="10dp" />
-        </LinearLayout>
-
     </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-</ScrollView>
+</com.openterface.keymod.widget.MaxHeightNestedScrollView>
+
+    <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small" />
+
+    <!-- Pinned footer: always visible below scroll -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="@dimen/spacing_small">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_remove_btn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_menu_remove"
+            android:textAllCaps="false"
+            android:visibility="gone"
+            android:layout_marginEnd="@dimen/spacing_small"
+            app:strokeColor="?attr/colorError"
+            app:strokeWidth="1dp"
+            android:textColor="?attr/colorError" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_reset_btn"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_reset"
+            android:textAllCaps="false"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_duplicate_btn"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_duplicate"
+            android:textAllCaps="false"
+            android:visibility="gone"
+            android:layout_marginEnd="@dimen/spacing_small" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/stick_done_btn"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gamepad_config_done"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+</LinearLayout>

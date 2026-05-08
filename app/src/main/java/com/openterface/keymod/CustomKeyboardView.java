@@ -330,6 +330,12 @@ public class CustomKeyboardView extends LinearLayout {
     private Runnable repeatRunnable;
     private boolean isRepeating = false;
     private static final int ALT_LONG_PRESS_TIMEOUT_MS = ViewConfiguration.getLongPressTimeout();
+    /**
+     * macOS: brief Caps (0x39) tap toggles input source; longer hold toggles Caps Lock LED. Use a hold
+     * safely above the host threshold (see BasicPhysicalKeyboardView.MAC_CAPS_LONG_PRESS_MS).
+     */
+    private static final long MAC_CAPS_LONG_PRESS_MS = 500L;
+    private static final long MAC_CAPS_MIN_TAP_HOLD_MS = 30L;
     /** Long-press local Fn (fixed strip row 3 col 7) to open strip layout edition entry (not per-cell). */
     private static final int STRIP_EDIT_VIA_FN_MS = 900;
     private static final long MODIFIER_RAPID_TAP_WINDOW_MS = 3000L;
@@ -4105,6 +4111,17 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
+     * Top-strip Ctrl/Shift/Alt/Win cell under local Fn overlay that sends HID Caps Lock (0x39), e.g. CAPS on Cmd.
+     */
+    private boolean isMacCapsMomentaryFromTopStripModifier(Key key) {
+        if (!"macos".equals(getTargetOs()) || key == null || !isTopModifierLockCandidate(key)) {
+            return false;
+        }
+        FnMapping m = resolveFixedTopLocalFnMapping(key);
+        return m != null && m.keyCode == 0x39;
+    }
+
+    /**
      * Idle top-strip keycap: row 1 (Shortcut Hub profile favorites, swipe strip) vs fixed rows 2–3.
      * Row-1 keys keep {@link Key#allowTopPanelPagingGesture}; fixed rows use {@code markFixedRowKey}.
      */
@@ -4777,6 +4794,10 @@ public class CustomKeyboardView extends LinearLayout {
         final int myFavoritesSlotIndex = key != null ? key.topStripFavoriteSlotIndex : -1;
         final boolean canSwipePanel = (key == null || key.allowTopPanelPagingGesture)
                 && !isTopModifierLockCandidate(key);
+        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
+        final boolean[] macCapsLongFired = new boolean[1];
+        final boolean[] macCapsDownActive = new boolean[1];
+        final long[] macCapsDownTime = new long[1];
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
@@ -4793,6 +4814,11 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
@@ -4805,6 +4831,19 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingModeLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingModeLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
+                    } else if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        macCapsLongFired[0] = false;
+                        macCapsDownActive[0] = true;
+                        macCapsDownTime[0] = SystemClock.uptimeMillis();
+                        pendingMacCapsLongPress[0] =
+                                () -> {
+                                    macCapsLongFired[0] = true;
+                                    performKeyHapticFeedback(v);
+                                    pendingMacCapsLongPress[0] = null;
+                                };
+                        longPressHandler.postDelayed(
+                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
+                        sendMomentaryModifierClick(key);
                     } else if (isTopModifierLockCandidate(key)) {
                         pendingModifierLongPress[0] = () -> {
                             longPressConsumed[0] = true;
@@ -4848,6 +4887,14 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                             pendingMyFavoritesLongPress[0] = null;
                         }
+                        if (pendingMacCapsLongPress[0] != null) {
+                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                            pendingMacCapsLongPress[0] = null;
+                        }
+                        if (macCapsDownActive[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                        }
                     }
                     if (isDragging[0] && hasAnyTopPanelMode()) {
                         updateTopPanelDrag(applyTopPanelEdgeResistance(dx));
@@ -4870,10 +4917,46 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
+                        if (macCapsDownActive[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                        }
                         finishTopPanelSwipe(totalDx, swipeThreshold);
                         return true;
+                    }
+                    if (macCapsDownActive[0] && key != null) {
+                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            return true;
+                        }
+                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                            if (longPressConsumed[0]) {
+                                sendReleaseData();
+                                macCapsDownActive[0] = false;
+                                return true;
+                            }
+                            performKeyHapticFeedback(v);
+                            v.performClick();
+                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
+                            if (!macCapsLongFired[0]) {
+                                long delay =
+                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
+                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
+                                                : 0;
+                                repeatHandler.postDelayed(this::sendReleaseData, delay);
+                            } else {
+                                sendReleaseData();
+                            }
+                            macCapsDownActive[0] = false;
+                            return true;
+                        }
                     }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);
@@ -4912,6 +4995,10 @@ public class CustomKeyboardView extends LinearLayout {
         final int profileSlotIndex = key != null ? topProfileSlotIndexFromKeyCode(key.code) : 0;
         final int stripProfileSlotIndex = key != null ? topStripProfileSlotIndexFromKeyCode(key.code) : 0;
         final boolean isLocalFnStripKey = isFixedTopLocalFnKey(key);
+        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
+        final boolean[] macCapsLongFired = new boolean[1];
+        final boolean[] macCapsDownActive = new boolean[1];
+        final long[] macCapsDownTime = new long[1];
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
@@ -4932,12 +5019,30 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
                     isDragging[0] = false;
                     cancelFixedTopRowsAnimations();
-                    if (isTopModifierLockCandidate(key)) {
+                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        macCapsLongFired[0] = false;
+                        macCapsDownActive[0] = true;
+                        macCapsDownTime[0] = SystemClock.uptimeMillis();
+                        pendingMacCapsLongPress[0] =
+                                () -> {
+                                    macCapsLongFired[0] = true;
+                                    performKeyHapticFeedback(v);
+                                    pendingMacCapsLongPress[0] = null;
+                                };
+                        longPressHandler.postDelayed(
+                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
+                        sendMomentaryModifierClick(key);
+                    } else if (isTopModifierLockCandidate(key)) {
                         pendingModifierLongPress[0] = () -> {
                             longPressConsumed[0] = true;
                             // Option A: local-Fn overlays on these cells still long-press lock the
@@ -4997,6 +5102,14 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                             pendingFnStripEditLongPress[0] = null;
                         }
+                        if (pendingMacCapsLongPress[0] != null) {
+                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                            pendingMacCapsLongPress[0] = null;
+                        }
+                        if (macCapsDownActive[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                        }
                     }
                     if (isDragging[0] && hasAnyFixedRowsPagerMode()) {
                         updateFixedTopRowsDrag(applyFixedTopRowsEdgeResistance(dx));
@@ -5023,10 +5136,46 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
+                        if (macCapsDownActive[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                        }
                         finishFixedTopRowsSwipe(totalDx, swipeThreshold);
                         return true;
+                    }
+                    if (macCapsDownActive[0] && key != null) {
+                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            return true;
+                        }
+                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                            if (longPressConsumed[0]) {
+                                sendReleaseData();
+                                macCapsDownActive[0] = false;
+                                return true;
+                            }
+                            performKeyHapticFeedback(v);
+                            v.performClick();
+                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
+                            if (!macCapsLongFired[0]) {
+                                long delay =
+                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
+                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
+                                                : 0;
+                                repeatHandler.postDelayed(this::sendReleaseData, delay);
+                            } else {
+                                sendReleaseData();
+                            }
+                            macCapsDownActive[0] = false;
+                            return true;
+                        }
                     }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);

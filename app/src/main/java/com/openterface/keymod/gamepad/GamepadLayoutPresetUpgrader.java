@@ -1,5 +1,7 @@
 package com.openterface.keymod.gamepad;
 
+import java.util.Iterator;
+
 /**
  * Normalizes older preset documents to {@link GamepadLayoutPresetConstants#SCHEMA_VERSION}.
  */
@@ -27,8 +29,28 @@ public final class GamepadLayoutPresetUpgrader {
         }
         if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V4) {
             migrateV4ToV5(d);
-            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION;
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V5;
         }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V5) {
+            migrateV5ToV6(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V6;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V6) {
+            migrateV6ToV7(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V7;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V7) {
+            migrateV7ToV8(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V8;
+        }
+    }
+
+    /** v7 → v8: optional {@code gestureLock}; no automatic module rewrites. */
+    private static void migrateV7ToV8(GamepadLayoutPresetDocument d) {
+    }
+
+    /** v6 → v7: optional {@code stick_left}; no structural rewrite (documents may omit the primary left slot). */
+    private static void migrateV6ToV7(GamepadLayoutPresetDocument d) {
     }
 
     /**
@@ -62,8 +84,8 @@ public final class GamepadLayoutPresetUpgrader {
     }
 
     /**
-     * v4 → v5: legacy optional {@code stick_right} merges into the arrow stick slot {@code stick_key_extra}
-     * when that id is not already used (add-module UI no longer creates {@code stick_right}).
+     * v4 → v5: when {@code stick_key_extra} is absent, legacy {@code stick_right} is renamed to
+     * {@link GamepadLayoutPresetConstants#LEGACY_STICK_KEY_EXTRA_MODULE_ID} (intermediate id; v6 restores {@code stick_right}).
      */
     private static void migrateV4ToV5(GamepadLayoutPresetDocument d) {
         if (d.modules == null) {
@@ -75,7 +97,7 @@ public final class GamepadLayoutPresetUpgrader {
             if (m == null || m.id == null) {
                 continue;
             }
-            if (GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID.equals(m.id)) {
+            if (GamepadLayoutPresetConstants.LEGACY_STICK_KEY_EXTRA_MODULE_ID.equals(m.id)) {
                 hasArrowSlot = true;
             }
             if ("stick_right".equals(m.id)) {
@@ -83,7 +105,47 @@ public final class GamepadLayoutPresetUpgrader {
             }
         }
         if (stickRight != null && !hasArrowSlot) {
-            stickRight.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
+            stickRight.id = GamepadLayoutPresetConstants.LEGACY_STICK_KEY_EXTRA_MODULE_ID;
+        }
+    }
+
+    /**
+     * v5 → v6: remove {@code stick_aux_*}; rename lone {@code stick_key_extra} → {@code stick_right};
+     * if both {@code stick_right} and {@code stick_key_extra} exist, drop {@code stick_key_extra}.
+     */
+    private static void migrateV5ToV6(GamepadLayoutPresetDocument d) {
+        if (d.modules == null) {
+            return;
+        }
+        Iterator<GamepadLayoutPresetDocument.GamepadModule> it = d.modules.iterator();
+        while (it.hasNext()) {
+            GamepadLayoutPresetDocument.GamepadModule m = it.next();
+            if (m == null || m.id == null) {
+                continue;
+            }
+            if (m.id.startsWith("stick_aux_")) {
+                it.remove();
+            }
+        }
+        boolean hasStickRight = false;
+        GamepadLayoutPresetDocument.GamepadModule keyExtra = null;
+        for (GamepadLayoutPresetDocument.GamepadModule m : d.modules) {
+            if (m == null || m.id == null) {
+                continue;
+            }
+            if ("stick_right".equals(m.id)) {
+                hasStickRight = true;
+            }
+            if (GamepadLayoutPresetConstants.LEGACY_STICK_KEY_EXTRA_MODULE_ID.equals(m.id)) {
+                keyExtra = m;
+            }
+        }
+        if (keyExtra != null) {
+            if (!hasStickRight) {
+                keyExtra.id = "stick_right";
+            } else {
+                d.modules.remove(keyExtra);
+            }
         }
     }
 

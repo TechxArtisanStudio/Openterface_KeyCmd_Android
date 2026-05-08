@@ -5,8 +5,10 @@ import com.openterface.fragment.KeyboardMouseFragment;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.method.LinkMovementMethod;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
@@ -36,6 +38,11 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
     private static final String STATE_SELECTED_MODE = "state_selected_mode";
     private static final String STATE_REMEMBER_CHECKED = "state_remember_checked";
+
+    /** Second tap on the same mode card within this window acts like Start (see {@link #registerModeCardTap}). */
+    private long lastModeTapTime;
+    @Nullable
+    private String lastModeTapMode;
 
     // Mode constants
     public static final String MODE_KEYBOARD_MOUSE = "keyboard_mouse";
@@ -172,42 +179,15 @@ public class LaunchPanelActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        keyboardMouseCard.setOnClickListener(v -> {
-            selectedMode = MODE_KEYBOARD_MOUSE;
-            updateCardSelections();
-        });
-
+        registerModeCardTap(keyboardMouseCard, MODE_KEYBOARD_MOUSE);
         if (keyboardMouseProCard != null) {
-            keyboardMouseProCard.setOnClickListener(v -> {
-                selectedMode = MODE_KEYBOARD_MOUSE_PRO;
-                updateCardSelections();
-            });
+            registerModeCardTap(keyboardMouseProCard, MODE_KEYBOARD_MOUSE_PRO);
         }
-
-        gamepadCard.setOnClickListener(v -> {
-            selectedMode = MODE_GAMEPAD;
-            updateCardSelections();
-        });
-
-        shortcutsCard.setOnClickListener(v -> {
-            selectedMode = MODE_SHORTCUTS;
-            updateCardSelections();
-        });
-
-        macrosCard.setOnClickListener(v -> {
-            selectedMode = MODE_MACROS;
-            updateCardSelections();
-        });
-
-        voiceCard.setOnClickListener(v -> {
-            selectedMode = MODE_VOICE;
-            updateCardSelections();
-        });
-
-        presentationCard.setOnClickListener(v -> {
-            selectedMode = MODE_PRESENTATION;
-            updateCardSelections();
-        });
+        registerModeCardTap(gamepadCard, MODE_GAMEPAD);
+        registerModeCardTap(shortcutsCard, MODE_SHORTCUTS);
+        registerModeCardTap(macrosCard, MODE_MACROS);
+        registerModeCardTap(voiceCard, MODE_VOICE);
+        registerModeCardTap(presentationCard, MODE_PRESENTATION);
 
         startButton.setOnClickListener(v -> launchMode(selectedMode));
 
@@ -226,6 +206,28 @@ public class LaunchPanelActivity extends AppCompatActivity {
                 startActivity(intent);
             });
         }
+    }
+
+    /**
+     * Single tap selects the mode; a second tap on the same card within the system double-tap
+     * interval confirms and launches (same as pressing Start).
+     */
+    private void registerModeCardTap(CardView card, String mode) {
+        int doubleTapMs = ViewConfiguration.get(this).getDoubleTapTimeout();
+        card.setOnClickListener(v -> {
+            long now = SystemClock.elapsedRealtime();
+            if (mode.equals(lastModeTapMode) && (now - lastModeTapTime) <= doubleTapMs) {
+                selectedMode = mode;
+                updateCardSelections();
+                launchMode(mode);
+                lastModeTapMode = null;
+            } else {
+                selectedMode = mode;
+                updateCardSelections();
+                lastModeTapTime = now;
+                lastModeTapMode = mode;
+            }
+        });
     }
 
     private void launchMode(String selectedMode) {

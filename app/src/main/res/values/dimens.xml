@@ -38,6 +38,11 @@
     <dimen name="basic_compose_editor_min_height">120dp</dimen>
 
     <!-- Gamepad toolbar -->
+    <!-- Full-width fade behind chrome + centered toggle (same vertical band); not a solid bar. -->
+    <!-- Taller band so the top fade reads softer over more of the canvas. -->
+    <dimen name="gamepad_toolbar_scrim_height">160dp</dimen>
+    <!-- When edit row is hidden (play mode), still a bit taller than chrome for a gentle falloff. -->
+    <dimen name="gamepad_toolbar_scrim_height_play">108dp</dimen>
     <dimen name="gamepad_toolbar_margin_top">8dp</dimen>
     <dimen name="gamepad_toolbar_padding_h">4dp</dimen>
     <dimen name="gamepad_toolbar_button_min_height">40dp</dimen>
@@ -46,6 +51,12 @@
     <dimen name="gamepad_toolbar_preset_min_width">76dp</dimen>
     <dimen name="gamepad_preset_name_max_width">140dp</dimen>
     <dimen name="gamepad_preset_chip_max_width">220dp</dimen>
+    <dimen name="gamepad_creator_chip_max_width">100dp</dimen>
+    <!-- Layouts bottom sheet (portrait + GamepadFragment). -->
+    <dimen name="gamepad_presets_recycler_max_height">320dp</dimen>
+    <dimen name="gamepad_presets_recycler_max_height_land">360dp</dimen>
+    <dimen name="gamepad_presets_bottom_sheet_max_width">360dp</dimen>
+    <dimen name="gamepad_presets_bottom_sheet_min_width">252dp</dimen>
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>

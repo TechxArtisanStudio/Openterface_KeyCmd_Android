@@ -3,6 +3,7 @@ package com.openterface.keymod.gamepad;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
 import com.google.gson.Gson;
@@ -14,7 +15,6 @@ import com.openterface.keymod.GamepadLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,6 +29,10 @@ public final class GamepadLayoutDocumentStore {
 
     private GamepadLayoutDocumentStore() {}
 
+    /**
+     * Loads persisted layout JSON, or if missing/invalid tries the active preset file from
+     * {@link GamepadLayoutPresetRepository}, else builds from legacy flat prefs.
+     */
     public static GamepadLayoutPresetDocument loadOrCreate(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String json = prefs.getString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, null);
@@ -38,10 +42,22 @@ public final class GamepadLayoutDocumentStore {
                 try {
                     GamepadLayoutPresetDocument.validateOrThrow(d);
                     mergeAnchorsFromDisk(context, d);
-                    return d;
+                    if (!d.modules.isEmpty()) {
+                        return d;
+                    }
                 } catch (IllegalArgumentException ignored) {
-                    // fall through to recreate
+                    // fall through to recover or recreate
                 }
+            }
+        }
+        GamepadLayoutPresetRepository presetRepo = new GamepadLayoutPresetRepository(context);
+        GamepadLayoutPresetDocument fromDisk = presetRepo.loadDocument(presetRepo.getActivePresetId());
+        if (fromDisk != null && !fromDisk.modules.isEmpty()) {
+            try {
+                GamepadLayoutPresetApplier.apply(context, fromDisk, true);
+                return loadOrCreate(context);
+            } catch (IllegalArgumentException ignored) {
+                // fall through to legacy-built document
             }
         }
         GamepadLayoutPresetDocument doc = buildDefaultFromLegacyPrefs(context);
@@ -51,6 +67,7 @@ public final class GamepadLayoutDocumentStore {
 
     public static void save(Context context, GamepadLayoutPresetDocument doc) {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
+        GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
         PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc))
                 .apply();
@@ -98,6 +115,13 @@ public final class GamepadLayoutDocumentStore {
         doc.layout.backgroundScale = prefs.getFloat(GamepadPreferenceKeys.BG_SCALE, 1.0f);
         doc.layout.backgroundOffsetX = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_X, 0f);
         doc.layout.backgroundOffsetY = prefs.getFloat(GamepadPreferenceKeys.BG_OFFSET_Y, 0f);
+        if (prefs.contains(GamepadPreferenceKeys.BG_FILL_ARGB)) {
+            doc.layout.backgroundFillArgb = prefs.getInt(GamepadPreferenceKeys.BG_FILL_ARGB, 0);
+        }
+        if (prefs.contains(GamepadPreferenceKeys.BG_PATTERN)) {
+            String pat = prefs.getString(GamepadPreferenceKeys.BG_PATTERN, null);
+            doc.layout.backgroundPattern = pat != null && !pat.trim().isEmpty() ? pat.trim() : null;
+        }
 
         List<GamepadLayoutPresetDocument.GamepadModule> modules = new ArrayList<>();
         String stickMode = prefs.getString(GamepadPreferenceKeys.STICK_MODE, "key");
@@ -165,24 +189,58 @@ public final class GamepadLayoutDocumentStore {
         return "button_" + (maxNum + 1);
     }
 
+    /** Next id {@code touchpad_1}, {@code touchpad_2}, … based on existing TOUCHPAD modules. */
+    public static String nextTouchpadModuleId(GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("touchpad_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("touchpad_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return "touchpad_" + (maxNum + 1);
+    }
+
+    /** Next id {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … for duplicated {@code MOUSE_BUTTON} modules. */
+    public static String nextMouseButtonCopyModuleId(@Nullable GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            String p = GamepadLayoutPresetConstants.MOUSE_BTN_COPY_ID_PREFIX;
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith(p)) {
+                    continue;
+                }
+                String suffix = m.id.substring(p.length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return GamepadLayoutPresetConstants.MOUSE_BTN_COPY_ID_PREFIX + (maxNum + 1);
+    }
+
     /**
-     * Next unused id {@code stick_aux_1}, {@code stick_aux_2}, … for additional arrow sticks after
-     * {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} is taken (type is STICK_KEY by default; can be changed in UI).
+     * Next id {@code stick_left_2}, {@code stick_left_3}, … for optional extra left thumb modules.
      */
-    public static String nextStickAuxModuleId(GamepadLayoutPresetDocument doc) {
-        Set<String> taken = new HashSet<>();
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            if (m != null && m.id != null) {
-                taken.add(m.id);
+    public static String nextAuxLeftStickModuleId(@Nullable GamepadLayoutPresetDocument doc) {
+        int maxNum = 1;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("stick_left_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("stick_left_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
             }
         }
-        for (int i = 1; i < 1_000_000; i++) {
-            String id = "stick_aux_" + i;
-            if (!taken.contains(id)) {
-                return id;
-            }
-        }
-        throw new IllegalStateException("No free stick_aux_* id");
+        return "stick_left_" + (maxNum + 1);
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(List<GamepadLayoutPresetDocument.GamepadModule> modules, String id) {

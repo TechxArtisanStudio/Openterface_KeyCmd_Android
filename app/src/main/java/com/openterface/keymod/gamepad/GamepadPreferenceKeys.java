@@ -22,6 +22,10 @@ public final class GamepadPreferenceKeys {
     public static final String BG_SCALE = "gamepad_bg_scale";
     public static final String BG_OFFSET_X = "gamepad_bg_offset_x";
     public static final String BG_OFFSET_Y = "gamepad_bg_offset_y";
+    /** Packed ARGB; key present only when user chose a custom canvas fill (no image). */
+    public static final String BG_FILL_ARGB = "gamepad_bg_fill_argb";
+    /** One of {@link GamepadLayoutPresetConstants} background pattern ids; absent = none. */
+    public static final String BG_PATTERN = "gamepad_bg_pattern";
     /**
      * Legacy mirror of {@code layout.showTwoButtons}; still written when applying a preset for
      * compatibility. Active preset + layout document are authoritative; no dedicated UI toggle.
@@ -38,7 +42,8 @@ public final class GamepadPreferenceKeys {
     public static final String RIGHT_STICK_MOUSE_GAIN = "gamepad_right_stick_mouse_gain";
 
     /**
-     * Customize mode: long-press duration before module / empty-area menu (ms). Applied via
+     * Customize mode: long-press duration before module menu (ms) on non-dynamic SIMPLE layouts only.
+     * Dynamic presets use the per-module edit chip instead. Applied via
      * {@code GamepadView#setEditLongPressConfig} (clamped 250–1200). Default 600.
      */
     public static final String EDIT_LONG_PRESS_MS = "gamepad_edit_long_press_ms";
@@ -48,4 +53,14 @@ public final class GamepadPreferenceKeys {
      * (converted to px when applied). Lower = stricter (easier to trigger menu while dragging).
      */
     public static final String EDIT_LONG_PRESS_CANCEL_DP = "gamepad_edit_long_press_cancel_dp";
+
+    /**
+     * When true (default), show mapping hints (callouts below face buttons, stick W/A/S/D, D-pad letters,
+     * touchpad title). Names drawn on the button cap use {@code displayLabel} in the preset and are not
+     * controlled by this toggle.
+     */
+    public static final String SHOW_KEY_MAPPING_HINTS = "gamepad_show_key_mapping_hints";
+
+    /** Trimmed display name stamped into exported preset JSON as {@code meta.creator}. */
+    public static final String PRESET_EXPORT_CREATOR_NAME = "gamepad_preset_export_creator_name";
 }

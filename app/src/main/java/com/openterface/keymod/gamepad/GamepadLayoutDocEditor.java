@@ -1,6 +1,11 @@
 package com.openterface.keymod.gamepad;
 
+import androidx.annotation.Nullable;
+
+import com.google.gson.Gson;
+
 import java.util.Iterator;
+import java.util.Locale;
 
 /**
  * Mutations for {@link GamepadLayoutPresetDocument} (add/remove optional modules).
@@ -10,18 +15,38 @@ public final class GamepadLayoutDocEditor {
     /** Default touchpad footprint: square (normalized to view width/height). */
     public static final float TOUCHPAD_DEFAULT_SIZE_NORM = 0.28f;
 
+    private static final Gson DUPLICATE_GSON = new Gson();
+
     private GamepadLayoutDocEditor() {}
 
     public static boolean hasStickRight(GamepadLayoutPresetDocument doc) {
         return find(doc, "stick_right") != null;
     }
 
+    /** @return true if the layout has at least one {@link GamepadLayoutPresetConstants#MODULE_TYPE_TOUCHPAD} module. */
     public static boolean hasTouchpad(GamepadLayoutPresetDocument doc) {
-        return find(doc, "touchpad_1") != null;
+        if (doc == null || doc.modules == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    public static boolean hasStickKeyExtra(GamepadLayoutPresetDocument doc) {
-        return find(doc, GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID) != null;
+    private static int countTouchpadModules(GamepadLayoutPresetDocument doc) {
+        int n = 0;
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(m.type)) {
+                n++;
+            }
+        }
+        return n;
     }
 
     public static void addStickRight(GamepadLayoutPresetDocument doc) {
@@ -70,41 +95,60 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
+    private static int countAuxLeftStickModules(GamepadLayoutPresetDocument doc) {
+        int n = 0;
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.isAuxLeftStickModuleId(m.id)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     /**
-     * Adds {@link GamepadLayoutPresetConstants#STICK_KEY_EXTRA_ID} when missing; otherwise appends another
-     * {@code STICK_KEY} with id {@code stick_aux_1}, {@code stick_aux_2}, …
+     * Adds a left D-pad / stick module: creates {@code stick_left} when absent, otherwise appends
+     * {@code stick_left_2}, {@code stick_left_3}, … (DPAD cross + default WASD).
      */
-    public static void addStickKeyExtra(GamepadLayoutPresetDocument doc) {
+    public static void addLeftDpadStickModule(GamepadLayoutPresetDocument doc) {
         if (doc == null || doc.modules == null) {
             return;
         }
-        if (!hasStickKeyExtra(doc)) {
+        if (find(doc, "stick_left") == null) {
             GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-            m.id = GamepadLayoutPresetConstants.STICK_KEY_EXTRA_ID;
-            m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+            m.id = "stick_left";
+            m.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+            m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
             m.zIndex = nextZ(doc);
             m.scale = 1.0f;
-            m.anchorX = 0.5f;
-            m.anchorY = 0.72f;
-            // HID arrow keys (same usages as d-pad arrows in GamepadView)
-            m.stickUpKey = 82;
-            m.stickLeftKey = 80;
-            m.stickDownKey = 81;
-            m.stickRightKey = 79;
+            m.anchorX = 0.20f;
+            m.anchorY = 0.50f;
+            m.stickUpKey = 26;
+            m.stickLeftKey = 4;
+            m.stickDownKey = 22;
+            m.stickRightKey = 7;
             doc.modules.add(m);
             return;
         }
+        int idx = countAuxLeftStickModules(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-        m.id = GamepadLayoutDocumentStore.nextStickAuxModuleId(doc);
-        m.type = GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY;
+        m.id = GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc);
+        m.type = GamepadLayoutPresetConstants.MODULE_TYPE_DPAD;
+        m.dpadVariant = GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS;
         m.zIndex = nextZ(doc);
         m.scale = 1.0f;
-        m.anchorX = 0.5f;
-        m.anchorY = 0.72f;
-        m.stickUpKey = 82;
-        m.stickLeftKey = 80;
-        m.stickDownKey = 81;
-        m.stickRightKey = 79;
+        float baseX = 0.20f;
+        float baseY = 0.50f;
+        float ax = baseX - 0.14f * (idx % 4);
+        float ay = baseY + 0.08f * ((idx / 4) % 3);
+        m.anchorX = Math.max(0.08f, Math.min(0.42f, ax));
+        m.anchorY = Math.max(0.18f, Math.min(0.78f, ay));
+        m.stickUpKey = 26;
+        m.stickLeftKey = 4;
+        m.stickDownKey = 22;
+        m.stickRightKey = 7;
         doc.modules.add(m);
     }
 
@@ -125,16 +169,19 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static void addTouchpad(GamepadLayoutPresetDocument doc) {
-        if (hasTouchpad(doc)) {
+        if (doc == null || doc.modules == null) {
             return;
         }
+        int idx = countTouchpadModules(doc);
         GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
-        m.id = "touchpad_1";
+        m.id = GamepadLayoutDocumentStore.nextTouchpadModuleId(doc);
         m.type = GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD;
         m.zIndex = nextZ(doc);
         m.scale = 1.0f;
-        m.anchorX = 0.5f;
-        m.anchorY = 0.35f;
+        float ax = 0.5f + 0.06f * (idx % 4) - 0.09f;
+        float ay = 0.35f + 0.07f * (idx / 4);
+        m.anchorX = Math.max(0.1f, Math.min(0.9f, ax));
+        m.anchorY = Math.max(0.12f, Math.min(0.82f, ay));
         m.widthNorm = TOUCHPAD_DEFAULT_SIZE_NORM;
         m.heightNorm = TOUCHPAD_DEFAULT_SIZE_NORM;
         doc.modules.add(m);
@@ -156,7 +203,10 @@ public final class GamepadLayoutDocEditor {
         }
     }
 
-    private static int countMouseButtonModules(GamepadLayoutPresetDocument doc) {
+    public static int countMouseButtonModules(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
         int n = 0;
         for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
             if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
@@ -238,14 +288,124 @@ public final class GamepadLayoutDocEditor {
     }
 
     public static boolean canRemove(String componentId) {
-        return !"stick_left".equals(componentId) && !"button_a".equals(componentId);
+        return componentId != null && !componentId.isEmpty();
+    }
+
+    /**
+     * Whether the module can be deep-copied with a new id ({@code stick_right} and fixed shoulder/trigger ids are
+     * excluded; {@code MOUSE_BUTTON} copies use {@link GamepadLayoutPresetConstants#MOUSE_BTN_COPY_ID_PREFIX} ids).
+     * Extra left DPAD modules must stay cross-only; duplicating a non–cross-DPAD left thumb would produce an invalid doc.
+     */
+    public static boolean canDuplicateModule(@Nullable String moduleId, @Nullable GamepadLayoutPresetDocument doc) {
+        if (moduleId == null || doc == null || doc.modules == null) {
+            return false;
+        }
+        GamepadLayoutPresetDocument.GamepadModule src = find(doc, moduleId);
+        if (src == null || src.type == null) {
+            return false;
+        }
+        if ("stick_right".equals(moduleId)) {
+            return false;
+        }
+        if (GamepadLayoutPresetConstants.SHOULDER_L_ID.equals(moduleId)
+                || GamepadLayoutPresetConstants.SHOULDER_R_ID.equals(moduleId)
+                || GamepadLayoutPresetConstants.TRIGGER_L_ID.equals(moduleId)
+                || GamepadLayoutPresetConstants.TRIGGER_R_ID.equals(moduleId)) {
+            return false;
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(src.type)) {
+            String dv = src.dpadVariant != null ? src.dpadVariant.trim().toLowerCase(Locale.ROOT) : "";
+            if (!GamepadLayoutPresetConstants.DPAD_VARIANT_CROSS.equals(dv)) {
+                return false;
+            }
+        }
+        if (GamepadLayoutPresetConstants.isStickModuleId(moduleId)) {
+            return "stick_left".equals(moduleId)
+                    || GamepadLayoutPresetConstants.isAuxLeftStickModuleId(moduleId);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(src.type)) {
+            return true;
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(src.type)) {
+            return true;
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(src.type)) {
+            return countMouseButtonModules(doc) < GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES;
+        }
+        return false;
+    }
+
+    /**
+     * Appends a copy of the module with a new id, nudged anchor, and fresh z-index. Validates the document before keeping
+     * the clone; returns the new id, or {@code null} if duplication is not allowed or validation fails.
+     */
+    @Nullable
+    public static String duplicateModule(GamepadLayoutPresetDocument doc, String sourceId) {
+        if (!canDuplicateModule(sourceId, doc)) {
+            return null;
+        }
+        GamepadLayoutPresetDocument.GamepadModule src = find(doc, sourceId);
+        if (src == null) {
+            return null;
+        }
+        GamepadLayoutPresetDocument.GamepadModule clone =
+                DUPLICATE_GSON.fromJson(DUPLICATE_GSON.toJson(src), GamepadLayoutPresetDocument.GamepadModule.class);
+        clone.id = allocateDuplicateModuleId(doc, clone);
+        if (clone.id == null) {
+            return null;
+        }
+        clone.zIndex = nextZ(doc);
+        clone.anchorX = clamp01(src.anchorX + 0.06f);
+        clone.anchorY = clamp01(src.anchorY + 0.05f);
+        if (clone.anchorX > 0.94f && clone.anchorY > 0.88f) {
+            clone.anchorX = clamp01(src.anchorX - 0.08f);
+            clone.anchorY = clamp01(src.anchorY - 0.06f);
+        }
+        doc.modules.add(clone);
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+        } catch (IllegalArgumentException ex) {
+            doc.modules.remove(clone);
+            return null;
+        }
+        return clone.id;
+    }
+
+    @Nullable
+    private static String allocateDuplicateModuleId(GamepadLayoutPresetDocument doc,
+                                                    GamepadLayoutPresetDocument.GamepadModule clone) {
+        if (clone.type == null) {
+            return null;
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextButtonModuleId(doc);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextTouchpadModuleId(doc);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextMouseButtonCopyModuleId(doc);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(clone.type)
+                || GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(clone.type)
+                || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextAuxLeftStickModuleId(doc);
+        }
+        return null;
+    }
+
+    private static float clamp01(float v) {
+        return Math.max(0f, Math.min(1f, v));
     }
 
     public static void removeModule(GamepadLayoutPresetDocument doc, String componentId) {
         if (!canRemove(componentId)) {
             return;
         }
-        boolean removedTouchpad = "touchpad_1".equals(componentId);
+        if ("button_a".equals(componentId)) {
+            doc.layout.showTwoButtons = false;
+        }
+        boolean removedTouchpad = GamepadLayoutPresetConstants.isTouchpadModuleId(componentId);
         Iterator<GamepadLayoutPresetDocument.GamepadModule> it = doc.modules.iterator();
         while (it.hasNext()) {
             if (componentId.equals(it.next().id)) {
@@ -253,7 +413,7 @@ public final class GamepadLayoutDocEditor {
                 break;
             }
         }
-        if (removedTouchpad) {
+        if (removedTouchpad && !hasTouchpad(doc)) {
             removeBundledMouseButtons(doc);
         }
         if ("button_b".equals(componentId)) {

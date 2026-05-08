@@ -29,7 +29,7 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / IME / Num pad, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
 | ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
@@ -152,18 +152,49 @@ Virtual game controller with:
 
 > ⚠️ Gamepad HID protocol is under active development. Basic button support is available.
 
-### Preset vocabulary (schema v4)
+### Module model: slots, behavior, and parameters
 
-Shareable layouts use JSON with a **schema version** (currently **v4**). Useful terms:
+Presets are a list of **modules**. Each module is one on-screen control (draw + touch). Think in three layers so “sub-modules” do not feel like mystery types:
+
+1. **Slot / identity (`id`)** — *which* control on the canvas. Thumb modules use the fixed slots **`stick_left`** and **`stick_right`** (plus other module kinds such as buttons and touchpads with their own ids).
+2. **Behavior (`type`)** — *what the host receives*: **`STICK_KEY`** (direction keys from a thumb ring), **`STICK_MOUSE`** (relative pointer / “mouse” deltas), **`DPAD`** (digital pad with a **`dpadVariant`** such as cross or split), **`BUTTON`**, **`TOUCHPAD`**, etc. The in-app “mode” choices for sticks map to these types (and for the left slot, D-pad is `DPAD`, not a parallel stick type).
+3. **Parameters** — tuning on the **same** module: `dpadVariant`, split gap sliders, `stickMouseSensitivity`, `stickVisualVariant` (mostly look), accent color, size. These are **fields**, not separate module kinds.
+
+The **right** stick can use **`stickMouseSensitivity`** when its type is **STICK_MOUSE** (pointer speed tuning in Configure control).
+
+```mermaid
+flowchart TB
+  subgraph slot [Slot or module id]
+    stick_left[stick_left]
+    stick_right[stick_right]
+  end
+  subgraph behavior [Behavior type]
+    STICK_KEY[STICK_KEY direction keys]
+    STICK_MOUSE[STICK_MOUSE relative pointer]
+    DPAD[DPAD dpadVariant]
+  end
+  subgraph params [Parameters same module]
+    dpadVar[dpad split gap etc]
+    mouseSens[stickMouseSensitivity]
+    capVis[stickVisualVariant]
+  end
+  slot --> behavior
+  behavior --> params
+```
+
+### Preset vocabulary (schema v6)
+
+Shareable layouts use JSON with a **schema version** (currently **v6**). Useful terms:
 
 | Everyday term | In presets / code |
 |---------------|---------------------|
 | D-pad, directional pad | Module type **DPAD** on the left slot; **`dpadVariant`** selects cross, split segments, disc, pivot, floating look, or clicky haptics |
-| Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer); optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
+| Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer) on **`stick_left`** or **`stick_right`**; optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
 | Face / ABXY / symbol buttons | **BUTTON** modules; optional **`layout.faceButtonTemplate`** (`nintendo_diamond`, `xbox_abxy`, `playstation_symbols`) sets anchors and labels |
 | Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents analog vs digital vs hair vs adaptive (adaptive is UI copy only here) |
 | Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
 | Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
+| Canvas background (portable JSON) | **`layout.backgroundImageEncoding`** (`base64`), **`layout.backgroundImageMediaType`** (`image/png` / `image/jpeg` / `image/webp`), and **`layout.backgroundImageData`** (raw base64, no `data:` URL). Used when **sharing** a preset so the image travels in one file; after **import**, bytes are saved under app files dir as **`layout.backgroundImageFile`** and embed fields are cleared. Max decoded size about **6 MiB** |
 
 **Engineering synonyms (no extra modules):** hat switch (HID jargon for a D-pad–like switch), silicone dome / tact switch, gimbal, housing — these describe physical hardware, not separate on-screen modules.
 

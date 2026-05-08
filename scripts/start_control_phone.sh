@@ -2,11 +2,12 @@
 
 set -euo pipefail
 
-# Mirror/control a connected physical phone on desktop with scrcpy (no APK install).
+# Mirror/control a connected Android device on desktop with scrcpy (no APK install).
+# Prefers a physical USB device; if none, uses the first online device (e.g. emulator).
 #
 # Usage:
-#   ./scripts/control_phone.sh
-#   ./scripts/control_phone.sh <device_serial>
+#   ./scripts/start_control_phone.sh
+#   ./scripts/start_control_phone.sh <device_serial>
 #
 # Optional env vars:
 #   SCRCPY_OPTS="--max-fps=60 --bit-rate=8M"
@@ -48,11 +49,17 @@ if [[ -z "$TARGET_SERIAL" ]]; then
   TARGET_SERIAL="$(
     adb devices | awk 'NR>1 && $2=="device" && $1 !~ /^emulator-/ { print $1; exit }'
   )"
+  if [[ -z "$TARGET_SERIAL" ]]; then
+    TARGET_SERIAL="$(
+      adb devices | awk 'NR>1 && $2=="device" { print $1; exit }'
+    )"
+  fi
 fi
 
 if [[ -z "$TARGET_SERIAL" ]]; then
-  echo "Error: no connected physical Android phone found."
-  echo "Tip: connect phone, enable USB debugging, and accept RSA prompt."
+  echo "Error: no connected Android device found (physical or emulator)."
+  echo "Tip: connect a phone with USB debugging, start an emulator, or pass serial:"
+  echo "  $0 emulator-5554"
   adb devices
   exit 1
 fi
@@ -64,6 +71,9 @@ if ! adb devices | awk -v target="$TARGET_SERIAL" 'NR>1 && $2=="device" && $1==t
 fi
 
 echo "==> Opening scrcpy mirror + control for $TARGET_SERIAL (Ctrl+C to stop) ..."
+if [[ "$TARGET_SERIAL" =~ ^emulator- ]]; then
+  echo "    (using emulator; plug in a USB phone to prefer it automatically)"
+fi
 if [[ -n "${SCRCPY_OPTS:-}" ]]; then
   # shellcheck disable=SC2206
   EXTRA_OPTS=( ${SCRCPY_OPTS} )

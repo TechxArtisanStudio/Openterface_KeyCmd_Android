@@ -119,9 +119,8 @@ Already a first-class module (`TOUCHPAD`). Align naming with DualShock/DualSense
 |---------|-------------|-------------------|
 | `stick_left` | `STICK_KEY`, `STICK_MOUSE`, `DPAD` (+ `dpadVariant`) | [`GamepadView.drawDynamicSimpleLayout`](app/src/main/java/com/openterface/keymod/GamepadView.java), [`GamepadFragment`](app/src/main/java/com/openterface/fragment/GamepadFragment.java) |
 | `stick_right` | `STICK_KEY`, `STICK_MOUSE` | Same |
-| `stick_key_extra` | `STICK_KEY` only | Same |
 | `button_*` | `BUTTON` | `drawRetroFaceButton` |
-| `touchpad_1` | `TOUCHPAD` | `drawTouchpadModule` |
+| `touchpad_<n>` | `TOUCHPAD` | `drawTouchpadModule` |
 | `mouse_btn_*` | `MOUSE_BUTTON` | Face button draw path |
 
 Constants: [`GamepadLayoutPresetConstants.java`](app/src/main/java/com/openterface/keymod/gamepad/GamepadLayoutPresetConstants.java). Schema: [`GamepadLayoutPresetDocument.GamepadModule`](app/src/main/java/com/openterface/keymod/gamepad/GamepadLayoutPresetDocument.java).

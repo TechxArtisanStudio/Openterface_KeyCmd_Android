@@ -1,5 +1,6 @@
 package com.openterface.keymod.gamepad;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public final class GamepadLayoutPresetConstants {
@@ -12,11 +13,82 @@ public final class GamepadLayoutPresetConstants {
     public static final int SCHEMA_VERSION_V3 = 3;
     /** v4: shoulder/trigger modules, face templates, gyro flag, stick metadata. */
     public static final int SCHEMA_VERSION_V4 = 4;
+    public static final int SCHEMA_VERSION_V5 = 5;
+    /** v6 removes legacy extra-thumb ids (see {@link #isObsoleteRemovedThumbStickId(String)}). */
+    public static final int SCHEMA_VERSION_V6 = 6;
     /**
-     * Current preset schema: v4 plus optional {@code stickMouseSensitivity} on {@code STICK_MOUSE} sticks;
-     * v5 migrates legacy {@code stick_right} into {@link #STICK_KEY_EXTRA_ID} when the arrow slot is free.
+     * v7 makes the primary left thumb ({@code stick_left}) optional alongside
+     * {@code stick_left_2+} (validation only; no automatic module rewrites).
      */
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION_V7 = 7;
+    /**
+     * v8 adds optional per-module {@link GamepadLayoutPresetDocument.GamepadModule#gestureLock} (diagonal
+     * swipe actions: hold lock, turbo, optional alternate key).
+     */
+    public static final int SCHEMA_VERSION_V8 = 8;
+    /** Current preset schema. */
+    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
+
+    /** Max length for {@link GamepadLayoutPresetDocument.Meta#creator} after trim. */
+    public static final int META_CREATOR_MAX_CHARS = 64;
+
+    /** JSON / Gson field names on {@link GamepadLayoutPresetDocument.GestureLockConfig}. */
+    public static final String GESTURE_LOCK_SLOT_UP_LEFT = "upLeft";
+    public static final String GESTURE_LOCK_SLOT_UP_RIGHT = "upRight";
+    public static final String GESTURE_LOCK_SLOT_DOWN_LEFT = "downLeft";
+    public static final String GESTURE_LOCK_SLOT_DOWN_RIGHT = "downRight";
+
+    public static final String GESTURE_LOCK_ACTION_NONE = "none";
+    public static final String GESTURE_LOCK_ACTION_HOLD_LOCK = "hold_lock";
+    public static final String GESTURE_LOCK_ACTION_TURBO = "turbo";
+    public static final String GESTURE_LOCK_ACTION_KEY_HOLD = "key_hold";
+    public static final String GESTURE_LOCK_ACTION_KEY_TURBO = "key_turbo";
+
+    public static boolean isAllowedGestureLockAction(@Nullable String action) {
+        if (action == null || action.trim().isEmpty()) {
+            return false;
+        }
+        String a = action.trim();
+        return GESTURE_LOCK_ACTION_NONE.equals(a)
+                || GESTURE_LOCK_ACTION_HOLD_LOCK.equals(a)
+                || GESTURE_LOCK_ACTION_TURBO.equals(a)
+                || GESTURE_LOCK_ACTION_KEY_HOLD.equals(a)
+                || GESTURE_LOCK_ACTION_KEY_TURBO.equals(a);
+    }
+
+    /** Max decoded bytes for embedded gamepad background image (JSON interchange). */
+    public static final int MAX_BACKGROUND_EMBED_DECODED_BYTES = 6 * 1024 * 1024;
+    /**
+     * Max base64 character count for embedded background (~4/3 of decoded size + padding).
+     * Decoded size must not exceed {@link #MAX_BACKGROUND_EMBED_DECODED_BYTES}.
+     */
+    public static final int MAX_BACKGROUND_EMBED_BASE64_CHARS = 8_400_000;
+    public static final String BACKGROUND_EMBED_ENCODING_BASE64 = "base64";
+    public static final String BACKGROUND_MEDIA_TYPE_PNG = "image/png";
+    public static final String BACKGROUND_MEDIA_TYPE_JPEG = "image/jpeg";
+    public static final String BACKGROUND_MEDIA_TYPE_WEBP = "image/webp";
+
+    /** No pattern overlay (JSON may omit or use this value). */
+    public static final String BACKGROUND_PATTERN_NONE = "none";
+    public static final String BACKGROUND_PATTERN_DOTS = "dots";
+    public static final String BACKGROUND_PATTERN_MICRO_GRID = "micro_grid";
+    public static final String BACKGROUND_PATTERN_DIAGONAL_HATCH = "diagonal_hatch";
+    public static final String BACKGROUND_PATTERN_NOISE = "noise";
+
+    public static boolean isAllowedBackgroundPattern(@Nullable String p) {
+        if (p == null) {
+            return true;
+        }
+        String x = p.trim();
+        if (x.isEmpty() || BACKGROUND_PATTERN_NONE.equalsIgnoreCase(x)) {
+            return true;
+        }
+        String y = x.toLowerCase(java.util.Locale.ROOT);
+        return BACKGROUND_PATTERN_DOTS.equals(y)
+                || BACKGROUND_PATTERN_MICRO_GRID.equals(y)
+                || BACKGROUND_PATTERN_DIAGONAL_HATCH.equals(y)
+                || BACKGROUND_PATTERN_NOISE.equals(y);
+    }
 
     public static final String MODULE_TYPE_STICK_KEY = "STICK_KEY";
     /**
@@ -30,6 +102,16 @@ public final class GamepadLayoutPresetConstants {
     public static final String DPAD_VARIANT_FLOATING = "floating";
     public static final String DPAD_VARIANT_CLICKY = "clicky";
     public static final String DPAD_VARIANT_PIVOT = "pivot";
+
+    /**
+     * Cross / floating / clicky D-pad arms only: draw nothing on the four arms (hub unchanged).
+     */
+    public static final String DPAD_CROSS_ARM_DECORATION_NONE = "none";
+    /** Cross / floating / clicky D-pad arms only: mapped HID key label per arm. */
+    public static final String DPAD_CROSS_ARM_DECORATION_LABELS = "labels";
+    /** Cross / floating / clicky D-pad arms only: Material direction arrow per arm. */
+    public static final String DPAD_CROSS_ARM_DECORATION_ICONS = "icons";
+
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
@@ -43,52 +125,94 @@ public final class GamepadLayoutPresetConstants {
      */
     public static final String MODULE_TYPE_TRIGGER = "TRIGGER";
 
-    /**
-     * Optional arrow stick module id (key or mouse direction); additional slots use {@code stick_aux_*}.
-     */
-    public static final String STICK_KEY_EXTRA_ID = "stick_key_extra";
-
     public static final String MOUSE_BTN_LEFT_ID = "mouse_btn_l";
     public static final String MOUSE_BTN_MIDDLE_ID = "mouse_btn_m";
     public static final String MOUSE_BTN_RIGHT_ID = "mouse_btn_r";
+    /** Non-canonical {@code MOUSE_BUTTON} duplicate ids: {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … */
+    public static final String MOUSE_BTN_COPY_ID_PREFIX = "mouse_btn_copy_";
 
     public static final String SHOULDER_L_ID = "shoulder_l";
     public static final String SHOULDER_R_ID = "shoulder_r";
     public static final String TRIGGER_L_ID = "trigger_l";
     public static final String TRIGGER_R_ID = "trigger_r";
 
-    public static final int MAX_MOUSE_BUTTON_MODULES = 3;
+    /** Canonical L/M/R plus user-duplicated {@link #MOUSE_BTN_COPY_ID_PREFIX} modules. */
+    public static final int MAX_MOUSE_BUTTON_MODULES = 24;
     public static final int MAX_SHOULDER_MODULES = 2;
     public static final int MAX_TRIGGER_MODULES = 2;
 
     public static final String DEFAULT_PRESET_ID = "preset_default";
 
     /**
-     * Built-in sibling of {@link #DEFAULT_PRESET_ID}: same layout intent but {@code layout.showTwoButtons}
-     * true and a {@code button_b} module. Users switch 1-button vs 2-button by changing active preset
-     * (short tap / preset list), not a separate toggle.
+     * Shipped JSON lives under assets/bundled_gamepad/ (recursively); imported preset ids are
+     * {@code preset_pack_<slug>} derived from the path under that dir (see
+     * {@link GamepadLayoutPresetRepository#syncBundledPresetsFromAssets()}).
+     * To ship a preset again after the user removed it, use a new filename or path so the slug changes.
      */
-    public static final String BUILT_IN_TWO_BUTTON_PRESET_ID = "preset_two_buttons";
+    public static final String BUNDLED_GAMEPAD_ASSET_DIR = "bundled_gamepad";
+    public static final String BUNDLED_PRESET_ID_PREFIX = "preset_pack_";
+
+    public static boolean isBundledPackPresetId(@Nullable String presetId) {
+        return presetId != null && presetId.startsWith(BUNDLED_PRESET_ID_PREFIX);
+    }
 
     /**
      * Presets that must not be removed from the store (user may still rename for display).
      */
     public static boolean isPresetDeletionProtected(@Nullable String presetId) {
-        return DEFAULT_PRESET_ID.equals(presetId)
-                || BUILT_IN_TWO_BUTTON_PRESET_ID.equals(presetId);
+        return DEFAULT_PRESET_ID.equals(presetId);
     }
 
     /**
      * Stick-like module ids: {@code stick_} plus lowercase letters, digits, and underscores
-     * (e.g. {@code stick_left}, {@code stick_right}, {@code stick_key_extra}, {@code stick_aux_1}).
+     * (e.g. {@code stick_left}, {@code stick_right}).
      */
     public static boolean isStickModuleId(@Nullable String id) {
         return id != null && id.matches("stick_[a-z0-9_]+");
     }
 
-    /** Arrow stick slot: {@link #STICK_KEY_EXTRA_ID} or {@code stick_aux_1}, {@code stick_aux_2}, … */
-    public static boolean isArrowStickModuleId(@Nullable String id) {
-        return STICK_KEY_EXTRA_ID.equals(id) || (id != null && id.startsWith("stick_aux_"));
+    /**
+     * Optional extra left thumb modules: {@code stick_left_2}, {@code stick_left_3}, …
+     * (Primary {@code stick_left} is optional from schema v7 onward; {@code stick_left_1} is not valid.)
+     */
+    public static boolean isAuxLeftStickModuleId(@Nullable String id) {
+        if (id == null || !id.startsWith("stick_left_")) {
+            return false;
+        }
+        String suffix = id.substring("stick_left_".length());
+        if (!suffix.matches("[0-9]+")) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(suffix) >= 2;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /** Preset touchpad modules use ids {@code touchpad_1}, {@code touchpad_2}, … */
+    public static boolean isTouchpadModuleId(@Nullable String id) {
+        return id != null && id.matches("touchpad_[0-9]+");
+    }
+
+    /** {@code true} for ids {@code mouse_btn_copy_}<em>n</em> with positive integer {@code n}. */
+    public static boolean isMouseButtonCopyModuleId(@Nullable String id) {
+        if (id == null || !id.startsWith(MOUSE_BTN_COPY_ID_PREFIX)) {
+            return false;
+        }
+        String suffix = id.substring(MOUSE_BTN_COPY_ID_PREFIX.length());
+        return !suffix.isEmpty() && suffix.matches("[0-9]+");
+    }
+
+    /**
+     * Legacy id used in v4→v5 migration before schema v6; not valid in current presets.
+     */
+    public static final String LEGACY_STICK_KEY_EXTRA_MODULE_ID = "stick_key_extra";
+
+    /** {@code stick_key_extra} / {@code stick_aux_*} were removed in schema v6 (see {@link GamepadLayoutPresetUpgrader}). */
+    public static boolean isObsoleteRemovedThumbStickId(@Nullable String id) {
+        return LEGACY_STICK_KEY_EXTRA_MODULE_ID.equals(id)
+                || (id != null && id.startsWith("stick_aux_"));
     }
 
     /**
@@ -108,9 +232,61 @@ public final class GamepadLayoutPresetConstants {
                 Math.min(BUTTON_CORNER_RADIUS_NORM_MAX, v));
     }
 
-    /** Default stick positions: PlayStation-style horizontal pair. */
+    /**
+     * BUTTON only: horizontal half-extent as a multiple of the base face radius ({@code 1} = same as legacy circle).
+     * Wider values elongate into a bar or stadium along X before rotation.
+     */
+    public static final float BUTTON_WIDTH_RATIO_MIN = 0.25f;
+    public static final float BUTTON_WIDTH_RATIO_MAX = 3.5f;
+    public static final float BUTTON_WIDTH_RATIO_DEFAULT = 1f;
+
+    /**
+     * BUTTON only: vertical half-extent as a multiple of the base face radius ({@code 1} = legacy circle).
+     */
+    public static final float BUTTON_HEIGHT_RATIO_MIN = 0.25f;
+    public static final float BUTTON_HEIGHT_RATIO_MAX = 3.5f;
+    public static final float BUTTON_HEIGHT_RATIO_DEFAULT = 1f;
+
+    /** BUTTON only: clockwise rotation in degrees (hit box uses the axis-aligned bounding box of the rotated shape). */
+    public static final float BUTTON_ROTATION_DEG_ABS_MAX = 180f;
+
+    /** @return clamped width ratio; null or non-finite → {@link #BUTTON_WIDTH_RATIO_DEFAULT}. */
+    public static float clampButtonWidthRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return BUTTON_WIDTH_RATIO_DEFAULT;
+        }
+        return Math.max(BUTTON_WIDTH_RATIO_MIN, Math.min(BUTTON_WIDTH_RATIO_MAX, v));
+    }
+
+    /** @return clamped height ratio; null or non-finite → {@link #BUTTON_HEIGHT_RATIO_DEFAULT}. */
+    public static float clampButtonHeightRatio(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return BUTTON_HEIGHT_RATIO_DEFAULT;
+        }
+        return Math.max(BUTTON_HEIGHT_RATIO_MIN, Math.min(BUTTON_HEIGHT_RATIO_MAX, v));
+    }
+
+    /**
+     * @return rotation in degrees normalized to {@code (-180, 180]}; null or non-finite → {@code 0}.
+     */
+    public static float clampButtonRotationDeg(@Nullable Float v) {
+        if (v == null || v.isNaN() || v.isInfinite()) {
+            return 0f;
+        }
+        float a = (float) Math.IEEEremainder(v, 360.0);
+        if (a > 180f) {
+            a -= 360f;
+        }
+        if (a <= -180f) {
+            a += 360f;
+        }
+        return Math.max(-BUTTON_ROTATION_DEG_ABS_MAX,
+                Math.min(BUTTON_ROTATION_DEG_ABS_MAX, a));
+    }
+
+    /** Default stick positions: parallel horizontal pair (symmetrical template). */
     public static final String STICK_LAYOUT_SYMMETRICAL = "symmetrical";
-    /** Xbox / Switch Pro–style offset sticks. */
+    /** Asymmetric offset stick pair (offset template; see {@link com.openterface.keymod.GamepadLayout} anchors). */
     public static final String STICK_LAYOUT_OFFSET = "offset";
     /** Alias of {@link #STICK_LAYOUT_SYMMETRICAL} (parallel sticks). */
     public static final String STICK_LAYOUT_PARALLEL = "parallel";
@@ -141,6 +317,34 @@ public final class GamepadLayoutPresetConstants {
                 || DPAD_VARIANT_FLOATING.equals(v)
                 || DPAD_VARIANT_CLICKY.equals(v)
                 || DPAD_VARIANT_PIVOT.equals(v);
+    }
+
+    public static boolean isAllowedDpadCrossArmDecoration(@Nullable String v) {
+        if (v == null || v.trim().isEmpty()) {
+            return true;
+        }
+        String x = v.trim().toLowerCase(java.util.Locale.ROOT);
+        return DPAD_CROSS_ARM_DECORATION_NONE.equals(x)
+                || DPAD_CROSS_ARM_DECORATION_LABELS.equals(x)
+                || DPAD_CROSS_ARM_DECORATION_ICONS.equals(x);
+    }
+
+    /**
+     * Canonical cross-arm decoration string for JSON ({@link #DPAD_CROSS_ARM_DECORATION_LABELS} if unknown).
+     */
+    @NonNull
+    public static String normalizeDpadCrossArmDecoration(@Nullable String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return DPAD_CROSS_ARM_DECORATION_LABELS;
+        }
+        String x = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (DPAD_CROSS_ARM_DECORATION_NONE.equals(x)) {
+            return DPAD_CROSS_ARM_DECORATION_NONE;
+        }
+        if (DPAD_CROSS_ARM_DECORATION_ICONS.equals(x)) {
+            return DPAD_CROSS_ARM_DECORATION_ICONS;
+        }
+        return DPAD_CROSS_ARM_DECORATION_LABELS;
     }
 
     public static boolean isAllowedFaceButtonTemplate(@Nullable String t) {
@@ -175,6 +379,16 @@ public final class GamepadLayoutPresetConstants {
                 || TRIGGER_VARIANT_ANALOG.equals(x)
                 || TRIGGER_VARIANT_HAIR.equals(x)
                 || TRIGGER_VARIANT_ADAPTIVE.equals(x);
+    }
+
+    public static boolean isAllowedBackgroundEmbedMediaType(@Nullable String mediaType) {
+        if (mediaType == null) {
+            return false;
+        }
+        String x = mediaType.trim().toLowerCase(java.util.Locale.ROOT);
+        return BACKGROUND_MEDIA_TYPE_PNG.equals(x)
+                || BACKGROUND_MEDIA_TYPE_JPEG.equals(x)
+                || BACKGROUND_MEDIA_TYPE_WEBP.equals(x);
     }
 
     /**

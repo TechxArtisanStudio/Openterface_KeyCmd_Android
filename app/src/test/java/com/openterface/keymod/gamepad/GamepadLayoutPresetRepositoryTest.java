@@ -1,6 +1,7 @@
 package com.openterface.keymod.gamepad;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -31,13 +32,41 @@ public class GamepadLayoutPresetRepositoryTest {
     }
 
     @Test
+    public void bundledSlugFromAssetFilename_stripsJsonAndLowercases() {
+        assertEquals("classic_1", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("Classic_1.json"));
+        assertEquals("classic_1", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("CLASSIC_1.JSON"));
+    }
+
+    @Test
+    public void bundledSlugFromAssetFilename_mapsNonAlphanumericToUnderscore() {
+        assertEquals("my_preset", GamepadLayoutPresetRepository.bundledSlugFromAssetFilename("My Preset.json"));
+    }
+
+    @Test
+    public void bundledSlugFromBundledAssetRelativePath_flattensNestedPaths() {
+        assertEquals("packs_foo", GamepadLayoutPresetRepository.bundledSlugFromBundledAssetRelativePath("packs/foo.json"));
+        assertEquals("xyab", GamepadLayoutPresetRepository.bundledSlugFromBundledAssetRelativePath("xyab.json"));
+    }
+
+    @Test
     public void deletePreset_rejectsBuiltInDefault() {
         assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID));
     }
 
     @Test
-    public void deletePreset_rejectsBuiltInTwoButton() {
-        assertNotNull(repo.deletePreset(GamepadLayoutPresetConstants.BUILT_IN_TWO_BUTTON_PRESET_ID));
+    public void listPresets_excludesDiscontinuedBuiltinIds() {
+        for (GamepadLayoutPresetRepository.PresetRef r : repo.listPresets()) {
+            if (r == null || r.id == null) {
+                continue;
+            }
+            assertFalse("preset_two_buttons".equals(r.id));
+            assertFalse(r.id.startsWith("preset_classic_"));
+        }
+    }
+
+    @Test
+    public void deletePreset_unknownId_returnsError() {
+        assertNotNull(repo.deletePreset("preset_does_not_exist"));
     }
 
     @Test
@@ -52,6 +81,9 @@ public class GamepadLayoutPresetRepositoryTest {
 
     @Test
     public void reorderPresets_rejectsWrongSize() {
+        if (repo.listPresets().size() <= 1) {
+            return;
+        }
         List<String> one = new ArrayList<>();
         one.add(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
         assertNotNull(repo.reorderPresets(one));

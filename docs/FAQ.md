@@ -6,7 +6,7 @@ Common questions about what KeyMod can type over USB, especially **Shortcut Hub*
 
 ## What is the difference between “Keyboard & Mouse” and “Keyboard & Mouse Pro”?
 
-**Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and IME-style compose screen. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
+**Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and Compose & Send screen. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
 
 **Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with **Shortcut Hub** strip rows, split options, and richer IME behavior—what power users already expect from the single “keyboard + mouse” experience.
 
@@ -98,10 +98,11 @@ Changing this option **rebuilds** the Basic keyboard layout so the new behavior 
 ## Gamepad preset glossary (quick)
 
 - **D-pad** — preset type **DPAD** (left slot only); variants include cross, **split** (four separate hit targets), disc, pivot, floating, clicky (extra haptic).
-- **Analog stick** — **STICK_MOUSE** or **STICK_KEY**; optional **stickVisualVariant** changes cap art (concave / convex / low-profile / C-stick); Hall-effect is label-only.
-- **Face buttons** — **BUTTON** modules; **faceButtonTemplate** can snap Nintendo, Xbox, or PlayStation-style clusters.
+- **Analog sticks** — **STICK_MOUSE** or **STICK_KEY** on **`stick_left`** and **`stick_right`**; optional **stickVisualVariant** changes cap art (concave / convex / low-profile / C-stick); Hall-effect is label-only.
+- **Face buttons** — **BUTTON** modules; **faceButtonTemplate** can snap common face-cluster shapes (e.g. diamond, ABXY grid, symbol set).
 - **Shoulders / triggers** — **SHOULDER** / **TRIGGER** modules with **hidKey**; **triggerVariant** is mainly documentation (`digital`, `analog`, `hair`, `adaptive`).
 - **Gyro** — **layout.gyroEnabled**: tilt drives small mouse deltas while the gamepad screen is active and connected.
+- **Canvas background (share/import)** — When you **share** a gamepad preset as JSON, the app can embed the background image as **base64** plus **`layout.backgroundImageMediaType`** (`image/png`, `image/jpeg`, or `image/webp`). On **import** or apply, that payload is written back to a file under app storage and the embed fields are removed so prefs stay small. Decoded size is capped (currently about **6 MiB**); older app builds ignore unknown JSON fields and will not show an embedded background until updated.
 
 For full detail see **Gamepad Mode → Preset vocabulary** in [USER_GUIDE.md](USER_GUIDE.md).
 
