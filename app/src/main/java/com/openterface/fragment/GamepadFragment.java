@@ -658,6 +658,23 @@ public class GamepadFragment extends Fragment {
                 || GamepadLayoutPresetConstants.TRIGGER_R_ID.equals(componentId);
     }
 
+    /**
+     * Clears in-memory face / shoulder / trigger press flags after a finger-up was suppressed
+     * (e.g. diagonal gesture commit) or when clearing gesture latch, so {@link #sendCombinedKeyReport}
+     * does not keep reporting a steady key down.
+     */
+    private void clearFacePressStateForPresetToggleId(@Nullable String buttonId) {
+        if (buttonId == null || !isPresetKeyboardHoldToggleId(buttonId)) {
+            return;
+        }
+        faceButtonPressed.put(buttonId, false);
+        if ("button_a".equals(buttonId)) {
+            buttonAPressed = false;
+        } else if ("button_b".equals(buttonId)) {
+            buttonBPressed = false;
+        }
+    }
+
     private void setupListeners() {
         gamepadView.setKeyboardHoldLockListener(
                 new GamepadView.KeyboardHoldLockListener() {
@@ -696,6 +713,8 @@ public class GamepadFragment extends Fragment {
                             gestureTurboAlternateHid.remove(moduleId);
                             syncKeyboardHoldLockVisuals();
                             startTurboRepeatingIfNeeded();
+                            clearFacePressStateForPresetToggleId(moduleId);
+                            sendCombinedKeyReport();
                             return;
                         }
                         if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_KEY_TURBO.equalsIgnoreCase(a)) {
@@ -708,6 +727,8 @@ public class GamepadFragment extends Fragment {
                                     new int[] {hidKeyOverride, intOr(modifierMaskOverride, 0)});
                             syncKeyboardHoldLockVisuals();
                             startTurboRepeatingIfNeeded();
+                            clearFacePressStateForPresetToggleId(moduleId);
+                            sendCombinedKeyReport();
                             return;
                         }
                         if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_KEY_HOLD.equalsIgnoreCase(a)) {
@@ -782,6 +803,7 @@ public class GamepadFragment extends Fragment {
                     startTurboRepeatingIfNeeded();
                 }
                 syncKeyboardHoldLockVisuals();
+                clearFacePressStateForPresetToggleId(buttonId);
                 Integer unlockMouse = mouseButtonForComponentId(buttonId);
                 if (unlockMouse != null) {
                     sendMouseClick(semanticMouseButtonToHidMask(unlockMouse), false);
@@ -1687,6 +1709,8 @@ public class GamepadFragment extends Fragment {
         presetSheetBehavior.setFitToContents(true);
         presetSheetBehavior.setMaxHeight(computeGamepadPresetsSheetMaxHeight(sheetCtx));
         presetSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        // Let vertical gestures scroll the RecyclerView instead of dragging/dismissing the sheet.
+        presetSheetBehavior.setDraggable(false);
         dialog.setOnShowListener(d -> {
             View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
             if (bottom != null) {
@@ -1789,7 +1813,7 @@ public class GamepadFragment extends Fragment {
                     behavior.setDraggable(false);
                     behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 } else if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
-                    behavior.setDraggable(true);
+                    behavior.setDraggable(false);
                 }
             }
 
@@ -1882,6 +1906,7 @@ public class GamepadFragment extends Fragment {
                 behavior.setSkipCollapsed(true);
                 behavior.setFitToContents(true);
                 behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                behavior.setDraggable(false);
             }
         }));
     }
