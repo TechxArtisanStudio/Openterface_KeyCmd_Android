@@ -914,6 +914,13 @@ TechxArtisan により</string>
     <string name="gamepad_preset_menu_save_file">ファイルに保存\u2026</string>
     <string name="gamepad_presets_save_file_ok">レイアウトをファイルに保存しました</string>
     <string name="gamepad_presets_save_file_fail">ファイルを保存できません：%1$s</string>
+    <string name="gamepad_export_creator_prompt_title">エクスポート時の作成者名</string>
+    <string name="gamepad_export_creator_prompt_hint">共有するレイアウト JSON の creator に含めます（任意）</string>
+    <string name="gamepad_creator_edit_title">作成者名を編集</string>
+    <string name="gamepad_creator_hint">お名前やニックネーム</string>
+    <string name="gamepad_creator_chip_placeholder">作成者</string>
+    <string name="gamepad_creator_chip_cd">エクスポートしたレイアウトの作成者名</string>
+    <string name="gamepad_creator_saved">作成者名を保存しました</string>
     <string name="gamepad_component_left_extra">十字キー／スティック</string>
     <string name="gamepad_stick_config_title_left_extra">十字キー／スティック</string>
     <string name="gamepad_menu_touchpad_color">タッチパッドの色\u2026</string>
@@ -949,6 +956,13 @@ TechxArtisan により</string>
     <string name="gamepad_button_config_dialog_title_slot_b">サブボタン</string>
     <string name="gamepad_button_config_show_mapped_key_label">ボタン下に割り当てキーのラベルを表示</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">割り当てキー名をこのボタンの下に表示するか切り替えます</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">ホールドロック（対角マップがないときは上下にスワイプ）</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">再度タップするまでこのコントロールでホールドロックとジェスチャーを許可</string>
+    <string name="gamepad_gesture_lock_section">対角スワイプのアクション</string>
+    <string name="gamepad_gesture_slot_up_left">左上方向へスワイプ</string>
+    <string name="gamepad_gesture_slot_up_right">右上方向へスワイプ</string>
+    <string name="gamepad_gesture_slot_down_left">左下方向へスワイプ</string>
+    <string name="gamepad_gesture_slot_down_right">右下方向へスワイプ</string>
     <string name="gamepad_module_config_module_id_line">モジュール ID：%1$s</string>
     <string name="gamepad_config_duplicate">複製</string>
     <string name="gamepad_config_duplicate_done">モジュールを複製しました</string>

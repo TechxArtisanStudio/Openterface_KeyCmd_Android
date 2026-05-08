@@ -953,6 +953,13 @@ por TechxArtisan</string>
     <string name="gamepad_preset_menu_save_file">Guardar en archivo\u2026</string>
     <string name="gamepad_presets_save_file_ok">Diseño guardado en archivo</string>
     <string name="gamepad_presets_save_file_fail">No se pudo guardar el archivo: %1$s</string>
+    <string name="gamepad_export_creator_prompt_title">Nombre del autor en exportaciones</string>
+    <string name="gamepad_export_creator_prompt_hint">Se incluye en el JSON del diseño compartido como creador (opcional)</string>
+    <string name="gamepad_creator_edit_title">Editar nombre del autor</string>
+    <string name="gamepad_creator_hint">Tu nombre o apodo</string>
+    <string name="gamepad_creator_chip_placeholder">Autor</string>
+    <string name="gamepad_creator_chip_cd">Nombre del autor en diseños exportados</string>
+    <string name="gamepad_creator_saved">Nombre del autor guardado</string>
     <string name="gamepad_component_left_extra">Cruceta / stick</string>
     <string name="gamepad_stick_config_title_left_extra">Cruceta / stick</string>
     <string name="gamepad_menu_touchpad_color">Color del panel táctil\u2026</string>
@@ -988,6 +995,13 @@ por TechxArtisan</string>
     <string name="gamepad_button_config_dialog_title_slot_b">Segundo botón</string>
     <string name="gamepad_button_config_show_mapped_key_label">Mostrar etiqueta de tecla asignada bajo el botón</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Activar o desactivar si el nombre de la tecla asignada aparece bajo este botón</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">Bloqueo por gesto (deslizar arriba o abajo si no hay mapa diagonal)</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">Permitir bloqueo y gestos en este control hasta volver a pulsar</string>
+    <string name="gamepad_gesture_lock_section">Acciones con deslizamiento diagonal</string>
+    <string name="gamepad_gesture_slot_up_left">Deslizar arriba a la izquierda</string>
+    <string name="gamepad_gesture_slot_up_right">Deslizar arriba a la derecha</string>
+    <string name="gamepad_gesture_slot_down_left">Deslizar abajo a la izquierda</string>
+    <string name="gamepad_gesture_slot_down_right">Deslizar abajo a la derecha</string>
     <string name="gamepad_module_config_module_id_line">Id. del módulo: %1$s</string>
     <string name="gamepad_config_duplicate">Duplicar</string>
     <string name="gamepad_config_duplicate_done">Módulo duplicado</string>

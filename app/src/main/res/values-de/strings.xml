@@ -952,6 +952,13 @@ von TechxArtisan</string>
     <string name="gamepad_preset_menu_save_file">In Datei speichern\u2026</string>
     <string name="gamepad_presets_save_file_ok">Layout in Datei gespeichert</string>
     <string name="gamepad_presets_save_file_fail">Datei konnte nicht gespeichert werden: %1$s</string>
+    <string name="gamepad_export_creator_prompt_title">Erstellername für Exporte</string>
+    <string name="gamepad_export_creator_prompt_hint">Wird im geteilten Layout-JSON als Ersteller gespeichert (optional)</string>
+    <string name="gamepad_creator_edit_title">Erstellername bearbeiten</string>
+    <string name="gamepad_creator_hint">Ihr Name oder Spitzname</string>
+    <string name="gamepad_creator_chip_placeholder">Ersteller</string>
+    <string name="gamepad_creator_chip_cd">Erstellername für exportierte Layouts</string>
+    <string name="gamepad_creator_saved">Erstellername gespeichert</string>
     <string name="gamepad_component_left_extra">D-Pad / Stick</string>
     <string name="gamepad_stick_config_title_left_extra">D-Pad / Stick</string>
     <string name="gamepad_menu_touchpad_color">Touchpad-Farbe\u2026</string>
@@ -987,6 +994,13 @@ von TechxArtisan</string>
     <string name="gamepad_button_config_dialog_title_slot_b">Zweite Taste</string>
     <string name="gamepad_button_config_show_mapped_key_label">Zugeordnete Taste unter der Taste anzeigen</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Steuert, ob der Name der zugeordneten Taste unter dieser Taste angezeigt wird</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">Halte-Sperre per Wischen (hoch oder runter ohne Diagonalzuordnung)</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">Halte-Sperre und Gesten bis zum erneuten Tippen zulassen</string>
+    <string name="gamepad_gesture_lock_section">Diagonale Wischaktionen</string>
+    <string name="gamepad_gesture_slot_up_left">Wischen oben links</string>
+    <string name="gamepad_gesture_slot_up_right">Wischen oben rechts</string>
+    <string name="gamepad_gesture_slot_down_left">Wischen unten links</string>
+    <string name="gamepad_gesture_slot_down_right">Wischen unten rechts</string>
     <string name="gamepad_module_config_module_id_line">Modul-ID: %1$s</string>
     <string name="gamepad_config_duplicate">Duplizieren</string>
     <string name="gamepad_config_duplicate_done">Modul dupliziert</string>

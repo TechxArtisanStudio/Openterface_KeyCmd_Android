@@ -873,6 +873,13 @@
     <string name="gamepad_preset_row_delete_cd">删除布局</string>
     <string name="gamepad_presets_save_file_ok">布局已保存到文件</string>
     <string name="gamepad_presets_save_file_fail">无法保存文件：%1$s</string>
+    <string name="gamepad_export_creator_prompt_title">导出时使用的作者名称</string>
+    <string name="gamepad_export_creator_prompt_hint">将写入分享布局 JSON 的 creator 字段（可选）</string>
+    <string name="gamepad_creator_edit_title">编辑作者名称</string>
+    <string name="gamepad_creator_hint">您的姓名或昵称</string>
+    <string name="gamepad_creator_chip_placeholder">作者</string>
+    <string name="gamepad_creator_chip_cd">导出布局的作者名称</string>
+    <string name="gamepad_creator_saved">已保存作者名称</string>
     <string name="gamepad_component_left_extra">十字键／摇杆</string>
     <string name="gamepad_stick_config_title_left_extra">十字键／摇杆</string>
     <string name="gamepad_menu_touchpad_color">触控板颜色…</string>
@@ -902,6 +909,13 @@
     <string name="gamepad_button_config_dialog_title_slot_b">第二按键</string>
     <string name="gamepad_button_config_show_mapped_key_label">在按键下方显示映射按键标签</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">切换是否在按键下方显示映射按键名称</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">按住锁定手势（无对角映射时向上或向下滑动）</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">允许在此控件上使用按住锁定或手势，直到再次轻触</string>
+    <string name="gamepad_gesture_lock_section">对角滑动操作</string>
+    <string name="gamepad_gesture_slot_up_left">向左上滑动</string>
+    <string name="gamepad_gesture_slot_up_right">向右上滑动</string>
+    <string name="gamepad_gesture_slot_down_left">向左下滑动</string>
+    <string name="gamepad_gesture_slot_down_right">向右下滑动</string>
     <string name="gamepad_button_rotation_deg_value">%1$d°</string>
     <string name="gamepad_module_config_module_id_line">模块 ID：%1$s</string>
     <string name="gamepad_module_remove_confirm_message">从布局中移除此控件？</string>

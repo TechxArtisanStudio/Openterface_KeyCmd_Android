@@ -952,6 +952,13 @@ par TechxArtisan</string>
     <string name="gamepad_preset_menu_save_file">Enregistrer dans un fichier\u2026</string>
     <string name="gamepad_presets_save_file_ok">Disposition enregistrée dans un fichier</string>
     <string name="gamepad_presets_save_file_fail">Impossible d’enregistrer le fichier\u00a0: %1$s</string>
+    <string name="gamepad_export_creator_prompt_title">Nom du créateur pour les exportations</string>
+    <string name="gamepad_export_creator_prompt_hint">Inclus dans le JSON partagé comme créateur (facultatif)</string>
+    <string name="gamepad_creator_edit_title">Modifier le nom du créateur</string>
+    <string name="gamepad_creator_hint">Votre nom ou surnom</string>
+    <string name="gamepad_creator_chip_placeholder">Créateur</string>
+    <string name="gamepad_creator_chip_cd">Nom du créateur pour les dispositions exportées</string>
+    <string name="gamepad_creator_saved">Nom du créateur enregistré</string>
     <string name="gamepad_component_left_extra">Croix directionnelle / stick</string>
     <string name="gamepad_stick_config_title_left_extra">Croix directionnelle / stick</string>
     <string name="gamepad_menu_touchpad_color">Couleur du pavé tactile\u2026</string>
@@ -987,6 +994,13 @@ par TechxArtisan</string>
     <string name="gamepad_button_config_dialog_title_slot_b">Deuxième bouton</string>
     <string name="gamepad_button_config_show_mapped_key_label">Afficher le libellé de la touche assignée sous le bouton</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">Activer ou désactiver l’affichage du nom de la touche assignée sous ce bouton</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">Verrouillage par geste (glisser vers le haut ou le bas sans carte diagonale)</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">Autoriser le verrouillage et les gestes sur cette commande jusqu’au prochain appui</string>
+    <string name="gamepad_gesture_lock_section">Actions en diagonale</string>
+    <string name="gamepad_gesture_slot_up_left">Glissement haut-gauche</string>
+    <string name="gamepad_gesture_slot_up_right">Glissement haut-droite</string>
+    <string name="gamepad_gesture_slot_down_left">Glissement bas-gauche</string>
+    <string name="gamepad_gesture_slot_down_right">Glissement bas-droite</string>
     <string name="gamepad_module_config_module_id_line">ID du module\u00a0: %1$s</string>
     <string name="gamepad_config_duplicate">Dupliquer</string>
     <string name="gamepad_config_duplicate_done">Module dupliqué</string>

@@ -873,6 +873,13 @@
     <string name="gamepad_preset_row_delete_cd">刪除版面</string>
     <string name="gamepad_presets_save_file_ok">版面已儲存到檔案</string>
     <string name="gamepad_presets_save_file_fail">無法儲存檔案：%1$s</string>
+    <string name="gamepad_export_creator_prompt_title">匯出時使用的作者名稱</string>
+    <string name="gamepad_export_creator_prompt_hint">將寫入分享版面 JSON 的 creator 欄位（選填）</string>
+    <string name="gamepad_creator_edit_title">編輯作者名稱</string>
+    <string name="gamepad_creator_hint">您的姓名或暱稱</string>
+    <string name="gamepad_creator_chip_placeholder">作者</string>
+    <string name="gamepad_creator_chip_cd">匯出版面的作者名稱</string>
+    <string name="gamepad_creator_saved">已儲存作者名稱</string>
     <string name="gamepad_component_left_extra">十字鍵／搖桿</string>
     <string name="gamepad_stick_config_title_left_extra">十字鍵／搖桿</string>
     <string name="gamepad_menu_touchpad_color">觸控板顏色…</string>
@@ -902,6 +909,13 @@
     <string name="gamepad_button_config_dialog_title_slot_b">第二按鍵</string>
     <string name="gamepad_button_config_show_mapped_key_label">在按鍵下方顯示對應按鍵標籤</string>
     <string name="gamepad_button_config_show_mapped_key_label_cd">切換是否在按鍵下方顯示對應按鍵名稱</string>
+    <string name="gamepad_button_config_keyboard_hold_lock">按住鎖定手勢（無對角對應時向上或向下滑動）</string>
+    <string name="gamepad_button_config_keyboard_hold_lock_cd">允許在此控制項上使用按住鎖定或手勢，直到再次輕觸</string>
+    <string name="gamepad_gesture_lock_section">對角滑動操作</string>
+    <string name="gamepad_gesture_slot_up_left">向左上滑動</string>
+    <string name="gamepad_gesture_slot_up_right">向右上滑動</string>
+    <string name="gamepad_gesture_slot_down_left">向左下滑動</string>
+    <string name="gamepad_gesture_slot_down_right">向右下滑動</string>
     <string name="gamepad_button_rotation_deg_value">%1$d°</string>
     <string name="gamepad_module_config_module_id_line">模組 ID：%1$s</string>
     <string name="gamepad_module_remove_confirm_message">從版面移除此控制項？</string>
