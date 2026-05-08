@@ -15,9 +15,22 @@
     android:paddingVertical="@dimen/spacing_small">
 
     <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/preset_row_drag_handle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/gamepad_preset_row_drag_handle_cd"
+        android:focusable="false"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        app:srcCompat="@drawable/ic_drag_handle_24"
+        app:tint="?attr/colorOnSurfaceVariant" />
+
+    <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/preset_row_check"
         android:layout_width="22dp"
         android:layout_height="22dp"
+        android:layout_marginStart="@dimen/spacing_tiny"
         android:contentDescription="@null"
         android:visibility="invisible"
         app:srcCompat="@drawable/ic_check"
@@ -36,18 +49,6 @@
         android:textColor="?attr/colorOnSurface"
         tools:text="Classic_1" />
 
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/preset_row_drag_handle"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/gamepad_preset_row_drag_handle_cd"
-        android:focusable="false"
-        android:padding="12dp"
-        android:scaleType="centerInside"
-        app:srcCompat="@drawable/ic_drag_handle_24"
-        app:tint="?attr/colorOnSurfaceVariant" />
-
     <com.google.android.material.button.MaterialButton
         android:id="@+id/preset_row_overflow"
         style="@style/Widget.Material3.Button.IconButton"
@@ -58,7 +59,7 @@
         android:insetBottom="0dp"
         android:minWidth="48dp"
         android:minHeight="48dp"
-        app:icon="@drawable/ic_menu"
+        app:icon="@drawable/three_dots"
         app:iconGravity="textStart"
         app:iconPadding="0dp"
         app:iconTint="?attr/colorOnSurface" />

@@ -39,11 +39,9 @@ import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -1706,18 +1704,6 @@ public class GamepadFragment extends Fragment {
         }
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        recycler.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
-            @Override
-            public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
-                int action = e.getActionMasked();
-                if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-                    for (ViewParent p = rv.getParent(); p != null; p = p.getParent()) {
-                        p.requestDisallowInterceptTouchEvent(true);
-                    }
-                }
-                return false;
-            }
-        });
         recycler.setHasFixedSize(true);
         recycler.setItemAnimator(null);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
