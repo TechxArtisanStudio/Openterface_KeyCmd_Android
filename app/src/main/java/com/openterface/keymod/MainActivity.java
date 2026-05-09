@@ -37,6 +37,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -717,15 +718,21 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (icon == null) {
             return;
         }
-        int tint = headerConnectionClusterTint(state);
-        if (state == ConnectionManager.ConnectionState.CONNECTING) {
-            icon.setImageResource(R.drawable.bluetooth_searching_24px);
-        } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
-            icon.setImageResource(R.drawable.bluetooth_connected_24px);
-        } else {
-            icon.setImageResource(R.drawable.bluetooth_24px);
+        icon.setImageResource(connectionHeaderIconRes(type, state));
+        icon.setColorFilter(headerConnectionClusterTint(state), PorterDuff.Mode.SRC_IN);
+        int cdRes;
+        switch (type) {
+            case USB:
+                cdRes = R.string.connection_medium_usb;
+                break;
+            case BLUETOOTH:
+                cdRes = R.string.connection_medium_bluetooth;
+                break;
+            default:
+                cdRes = R.string.connection;
+                break;
         }
-        icon.setColorFilter(tint, PorterDuff.Mode.SRC_IN);
+        icon.setContentDescription(getString(cdRes));
     }
 
     public void notifyBasicChromeFragments() {
@@ -1052,19 +1059,50 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return ContextCompat.getColor(this, R.color.text_secondary);
     }
 
+    @DrawableRes
+    private int connectionHeaderIconRes(
+            ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
+        switch (type) {
+            case USB:
+                if (state == ConnectionManager.ConnectionState.CONNECTED
+                        || state == ConnectionManager.ConnectionState.CONNECTING) {
+                    return R.drawable.ic_usb_24;
+                }
+                return R.drawable.ic_usb_off_24;
+            case BLUETOOTH:
+                if (state == ConnectionManager.ConnectionState.CONNECTING) {
+                    return R.drawable.bluetooth_searching_24px;
+                }
+                if (state == ConnectionManager.ConnectionState.CONNECTED) {
+                    return R.drawable.bluetooth_connected_24px;
+                }
+                return R.drawable.bluetooth_24px;
+            case NONE:
+            default:
+                return R.drawable.bluetooth_24px;
+        }
+    }
+
     private void updateConnectionButton(ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         if (connectionButton == null) return;
 
         int connectionTint = headerConnectionClusterTint(state);
         int neutralTint = headerNeutralActionTint();
-        if (state == ConnectionManager.ConnectionState.CONNECTING) {
-            connectionButton.setImageResource(R.drawable.bluetooth_searching_24px);
-        } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
-            connectionButton.setImageResource(R.drawable.bluetooth_connected_24px);
-        } else {
-            connectionButton.setImageResource(R.drawable.bluetooth_24px);
-        }
+        connectionButton.setImageResource(connectionHeaderIconRes(type, state));
         connectionButton.setColorFilter(connectionTint, PorterDuff.Mode.SRC_IN);
+        int cdRes;
+        switch (type) {
+            case USB:
+                cdRes = R.string.connection_medium_usb;
+                break;
+            case BLUETOOTH:
+                cdRes = R.string.connection_medium_bluetooth;
+                break;
+            default:
+                cdRes = R.string.connection;
+                break;
+        }
+        connectionButton.setContentDescription(getString(cdRes));
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setColorFilter(neutralTint, PorterDuff.Mode.SRC_IN);
         }
