@@ -50,6 +50,9 @@ public class ConnectionManager {
     private static final String LEGACY_LAST_CONNECTED_PREFIX = "last_connected_times_";
     private static final String ACTION_USB_PERMISSION = "com.openterface.ch32v208serial.USB_PERMISSION";
     private static final int AUTO_CONNECT_TIMEOUT_MS = 5000;
+    /** Prefer Openterface / CH32 USB serial (see res/xml/device_filter.xml). */
+    private static final int PREFERRED_USB_VENDOR_ID = 0x1a86;
+    private static final int PREFERRED_USB_PRODUCT_ID = 0xfe0c;
 
     public enum ConnectionType {
         NONE,
@@ -201,6 +204,21 @@ public class ConnectionManager {
     }
 
     /**
+     * When several USB serial devices are present, prefer the Openterface CH32 VID/PID from
+     * {@code device_filter.xml}; otherwise use the first probed driver.
+     */
+    private static UsbSerialDriver pickPreferredUsbDriver(List<UsbSerialDriver> drivers) {
+        for (UsbSerialDriver d : drivers) {
+            UsbDevice dev = d.getDevice();
+            if (dev.getVendorId() == PREFERRED_USB_VENDOR_ID
+                    && dev.getProductId() == PREFERRED_USB_PRODUCT_ID) {
+                return d;
+            }
+        }
+        return drivers.get(0);
+    }
+
+    /**
      * Connect to USB device
      */
     public boolean connectUsb() {
@@ -217,7 +235,7 @@ public class ConnectionManager {
             return false;
         }
 
-        UsbSerialDriver driver = availableDrivers.get(0);
+        UsbSerialDriver driver = pickPreferredUsbDriver(availableDrivers);
         UsbDevice device = driver.getDevice();
 
         // Check USB permission
@@ -246,10 +264,16 @@ public class ConnectionManager {
         try {
             usbPort.open(connection);
             usbPort.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-            
+
+            // HID helpers used to prefer BLE when still connected; tear down BLE once USB is live.
+            if (bluetoothService != null && bluetoothService.isConnected()) {
+                Log.d(TAG, "Disconnecting Bluetooth after USB serial is ready");
+                bluetoothService.disconnect();
+            }
+
             // Save last connection
             saveLastConnection(ConnectionType.USB, null, null);
-            
+
             updateConnectionState(ConnectionType.USB, ConnectionState.CONNECTED);
             Log.d(TAG, "USB connected successfully");
             return true;

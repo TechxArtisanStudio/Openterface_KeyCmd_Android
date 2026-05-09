@@ -24,21 +24,21 @@ public final class MouseRelHidTransport {
             BluetoothService bluetoothService,
             boolean bluetoothServiceBound) {
         String releaseSendMsData = "57AB00050501000000000D";
-        if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            try {
-                byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(releaseSendMsData);
-                Thread.sleep(10);
-                bluetoothService.sendData(bytes);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        } else if (port != null) {
+        if (port != null) {
             try {
                 byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(releaseSendMsData);
                 Thread.sleep(10);
                 port.write(bytes, 20);
             } catch (IOException | InterruptedException e) {
                 Log.e(TAG, "releaseAll: " + e.getMessage());
+            }
+        } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+            try {
+                byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(releaseSendMsData);
+                Thread.sleep(10);
+                bluetoothService.sendData(bytes);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -71,10 +71,10 @@ public final class MouseRelHidTransport {
                     sendMsData += "0";
                 }
                 byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(sendMsData);
-                if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                    bluetoothService.sendData(bytes);
-                } else if (port != null) {
+                if (port != null) {
                     port.write(bytes, 20);
+                } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                    bluetoothService.sendData(bytes);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "sendRelButtonsNoMotion: " + e.getMessage());
@@ -131,10 +131,10 @@ public final class MouseRelHidTransport {
                     sendMsData += "0";
                 }
                 byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(sendMsData);
-                if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                    bluetoothService.sendData(bytes);
-                } else if (port != null) {
+                if (port != null) {
                     port.write(bytes, 20);
+                } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                    bluetoothService.sendData(bytes);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "sendRelMove: " + e.getMessage());
@@ -206,10 +206,10 @@ public final class MouseRelHidTransport {
             BluetoothService bluetoothService,
             boolean bluetoothServiceBound,
             byte[] bytes) throws IOException {
-        if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-            bluetoothService.sendData(bytes);
-        } else if (port != null) {
+        if (port != null) {
             port.write(bytes, 20);
+        } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+            bluetoothService.sendData(bytes);
         }
     }
 
@@ -221,10 +221,10 @@ public final class MouseRelHidTransport {
         new Thread(() -> {
             try {
                 byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(packetBodyWithChecksum);
-                if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                    bluetoothService.sendData(bytes);
-                } else if (port != null) {
+                if (port != null) {
                     port.write(bytes, 20);
+                } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                    bluetoothService.sendData(bytes);
                 }
                 Thread.sleep(30);
                 releaseAll(port, bluetoothService, bluetoothServiceBound);
@@ -271,10 +271,10 @@ public final class MouseRelHidTransport {
                 String clickData = base + Ch9329PacketUtil.makeChecksum(base);
                 byte[] bytes = Ch9329PacketUtil.hexStringToByteArray(clickData);
                 for (int i = 0; i < 2; i++) {
-                    if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                        bluetoothService.sendData(bytes);
-                    } else if (port != null) {
+                    if (port != null) {
                         port.write(bytes, 20);
+                    } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                        bluetoothService.sendData(bytes);
                     }
                     Thread.sleep(30);
                     releaseAll(port, bluetoothService, bluetoothServiceBound);
