@@ -38,7 +38,6 @@
     <string name="km_pro_settings_import_strip_layout">Import layout</string>
     <string name="km_pro_settings_page3_info_title">Page 3 on the keyboard strip</string>
     <string name="km_pro_settings_page3_info_body">Swipe the fixed rows on the keyboard to page 3.\n\n• Row 2: tap activates the Shortcut Hub profile for that slot. Long-press to pick which profile is bound.\n• Row 3: tap activates a strip layout. Long-press to pick which layout each slot shows.\n\nEdit strip key caps and layouts on the Strip layouts tab above.</string>
-    <string name="shortcut_hub_strip_setup_hint">Rows 2–3 strip layouts and page 3 hub keys are edited in Keyboard &amp; Mouse Pro: tap the setup gear (between target OS and connection), then use Strip layouts or Page 3 hub keys.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>
