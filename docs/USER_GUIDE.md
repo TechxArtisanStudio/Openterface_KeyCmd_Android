@@ -162,6 +162,10 @@ Presets are a list of **modules**. Each module is one on-screen control (draw + 
 
 The **right** stick can use **`stickMouseSensitivity`** when its type is **STICK_MOUSE** (pointer speed tuning in Configure control).
 
+### Cross-device sizing (share / import)
+
+Positions use normalized **`anchorX`** / **`anchorY`** (0–1 of the gamepad **content** rectangle, after system-bar safe area). **Button**, **stick**, **D-pad**, **touchpad L/M/R**, and **shoulder/trigger** **on-screen sizes** also scale with the **smaller content edge** so the same preset JSON is less likely to overlap or clip on a narrower or shorter phone than the one it was edited on. **Touchpads** still use **`widthNorm`** and **`heightNorm`** (fractions of content width/height). There is **no** per-export “designed at this resolution” field today—authors should still sanity-check dense layouts (e.g. many face buttons) on the **smallest target device** they care about.
+
 ```mermaid
 flowchart TB
   subgraph slot [Slot or module id]
@@ -182,9 +186,9 @@ flowchart TB
   behavior --> params
 ```
 
-### Preset vocabulary (schema v6)
+### Preset vocabulary (schema)
 
-Shareable layouts use JSON with a **schema version** (currently **v6**). Useful terms:
+Shareable layouts use JSON with a **`schemaVersion`** field (see the file you export—currently **v8** in bundled presets). Useful terms:
 
 | Everyday term | In presets / code |
 |---------------|---------------------|

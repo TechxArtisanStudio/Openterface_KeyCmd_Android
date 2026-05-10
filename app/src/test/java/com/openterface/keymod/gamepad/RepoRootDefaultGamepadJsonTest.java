@@ -88,19 +88,21 @@ public class RepoRootDefaultGamepadJsonTest {
         GamepadLayoutPresetDocument.GamepadModule sneak = find(doc, "button_x");
         assertNotNull(sneak);
         assertTrue(Boolean.TRUE.equals(sneak.keyboardHoldLock));
-        assertNotNull(sneak.gestureLock);
+        GamepadLayoutPresetDocument.GamepadModule jump = find(doc, "button_a");
+        assertNotNull(jump);
+        assertNotNull(jump.gestureLock);
         assertEquals(
                 GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_HOLD_LOCK,
                 GamepadGestureLock.slotAction(
                         GamepadGestureLock.slotForKey(
-                                sneak.gestureLock,
-                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_RIGHT)));
+                                jump.gestureLock,
+                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT)));
         assertEquals(
                 GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO,
                 GamepadGestureLock.slotAction(
                         GamepadGestureLock.slotForKey(
-                                sneak.gestureLock,
-                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT)));
+                                jump.gestureLock,
+                                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_DOWN_LEFT)));
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(

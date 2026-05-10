@@ -1276,7 +1276,8 @@ public class GamepadView extends View {
             shortLabel = "?";
         }
         int accent = GamepadModuleAccent.resolve(m.moduleAccentArgb, themeAccentPrimary);
-        drawAnalogStickForModule(canvas, x, y, 180f, m.scale, m.id, shortLabel,
+        float layoutScale = GamepadLayoutPresetConstants.contentMinEdgeScaleFactor(w, h);
+        drawAnalogStickForModule(canvas, x, y, 180f * layoutScale, m.scale, m.id, shortLabel,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? upL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? dnL : null,
                 GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type) ? lfL : null,
@@ -1289,6 +1290,7 @@ public class GamepadView extends View {
 
     /** @see GamepadDynamicLayoutRegistry */
     public void drawDynamicDpadModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float layoutScale = GamepadLayoutPresetConstants.contentMinEdgeScaleFactor(w, h);
         float x = m.anchorX * w;
         float y = m.anchorY * h;
         String upL = componentDisplayLabels.getOrDefault("stick_up", "W");
@@ -1320,7 +1322,7 @@ public class GamepadView extends View {
                 || GamepadLayoutPresetConstants.DPAD_CROSS_ARM_DECORATION_ICONS.equals(normDec)) {
             labelRadialScale = Math.max(labelRadialScale, 1.12f);
         }
-        drawDpadForModule(canvas, x, y, 180f, m.scale, m.id, variant, upL, dnL, lfL, rtL,
+        drawDpadForModule(canvas, x, y, 180f * layoutScale, m.scale, m.id, variant, upL, dnL, lfL, rtL,
                 m.dpadSplitGapRatio, m.dpadSplitOuterReachRatio, accent,
                 keyMappingHintsVisible, labelRadialScale, crossArmDec, iconPool,
                 presetDisplayLabel(m), m.displayLabelColorArgb);
@@ -1328,6 +1330,7 @@ public class GamepadView extends View {
 
     /** @see GamepadDynamicLayoutRegistry */
     public void drawDynamicButtonModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float layoutScale = GamepadLayoutPresetConstants.contentMinEdgeScaleFactor(w, h);
         float x = m.anchorX * w;
         float y = m.anchorY * h;
         FaceStyle fs = faceStyleForModuleId(m.id);
@@ -1340,7 +1343,7 @@ public class GamepadView extends View {
             hint = null;
         }
         float corner = GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm);
-        drawButtonForModule(canvas, x, y, 100f * m.scale, m.id, fs, cap, hint, corner, m.moduleAccentArgb, m);
+        drawButtonForModule(canvas, x, y, 100f * m.scale * layoutScale, m.id, fs, cap, hint, corner, m.moduleAccentArgb, m);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1356,10 +1359,11 @@ public class GamepadView extends View {
 
     /** @see GamepadDynamicLayoutRegistry */
     public void drawDynamicMouseButtonModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float layoutScale = GamepadLayoutPresetConstants.contentMinEdgeScaleFactor(w, h);
         float x = m.anchorX * w;
         float y = m.anchorY * h;
         float density = getResources().getDisplayMetrics().density;
-        float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale;
+        float rpx = MOUSE_BUTTON_BASE_RADIUS_DP * density * m.scale * touchpadMouseButtonLayoutScale * layoutScale;
         String cap = presetDisplayLabel(m);
         String hint = resolveMappingHintOnly(m);
         if ("?".equals(hint)) {
@@ -1374,11 +1378,12 @@ public class GamepadView extends View {
 
     /** @see GamepadDynamicLayoutRegistry */
     public void drawDynamicShoulderOrTriggerModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float layoutScale = GamepadLayoutPresetConstants.contentMinEdgeScaleFactor(w, h);
         float x = m.anchorX * w;
         float y = m.anchorY * h;
         float density = getResources().getDisplayMetrics().density;
-        float ww = 108f * density * m.scale;
-        float hh = 34f * density * m.scale;
+        float ww = 108f * density * m.scale * layoutScale;
+        float hh = 34f * density * m.scale * layoutScale;
         String cap = presetDisplayLabel(m);
         String hint = resolveMappingHintOnly(m);
         if (sameCapAndHint(cap, hint)) {

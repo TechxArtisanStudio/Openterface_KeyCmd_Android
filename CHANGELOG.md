@@ -6,6 +6,10 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ## Unreleased
 
+### Gamepad
+
+- **Cross-device layouts**: On the gamepad canvas, **BUTTON**, **STICK_*** / **DPAD**, **MOUSE_BUTTON** (touchpad L/M/R), and **SHOULDER** / **TRIGGER** module **draw sizes** scale with the smaller **content** edge (`min(width, height)` after safe-area insets), using **800 px** as the reference min-edge (legacy fixed-pixel bases matched that order of magnitude). Very small or very large surfaces are **clamped** so controls stay tappable. **TOUCHPAD** size is unchanged (it already uses `widthNorm` / `heightNorm`). **Preset JSON** is unchanged—no new export fields.
+
 ## [0.15] — 2026-05-09
 
 ### Release summary (pull request and GitHub release)

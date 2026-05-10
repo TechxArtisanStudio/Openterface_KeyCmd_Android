@@ -29,6 +29,35 @@ public final class GamepadLayoutPresetConstants {
     /** Current preset schema. */
     public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
 
+    /**
+     * Dynamic layout (BUTTON, STICK_*, DPAD, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by
+     * {@code min(contentW, contentH) / REFERENCE} so presets stay usable across phones and aspect ratios.
+     * Legacy fixed-pixel bases (100 / 180) matched roughly this reference on a typical landscape phone.
+     */
+    public static final int DYNAMIC_LAYOUT_REFERENCE_MIN_EDGE_PX = 800;
+    /** Lower clamp for {@link #contentMinEdgeScaleFactor(int, int)} (very small windows). */
+    public static final float DYNAMIC_LAYOUT_SCALE_MIN = 0.35f;
+    /** Upper clamp so tablets do not inflate controls without bound. */
+    public static final float DYNAMIC_LAYOUT_SCALE_MAX = 2.5f;
+
+    /**
+     * Scale factor for preset module sizes given the gamepad <em>content</em> width and height (after insets).
+     * At {@link #DYNAMIC_LAYOUT_REFERENCE_MIN_EDGE_PX} px min-edge, returns {@code 1.0f} (legacy pixel bases).
+     */
+    public static float contentMinEdgeScaleFactor(int contentWidthPx, int contentHeightPx) {
+        int w = Math.max(1, contentWidthPx);
+        int h = Math.max(1, contentHeightPx);
+        int minEdge = Math.min(w, h);
+        float raw = minEdge / (float) DYNAMIC_LAYOUT_REFERENCE_MIN_EDGE_PX;
+        if (raw < DYNAMIC_LAYOUT_SCALE_MIN) {
+            return DYNAMIC_LAYOUT_SCALE_MIN;
+        }
+        if (raw > DYNAMIC_LAYOUT_SCALE_MAX) {
+            return DYNAMIC_LAYOUT_SCALE_MAX;
+        }
+        return raw;
+    }
+
     /** Max length for {@link GamepadLayoutPresetDocument.Meta#creator} after trim. */
     public static final int META_CREATOR_MAX_CHARS = 64;
 
