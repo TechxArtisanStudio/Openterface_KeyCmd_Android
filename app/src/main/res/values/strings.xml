@@ -29,6 +29,16 @@
     <string name="km_basic_cd_application_key">Application key</string>
     <string name="km_basic_key_sup">Sup</string>
     <string name="km_basic_setup_button_cd">Basic mode: keyboard and touchpad options</string>
+    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: strip layouts and page 3 hub keys</string>
+    <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
+    <string name="km_pro_settings_close">Close</string>
+    <string name="km_pro_settings_tab_strip_layouts">Strip layouts</string>
+    <string name="km_pro_settings_tab_page3_hub">Page 3 hub keys</string>
+    <string name="km_pro_settings_create_strip_layout">Create layout</string>
+    <string name="km_pro_settings_import_strip_layout">Import layout</string>
+    <string name="km_pro_settings_page3_info_title">Page 3 on the keyboard strip</string>
+    <string name="km_pro_settings_page3_info_body">Swipe the fixed rows on the keyboard to page 3.\n\n• Row 2: tap activates the Shortcut Hub profile for that slot. Long-press to pick which profile is bound.\n• Row 3: tap activates a strip layout. Long-press to pick which layout each slot shows.\n\nEdit strip key caps and layouts on the Strip layouts tab above.</string>
+    <string name="shortcut_hub_strip_setup_hint">Rows 2–3 strip layouts and page 3 hub keys are edited in Keyboard &amp; Mouse Pro: tap the setup gear (between target OS and connection), then use Strip layouts or Page 3 hub keys.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>
@@ -583,8 +593,8 @@ by TechxArtisan</string>
     <string name="shortcut_hub_strip_enter_name">Strip profile name</string>
     <string name="shortcut_hub_strip_paste_json_hint">Paste Rows 2–3 strip profile JSON</string>
     <string name="strip_edition_dialog_title">Strip layout</string>
-    <string name="strip_edition_dialog_message">Edit Rows 2–3 strip profiles and slot overrides in Shortcut Hub (Rows 2–3 · Strip tab).\n\nSlot overrides on active strip: %1$d</string>
-    <string name="strip_edition_open_shortcut_hub">Open Shortcut Hub</string>
+    <string name="strip_edition_dialog_message">Edit Rows 2–3 strip layouts and slot overrides in Keyboard &amp; Mouse Pro setup (tap the gear between target OS and connection).\n\nSlot overrides on active strip: %1$d</string>
+    <string name="strip_edition_open_shortcut_hub">Open Pro setup</string>
     <string name="shortcut_hub_back">Back</string>
     <string name="shortcut_hub_reset_default">Reset</string>
     <string name="shortcut_hub_reset_default_title">Reset Default profile?</string>

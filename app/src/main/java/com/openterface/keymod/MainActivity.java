@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
@@ -60,6 +61,7 @@ import com.openterface.fragment.CompositeFragment;
 import com.openterface.fragment.GamepadFragment;
 import com.openterface.fragment.KeyboardFragment;
 import com.openterface.fragment.KeyboardMouseFragment;
+import com.openterface.fragment.KmProSettingsFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
@@ -166,6 +168,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private HorizontalScrollView headerEndScroll;
     @Nullable
     private View headerRightCluster;
+    @Nullable
+    private View kmProSettingsOverlay;
+    @Nullable
+    private ImageButton kmProSetupHeaderButton;
     private final ImageButton[] headerModeSlotButtons = new ImageButton[3];
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
@@ -569,6 +575,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
             updateTargetOsHeaderIcon();
         }
+        kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
+        kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
+        if (kmProSetupHeaderButton != null) {
+            kmProSetupHeaderButton.setOnClickListener(v -> toggleKmProSettingsOverlay());
+        }
         applyHeaderRightClusterNavInsets();
         applyHeaderEndScrollLayoutForOrientation();
         setupHeaderModeSlotButtons();
@@ -630,6 +641,74 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                             ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                             : DrawerLayout.LOCK_MODE_UNLOCKED;
             drawerLayout.setDrawerLockMode(lockMode, GravityCompat.START);
+        }
+        if (!(f instanceof CompositeFragment)
+                && kmProSettingsOverlay != null
+                && kmProSettingsOverlay.getVisibility() == View.VISIBLE) {
+            hideKmProSettingsOverlay();
+        } else {
+            updateKmProHeaderSetupChrome();
+        }
+    }
+
+    private void toggleKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        if (kmProSettingsOverlay.getVisibility() == View.VISIBLE) {
+            hideKmProSettingsOverlay();
+        } else {
+            showKmProSettingsOverlay();
+        }
+    }
+
+    /** Opens full-screen KM Pro settings (strip layouts, page 3 hub). */
+    public void showKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+            }
+        }
+        kmProSettingsOverlay.setVisibility(View.VISIBLE);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment())
+                .commit();
+        updateKmProHeaderSetupChrome();
+    }
+
+    /** Called from {@link KmProSettingsFragment} when closing setup. */
+    public void hideKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        Fragment existing = getSupportFragmentManager().findFragmentById(R.id.km_pro_settings_overlay);
+        if (existing != null) {
+            getSupportFragmentManager().beginTransaction().remove(existing).commitAllowingStateLoss();
+        }
+        kmProSettingsOverlay.setVisibility(View.GONE);
+        refreshOpenKeyboardShortcutStripFromPrefs();
+        updateKmProHeaderSetupChrome();
+    }
+
+    private void updateKmProHeaderSetupChrome() {
+        Fragment host = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        boolean pro = host instanceof CompositeFragment;
+        if (kmProSetupHeaderButton != null) {
+            kmProSetupHeaderButton.setVisibility(pro ? View.VISIBLE : View.GONE);
+            boolean settingsOpen =
+                    kmProSettingsOverlay != null && kmProSettingsOverlay.getVisibility() == View.VISIBLE;
+            int tint =
+                    ContextCompat.getColor(
+                            this,
+                            settingsOpen ? R.color.primary : R.color.text_secondary);
+            kmProSetupHeaderButton.setImageTintList(ColorStateList.valueOf(tint));
         }
     }
 
@@ -1546,7 +1625,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         transaction.commit();
     }
 
-    /** Call after Shortcut Hub imports a profile or strip preset so the keyboard strip reloads from prefs. */
+    /** Reloads strip data from prefs after profile/strip imports or when closing Pro setup. */
     public void refreshOpenKeyboardShortcutStripFromPrefs() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (f instanceof CompositeFragment) {

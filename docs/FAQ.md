@@ -1,6 +1,6 @@
-# KeyMod FAQ — Keyboard output and strip profiles
+# KeyMod FAQ — Keyboard output and strip layouts
 
-Common questions about what KeyMod can type over USB, especially **Shortcut Hub** “Rows 2–3 · Strip” profiles. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold). A short **gamepad preset glossary** appears at the end.
+Common questions about what KeyMod can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold). A short **gamepad preset glossary** appears at the end.
 
 ---
 
@@ -8,7 +8,7 @@ Common questions about what KeyMod can type over USB, especially **Shortcut Hub*
 
 **Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and Compose & Send screen, plus a **Setup** gear icon (next to the target OS control) for KM Basic preferences. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
 
-**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with **Shortcut Hub** strip rows, split options, and richer IME behavior—what power users already expect from the single “keyboard + mouse” experience.
+**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with strip rows, split options, and richer IME behavior. In Pro, tap the **Setup** gear in the app header (**between** target OS and connection) to edit **strip layouts** and **page 3 hub** bindings.
 
 ---
 
@@ -24,7 +24,7 @@ So KeyMod does **not** bypass the normal rules of “USB keyboard + host OS.” 
 
 The fixed strip and Rows 2–3 overrides behave like a **normal keyboard**: the label is what you asked to show on the cap, but the **host layout and app** decide what actually appears unless you bound a **plain HID key** that matches that character on your layout.
 
-**Rows 2–3 · Strip** profiles (**Default**, **Mine**, and any **custom** profiles you create) let you assign **single-key HID** shortcuts per slot. That is the most reliable path: the device sends the same scan codes a physical key would.
+**Rows 2–3** strip layouts (**Default**, **Mine**, and any **custom** layouts you create) let you assign **single-key HID** shortcuts per slot. That is the most reliable path: the device sends the same scan codes a physical key would.
 
 ---
 
@@ -40,9 +40,9 @@ That is where results are most **consistent across different machines**.
 
 ---
 
-## Rows 2–3 strip profiles in the app
+## Rows 2–3 strip layouts in the app
 
-Built-in **Default** and **Mine** start from the **factory strip layout** (no overrides until you edit). You can **create additional strip profiles**, **import/export** JSON, and **assign** profiles to the page 3 strip quick-toggle row—same customization as before, without bundled decorative or Unicode-heavy presets.
+Built-in **Default** and **Mine** start from the **factory strip layout** (no overrides until you edit). From **Keyboard & Mouse Pro**, open **Setup** (gear icon). You can **create additional layouts**, **import/export** JSON, set the **active** layout, and **assign** layouts to the page 3 strip quick-toggle row.
 
 ---
 
@@ -85,7 +85,7 @@ Changing this option **rebuilds** the Basic keyboard layout so the new behavior 
 
 ## Do Basic modifier settings affect Pro mode or the shortcut strip?
 
-**No.** Sticky vs chord and “Hold modifier on target while chording” apply to **Keyboard & Mouse (Basic)** only. **Keyboard & Mouse Pro** and the **Shortcut Hub** strip use separate behavior.
+**No.** Sticky vs chord and “Hold modifier on target while chording” apply to **Keyboard & Mouse (Basic)** only. **Keyboard & Mouse Pro** and the shortcut **strip** use separate behavior.
 
 ---
 

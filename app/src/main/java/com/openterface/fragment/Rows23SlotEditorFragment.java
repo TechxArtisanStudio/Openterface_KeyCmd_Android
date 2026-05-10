@@ -431,8 +431,8 @@ public class Rows23SlotEditorFragment extends Fragment {
 
     private void notifyHostChanged() {
         Fragment p = getParentFragment();
-        if (p instanceof ShortcutHubFragment) {
-            ((ShortcutHubFragment) p).onRows23SlotEditorFinished();
+        if (p instanceof Rows23SlotEditorHost) {
+            ((Rows23SlotEditorHost) p).onRows23SlotEditorFinished();
         }
     }
 

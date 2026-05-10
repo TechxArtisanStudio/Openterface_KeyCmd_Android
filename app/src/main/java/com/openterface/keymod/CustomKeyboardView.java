@@ -1324,7 +1324,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Long-press entry for editing rows 2–3 strip layout (import/export and slot overrides in Shortcut Hub).
+     * Long-press entry for editing rows 2–3 strip layout (opens Keyboard and Mouse Pro setup).
      */
     private void showStripLayoutEditionEntry() {
         AppCompatActivity act = unwrapAppCompatActivity(getContext());
@@ -1352,7 +1352,7 @@ public class CustomKeyboardView extends LinearLayout {
                 .setMessage(ctx.getString(R.string.strip_edition_dialog_message, overrideCount))
                 .setPositiveButton(R.string.strip_edition_open_shortcut_hub, (d, which) -> {
                     if (act instanceof MainActivity) {
-                        ((MainActivity) act).switchToLaunchMode(LaunchPanelActivity.MODE_SHORTCUTS);
+                        ((MainActivity) act).showKmProSettingsOverlay();
                     }
                     d.dismiss();
                 })
