@@ -26,7 +26,6 @@ import com.google.android.material.tabs.TabLayoutMediator;
 import com.openterface.keymod.fragments.AISettingsFragment;
 import com.openterface.keymod.fragments.GeneralSettingsFragment;
 import com.openterface.keymod.fragments.HistoryFragment;
-import com.openterface.keymod.fragments.KeyboardMouseSettingsFragment;
 import com.openterface.keymod.fragments.VoiceSettingsFragment;
 
 /**
@@ -72,7 +71,6 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] tabTitles = new String[]{
                 getString(R.string.settings_tab_general),
-                getString(R.string.settings_tab_keyboard_mouse),
                 getString(R.string.settings_tab_voice),
                 getString(R.string.settings_tab_ai),
                 getString(R.string.settings_tab_history)
@@ -137,12 +135,10 @@ public class SettingsActivity extends AppCompatActivity {
                 case 0:
                     return new GeneralSettingsFragment();
                 case 1:
-                    return new KeyboardMouseSettingsFragment();
-                case 2:
                     return new VoiceSettingsFragment();
-                case 3:
+                case 2:
                     return new AISettingsFragment();
-                case 4:
+                case 3:
                     return new HistoryFragment();
                 default:
                     throw new IllegalArgumentException("Invalid settings page: " + position);
@@ -151,7 +147,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         @Override
         public int getItemCount() {
-            return 5;
+            return 4;
         }
     }
 }

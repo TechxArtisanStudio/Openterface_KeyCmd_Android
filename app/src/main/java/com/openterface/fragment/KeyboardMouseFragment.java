@@ -23,11 +23,12 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
+import com.openterface.keymod.fragments.KeyboardMouseSettingsFragment;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
  * Standard &quot;Keyboard &amp; Mouse&quot; mode: KM Basic full-screen sub-modes (keyboard, numpad,
- * touchpad, compose). Pro composite experience lives in {@link CompositeFragment}.
+ * touchpad, compose, basic settings). Pro composite experience lives in {@link CompositeFragment}.
  */
 public final class KeyboardMouseFragment extends Fragment {
 
@@ -40,6 +41,7 @@ public final class KeyboardMouseFragment extends Fragment {
     public static final String SUBMODE_NUMPAD = "numpad";
     public static final String SUBMODE_TOUCHPAD = "touchpad";
     public static final String SUBMODE_COMPOSE = "compose";
+    public static final String SUBMODE_SETTINGS = "settings";
 
     public UsbSerialPort port;
 
@@ -50,6 +52,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private TextView tabTouch;
     @Nullable private TextView tabNum;
     @Nullable private TextView tabIme;
+    @Nullable private TextView tabSettings;
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
     @Nullable private LinearLayout chromeConnectionWrap;
@@ -212,6 +215,7 @@ public final class KeyboardMouseFragment extends Fragment {
         tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
         tabNum = root.findViewById(R.id.basic_km_tab_numpad);
         tabIme = root.findViewById(R.id.basic_km_tab_ime);
+        tabSettings = root.findViewById(R.id.basic_km_tab_settings);
         chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
         chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
         chromeConnectionIcon = root.findViewById(R.id.basic_km_connection_icon);
@@ -236,6 +240,9 @@ public final class KeyboardMouseFragment extends Fragment {
         }
         if (tabIme != null) {
             tabIme.setOnClickListener(v -> requestSubmode(SUBMODE_COMPOSE));
+        }
+        if (tabSettings != null) {
+            tabSettings.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
         }
         if (chromeTargetOs != null) {
             chromeTargetOs.setOnClickListener(
@@ -336,6 +343,9 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabIme != null) {
             tabIme.setSelected(SUBMODE_COMPOSE.equals(currentSubmode));
         }
+        if (tabSettings != null) {
+            tabSettings.setSelected(SUBMODE_SETTINGS.equals(currentSubmode));
+        }
     }
 
     private void notifyKeyboardBodyIfShown() {
@@ -390,6 +400,8 @@ public final class KeyboardMouseFragment extends Fragment {
                 return BasicTouchpadFragment.instantiateWithPort(port);
             case SUBMODE_COMPOSE:
                 return BasicComposeFragment.instantiateWithPort(port);
+            case SUBMODE_SETTINGS:
+                return new KeyboardMouseSettingsFragment();
             default:
                 return BasicKeyboardFragment.instantiateWithPort(port);
         }
@@ -399,7 +411,8 @@ public final class KeyboardMouseFragment extends Fragment {
         return SUBMODE_KEYBOARD.equals(s)
                 || SUBMODE_NUMPAD.equals(s)
                 || SUBMODE_TOUCHPAD.equals(s)
-                || SUBMODE_COMPOSE.equals(s);
+                || SUBMODE_COMPOSE.equals(s)
+                || SUBMODE_SETTINGS.equals(s);
     }
 
     @Nullable

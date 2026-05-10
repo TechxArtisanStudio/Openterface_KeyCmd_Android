@@ -5,7 +5,7 @@ import android.content.Context;
 import androidx.preference.PreferenceManager;
 
 /**
- * KM Basic full keyboard modifier behavior (see Settings → Keyboard &amp; Mouse).
+ * KM Basic full keyboard modifier behavior (see Keyboard &amp; Mouse (Basic) → Setup tab).
  */
 public final class KmBasicKeyboardPrefs {
 

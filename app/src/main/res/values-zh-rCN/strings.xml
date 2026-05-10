@@ -973,6 +973,7 @@
     <string name="kb_mouse_sub_keyboard">键盘</string>
     <string name="kb_mouse_sub_numpad">数字键盘</string>
     <string name="kb_mouse_sub_touchpad">触控板</string>
+    <string name="kb_mouse_sub_basic_settings">设定</string>
     <string name="km_basic_cd_application_key">应用程序键</string>
     <string name="km_basic_cd_windows_modifier">Windows 键</string>
     <string name="km_basic_hold_lock_popup_lock_cd">在目标设备上锁定按住</string>
@@ -1051,7 +1052,6 @@
     <string name="settings_km_basic_strip_scroll_sensitivity_desc">拖动触控板旁竖条时内容滚动的速度。与「常规 → 触控板双指滚动灵敏度」相互独立。</string>
     <string name="settings_km_basic_touchpad_section_summary">键盘与鼠标（基础）模式下的触控板子模式：右侧边缘用于页面滚动的竖条。</string>
     <string name="settings_km_basic_touchpad_section_title">KM 基础触控板</string>
-    <string name="settings_tab_keyboard_mouse">键盘与鼠标</string>
     <string name="shortcut_hub_cd_edit_shortcut">编辑快捷方式</string>
     <string name="shortcut_hub_cd_edit_strip_slot">自定义此键</string>
     <string name="shortcut_hub_cd_reset_strip_profile">将第 2–3 行条带配置文件重置为出厂布局</string>

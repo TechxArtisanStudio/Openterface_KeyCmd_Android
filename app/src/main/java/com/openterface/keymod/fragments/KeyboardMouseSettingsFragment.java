@@ -21,7 +21,8 @@ import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.basic.KmBasicTouchpadPrefs;
 
 /**
- * Keyboard and mouse related settings (KM Basic modifier behavior).
+ * KM Basic keyboard and touchpad preferences (modifier behavior, long-press, strip scroll
+ * sensitivity). Shown as the Setup sub-tab inside {@link com.openterface.fragment.KeyboardMouseFragment}.
  */
 public class KeyboardMouseSettingsFragment extends Fragment {
 

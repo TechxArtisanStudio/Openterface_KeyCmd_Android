@@ -1471,7 +1471,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             @Nullable String launchMode, @Nullable String kbInitialSubmode) {
         if (LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(launchMode)) {
             return !KeyboardMouseFragment.SUBMODE_NUMPAD.equals(kbInitialSubmode)
-                    && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode);
+                    && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode)
+                    && !KeyboardMouseFragment.SUBMODE_SETTINGS.equals(kbInitialSubmode);
         }
         if (launchMode == null) {
             return kbInitialSubmode == null

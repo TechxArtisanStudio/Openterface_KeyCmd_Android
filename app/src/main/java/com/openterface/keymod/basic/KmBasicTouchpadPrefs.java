@@ -5,7 +5,7 @@ import android.content.Context;
 import androidx.preference.PreferenceManager;
 
 /**
- * KM Basic touchpad preferences (Settings → Keyboard &amp; Mouse).
+ * KM Basic touchpad preferences (Keyboard &amp; Mouse (Basic) → Setup tab).
  */
 public final class KmBasicTouchpadPrefs {
 

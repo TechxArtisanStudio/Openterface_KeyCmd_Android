@@ -973,6 +973,7 @@
     <string name="kb_mouse_sub_keyboard">鍵盤</string>
     <string name="kb_mouse_sub_numpad">數字鍵盤</string>
     <string name="kb_mouse_sub_touchpad">觸控闆</string>
+    <string name="kb_mouse_sub_basic_settings">設定</string>
     <string name="km_basic_cd_application_key">應用程序鍵</string>
     <string name="km_basic_cd_windows_modifier">Windows 鍵</string>
     <string name="km_basic_hold_lock_popup_lock_cd">在目標設備上鎖定按住</string>
@@ -1051,7 +1052,6 @@
     <string name="settings_km_basic_strip_scroll_sensitivity_desc">拖動觸控闆旁豎條時內容滾動的速度。與「常規 → 觸控闆雙指滾動靈敏度」相互獨立。</string>
     <string name="settings_km_basic_touchpad_section_summary">鍵盤與滑鼠（基礎）模式下的觸控闆子模式：右側邊緣用於頁麪滾動的豎條。</string>
     <string name="settings_km_basic_touchpad_section_title">KM 基礎觸控闆</string>
-    <string name="settings_tab_keyboard_mouse">鍵盤與滑鼠</string>
     <string name="shortcut_hub_cd_edit_shortcut">編輯快捷方式</string>
     <string name="shortcut_hub_cd_edit_strip_slot">自定義此鍵</string>
     <string name="shortcut_hub_cd_reset_strip_profile">將第 2–3 行條帶配置文件重置爲齣廠佈侷</string>

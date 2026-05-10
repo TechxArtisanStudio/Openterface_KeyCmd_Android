@@ -5,9 +5,8 @@
     <string name="settings_tab_voice">Voice</string>
     <string name="settings_tab_ai">AI</string>
     <string name="settings_tab_history">History</string>
-    <string name="settings_tab_keyboard_mouse">Keyboard &amp; Mouse</string>
 
-    <!-- Settings: Keyboard & Mouse (KeyboardMouseSettingsFragment) -->
+    <!-- KM Basic Setup tab (KeyboardMouseSettingsFragment) -->
     <string name="settings_km_basic_section_title">KM Basic keyboard</string>
     <string name="settings_km_basic_section_summary">Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.</string>
     <string name="settings_km_basic_modifier_sticky">Sticky modifiers</string>
@@ -709,6 +708,7 @@ by TechxArtisan</string>
     <string name="kb_mouse_sub_touchpad">Touchpad</string>
     <string name="kb_mouse_sub_compose">Compose</string>
     <string name="kb_mouse_sub_ime">Compose &amp; Send</string>
+    <string name="kb_mouse_sub_basic_settings">Setup</string>
     <string name="kb_basic_touchpad_scroll_area_a11y">Mouse wheel scroll strip</string>
     <string name="kb_basic_touchpad_mouse_left_label">L</string>
     <string name="kb_basic_touchpad_mouse_middle_label">M</string>

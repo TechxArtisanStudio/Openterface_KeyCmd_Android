@@ -13,7 +13,7 @@ import com.openterface.keymod.R;
 
 /**
  * Vertical drag strip for relative wheel HID. Sensitivity comes from {@link KmBasicTouchpadPrefs}
- * (Settings → Keyboard &amp; Mouse); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
+ * (KM Basic → Setup tab); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
  * keeps the strip usable at 100%.
  */
 public class BasicPortraitScrollStripView extends View {

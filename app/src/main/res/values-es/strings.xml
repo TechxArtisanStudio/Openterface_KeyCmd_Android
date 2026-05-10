@@ -1101,6 +1101,8 @@ por TechxArtisan</string>
     ]]></string>
     <string name="kb_mouse_sub_touchpad"><![CDATA[Touchpad
     ]]></string>
+    <string name="kb_mouse_sub_basic_settings"><![CDATA[Ajustes
+    ]]></string>
     <string name="km_basic_cd_application_key"><![CDATA[Application key
     ]]></string>
     <string name="km_basic_cd_windows_modifier"><![CDATA[Windows key
@@ -1356,10 +1358,6 @@ por TechxArtisan</string>
     <string name="settings_speed_fast"><![CDATA[Fast
     ]]></string>
     <string name="settings_speed_slow"><![CDATA[Slow
-    ]]></string>
-    <string name="settings_tab_keyboard_mouse"><![CDATA[Keyboard & Mouse
-
-    
     ]]></string>
     <string name="settings_theme_color_family"><![CDATA[Color family
     ]]></string>
