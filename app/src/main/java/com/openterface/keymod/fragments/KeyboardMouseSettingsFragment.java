@@ -22,7 +22,8 @@ import com.openterface.keymod.basic.KmBasicTouchpadPrefs;
 
 /**
  * KM Basic keyboard and touchpad preferences (modifier behavior, long-press, strip scroll
- * sensitivity). Shown as the Setup sub-tab inside {@link com.openterface.fragment.KeyboardMouseFragment}.
+ * sensitivity). Opened from the Setup gear button in {@link com.openterface.fragment.KeyboardMouseFragment}
+ * chrome (same host as submodes).
  */
 public class KeyboardMouseSettingsFragment extends Fragment {
 

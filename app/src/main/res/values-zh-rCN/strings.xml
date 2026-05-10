@@ -973,11 +973,11 @@
     <string name="kb_mouse_sub_keyboard">键盘</string>
     <string name="kb_mouse_sub_numpad">数字键盘</string>
     <string name="kb_mouse_sub_touchpad">触控板</string>
-    <string name="kb_mouse_sub_basic_settings">设定</string>
     <string name="km_basic_cd_application_key">应用程序键</string>
     <string name="km_basic_cd_windows_modifier">Windows 键</string>
     <string name="km_basic_hold_lock_popup_lock_cd">在目标设备上锁定按住</string>
     <string name="km_basic_key_sup">Sup</string>
+    <string name="km_basic_setup_button_cd">基本模式：键盘与触控板选项</string>
     <string name="launch_panel_will_remember">将记住：%1$s</string>
     <string name="rows23_hid_again">再次</string>
     <string name="rows23_hid_copy">复制（HID）</string>

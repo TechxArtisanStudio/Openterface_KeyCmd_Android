@@ -973,11 +973,11 @@
     <string name="kb_mouse_sub_keyboard">鍵盤</string>
     <string name="kb_mouse_sub_numpad">數字鍵盤</string>
     <string name="kb_mouse_sub_touchpad">觸控闆</string>
-    <string name="kb_mouse_sub_basic_settings">設定</string>
     <string name="km_basic_cd_application_key">應用程序鍵</string>
     <string name="km_basic_cd_windows_modifier">Windows 鍵</string>
     <string name="km_basic_hold_lock_popup_lock_cd">在目標設備上鎖定按住</string>
     <string name="km_basic_key_sup">Sup</string>
+    <string name="km_basic_setup_button_cd">基本模式：鍵盤與觸控闆選項</string>
     <string name="launch_panel_will_remember">將記住：%1$s</string>
     <string name="rows23_hid_again">再次</string>
     <string name="rows23_hid_copy">復製（HID）</string>

@@ -1062,8 +1062,6 @@ TechxArtisan により</string>
     ]]></string>
     <string name="kb_mouse_sub_touchpad"><![CDATA[Touchpad
     ]]></string>
-    <string name="kb_mouse_sub_basic_settings"><![CDATA[セットアップ
-    ]]></string>
     <string name="km_basic_cd_application_key"><![CDATA[Application key
     ]]></string>
     <string name="km_basic_cd_windows_modifier"><![CDATA[Windows key
@@ -1073,6 +1071,8 @@ TechxArtisan により</string>
     ]]></string>
     <string name="km_basic_key_sup"><![CDATA[Sup
 
+    ]]></string>
+    <string name="km_basic_setup_button_cd"><![CDATA[基本モード：キーボードとタッチパッドの設定
     ]]></string>
     <string name="launch_panel_will_remember"><![CDATA[Will remember: %1$s
     ]]></string>

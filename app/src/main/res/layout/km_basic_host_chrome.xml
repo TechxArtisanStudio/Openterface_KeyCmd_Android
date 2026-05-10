@@ -56,11 +56,6 @@
                 android:id="@+id/basic_km_tab_numpad"
                 style="@style/KbMouseSubmodeTab"
                 android:text="@string/kb_mouse_sub_numpad" />
-
-            <TextView
-                android:id="@+id/basic_km_tab_settings"
-                style="@style/KbMouseSubmodeTab"
-                android:text="@string/kb_mouse_sub_basic_settings" />
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -74,6 +69,18 @@
         android:padding="6dp"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_os_macos"
+        android:tint="@color/text_secondary" />
+
+    <ImageButton
+        android:id="@+id/basic_km_setup_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/km_basic_setup_button_cd"
+        android:padding="6dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_settings"
         android:tint="@color/text_secondary" />
 
     <LinearLayout

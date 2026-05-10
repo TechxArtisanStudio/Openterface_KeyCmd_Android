@@ -29,7 +29,7 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad / **Setup**, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad, target OS, **Setup** gear icon, connection). **No** Shortcut Hub strip rows 1–3 here. |
 | ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
@@ -65,9 +65,9 @@ Enable **Auto-connect on startup** in the connection dialog to automatically rec
 
 ## ⌨️ Keyboard Mode
 
-### KM Basic modifier behavior (Setup tab)
+### KM Basic modifier behavior (Setup)
 
-In **Keyboard & Mouse (Basic)**, open the **Setup** tab (next to NumPad) to choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the full keyboard:
+In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon (to the right of the target OS control in the top row) to choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the full keyboard:
 
 - **Momentary and long-press chord (default):** A short tap sends that modifier once to the target computer. **Long-press** a modifier and keep your finger on it, then tap other keys to chord (for example long-press **Shift** and tap `1` for `!`). Release the modifier key to stop chording. With **Hold modifier on target while chording** (on by default), the app sends a sustained modifier-down to the target and reapplies it after each chorded key; turn it off in the same settings screen only if the host misbehaves.
 - **Sticky modifiers:** Tap a modifier once to latch it (highlighted keys show what is on). Tap again to turn off. Tap **Shift**, then a number or symbol key, for characters such as `!` and `@`.

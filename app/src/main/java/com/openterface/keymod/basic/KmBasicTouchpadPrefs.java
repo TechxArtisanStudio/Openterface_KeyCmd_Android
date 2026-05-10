@@ -5,7 +5,7 @@ import android.content.Context;
 import androidx.preference.PreferenceManager;
 
 /**
- * KM Basic touchpad preferences (Keyboard &amp; Mouse (Basic) → Setup tab).
+ * KM Basic touchpad preferences (Keyboard &amp; Mouse (Basic) → Setup gear in chrome).
  */
 public final class KmBasicTouchpadPrefs {
 

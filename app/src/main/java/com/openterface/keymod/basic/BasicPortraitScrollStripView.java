@@ -17,7 +17,7 @@ import com.openterface.keymod.R;
 
 /**
  * Vertical drag strip for relative wheel HID. Sensitivity comes from {@link KmBasicTouchpadPrefs}
- * (KM Basic → Setup tab); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
+ * (KM Basic → Setup in chrome); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
  * keeps the strip usable at 100%.
  *
  * <p>Decorative chevrons are drawn at the top and bottom center of the strip; bounds come from

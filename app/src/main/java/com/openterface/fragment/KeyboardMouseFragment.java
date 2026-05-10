@@ -2,6 +2,7 @@ package com.openterface.fragment;
 
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +14,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -28,7 +30,8 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
  * Standard &quot;Keyboard &amp; Mouse&quot; mode: KM Basic full-screen sub-modes (keyboard, numpad,
- * touchpad, compose, basic settings). Pro composite experience lives in {@link CompositeFragment}.
+ * touchpad, compose; Basic preferences open from the setup icon in the chrome strip). Pro
+ * composite experience lives in {@link CompositeFragment}.
  */
 public final class KeyboardMouseFragment extends Fragment {
 
@@ -52,7 +55,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private TextView tabTouch;
     @Nullable private TextView tabNum;
     @Nullable private TextView tabIme;
-    @Nullable private TextView tabSettings;
+    @Nullable private ImageButton chromeSetup;
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
     @Nullable private LinearLayout chromeConnectionWrap;
@@ -124,7 +127,7 @@ public final class KeyboardMouseFragment extends Fragment {
      * statusBars).
      *
      * <p>In landscape, pads the trailing end with {@code max(navigationBars, displayCutout)} on the
-     * end axis so Target OS + connection stay clear of side system navigation (same merge as
+     * end axis so Target OS, Setup, and connection stay clear of side system navigation (same merge as
      * {@link com.openterface.fragment.BasicComposeFragment#setupBasicComposeImeInsets}).
      */
     private void applyKmBasicChromeTopInset(@Nullable View chromeInsetContainer) {
@@ -215,7 +218,7 @@ public final class KeyboardMouseFragment extends Fragment {
         tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
         tabNum = root.findViewById(R.id.basic_km_tab_numpad);
         tabIme = root.findViewById(R.id.basic_km_tab_ime);
-        tabSettings = root.findViewById(R.id.basic_km_tab_settings);
+        chromeSetup = root.findViewById(R.id.basic_km_setup_button);
         chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
         chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
         chromeConnectionIcon = root.findViewById(R.id.basic_km_connection_icon);
@@ -241,8 +244,8 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabIme != null) {
             tabIme.setOnClickListener(v -> requestSubmode(SUBMODE_COMPOSE));
         }
-        if (tabSettings != null) {
-            tabSettings.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
+        if (chromeSetup != null) {
+            chromeSetup.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
         }
         if (chromeTargetOs != null) {
             chromeTargetOs.setOnClickListener(
@@ -343,8 +346,14 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabIme != null) {
             tabIme.setSelected(SUBMODE_COMPOSE.equals(currentSubmode));
         }
-        if (tabSettings != null) {
-            tabSettings.setSelected(SUBMODE_SETTINGS.equals(currentSubmode));
+        if (chromeSetup != null) {
+            boolean settings = SUBMODE_SETTINGS.equals(currentSubmode);
+            chromeSetup.setSelected(settings);
+            int tint =
+                    ContextCompat.getColor(
+                            chromeSetup.getContext(),
+                            settings ? R.color.primary : R.color.text_secondary);
+            chromeSetup.setImageTintList(ColorStateList.valueOf(tint));
         }
     }
 

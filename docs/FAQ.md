@@ -6,7 +6,7 @@ Common questions about what KeyMod can type over USB, especially **Shortcut Hub*
 
 ## What is the difference between “Keyboard & Mouse” and “Keyboard & Mouse Pro”?
 
-**Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, Compose & Send screen, and **Setup** tab for KM Basic preferences. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
+**Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and Compose & Send screen, plus a **Setup** gear icon (next to the target OS control) for KM Basic preferences. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
 
 **Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with **Shortcut Hub** strip rows, split options, and richer IME behavior—what power users already expect from the single “keyboard + mouse” experience.
 
@@ -48,7 +48,7 @@ Built-in **Default** and **Mine** start from the **factory strip layout** (no ov
 
 ## What is the difference between sticky modifiers and long-press chord on the Basic keyboard?
 
-These options apply only to the **full keyboard** in **Keyboard & Mouse (Basic)** (use the **Setup** tab in Basic mode).
+These options apply only to the **full keyboard** in **Keyboard & Mouse (Basic)** (open **Setup** from the gear icon next to the target OS control).
 
 **Sticky modifiers:** Tap **Ctrl**, **Shift**, **Alt**, or **Win/Cmd** once to **latch** it on (highlighted). Tap again to turn off. To type **!**, tap **Shift**, then tap **1** as separate steps—like sticky keys on a physical keyboard.
 
@@ -70,7 +70,7 @@ When **off**, you still get the on-screen chord highlight, but the host may only
 
 ## On the Basic full keyboard, holding a key types the same character many times. Can it act like one long press instead?
 
-**Yes.** In **Keyboard & Mouse (Basic)**, open the **Setup** tab; in the **KM Basic keyboard** section, pick **Hold key down on the target** instead of **Repeat key presses while held (default)**.
+**Yes.** In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon; in the **KM Basic keyboard** section, pick **Hold key down on the target** instead of **Repeat key presses while held (default)**.
 
 | Option | What happens on the connected computer |
 |--------|------------------------------------------|
