@@ -596,6 +596,18 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         setupButtonListeners();
     }
 
+    /**
+     * Hide the weighted {@code app_title} so top mode shortcut icons stay leading-aligned (same as
+     * Keyboard & Mouse Pro). Brand remains in drawer / in-mode chrome where applicable.
+     */
+    private static boolean hideHeaderAppTitleForFragment(@Nullable Fragment f) {
+        return f instanceof CompositeFragment
+                || f instanceof PresentationFragment
+                || f instanceof ShortcutHubFragment
+                || f instanceof MacrosFragment
+                || f instanceof VoiceInputFragment;
+    }
+
     private void applyAppChromeForHostFragment() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         boolean hideAppHeader = f instanceof KeyboardMouseFragment || f instanceof GamepadFragment;
@@ -607,8 +619,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             if (hideAppHeader) {
                 appTitle.setVisibility(View.VISIBLE);
             } else {
-                // Keyboard & Mouse Pro: brand lives on the touchpad footer; keep header uncluttered.
-                appTitle.setVisibility(f instanceof CompositeFragment ? View.GONE : View.VISIBLE);
+                appTitle.setVisibility(hideHeaderAppTitleForFragment(f) ? View.GONE : View.VISIBLE);
             }
         }
         updateImmersiveForTopFragment();

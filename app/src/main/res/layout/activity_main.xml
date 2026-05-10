@@ -111,9 +111,9 @@
                                 android:id="@+id/header_mode_slot_3"
                                 android:layout_width="@dimen/header_icon_size"
                                 android:layout_height="@dimen/header_icon_size"
-                                android:src="@drawable/macros"
+                                android:src="@drawable/gamepad"
                                 android:background="?attr/selectableItemBackgroundBorderless"
-                                android:contentDescription="@string/top_mode_label_macros"
+                                android:contentDescription="@string/top_mode_label_gamepad"
                                 android:padding="@dimen/button_icon_padding"
                                 android:tint="@color/text_secondary" />
                         </LinearLayout>
