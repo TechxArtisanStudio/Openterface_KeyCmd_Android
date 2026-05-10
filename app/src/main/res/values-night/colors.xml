@@ -11,6 +11,7 @@
     <color name="divider">#FF3A3A3C</color>
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#FF8E8E93</color>
+    <color name="km_basic_scroll_strip_chevron">#FF6C6C70</color>
     <color name="launch_panel_brand_tint">#FFF0F0F0</color>
     <color name="header_connection_idle">#FF8E8E93</color>
 

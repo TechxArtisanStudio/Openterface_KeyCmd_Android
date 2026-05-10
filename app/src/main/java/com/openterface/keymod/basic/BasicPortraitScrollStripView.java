@@ -3,11 +3,15 @@ package com.openterface.keymod.basic;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.openterface.keymod.R;
 
@@ -21,11 +25,18 @@ public class BasicPortraitScrollStripView extends View {
     /** Pixels of finger travel per one wheel unit accumulated; higher = calmer strip scrolling. */
     private static final float STRIP_PIXELS_PER_WHEEL_UNIT = 5f;
 
+    private static final float CHEVRON_MAX_DP = 24f;
+    private static final float CHEVRON_EDGE_PAD_DP = 6f;
+    private static final float CHEVRON_MAX_WIDTH_FRACTION = 0.85f;
+    private static final int CHEVRON_MIN_SHRUNK_PX = 8;
+
     public interface OnStripScrollListener {
         void onStripScroll(int deltaX, int deltaY);
     }
 
     private final Paint dividerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    @Nullable private Drawable chevronUp;
+    @Nullable private Drawable chevronDown;
     private OnStripScrollListener listener;
     private float lastY;
     private float accumX;
@@ -51,6 +62,18 @@ public class BasicPortraitScrollStripView extends View {
         setFocusable(true);
         dividerPaint.setColor(ContextCompat.getColor(getContext(), R.color.divider));
         dividerPaint.setStrokeWidth(Math.max(1f, getResources().getDisplayMetrics().density));
+
+        int chevronTint = ContextCompat.getColor(getContext(), R.color.km_basic_scroll_strip_chevron);
+        Drawable up = AppCompatResources.getDrawable(getContext(), R.drawable.keyboard_arrow_up_24);
+        if (up != null) {
+            chevronUp = DrawableCompat.wrap(up.mutate());
+            DrawableCompat.setTint(chevronUp, chevronTint);
+        }
+        Drawable down = AppCompatResources.getDrawable(getContext(), R.drawable.keyboard_arrow_down_24);
+        if (down != null) {
+            chevronDown = DrawableCompat.wrap(down.mutate());
+            DrawableCompat.setTint(chevronDown, chevronTint);
+        }
     }
 
     public void setOnStripScrollListener(OnStripScrollListener listener) {
@@ -63,6 +86,34 @@ public class BasicPortraitScrollStripView extends View {
         // Divider on the edge toward the touchpad (strip sits on the right of the pad).
         float x = dividerPaint.getStrokeWidth() * 0.5f;
         canvas.drawLine(x, 0, x, getHeight(), dividerPaint);
+
+        if (chevronUp == null || chevronDown == null) {
+            return;
+        }
+        int w = getWidth();
+        int h = getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int pad = Math.round(CHEVRON_EDGE_PAD_DP * density);
+        int maxSize = Math.round(CHEVRON_MAX_DP * density);
+        int size = Math.min(maxSize, Math.round(w * CHEVRON_MAX_WIDTH_FRACTION));
+        size = Math.max(1, size);
+        int needed = 2 * size + 2 * pad;
+        if (h < needed) {
+            int shrunk = (h - 2 * pad) / 2;
+            if (shrunk < CHEVRON_MIN_SHRUNK_PX) {
+                return;
+            }
+            size = shrunk;
+        }
+        int left = (w - size) / 2;
+        chevronUp.setBounds(left, pad, left + size, pad + size);
+        chevronUp.draw(canvas);
+        int bottomTop = h - pad - size;
+        chevronDown.setBounds(left, bottomTop, left + size, h - pad);
+        chevronDown.draw(canvas);
     }
 
     @Override

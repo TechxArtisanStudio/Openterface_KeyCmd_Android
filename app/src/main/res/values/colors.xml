@@ -10,6 +10,8 @@
     <color name="card_selected_bg">#FFF57C00</color>
     <color name="text_primary">#FF212121</color>
     <color name="text_secondary">#FF757575</color>
+    <!-- KM Basic touchpad scroll strip: decorative up/down chevrons (quieter than text_secondary). -->
+    <color name="km_basic_scroll_strip_chevron">#FFB0B0B0</color>
     <color name="launch_panel_brand_tint">#FF2C2C2C</color>
     <color name="header_background">#FFFFFFFF</color>
     <color name="footer_background">#FFFFFFFF</color>
