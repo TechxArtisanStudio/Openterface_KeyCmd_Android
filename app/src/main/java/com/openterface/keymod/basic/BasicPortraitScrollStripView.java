@@ -19,6 +19,9 @@ import com.openterface.keymod.R;
  * Vertical drag strip for relative wheel HID. Sensitivity comes from {@link KmBasicTouchpadPrefs}
  * (KM Basic → Setup tab); a separate pixel gain ({@link #STRIP_PIXELS_PER_WHEEL_UNIT})
  * keeps the strip usable at 100%.
+ *
+ * <p>Decorative chevrons are drawn at the top and bottom center of the strip; bounds come from
+ * {@link #onDraw} using current width and height so layout stays correct in portrait and landscape.
  */
 public class BasicPortraitScrollStripView extends View {
 
@@ -64,12 +67,12 @@ public class BasicPortraitScrollStripView extends View {
         dividerPaint.setStrokeWidth(Math.max(1f, getResources().getDisplayMetrics().density));
 
         int chevronTint = ContextCompat.getColor(getContext(), R.color.km_basic_scroll_strip_chevron);
-        Drawable up = AppCompatResources.getDrawable(getContext(), R.drawable.keyboard_arrow_up_24);
+        Drawable up = AppCompatResources.getDrawable(getContext(), R.drawable.km_basic_scroll_strip_chevron_up);
         if (up != null) {
             chevronUp = DrawableCompat.wrap(up.mutate());
             DrawableCompat.setTint(chevronUp, chevronTint);
         }
-        Drawable down = AppCompatResources.getDrawable(getContext(), R.drawable.keyboard_arrow_down_24);
+        Drawable down = AppCompatResources.getDrawable(getContext(), R.drawable.km_basic_scroll_strip_chevron_down);
         if (down != null) {
             chevronDown = DrawableCompat.wrap(down.mutate());
             DrawableCompat.setTint(chevronDown, chevronTint);
@@ -78,6 +81,14 @@ public class BasicPortraitScrollStripView extends View {
 
     public void setOnStripScrollListener(OnStripScrollListener listener) {
         this.listener = listener;
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w != oldw || h != oldh) {
+            invalidate();
+        }
     }
 
     @Override
