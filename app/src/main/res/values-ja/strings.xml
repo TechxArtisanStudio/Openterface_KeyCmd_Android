@@ -427,6 +427,7 @@ TechxArtisan により</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">レイアウトを初期設定に戻す</string>
     <string name="gamepad_edit_session_title">モジュールを移動</string>
     <string name="gamepad_presets_sheet_title">レイアウト</string>
+    <string name="gamepad_presets_sheet_back_cd">レイアウト一覧を閉じる</string>
     <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
     <string name="gamepad_presets_new_layout_short">現在から新規</string>
     <string name="gamepad_presets_import_short">読み込み…</string>

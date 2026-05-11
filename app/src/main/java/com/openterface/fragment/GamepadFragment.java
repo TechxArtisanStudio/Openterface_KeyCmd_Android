@@ -2182,6 +2182,7 @@ public class GamepadFragment extends Fragment {
         recycler.setItemAnimator(null);
         recycler.setNestedScrollingEnabled(true);
         recycler.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        MaterialButton sheetBackBtn = sheet.findViewById(R.id.gamepad_presets_sheet_back);
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
@@ -2292,6 +2293,9 @@ public class GamepadFragment extends Fragment {
                 dialog.dismiss();
                 importPresetLauncher.launch(new String[]{"application/json"});
             });
+        }
+        if (sheetBackBtn != null) {
+            sheetBackBtn.setOnClickListener(v -> dialog.dismiss());
         }
 
         dialog.show();

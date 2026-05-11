@@ -390,6 +390,18 @@ public class CompositeFragment extends Fragment {
         mLp.weight = 0f;
         proTouchpadMouseKeys.setLayoutParams(mLp);
         configureProMouseKeysRow(false);
+        applyProTouchpadMouseKeysDefaultPadding();
+    }
+
+    private void applyProTouchpadMouseKeysDefaultPadding() {
+        if (proTouchpadMouseKeys == null) {
+            return;
+        }
+        int top =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
+        int bottom =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
+        proTouchpadMouseKeys.setPaddingRelative(0, top, 0, bottom);
     }
 
     private void applyProTouchpadMouseLayoutCompactOrComfortable() {
@@ -401,30 +413,47 @@ public class CompositeFragment extends Fragment {
             return;
         }
         int th = touchpadSection.getHeight();
-        if (th <= 0) {
-            return;
-        }
         int threshold =
                 getResources()
                         .getDimensionPixelSize(R.dimen.pro_touchpad_section_compact_height_threshold);
-        boolean compact = th <= threshold;
-        proTouchpadMouseLayoutCompact = compact;
-        if (compact) {
-            proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
-            LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
-            padLp.width = 0;
-            padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
-            padLp.weight = 1f;
-            touchpadPadHost.setLayoutParams(padLp);
-            LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
-            mLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            mLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
-            mLp.weight = 0f;
-            proTouchpadMouseKeys.setLayoutParams(mLp);
-            configureProMouseKeysRow(true);
-        } else {
-            resetProTouchpadChromeOrientationComfortable();
+        boolean numpadStripHorizontal = isPortraitNumpadTouchpadMode();
+        boolean compactByHeight = th > 0 && th <= threshold;
+        boolean useHorizontalChrome = numpadStripHorizontal || compactByHeight;
+        if (!useHorizontalChrome && th <= 0) {
+            return;
         }
+        proTouchpadMouseLayoutCompact = useHorizontalChrome;
+        if (!useHorizontalChrome) {
+            resetProTouchpadChromeOrientationComfortable();
+            return;
+        }
+        proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
+        padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        padLp.width = 0;
+        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        mLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        int topPad =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
+        int bottomPad =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
+        if (numpadStripHorizontal) {
+            padLp.weight = 2f;
+            mLp.width = 0;
+            mLp.weight = 1f;
+            int hPad =
+                    getResources()
+                            .getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_strip_padding_horizontal);
+            proTouchpadMouseKeys.setPaddingRelative(hPad, topPad, hPad, bottomPad);
+        } else {
+            padLp.weight = 1f;
+            mLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mLp.weight = 0f;
+            proTouchpadMouseKeys.setPaddingRelative(0, topPad, 0, bottomPad);
+        }
+        touchpadPadHost.setLayoutParams(padLp);
+        proTouchpadMouseKeys.setLayoutParams(mLp);
+        configureProMouseKeysRow(true);
     }
 
     private void configureProMouseKeysRow(boolean compactVerticalStrip) {

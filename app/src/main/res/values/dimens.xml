@@ -75,6 +75,11 @@
     <dimen name="pro_touchpad_mouse_row_min_height">44dp</dimen>
     <!-- When touchpad_section height is at or below this, use compact (pad | vertical L/M/R) layout. -->
     <dimen name="pro_touchpad_section_compact_height_threshold">232dp</dimen>
+    <!-- KM Pro mouse-keys row: vertical padding (also used after resetting programmatic strip insets). -->
+    <dimen name="pro_touchpad_mouse_keys_padding_top">6dp</dimen>
+    <dimen name="pro_touchpad_mouse_keys_padding_bottom">4dp</dimen>
+    <!-- Portrait NumPad + strip: horizontal inset for L/M/R column beside the pad. -->
+    <dimen name="pro_touchpad_mouse_keys_strip_padding_horizontal">8dp</dimen>
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>

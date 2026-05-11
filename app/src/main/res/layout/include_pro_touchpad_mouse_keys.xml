@@ -7,8 +7,8 @@
     android:baselineAligned="false"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingTop="6dp"
-    android:paddingBottom="4dp"
+    android:paddingTop="@dimen/pro_touchpad_mouse_keys_padding_top"
+    android:paddingBottom="@dimen/pro_touchpad_mouse_keys_padding_bottom"
     android:visibility="gone">
 
     <TextView
