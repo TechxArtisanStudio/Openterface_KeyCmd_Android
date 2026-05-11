@@ -48,7 +48,7 @@ public class KmProSettingsFragment extends Fragment {
     private MaterialButtonToggleGroup longPressBehaviorToggle;
     private MaterialButtonToggleGroup touchpadModeToggle;
     private RadioGroup modifierBehaviorGroup;
-    private LinearLayout chordSustainCard;
+    private View chordSustainCard;
     private SwitchCompat chordSustainSwitch;
     private TextInputLayout profileInputLayout;
     private MaterialAutoCompleteTextView profileDropdown;
