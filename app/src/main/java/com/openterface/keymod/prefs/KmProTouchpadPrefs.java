@@ -11,6 +11,13 @@ public final class KmProTouchpadPrefs {
 
     private static final String PREFS_NAME = "AppPrefs";
     private static final String KEY_MODE = "km_pro_touchpad_mode";
+    private static final String KEY_SCROLL_STRIP_ENABLED = "km_pro_touchpad_scroll_strip_enabled";
+    private static final String KEY_STRIP_SCROLL_SENSITIVITY = "km_pro_touchpad_strip_scroll_sensitivity";
+
+    /** Same percent range as KM Basic strip scroll sensitivity. */
+    public static final int STRIP_SCROLL_SENSITIVITY_MIN_PERCENT = 20;
+    public static final int STRIP_SCROLL_SENSITIVITY_MAX_PERCENT = 200;
+    public static final int STRIP_SCROLL_SENSITIVITY_DEFAULT_PERCENT = 100;
 
     /** Legacy default: no mouse key strip. */
     public static final int MODE_GESTURES_ONLY = 0;
@@ -60,5 +67,45 @@ public final class KmProTouchpadPrefs {
      */
     public static boolean isPadPlusMouseKeysNoTouchClickGestures(Context context) {
         return readMode(context) == MODE_MOUSE_KEYS_BASIC;
+    }
+
+    /** Default on so composite touchpad matches KM Basic’s always-visible wheel strip unless disabled. */
+    public static boolean isScrollStripEnabled(Context context) {
+        SharedPreferences sp =
+                context.getApplicationContext()
+                        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return sp.getBoolean(KEY_SCROLL_STRIP_ENABLED, true);
+    }
+
+    public static void writeScrollStripEnabled(Context context, boolean enabled) {
+        context.getApplicationContext()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_SCROLL_STRIP_ENABLED, enabled)
+                .apply();
+    }
+
+    public static int getStripScrollSensitivityPercent(Context context) {
+        SharedPreferences sp =
+                context.getApplicationContext()
+                        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        int v =
+                sp.getInt(
+                        KEY_STRIP_SCROLL_SENSITIVITY, STRIP_SCROLL_SENSITIVITY_DEFAULT_PERCENT);
+        return Math.max(
+                STRIP_SCROLL_SENSITIVITY_MIN_PERCENT,
+                Math.min(STRIP_SCROLL_SENSITIVITY_MAX_PERCENT, v));
+    }
+
+    public static void writeStripScrollSensitivityPercent(Context context, int percent) {
+        int p =
+                Math.max(
+                        STRIP_SCROLL_SENSITIVITY_MIN_PERCENT,
+                        Math.min(STRIP_SCROLL_SENSITIVITY_MAX_PERCENT, percent));
+        context.getApplicationContext()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putInt(KEY_STRIP_SCROLL_SENSITIVITY, p)
+                .apply();
     }
 }

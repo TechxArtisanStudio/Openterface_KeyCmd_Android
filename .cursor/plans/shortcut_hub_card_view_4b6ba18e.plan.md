@@ -4,22 +4,22 @@ overview: Add a per-profile "work mode" card layout and configurable primary dis
 todos:
   - id: prefs-api
     content: Add ShortcutHubDetailUiPrefs (per-profile layout + display modes, defaults, read/write) using ShortcutProfiles_v2 SharedPreferences
-    status: pending
+    status: completed
   - id: hub-settings-ui
     content: Add header gear + ModalBottomSheet/DialogFragment with MaterialButtonToggleGroups (List/Card; Name/Icon/Chord/Hybrid) and summaries
-    status: pending
+    status: completed
   - id: layouts-cards
     content: Create card item XML(s) with larger type; optional grid span dimension resources
-    status: pending
+    status: completed
   - id: row-binder
     content: Implement hub row binding (NAME/ICON/CHORD/HYBRID + list vs card) without changing strip bindFavoriteStripRow contract
-    status: pending
+    status: completed
   - id: adapters-fragment
     content: Extend MyShortcutsReorderAdapter + ShortcutSectionPickAdapter; wire ShortcutHubFragment refreshShortcutsGrid to swap LayoutManagers and pass prefs
-    status: pending
+    status: completed
   - id: strings-i18n
     content: Add EN + zh-Hant strings and content descriptions for new UI
-    status: pending
+    status: completed
 isProject: false
 ---
 

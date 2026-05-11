@@ -9,6 +9,8 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
+
+import java.util.function.ToIntFunction;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
@@ -41,6 +43,13 @@ public class BasicPortraitScrollStripView extends View {
     @Nullable private Drawable chevronUp;
     @Nullable private Drawable chevronDown;
     private OnStripScrollListener listener;
+    /**
+     * When non-null, strip scroll sensitivity percent (20–200) comes from this instead of
+     * {@link KmBasicTouchpadPrefs} (used for KM Pro composite touchpad).
+     */
+    @Nullable
+    private ToIntFunction<Context> sensitivityPercentSupplier;
+
     private float lastY;
     private float accumX;
     private float accumY;
@@ -81,6 +90,11 @@ public class BasicPortraitScrollStripView extends View {
 
     public void setOnStripScrollListener(OnStripScrollListener listener) {
         this.listener = listener;
+    }
+
+    /** Pass null to use KM Basic touchpad prefs again. */
+    public void setSensitivityPercentSupplier(@Nullable ToIntFunction<Context> supplier) {
+        sensitivityPercentSupplier = supplier;
     }
 
     @Override
@@ -163,7 +177,10 @@ public class BasicPortraitScrollStripView extends View {
     }
 
     private float getScrollSensitivity() {
-        int sensitivityPercent = KmBasicTouchpadPrefs.getStripScrollSensitivityPercent(getContext());
+        int sensitivityPercent =
+                sensitivityPercentSupplier != null
+                        ? sensitivityPercentSupplier.applyAsInt(getContext())
+                        : KmBasicTouchpadPrefs.getStripScrollSensitivityPercent(getContext());
         return Math.max(0.2f, Math.min(2.0f, sensitivityPercent / 100f));
     }
 }

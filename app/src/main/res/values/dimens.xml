@@ -82,6 +82,8 @@
     <dimen name="pro_touchpad_mouse_keys_strip_padding_horizontal">8dp</dimen>
     <!-- Landscape split + strip: extra inset before L and after R when L/M/R is a horizontal row. -->
     <dimen name="pro_touchpad_mouse_keys_split_horizontal_edge_inset">10dp</dimen>
+    <!-- KM Pro composite: vertical wheel strip beside pad (split / NumPad narrow columns). -->
+    <dimen name="pro_touchpad_scroll_strip_min_width">30dp</dimen>
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>

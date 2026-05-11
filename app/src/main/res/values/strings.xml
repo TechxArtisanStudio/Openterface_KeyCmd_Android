@@ -44,6 +44,12 @@
     <string name="km_pro_touchpad_mode_gestures">Gestures only</string>
     <string name="km_pro_touchpad_mode_strip">Pad + mouse keys</string>
     <string name="km_pro_touchpad_mode_hybrid">Hybrid</string>
+    <string name="km_pro_touchpad_scroll_strip_title">Vertical scroll strip</string>
+    <string name="km_pro_touchpad_scroll_strip_summary">Show a drag strip beside the touchpad for mouse wheel up/down (same idea as Keyboard &amp; Mouse Basic). Works in all touchpad modes, including Gestures only.</string>
+    <string name="km_pro_touchpad_scroll_strip_switch">Scroll strip</string>
+    <string name="km_pro_touchpad_strip_scroll_sensitivity">Strip scroll sensitivity</string>
+    <string name="km_pro_touchpad_strip_scroll_sensitivity_desc">How fast content scrolls when you drag the strip. Independent from General → touchpad two-finger scroll sensitivity.</string>
+    <string name="km_pro_touchpad_scroll_strip_a11y">Mouse wheel scroll strip</string>
     <string name="km_pro_settings_section_modifiers">Modifiers (main keyboard and strip)</string>
     <string name="km_pro_settings_section_modifiers_summary">Same options as Keyboard &amp; Mouse (Basic): sticky latch, or momentary tap with long-press to chord, plus hold then swipe up to lock on the host. Applies to Ctrl, Shift, Alt, and Win/Cmd on the QWERTY row and on the top shortcut strip.</string>
     <string name="km_pro_settings_alternate_hints_on">On</string>

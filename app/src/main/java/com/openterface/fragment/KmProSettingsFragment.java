@@ -12,6 +12,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -47,6 +49,12 @@ public class KmProSettingsFragment extends Fragment {
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
     private MaterialButtonToggleGroup touchpadModeToggle;
+    @Nullable
+    private SwitchCompat scrollStripSwitch;
+    @Nullable
+    private SeekBar scrollStripSensitivitySeekBar;
+    @Nullable
+    private TextView scrollStripSensitivityValueText;
     private RadioGroup modifierBehaviorGroup;
     private View chordSustainCard;
     private SwitchCompat chordSustainSwitch;
@@ -64,6 +72,7 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressModifierBehaviorCallback;
     private boolean suppressChordSustainCallback;
     private boolean suppressTouchpadModeToggleCallback;
+    private boolean suppressScrollStripPrefsCallback;
     private boolean loadingModifierPrefs;
 
     @Nullable
@@ -78,6 +87,9 @@ public class KmProSettingsFragment extends Fragment {
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
         touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
+        scrollStripSwitch = view.findViewById(R.id.km_pro_touchpad_scroll_strip_switch);
+        scrollStripSensitivitySeekBar = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_seekbar);
+        scrollStripSensitivityValueText = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_value_text);
         modifierBehaviorGroup = view.findViewById(R.id.km_pro_modifier_behavior_group);
         chordSustainCard = view.findViewById(R.id.km_pro_chord_sustain_card);
         chordSustainSwitch = view.findViewById(R.id.km_pro_chord_sustain_switch);
@@ -129,6 +141,44 @@ public class KmProSettingsFragment extends Fragment {
                         }
                         KmProTouchpadPrefs.writeMode(requireContext(), touchpadModeButtonIdToMode(checkedId));
                         notifyCompositeTouchpadChromeFromKmProSetup();
+                    });
+        }
+
+        if (scrollStripSwitch != null) {
+            scrollStripSwitch.setOnCheckedChangeListener(
+                    (buttonView, isChecked) -> {
+                        if (suppressScrollStripPrefsCallback) {
+                            return;
+                        }
+                        KmProTouchpadPrefs.writeScrollStripEnabled(requireContext(), isChecked);
+                        updateScrollStripSensitivityControlsEnabled();
+                        notifyCompositeTouchpadChromeFromKmProSetup();
+                    });
+        }
+        if (scrollStripSensitivitySeekBar != null) {
+            scrollStripSensitivitySeekBar.setOnSeekBarChangeListener(
+                    new SeekBar.OnSeekBarChangeListener() {
+                        @Override
+                        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                            if (suppressScrollStripPrefsCallback || !fromUser) {
+                                return;
+                            }
+                            int sensitivityPercent =
+                                    progress + KmProTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MIN_PERCENT;
+                            if (scrollStripSensitivityValueText != null) {
+                                scrollStripSensitivityValueText.setText(
+                                        String.format("%.1fx", sensitivityPercent / 100f));
+                            }
+                            KmProTouchpadPrefs.writeStripScrollSensitivityPercent(
+                                    requireContext(), sensitivityPercent);
+                            notifyCompositeTouchpadChromeFromKmProSetup();
+                        }
+
+                        @Override
+                        public void onStartTrackingTouch(SeekBar seekBar) {}
+
+                        @Override
+                        public void onStopTrackingTouch(SeekBar seekBar) {}
                     });
         }
 
@@ -233,6 +283,7 @@ public class KmProSettingsFragment extends Fragment {
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
         syncTouchpadModeToggleFromPrefs();
+        syncScrollStripControlsFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
         syncModifierBehaviorFromPrefs();
@@ -384,6 +435,36 @@ public class KmProSettingsFragment extends Fragment {
         suppressTouchpadModeToggleCallback = true;
         touchpadModeToggle.check(buttonId);
         suppressTouchpadModeToggleCallback = false;
+    }
+
+    private void syncScrollStripControlsFromPrefs() {
+        if (scrollStripSwitch == null || scrollStripSensitivitySeekBar == null) {
+            return;
+        }
+        suppressScrollStripPrefsCallback = true;
+        scrollStripSwitch.setChecked(KmProTouchpadPrefs.isScrollStripEnabled(requireContext()));
+        int stripPercent = KmProTouchpadPrefs.getStripScrollSensitivityPercent(requireContext());
+        int stripSeekProgress =
+                Math.max(
+                        0,
+                        Math.min(
+                                KmProTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MAX_PERCENT
+                                        - KmProTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MIN_PERCENT,
+                                stripPercent - KmProTouchpadPrefs.STRIP_SCROLL_SENSITIVITY_MIN_PERCENT));
+        scrollStripSensitivitySeekBar.setProgress(stripSeekProgress);
+        if (scrollStripSensitivityValueText != null) {
+            scrollStripSensitivityValueText.setText(String.format("%.1fx", stripPercent / 100f));
+        }
+        suppressScrollStripPrefsCallback = false;
+        updateScrollStripSensitivityControlsEnabled();
+    }
+
+    private void updateScrollStripSensitivityControlsEnabled() {
+        if (scrollStripSensitivitySeekBar == null) {
+            return;
+        }
+        boolean on = scrollStripSwitch == null || scrollStripSwitch.isChecked();
+        scrollStripSensitivitySeekBar.setEnabled(on);
     }
 
     private static int touchpadModeButtonIdToMode(int checkedButtonId) {

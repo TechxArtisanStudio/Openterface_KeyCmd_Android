@@ -22,11 +22,20 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/touchpad_pad_host"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:baselineAligned="false">
+
+                <FrameLayout
+                    android:id="@+id/touchpad_pad_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="0"
+                    android:background="@color/touchpad_background">
 
                 <com.openterface.keymod.TouchPadView
                     android:id="@+id/touchPad"
@@ -105,7 +114,18 @@
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_touchpad_info_24" />
 
-            </FrameLayout>
+                </FrameLayout>
+
+                <com.openterface.keymod.basic.BasicPortraitScrollStripView
+                    android:id="@+id/pro_touchpad_scroll_strip"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="0"
+                    android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
+                    android:visibility="gone"
+                    android:background="@color/touchpad_background"
+                    android:contentDescription="@string/km_pro_touchpad_scroll_strip_a11y" />
+            </LinearLayout>
 
             <include layout="@layout/include_pro_touchpad_mouse_keys" />
         </LinearLayout>

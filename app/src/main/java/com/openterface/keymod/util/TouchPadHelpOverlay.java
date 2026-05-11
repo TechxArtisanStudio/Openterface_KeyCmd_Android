@@ -114,6 +114,17 @@ public final class TouchPadHelpOverlay {
      */
     public static void wireDismissTouchTargets(
             @Nullable TouchPadView pad, @Nullable TextView tips, @Nullable TextView help) {
+        wireDismissTouchTargets(pad, tips, help, null);
+    }
+
+    /**
+     * @param extraDismissTarget optional strip or chrome view; ACTION_DOWN dismisses help (same as pad).
+     */
+    public static void wireDismissTouchTargets(
+            @Nullable TouchPadView pad,
+            @Nullable TextView tips,
+            @Nullable TextView help,
+            @Nullable View extraDismissTarget) {
         if (help == null) return;
         if (tips != null) {
             tips.setOnTouchListener((v, e) -> {
@@ -130,6 +141,15 @@ public final class TouchPadHelpOverlay {
                 }
                 return false;
             });
+        }
+        if (extraDismissTarget != null) {
+            extraDismissTarget.setOnTouchListener(
+                    (v, e) -> {
+                        if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                            dismissIfVisible(help);
+                        }
+                        return false;
+                    });
         }
     }
 

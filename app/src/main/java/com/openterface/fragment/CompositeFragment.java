@@ -44,6 +44,7 @@ import com.openterface.keymod.hid.MouseRelHidTransport;
 import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 import com.openterface.keymod.touchpad.TouchpadMouseStripBinder;
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.basic.BasicPortraitScrollStripView;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
@@ -173,7 +174,8 @@ public class CompositeFragment extends Fragment {
 
     @Nullable private LinearLayout proTouchpadChromeRoot;
     @Nullable private ViewGroup proTouchpadMouseKeys;
-    @Nullable private FrameLayout touchpadPadHost;
+    @Nullable private LinearLayout touchpadPadHost;
+    @Nullable private BasicPortraitScrollStripView proTouchpadScrollStrip;
     @Nullable private TouchpadMouseStripBinder proMouseStripBinder;
     @Nullable private TextView proMouseBtnLeft;
     @Nullable private TextView proMouseBtnMiddle;
@@ -205,6 +207,7 @@ public class CompositeFragment extends Fragment {
                 if (KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
                     applyProTouchpadMouseLayoutCompactOrComfortable();
                 }
+                applyProTouchpadScrollStripLayout();
             };
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -290,6 +293,8 @@ public class CompositeFragment extends Fragment {
         updateTouchPadTips();
         updateSplitTouchPadTips();
         updateHybridDragLeftVisual();
+        applyProTouchpadScrollStripLayout();
+        wireProTouchpadScrollStrip();
     }
 
     private void applyPadClickDragGesturesToTouchPads(Context context) {
@@ -318,6 +323,7 @@ public class CompositeFragment extends Fragment {
             proTouchpadChromeRoot = null;
             proTouchpadMouseKeys = null;
             touchpadPadHost = null;
+            proTouchpadScrollStrip = null;
             proMouseBtnLeft = null;
             proMouseBtnMiddle = null;
             proMouseBtnRight = null;
@@ -326,6 +332,7 @@ public class CompositeFragment extends Fragment {
         proTouchpadChromeRoot = root.findViewById(R.id.pro_touchpad_chrome_root);
         proTouchpadMouseKeys = root.findViewById(R.id.pro_touchpad_mouse_keys);
         touchpadPadHost = root.findViewById(R.id.touchpad_pad_host);
+        proTouchpadScrollStrip = root.findViewById(R.id.pro_touchpad_scroll_strip);
         proMouseBtnLeft = root.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = root.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = root.findViewById(R.id.pro_touchpad_btn_right);
@@ -391,6 +398,7 @@ public class CompositeFragment extends Fragment {
         proTouchpadMouseKeys.setLayoutParams(mLp);
         configureProMouseKeysRow(false);
         applyProTouchpadMouseKeysDefaultPadding();
+        applyProTouchpadScrollStripLayout();
     }
 
     private void applyProTouchpadMouseKeysDefaultPadding() {
@@ -402,6 +410,53 @@ public class CompositeFragment extends Fragment {
         int bottom =
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
         proTouchpadMouseKeys.setPaddingRelative(0, top, 0, bottom);
+    }
+
+    private void wireProTouchpadScrollStrip() {
+        if (proTouchpadScrollStrip == null || !isAdded()) {
+            return;
+        }
+        proTouchpadScrollStrip.setSensitivityPercentSupplier(
+                KmProTouchpadPrefs::getStripScrollSensitivityPercent);
+        proTouchpadScrollStrip.setOnStripScrollListener(
+                (deltaX, deltaY) -> sendScrollData(deltaX, deltaY));
+    }
+
+    /** Pad column: optional {@link BasicPortraitScrollStripView} beside {@link #touchpad_pad_content}. */
+    private void applyProTouchpadScrollStripLayout() {
+        if (touchpadPadHost == null || !isAdded()) {
+            return;
+        }
+        if (!(touchpadPadHost instanceof LinearLayout)) {
+            return;
+        }
+        LinearLayout host = touchpadPadHost;
+        View padContent = host.findViewById(R.id.touchpad_pad_content);
+        BasicPortraitScrollStripView strip = proTouchpadScrollStrip;
+        if (padContent == null || strip == null) {
+            return;
+        }
+        boolean show = KmProTouchpadPrefs.isScrollStripEnabled(requireContext());
+        strip.setVisibility(show ? View.VISIBLE : View.GONE);
+        LinearLayout.LayoutParams cLp = (LinearLayout.LayoutParams) padContent.getLayoutParams();
+        LinearLayout.LayoutParams sLp = (LinearLayout.LayoutParams) strip.getLayoutParams();
+        if (show) {
+            cLp.width = 0;
+            cLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            cLp.weight = 5f;
+            sLp.width = 0;
+            sLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            sLp.weight = 1f;
+        } else {
+            cLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            cLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            cLp.weight = 0f;
+            sLp.width = 0;
+            sLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            sLp.weight = 0f;
+        }
+        padContent.setLayoutParams(cLp);
+        strip.setLayoutParams(sLp);
     }
 
     private void applyProTouchpadMouseLayoutCompactOrComfortable() {
@@ -454,6 +509,7 @@ public class CompositeFragment extends Fragment {
         touchpadPadHost.setLayoutParams(padLp);
         proTouchpadMouseKeys.setLayoutParams(mLp);
         configureProMouseKeysRow(true);
+        applyProTouchpadScrollStripLayout();
     }
 
     private void configureProMouseKeysRow(boolean compactVerticalStrip) {
@@ -1447,6 +1503,7 @@ public class CompositeFragment extends Fragment {
         proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
         proTouchpadMouseKeys = view.findViewById(R.id.pro_touchpad_mouse_keys);
         touchpadPadHost = view.findViewById(R.id.touchpad_pad_host);
+        proTouchpadScrollStrip = view.findViewById(R.id.pro_touchpad_scroll_strip);
         proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
@@ -1534,6 +1591,7 @@ public class CompositeFragment extends Fragment {
         proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
         proTouchpadMouseKeys = view.findViewById(R.id.pro_touchpad_mouse_keys);
         touchpadPadHost = view.findViewById(R.id.touchpad_pad_host);
+        proTouchpadScrollStrip = view.findViewById(R.id.pro_touchpad_scroll_strip);
         proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
@@ -1657,7 +1715,7 @@ public class CompositeFragment extends Fragment {
             }
         });
         TextView helpOverlay = helpOverlayForPad(pad);
-        TouchPadHelpOverlay.wireDismissTouchTargets(pad, tips, helpOverlay);
+        TouchPadHelpOverlay.wireDismissTouchTargets(pad, tips, helpOverlay, proTouchpadScrollStrip);
         View padParent = (View) pad.getParent();
         if (padParent != null) {
             View brand = padParent.findViewById(R.id.touchPadBrandLogo);
