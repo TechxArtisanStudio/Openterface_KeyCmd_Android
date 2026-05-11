@@ -50,6 +50,8 @@
     <string name="km_pro_settings_alternate_hints_off">Off</string>
     <string name="km_pro_settings_section_gaming_key_behavior">When hints are off: letter keys</string>
     <string name="km_pro_settings_section_gaming_key_behavior_summary">Same options as Keyboard &amp; Mouse (Basic) setup: repeat taps while you hold, or one key-down until you lift your finger.</string>
+    <string name="km_pro_settings_long_press_repeat_short">Repeat taps</string>
+    <string name="km_pro_settings_long_press_hold_short">Hold key down</string>
     <string name="km_pro_settings_section_profile">Shortcut Hub profile</string>
     <string name="km_pro_settings_section_profile_summary">Catalog and favorites for row 1 use the selected profile. Manage profiles in Shortcut Hub.</string>
     <string name="km_pro_settings_profile_field_hint">Active profile</string>

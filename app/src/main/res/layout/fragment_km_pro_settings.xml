@@ -196,9 +196,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="center"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
+                        android:maxLines="2"
                         android:minHeight="48dp"
+                        android:textSize="13sp"
                         android:text="@string/km_pro_touchpad_mode_gestures" />
 
                     <com.google.android.material.button.MaterialButton
@@ -207,9 +211,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="center"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
+                        android:maxLines="2"
                         android:minHeight="48dp"
+                        android:textSize="13sp"
                         android:text="@string/km_pro_touchpad_mode_strip" />
 
                     <com.google.android.material.button.MaterialButton
@@ -218,9 +226,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="center"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
+                        android:maxLines="2"
                         android:minHeight="48dp"
+                        android:textSize="13sp"
                         android:text="@string/km_pro_touchpad_mode_hybrid" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
@@ -365,10 +377,14 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
+                            android:maxLines="2"
                             android:minHeight="48dp"
-                            android:text="@string/settings_km_basic_long_press_repeat" />
+                            android:text="@string/km_pro_settings_long_press_repeat_short"
+                            android:textSize="13sp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/km_pro_long_press_hold"
@@ -376,10 +392,14 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:gravity="center"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
+                            android:maxLines="2"
                             android:minHeight="48dp"
-                            android:text="@string/settings_km_basic_long_press_hold" />
+                            android:text="@string/km_pro_settings_long_press_hold_short"
+                            android:textSize="13sp" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
                 </LinearLayout>
 
