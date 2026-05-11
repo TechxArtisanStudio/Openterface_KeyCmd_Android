@@ -314,6 +314,12 @@ public class GamepadFragment extends Fragment {
             };
     /** Finger-down on a latched module: release completes unlock (no momentary press). */
     private final Set<String> pendingKeyboardHoldUnlockTap = new HashSet<>();
+    /**
+     * Refcounts per HID rel-mouse button bit (1=left, 2=right, 4=middle) for {@code MOUSE_BUTTON}
+     * modules held by finger. Relative-move packets must OR this with
+     * {@link #keyboardHoldLatchedMouseButtonMask()} so the host does not see a spurious release.
+     */
+    private final int[] gamepadMouseButtonFingerHoldRefByHidBit = new int[8];
     private boolean keyRUpPressed;
     private boolean keyRLeftPressed;
     private boolean keyRDownPressed;
@@ -803,7 +809,9 @@ public class GamepadFragment extends Fragment {
             }
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), true);
+                int hid = semanticMouseButtonToHidMask(mouseBtn);
+                gamepadMouseButtonFingerHoldAddHidMask(hid);
+                sendMouseClick(hid, true);
                 return;
             }
             if (keyCode == 1001 || keyCode == 1002) {
@@ -845,7 +853,9 @@ public class GamepadFragment extends Fragment {
                 clearFacePressStateForPresetToggleId(buttonId);
                 Integer unlockMouse = mouseButtonForComponentId(buttonId);
                 if (unlockMouse != null) {
-                    sendMouseClick(semanticMouseButtonToHidMask(unlockMouse), false);
+                    int hid = semanticMouseButtonToHidMask(unlockMouse);
+                    gamepadMouseButtonFingerHoldRemoveHidMask(hid);
+                    sendMouseClick(hid, false);
                 } else {
                     sendCombinedKeyReport();
                 }
@@ -853,7 +863,9 @@ public class GamepadFragment extends Fragment {
             }
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), false);
+                int hid = semanticMouseButtonToHidMask(mouseBtn);
+                gamepadMouseButtonFingerHoldRemoveHidMask(hid);
+                sendMouseClick(hid, false);
                 return;
             }
             if (isPresetKeyboardHoldToggleId(buttonId)) {
@@ -1073,6 +1085,41 @@ public class GamepadFragment extends Fragment {
             }
         }
         return mask;
+    }
+
+    private void gamepadMouseButtonFingerHoldAddHidMask(int hidMask) {
+        for (int bit : new int[] {1, 2, 4}) {
+            if ((hidMask & bit) != 0) {
+                gamepadMouseButtonFingerHoldRefByHidBit[bit]++;
+            }
+        }
+    }
+
+    private void gamepadMouseButtonFingerHoldRemoveHidMask(int hidMask) {
+        for (int bit : new int[] {1, 2, 4}) {
+            if ((hidMask & bit) != 0 && gamepadMouseButtonFingerHoldRefByHidBit[bit] > 0) {
+                gamepadMouseButtonFingerHoldRefByHidBit[bit]--;
+            }
+        }
+    }
+
+    private int fingerHeldMouseButtonHidMask() {
+        int m = 0;
+        if (gamepadMouseButtonFingerHoldRefByHidBit[1] > 0) {
+            m |= 1;
+        }
+        if (gamepadMouseButtonFingerHoldRefByHidBit[2] > 0) {
+            m |= 2;
+        }
+        if (gamepadMouseButtonFingerHoldRefByHidBit[4] > 0) {
+            m |= 4;
+        }
+        return m;
+    }
+
+    /** HID button bits for relative mouse move reports (touchpad, stick-mouse, gyro). */
+    private int mouseButtonMaskForRelativeMouseMoves() {
+        return keyboardHoldLatchedMouseButtonMask() | fingerHeldMouseButtonHidMask();
     }
 
     private void applyTurboMousePulsePhase() {
@@ -1387,7 +1434,7 @@ public class GamepadFragment extends Fragment {
         int mx = (int) Math.max(-127, Math.min(127, -gy * k));
         int my = (int) Math.max(-127, Math.min(127, gx * k));
         if (mx != 0 || my != 0) {
-            cm.sendMouseMovement(mx, my, keyboardHoldLatchedMouseButtonMask());
+            cm.sendMouseMovement(mx, my, mouseButtonMaskForRelativeMouseMoves());
         }
     }
 
@@ -1415,7 +1462,7 @@ public class GamepadFragment extends Fragment {
         int cdx = (int) Math.max(-127, Math.min(127, dx * s));
         int cdy = (int) Math.max(-127, Math.min(127, dy * s));
         if (cdx != 0 || cdy != 0) {
-            cm.sendMouseMovement(cdx, cdy, keyboardHoldLatchedMouseButtonMask());
+            cm.sendMouseMovement(cdx, cdy, mouseButtonMaskForRelativeMouseMoves());
         }
     }
 
@@ -6337,7 +6384,7 @@ public class GamepadFragment extends Fragment {
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
         cm.sendMouseMovement(
-                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
+                (int) (xAdj * 127), (int) (yAdj * 127), mouseButtonMaskForRelativeMouseMoves());
     }
 
     private void sendLeftStickMouse(ConnectionManager cm, float x, float y) {
@@ -6376,7 +6423,7 @@ public class GamepadFragment extends Fragment {
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
         cm.sendMouseMovement(
-                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
+                (int) (xAdj * 127), (int) (yAdj * 127), mouseButtonMaskForRelativeMouseMoves());
     }
 
     private void sendLeftStickKeys(ConnectionManager cm, float x, float y, boolean isConnected) {
@@ -6829,6 +6876,7 @@ public class GamepadFragment extends Fragment {
         faceButtonPressed.clear();
         keyboardHoldLockedModuleIds.clear();
         pendingKeyboardHoldUnlockTap.clear();
+        java.util.Arrays.fill(gamepadMouseButtonFingerHoldRefByHidBit, 0);
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
             gamepadView.setGestureLatchBadges(Collections.emptyMap());
