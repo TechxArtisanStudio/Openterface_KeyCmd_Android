@@ -766,11 +766,13 @@ by TechxArtisan</string>
     <string name="gamepad_gesture_sensitivity_dialog_title">Hold-lock / turbo gestures</string>
     <string name="gamepad_gesture_sensitivity_min_press_label">Minimum press before swipe (ms)</string>
     <string name="gamepad_gesture_sensitivity_radius_scale_label">Diagonal stroke strictness</string>
-    <string name="gamepad_gesture_sensitivity_preset_override_note">This preset sets its own values in JSON (layout.gestureLockMinPressMs, gestureLockDiagonalRadiusScale, turboPulsePeriodMs); sliders change the app default only.</string>
+    <string name="gamepad_gesture_sensitivity_preset_override_note">This preset sets its own timing in JSON (layout or per-module gestureLockMinPressMs, gestureLockDiagonalRadiusScale, turboPulsePeriodMs); the sliders below change the app default only.</string>
     <string name="gamepad_gesture_sensitivity_turbo_period_label">Turbo step interval (ms)</string>
     <string name="gamepad_gesture_sensitivity_turbo_period_hint">Time between each on/off half-step while turbo is latched. Lower values repeat faster (25–300 ms).</string>
     <string name="gamepad_gesture_sensitivity_saved">Gesture defaults saved</string>
-    <string name="gamepad_module_config_gesture_sensitivity_hint">Hold-lock and turbo gestures use a minimum press time, diagonal stroke length, and turbo step speed. Defaults apply to this entire preset; optional overrides in preset JSON: layout.gestureLockMinPressMs, layout.gestureLockDiagonalRadiusScale, layout.turboPulsePeriodMs.</string>
+    <string name="gamepad_module_gesture_timing_title">This control (optional overrides)</string>
+    <string name="gamepad_module_gesture_timing_reset">Reset to preset default</string>
+    <string name="gamepad_module_config_gesture_sensitivity_hint">Hold-lock and turbo gestures use a minimum press time, diagonal stroke length, and turbo step speed. Resolution order: this module (if set), then layout globals, then app defaults. Optional JSON: per-module gestureLockMinPressMs, gestureLockDiagonalRadiusScale, turboPulsePeriodMs, or the same three under layout.</string>
     <string name="gamepad_module_config_gesture_sensitivity_open">Adjust gesture timing…</string>
     <string name="gamepad_cycle_next_preset_cd">Next layout</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">Reset layout to factory default</string>

@@ -1,6 +1,7 @@
 package com.openterface.keymod;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -136,10 +137,9 @@ public class GamepadView extends View {
     private KeyboardHoldLockListener keyboardHoldLockListener;
     private final Map<Integer, HoldLockTracking> keyboardHoldLockByPointer = new HashMap<>();
     private final Map<String, LatchBadgeKind> gestureLatchBadgesByModuleId = new HashMap<>();
-    /** From prefs / preset; diagonal latch commits only after this dwell (see {@link #setGestureLockCommitSensitivity}). */
-    private int gestureLockMinPressMs;
-    /** Scales {@link GamepadGestureLock} diagonal min and cancel radii. */
-    private float gestureLockDiagonalRadiusScale = 1f;
+    /** Used with {@link #layoutDocument} to resolve per-module gesture dwell and diagonal scale on each release. */
+    @Nullable
+    private SharedPreferences gestureLockSensitivityPrefs;
 
     private static final class HoldLockTracking {
         @NonNull final String moduleId;
@@ -2453,13 +2453,11 @@ public class GamepadView extends View {
     }
 
     /**
-     * Minimum pointer-down duration before diagonal hold/turbo can commit on lift, and scale on diagonal
-     * distance thresholds (see {@link GamepadGestureLockSensitivity}).
+     * Preferences used with {@link #layoutDocument} for per-module gesture timing ({@link GamepadGestureLockSensitivity}
+     * resolution order: module → layout → prefs → default).
      */
-    public void setGestureLockCommitSensitivity(int minPressMs, float diagonalRadiusScale) {
-        gestureLockMinPressMs = GamepadGestureLockSensitivity.clampMinPressMs(minPressMs);
-        gestureLockDiagonalRadiusScale =
-                GamepadGestureLockSensitivity.clampRadiusScale(diagonalRadiusScale);
+    public void setGestureLockSensitivityPrefs(@Nullable SharedPreferences prefs) {
+        gestureLockSensitivityPrefs = prefs;
     }
 
     /**
@@ -2598,13 +2596,19 @@ public class GamepadView extends View {
         }
         keyboardHoldLockHandler.removeCallbacks(t.showPopupRunnable);
         boolean committed = false;
+        GamepadLayoutPresetDocument.GamepadModule mod = findGamepadModuleById(t.moduleId);
+        int dwellThreshold =
+                GamepadGestureLockSensitivity.resolveMinPressMs(
+                        layoutDocument, gestureLockSensitivityPrefs, mod);
+        float radiusScale =
+                GamepadGestureLockSensitivity.resolveRadiusScale(
+                        layoutDocument, gestureLockSensitivityPrefs, mod);
         if (t.diagonalMode) {
-            GamepadLayoutPresetDocument.GamepadModule mod = findGamepadModuleById(t.moduleId);
             float density = getResources().getDisplayMetrics().density;
             float dx = rawX - t.downRawX;
             float dy = rawY - t.downRawY;
-            float rMinDp = GamepadGestureLock.DIAGONAL_R_MIN_DP * gestureLockDiagonalRadiusScale;
-            float rCancelDp = GamepadGestureLock.DIAGONAL_R_CANCEL_DP * gestureLockDiagonalRadiusScale;
+            float rMinDp = GamepadGestureLock.DIAGONAL_R_MIN_DP * radiusScale;
+            float rCancelDp = GamepadGestureLock.DIAGONAL_R_CANCEL_DP * radiusScale;
             String slot =
                     GamepadGestureLock.classifyDiagonalSlot(dx, dy, density, rMinDp, rCancelDp);
             if (slot != null && !GamepadGestureLock.RESULT_CANCEL.equals(slot)) {
@@ -2613,7 +2617,7 @@ public class GamepadView extends View {
                         && !GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE.equalsIgnoreCase(action)
                         && keyboardHoldLockListener != null) {
                     long dwell = pointerUpEventTimeMs - t.downEventTimeMs;
-                    if (dwell < gestureLockMinPressMs) {
+                    if (dwell < dwellThreshold) {
                         return false;
                     }
                     GamepadLayoutPresetDocument.GestureLockSlot slotObj =
@@ -2626,7 +2630,7 @@ public class GamepadView extends View {
                 }
             }
         } else if (t.popup != null) {
-            if (pointerUpEventTimeMs - t.downEventTimeMs < gestureLockMinPressMs) {
+            if (pointerUpEventTimeMs - t.downEventTimeMs < dwellThreshold) {
                 t.popup.dismiss();
                 t.popup = null;
                 return false;

@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.graphics.Canvas;
@@ -264,10 +265,12 @@ public class GamepadFragment extends Fragment {
     private final java.util.Map<String, int[]> gestureHoldAlternateHid = new java.util.HashMap<>();
     /** When latched key_turbo: HID key [0] and modifier mask [1] for pulse output. */
     private final java.util.Map<String, int[]> gestureTurboAlternateHid = new java.util.HashMap<>();
-    /** Delay between turbo on/off half-steps; from preset JSON or prefs (see {@link GamepadGestureLockSensitivity}). */
-    private long turboPulsePeriodMs = GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_DEFAULT;
+    private static final long TURBO_PULSE_TICK_MS = GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN;
     private final android.os.Handler turboHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private boolean turboPulsePhaseHigh = false;
+    /** Per latched turbo module: square-wave high phase for HID keys and mouse button mask. */
+    private final Map<String, Boolean> turboPulsePhaseHighByModuleId = new HashMap<>();
+    /** Last phase toggle uptime (ms) per turbo module; period from {@link GamepadGestureLockSensitivity#resolveTurboPulsePeriodMs}. */
+    private final Map<String, Long> turboPulseLastToggleUptimeMsByModuleId = new HashMap<>();
     private final Runnable turboPulseStep =
             new Runnable() {
                 @Override
@@ -276,13 +279,37 @@ public class GamepadFragment extends Fragment {
                         return;
                     }
                     if (turboLockedModuleIds.isEmpty()) {
-                        turboPulsePhaseHigh = false;
+                        turboPulsePhaseHighByModuleId.clear();
+                        turboPulseLastToggleUptimeMsByModuleId.clear();
                         return;
                     }
-                    turboPulsePhaseHigh = !turboPulsePhaseHigh;
+                    long now = SystemClock.uptimeMillis();
+                    for (String tid : new ArrayList<>(turboLockedModuleIds)) {
+                        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(tid);
+                        int period =
+                                GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, m);
+                        Long last = turboPulseLastToggleUptimeMsByModuleId.get(tid);
+                        if (last == null) {
+                            turboPulsePhaseHighByModuleId.put(tid, true);
+                            turboPulseLastToggleUptimeMsByModuleId.put(tid, now);
+                            continue;
+                        }
+                        if (now - last < period) {
+                            continue;
+                        }
+                        boolean cur = Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(tid));
+                        long nextLast = last;
+                        boolean phase = cur;
+                        while (now - nextLast >= period) {
+                            phase = !phase;
+                            nextLast += period;
+                        }
+                        turboPulsePhaseHighByModuleId.put(tid, phase);
+                        turboPulseLastToggleUptimeMsByModuleId.put(tid, nextLast);
+                    }
                     applyTurboMousePulsePhase();
                     sendCombinedKeyReport();
-                    turboHandler.postDelayed(this, turboPulsePeriodMs);
+                    turboHandler.postDelayed(this, TURBO_PULSE_TICK_MS);
                 }
             };
     /** Finger-down on a latched module: release completes unlock (no momentary press). */
@@ -499,7 +526,6 @@ public class GamepadFragment extends Fragment {
         updateGyroListenerRegistration();
         applyGamepadEditTouchPreferences();
         applyGestureLockSensitivityToGamepadView();
-        refreshTurboPulsePeriodFromDocOrPrefs();
         refreshGamepadEmbeddedChrome();
     }
 
@@ -719,6 +745,7 @@ public class GamepadFragment extends Fragment {
                         }
                         if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO.equalsIgnoreCase(a)) {
                             turboLockedModuleIds.add(moduleId);
+                            initTurboPulseStateForModule(moduleId);
                             gestureTurboAlternateHid.remove(moduleId);
                             syncKeyboardHoldLockVisuals();
                             startTurboRepeatingIfNeeded();
@@ -731,6 +758,7 @@ public class GamepadFragment extends Fragment {
                                 return;
                             }
                             turboLockedModuleIds.add(moduleId);
+                            initTurboPulseStateForModule(moduleId);
                             gestureTurboAlternateHid.put(
                                     moduleId,
                                     new int[] {hidKeyOverride, intOr(modifierMaskOverride, 0)});
@@ -805,9 +833,11 @@ public class GamepadFragment extends Fragment {
                 turboLockedModuleIds.remove(buttonId);
                 gestureHoldAlternateHid.remove(buttonId);
                 gestureTurboAlternateHid.remove(buttonId);
+                removeTurboPulseStateForModule(buttonId);
                 if (turboLockedModuleIds.isEmpty()) {
                     turboHandler.removeCallbacks(turboPulseStep);
-                    turboPulsePhaseHigh = false;
+                    turboPulsePhaseHighByModuleId.clear();
+                    turboPulseLastToggleUptimeMsByModuleId.clear();
                 } else {
                     startTurboRepeatingIfNeeded();
                 }
@@ -1033,12 +1063,13 @@ public class GamepadFragment extends Fragment {
                 mask |= semanticMouseButtonToHidMask(mb);
             }
         }
-        if (turboPulsePhaseHigh) {
-            for (String moduleId : turboLockedModuleIds) {
-                Integer mb = mouseButtonForComponentId(moduleId);
-                if (mb != null) {
-                    mask |= semanticMouseButtonToHidMask(mb);
-                }
+        for (String moduleId : turboLockedModuleIds) {
+            if (!Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(moduleId))) {
+                continue;
+            }
+            Integer mb = mouseButtonForComponentId(moduleId);
+            if (mb != null) {
+                mask |= semanticMouseButtonToHidMask(mb);
             }
         }
         return mask;
@@ -1058,17 +1089,34 @@ public class GamepadFragment extends Fragment {
                 continue;
             }
             int hidMask = semanticMouseButtonToHidMask(mb);
-            sendMouseClick(hidMask, turboPulsePhaseHigh);
+            sendMouseClick(hidMask, Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(moduleId)));
         }
+    }
+
+    private void initTurboPulseStateForModule(@NonNull String moduleId) {
+        turboPulsePhaseHighByModuleId.put(moduleId, true);
+        turboPulseLastToggleUptimeMsByModuleId.put(moduleId, SystemClock.uptimeMillis());
+    }
+
+    private void removeTurboPulseStateForModule(@NonNull String moduleId) {
+        turboPulsePhaseHighByModuleId.remove(moduleId);
+        turboPulseLastToggleUptimeMsByModuleId.remove(moduleId);
     }
 
     private void startTurboRepeatingIfNeeded() {
         turboHandler.removeCallbacks(turboPulseStep);
         if (turboLockedModuleIds.isEmpty()) {
-            turboPulsePhaseHigh = false;
+            turboPulsePhaseHighByModuleId.clear();
+            turboPulseLastToggleUptimeMsByModuleId.clear();
             return;
         }
-        turboPulsePhaseHigh = false;
+        long now = SystemClock.uptimeMillis();
+        for (String tid : turboLockedModuleIds) {
+            if (!turboPulseLastToggleUptimeMsByModuleId.containsKey(tid)) {
+                turboPulsePhaseHighByModuleId.put(tid, true);
+                turboPulseLastToggleUptimeMsByModuleId.put(tid, now);
+            }
+        }
         turboHandler.post(turboPulseStep);
     }
 
@@ -1296,7 +1344,6 @@ public class GamepadFragment extends Fragment {
         applyCanvasBackgroundStyleFromPrefsAndDoc();
         syncKeyboardHoldLockVisuals();
         applyGestureLockSensitivityToGamepadView();
-        refreshTurboPulsePeriodFromDocOrPrefs();
     }
 
     private void updateGyroListenerRegistration() {
@@ -1415,7 +1462,8 @@ public class GamepadFragment extends Fragment {
         gestureHoldAlternateHid.clear();
         gestureTurboAlternateHid.clear();
         turboHandler.removeCallbacks(turboPulseStep);
-        turboPulsePhaseHigh = false;
+        turboPulsePhaseHighByModuleId.clear();
+        turboPulseLastToggleUptimeMsByModuleId.clear();
         pendingKeyboardHoldUnlockTap.clear();
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
@@ -1497,18 +1545,186 @@ public class GamepadFragment extends Fragment {
         gamepadView.setEditLongPressConfig(ms, movePx);
     }
 
-    /** Pushes resolved gesture dwell + diagonal scale (preset override or prefs) into {@link GamepadView}. */
+    /** Supplies prefs to {@link GamepadView} for per-module gesture dwell + diagonal scale resolution. */
     private void applyGestureLockSensitivityToGamepadView() {
-        if (gamepadView == null || prefs == null) {
+        if (gamepadView == null) {
             return;
         }
-        int minPress = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs);
-        float radiusScale = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs);
-        gamepadView.setGestureLockCommitSensitivity(minPress, radiusScale);
+        gamepadView.setGestureLockSensitivityPrefs(prefs);
     }
 
-    private void refreshTurboPulsePeriodFromDocOrPrefs() {
-        turboPulsePeriodMs = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs);
+    private static boolean moduleHasGestureTimingOverride(@Nullable GamepadLayoutPresetDocument.GamepadModule m) {
+        if (m == null) {
+            return false;
+        }
+        return m.gestureLockMinPressMs != null
+                || m.gestureLockDiagonalRadiusScale != null
+                || m.turboPulsePeriodMs != null;
+    }
+
+    private boolean presetHasGestureTimingOverrideAnywhere() {
+        if (layoutDoc == null) {
+            return false;
+        }
+        if (layoutDoc.layout != null
+                && (layoutDoc.layout.gestureLockMinPressMs != null
+                        || layoutDoc.layout.gestureLockDiagonalRadiusScale != null
+                        || layoutDoc.layout.turboPulsePeriodMs != null)) {
+            return true;
+        }
+        if (layoutDoc.modules == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+            if (moduleHasGestureTimingOverride(m)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Optional per-module gesture dwell, diagonal scale, and turbo period (see plan: module → layout → prefs).
+     *
+     * @return runnable that refreshes slider positions from {@code m} (e.g. after dialog Reset).
+     */
+    @NonNull
+    private Runnable attachModuleGestureTimingOverrideSection(
+            @NonNull Context ctx,
+            @NonNull LinearLayout parent,
+            @NonNull GamepadLayoutPresetDocument.GamepadModule m) {
+        parent.removeAllViews();
+        if (!GamepadGestureLock.gesturesAllowedModuleType(m.type)) {
+            parent.setVisibility(View.GONE);
+            return () -> {};
+        }
+        parent.setVisibility(View.VISIBLE);
+        int gap = dp(12);
+        TextView sectionTitle = new TextView(ctx);
+        sectionTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        sectionTitle.setText(R.string.gamepad_module_gesture_timing_title);
+        parent.addView(sectionTitle);
+
+        MaterialButton resetBtn = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        resetBtn.setText(R.string.gamepad_module_gesture_timing_reset);
+        resetBtn.setAllCaps(false);
+        LinearLayout.LayoutParams resetLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        resetLp.bottomMargin = gap;
+        resetBtn.setLayoutParams(resetLp);
+        parent.addView(resetBtn);
+
+        TextView dwellLabel = new TextView(ctx);
+        dwellLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        dwellLabel.setText(R.string.gamepad_gesture_sensitivity_min_press_label);
+        parent.addView(dwellLabel);
+        Slider dwellSlider = new Slider(ctx);
+        dwellSlider.setValueFrom(0f);
+        dwellSlider.setValueTo((float) GamepadGestureLockSensitivity.MIN_PRESS_MS_MAX);
+        dwellSlider.setStepSize(1f);
+        LinearLayout.LayoutParams dwellLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dwellLp.bottomMargin = gap;
+        dwellSlider.setLayoutParams(dwellLp);
+        parent.addView(dwellSlider);
+
+        TextView scaleLabel = new TextView(ctx);
+        scaleLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        scaleLabel.setText(R.string.gamepad_gesture_sensitivity_radius_scale_label);
+        parent.addView(scaleLabel);
+        Slider scaleSlider = new Slider(ctx);
+        scaleSlider.setValueFrom(GamepadGestureLockSensitivity.RADIUS_SCALE_MIN);
+        scaleSlider.setValueTo(GamepadGestureLockSensitivity.RADIUS_SCALE_MAX);
+        scaleSlider.setStepSize(0.05f);
+        LinearLayout.LayoutParams scaleLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        scaleLp.bottomMargin = gap;
+        scaleSlider.setLayoutParams(scaleLp);
+        parent.addView(scaleSlider);
+
+        TextView turboLabel = new TextView(ctx);
+        turboLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        turboLabel.setText(R.string.gamepad_gesture_sensitivity_turbo_period_label);
+        parent.addView(turboLabel);
+        Slider turboSlider = new Slider(ctx);
+        turboSlider.setValueFrom((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN);
+        turboSlider.setValueTo((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX);
+        turboSlider.setStepSize(1f);
+        turboSlider.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        parent.addView(turboSlider);
+
+        Runnable refreshSlidersFromModule =
+                () -> {
+                    int inhD = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+                    dwellSlider.setValue(
+                            m.gestureLockMinPressMs != null ? m.gestureLockMinPressMs : inhD);
+                    float inhS = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
+                    scaleSlider.setValue(
+                            m.gestureLockDiagonalRadiusScale != null
+                                    ? m.gestureLockDiagonalRadiusScale
+                                    : inhS);
+                    int inhT = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
+                    turboSlider.setValue(
+                            m.turboPulsePeriodMs != null ? m.turboPulsePeriodMs : inhT);
+                };
+        refreshSlidersFromModule.run();
+
+        resetBtn.setOnClickListener(
+                v -> {
+                    m.gestureLockMinPressMs = null;
+                    m.gestureLockDiagonalRadiusScale = null;
+                    m.turboPulsePeriodMs = null;
+                    refreshSlidersFromModule.run();
+                    syncGamepadViewFromDoc();
+                });
+
+        dwellSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        int v = Math.round(slider.getValue());
+                        int inh = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+                        m.gestureLockMinPressMs = (v == inh) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        scaleSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        float v = slider.getValue();
+                        float inh = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
+                        m.gestureLockDiagonalRadiusScale =
+                                (Math.abs(v - inh) < 0.03f) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        turboSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        int v = Math.round(slider.getValue());
+                        int inh = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
+                        m.turboPulsePeriodMs = (v == inh) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        return refreshSlidersFromModule;
     }
 
     private void showGamepadGestureSensitivityDialog() {
@@ -1522,12 +1738,7 @@ public class GamepadFragment extends Fragment {
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad, pad, pad);
-        boolean presetOverrides =
-                layoutDoc != null
-                        && layoutDoc.layout != null
-                        && (layoutDoc.layout.gestureLockMinPressMs != null
-                                || layoutDoc.layout.gestureLockDiagonalRadiusScale != null
-                                || layoutDoc.layout.turboPulsePeriodMs != null);
+        boolean presetOverrides = presetHasGestureTimingOverrideAnywhere();
         if (presetOverrides) {
             TextView note = new TextView(ctx);
             note.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
@@ -1645,7 +1856,6 @@ public class GamepadFragment extends Fragment {
                                     .putInt(GamepadPreferenceKeys.TURBO_PULSE_PERIOD_MS, turboMs)
                                     .apply();
                             applyGestureLockSensitivityToGamepadView();
-                            refreshTurboPulsePeriodFromDocOrPrefs();
                             Toast.makeText(ctx, R.string.gamepad_gesture_sensitivity_saved, Toast.LENGTH_SHORT)
                                     .show();
                         })
@@ -2490,7 +2700,7 @@ public class GamepadFragment extends Fragment {
 
             if (layoutDoc != null && layoutDoc.modules != null) {
                 for (String tid : turboLockedModuleIds) {
-                    if (!turboPulsePhaseHigh) {
+                    if (!Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(tid))) {
                         continue;
                     }
                     GamepadLayoutPresetDocument.GamepadModule m = findModuleById(tid);
@@ -2590,6 +2800,7 @@ public class GamepadFragment extends Fragment {
                     faceButtonPressed.remove(moduleId);
                     keyboardHoldLockedModuleIds.remove(moduleId);
                     turboLockedModuleIds.remove(moduleId);
+                    removeTurboPulseStateForModule(moduleId);
                     gestureHoldAlternateHid.remove(moduleId);
                     gestureTurboAlternateHid.remove(moduleId);
                     if (turboLockedModuleIds.isEmpty()) {
@@ -3850,6 +4061,15 @@ public class GamepadFragment extends Fragment {
         gestureSensOpen.setLayoutParams(hlp);
         root.addView(gestureSensOpen);
 
+        LinearLayout mouseGestureTiming = new LinearLayout(ctx);
+        mouseGestureTiming.setOrientation(LinearLayout.VERTICAL);
+        mouseGestureTiming.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(mouseGestureTiming);
+        Runnable refreshMouseGestureTimingSliders =
+                attachModuleGestureTimingOverrideSection(ctx, mouseGestureTiming, m);
+
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
@@ -3876,6 +4096,10 @@ public class GamepadFragment extends Fragment {
                     m.displayLabelColorArgb = null;
                     m.keyboardHoldLock = null;
                     m.gestureLock = null;
+                    m.gestureLockMinPressMs = null;
+                    m.gestureLockDiagonalRadiusScale = null;
+                    m.turboPulsePeriodMs = null;
+                    refreshMouseGestureTimingSliders.run();
                     resetGestureLockSpinners(gestureSpinnersMouse);
                     holdLockSwitch.setChecked(false);
                     moduleScaleSeek.setProgress(50);
@@ -4691,6 +4915,12 @@ public class GamepadFragment extends Fragment {
         if (gestureSensitivityOpenBtn != null) {
             gestureSensitivityOpenBtn.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
         }
+        LinearLayout gestureTimingContainer = dialogView.findViewById(R.id.button_module_gesture_timing_container);
+        Runnable refreshModuleGestureTimingSliders =
+                gestureTimingContainer != null
+                        ? attachModuleGestureTimingOverrideSection(
+                                gamepadUiContext(), gestureTimingContainer, m)
+                        : null;
 
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
         sizeSeekbar.setProgress((int) (buttonSizeScale * 100));
@@ -4838,6 +5068,12 @@ public class GamepadFragment extends Fragment {
             m.displayLabelColorArgb = null;
             m.keyboardHoldLock = null;
             m.gestureLock = null;
+            m.gestureLockMinPressMs = null;
+            m.gestureLockDiagonalRadiusScale = null;
+            m.turboPulsePeriodMs = null;
+            if (refreshModuleGestureTimingSliders != null) {
+                refreshModuleGestureTimingSliders.run();
+            }
             resetGestureLockSpinners(gestureSpinners);
             if (keyboardHoldLockSwitch != null) {
                 keyboardHoldLockSwitch.setChecked(false);
@@ -6542,7 +6778,8 @@ public class GamepadFragment extends Fragment {
             }
         }
         turboHandler.removeCallbacks(turboPulseStep);
-        turboPulsePhaseHigh = false;
+        turboPulsePhaseHighByModuleId.clear();
+        turboPulseLastToggleUptimeMsByModuleId.clear();
         turboLockedModuleIds.clear();
         gestureHoldAlternateHid.clear();
         gestureTurboAlternateHid.clear();

@@ -43,6 +43,46 @@ public class GamepadGestureLockSensitivityTest {
     }
 
     @Test
+    public void resolveMinPressMs_moduleOverridesLayout() {
+        GamepadLayoutPresetDocument d = new GamepadLayoutPresetDocument();
+        d.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        d.layout.gestureLockMinPressMs = 150;
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.gestureLockMinPressMs = 88;
+        assertEquals(88, GamepadGestureLockSensitivity.resolveMinPressMs(d, null, m));
+    }
+
+    @Test
+    public void resolveMinPressMs_moduleNullUsesLayout() {
+        GamepadLayoutPresetDocument d = new GamepadLayoutPresetDocument();
+        d.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        d.layout.gestureLockMinPressMs = 150;
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.gestureLockMinPressMs = null;
+        assertEquals(150, GamepadGestureLockSensitivity.resolveMinPressMs(d, null, m));
+    }
+
+    @Test
+    public void resolveRadiusScale_moduleOverridesLayout() {
+        GamepadLayoutPresetDocument d = new GamepadLayoutPresetDocument();
+        d.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        d.layout.gestureLockDiagonalRadiusScale = 2f;
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.gestureLockDiagonalRadiusScale = 1.1f;
+        assertEquals(1.1f, GamepadGestureLockSensitivity.resolveRadiusScale(d, null, m), 0.001f);
+    }
+
+    @Test
+    public void resolveTurboPulsePeriodMs_moduleOverridesLayout() {
+        GamepadLayoutPresetDocument d = new GamepadLayoutPresetDocument();
+        d.layout = new GamepadLayoutPresetDocument.LayoutGlobals();
+        d.layout.turboPulsePeriodMs = 100;
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.turboPulsePeriodMs = 55;
+        assertEquals(55, GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(d, null, m));
+    }
+
+    @Test
     public void clampTurboPulsePeriodMs_bounds() {
         assertEquals(25, GamepadGestureLockSensitivity.clampTurboPulsePeriodMs(10));
         assertEquals(300, GamepadGestureLockSensitivity.clampTurboPulsePeriodMs(400));

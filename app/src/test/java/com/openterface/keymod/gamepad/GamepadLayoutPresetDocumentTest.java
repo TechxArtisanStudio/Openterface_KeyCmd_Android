@@ -135,6 +135,45 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateRejectsModuleGestureTimingOnStickModule() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule stick = findModule(doc, "stick_left");
+        assertNotNull(stick);
+        stick.gestureLockMinPressMs = 50;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("BUTTON") || ex.getMessage().contains("gestureLockMinPressMs"));
+        }
+    }
+
+    @Test
+    public void validateAcceptsModuleLevelGestureTimingOnButton() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btn = findModule(doc, "button_a");
+        assertNotNull(btn);
+        btn.gestureLockMinPressMs = 120;
+        btn.gestureLockDiagonalRadiusScale = 1.2f;
+        btn.turboPulsePeriodMs = 80;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateRejectsModuleTurboPulsePeriodMsOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule btn = findModule(doc, "button_a");
+        assertNotNull(btn);
+        btn.turboPulsePeriodMs = 24;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("turboPulsePeriodMs"));
+        }
+    }
+
+    @Test
     public void validateAcceptsScrollStripModule() {
         GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
         GamepadLayoutPresetDocument.GamepadModule strip = new GamepadLayoutPresetDocument.GamepadModule();

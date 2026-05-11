@@ -248,6 +248,21 @@ public class GamepadLayoutPresetDocument {
          * applies if {@link #keyboardHoldLock} is true.
          */
         @Nullable public GestureLockConfig gestureLock;
+        /**
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: optional per-module override for minimum press (ms) before a
+         * diagonal hold/turbo gesture commits; {@code null} inherits {@link LayoutGlobals#gestureLockMinPressMs} then prefs.
+         */
+        @Nullable public Integer gestureLockMinPressMs;
+        /**
+         * Per-module override for diagonal min/cancel radius scale; {@code null} inherits
+         * {@link LayoutGlobals#gestureLockDiagonalRadiusScale} then prefs.
+         */
+        @Nullable public Float gestureLockDiagonalRadiusScale;
+        /**
+         * Per-module override for turbo half-step period (ms); {@code null} inherits {@link LayoutGlobals#turboPulsePeriodMs}
+         * then prefs.
+         */
+        @Nullable public Integer turboPulsePeriodMs;
 
         /**
          * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
@@ -715,6 +730,7 @@ public class GamepadLayoutPresetDocument {
                 }
             }
             GamepadGestureLock.validateGestureLockOnModule(m);
+            validateModuleGestureTimingFields(m);
         }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "
@@ -737,6 +753,49 @@ public class GamepadLayoutPresetDocument {
     /** ARGB packed int; JVM-safe (no {@code android.graphics.Color} stub needed in unit tests). */
     private static int argbAlphaFromPackedInt(int colorArgb) {
         return (colorArgb >>> 24) & 0xFF;
+    }
+
+    private static void validateModuleGestureTimingFields(@NonNull GamepadModule m) throws IllegalArgumentException {
+        boolean hasAny = m.gestureLockMinPressMs != null
+                || m.gestureLockDiagonalRadiusScale != null
+                || m.turboPulsePeriodMs != null;
+        if (!hasAny) {
+            return;
+        }
+        if (!GamepadGestureLock.gesturesAllowedModuleType(m.type)) {
+            throw new IllegalArgumentException(
+                    "Module "
+                            + m.id
+                            + ": gestureLockMinPressMs / gestureLockDiagonalRadiusScale / turboPulsePeriodMs are only valid for BUTTON, SHOULDER, TRIGGER, or MOUSE_BUTTON");
+        }
+        if (m.gestureLockMinPressMs != null) {
+            int g = m.gestureLockMinPressMs;
+            if (g < 0 || g > 1000) {
+                throw new IllegalArgumentException(
+                        "Module " + m.id + ": gestureLockMinPressMs must be in [0, 1000] when set");
+            }
+        }
+        if (m.gestureLockDiagonalRadiusScale != null) {
+            float s = m.gestureLockDiagonalRadiusScale;
+            if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.5f || s > 3.0f) {
+                throw new IllegalArgumentException(
+                        "Module " + m.id + ": gestureLockDiagonalRadiusScale must be in [0.5, 3] when set");
+            }
+        }
+        if (m.turboPulsePeriodMs != null) {
+            int t = m.turboPulsePeriodMs;
+            if (t < GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                    || t > GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX) {
+                throw new IllegalArgumentException(
+                        "Module "
+                                + m.id
+                                + ": turboPulsePeriodMs must be in ["
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                                + ", "
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX
+                                + "] when set");
+            }
+        }
     }
 
     private static void validateMetaCreator(@Nullable Meta meta) throws IllegalArgumentException {

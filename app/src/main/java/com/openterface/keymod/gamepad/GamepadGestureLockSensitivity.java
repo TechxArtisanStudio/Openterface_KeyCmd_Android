@@ -49,6 +49,20 @@ public final class GamepadGestureLockSensitivity {
     /** Preset {@code layout.gestureLockMinPressMs} when set, else {@link GamepadPreferenceKeys} int pref. */
     public static int resolveMinPressMs(
             @Nullable GamepadLayoutPresetDocument doc, @Nullable SharedPreferences prefs) {
+        return resolveMinPressMs(doc, prefs, null);
+    }
+
+    /**
+     * Module {@code gestureLockMinPressMs} when set, else {@link #resolveMinPressMs(GamepadLayoutPresetDocument,
+     * SharedPreferences)} without module.
+     */
+    public static int resolveMinPressMs(
+            @Nullable GamepadLayoutPresetDocument doc,
+            @Nullable SharedPreferences prefs,
+            @Nullable GamepadLayoutPresetDocument.GamepadModule module) {
+        if (module != null && module.gestureLockMinPressMs != null) {
+            return clampMinPressMs(module.gestureLockMinPressMs);
+        }
         if (doc != null && doc.layout != null && doc.layout.gestureLockMinPressMs != null) {
             return clampMinPressMs(doc.layout.gestureLockMinPressMs);
         }
@@ -61,6 +75,20 @@ public final class GamepadGestureLockSensitivity {
     /** Preset {@code layout.gestureLockDiagonalRadiusScale} when set, else float pref (default 1). */
     public static float resolveRadiusScale(
             @Nullable GamepadLayoutPresetDocument doc, @Nullable SharedPreferences prefs) {
+        return resolveRadiusScale(doc, prefs, null);
+    }
+
+    /**
+     * Module {@code gestureLockDiagonalRadiusScale} when set, else {@link #resolveRadiusScale(GamepadLayoutPresetDocument,
+     * SharedPreferences)} without module.
+     */
+    public static float resolveRadiusScale(
+            @Nullable GamepadLayoutPresetDocument doc,
+            @Nullable SharedPreferences prefs,
+            @Nullable GamepadLayoutPresetDocument.GamepadModule module) {
+        if (module != null && module.gestureLockDiagonalRadiusScale != null) {
+            return clampRadiusScale(module.gestureLockDiagonalRadiusScale);
+        }
         if (doc != null && doc.layout != null && doc.layout.gestureLockDiagonalRadiusScale != null) {
             return clampRadiusScale(doc.layout.gestureLockDiagonalRadiusScale);
         }
@@ -85,6 +113,20 @@ public final class GamepadGestureLockSensitivity {
     /** Preset {@code layout.turboPulsePeriodMs} when set, else int pref (default {@link #TURBO_PULSE_PERIOD_MS_DEFAULT}). */
     public static int resolveTurboPulsePeriodMs(
             @Nullable GamepadLayoutPresetDocument doc, @Nullable SharedPreferences prefs) {
+        return resolveTurboPulsePeriodMs(doc, prefs, null);
+    }
+
+    /**
+     * Module {@code turboPulsePeriodMs} when set, else {@link #resolveTurboPulsePeriodMs(GamepadLayoutPresetDocument,
+     * SharedPreferences)} without module.
+     */
+    public static int resolveTurboPulsePeriodMs(
+            @Nullable GamepadLayoutPresetDocument doc,
+            @Nullable SharedPreferences prefs,
+            @Nullable GamepadLayoutPresetDocument.GamepadModule module) {
+        if (module != null && module.turboPulsePeriodMs != null) {
+            return clampTurboPulsePeriodMs(module.turboPulsePeriodMs);
+        }
         if (doc != null && doc.layout != null && doc.layout.turboPulsePeriodMs != null) {
             return clampTurboPulsePeriodMs(doc.layout.turboPulsePeriodMs);
         }
