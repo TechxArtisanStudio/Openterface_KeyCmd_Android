@@ -242,6 +242,8 @@ public class CustomKeyboardView extends LinearLayout {
     private Runnable gamingRepeatStarterRunnable;
     private Key gamingRepeatKey;
     private boolean gamingRepeatActive;
+    /** Pairs each gaming repeat tap with {@link #sendReleaseData} (same as KM Basic {@code tapKey}). */
+    private final Runnable gamingTapReleaseRunnable = this::sendReleaseData;
 
     /** Split keyboard mode: which half to render (for landscape split mode with touchpad in middle) */
     public static final int SPLIT_NONE = 0;
@@ -2360,8 +2362,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (gamingTouch) {
                         v.setPressed(true);
                         gamingHoldActive[0] = true;
-                        sendHidKeyDataForKey(key);
-                        if (!KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+                        if (KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+                            sendHidKeyDataForKey(key);
+                        } else {
+                            sendHidKeyTapForGamingRepeat(key);
                             startGamingKeyRepeat(key);
                         }
                         return true;
@@ -6594,6 +6598,17 @@ public class CustomKeyboardView extends LinearLayout {
      * Sends one HID keyboard report for {@code key} (Fn layers, locked modifiers, extra numpad),
      * with no profile/mode/UI side effects.
      */
+    /**
+     * One logical keystroke for gaming repeat: HID key report then all-keys-released after a short delay.
+     * Without the release, repeated {@link #sendHidKeyDataForKey} calls keep the same key down and the
+     * host does not see separate presses (unlike KM Basic {@code tapKey}).
+     */
+    private void sendHidKeyTapForGamingRepeat(Key key) {
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        sendHidKeyDataForKey(key);
+        repeatHandler.postDelayed(gamingTapReleaseRunnable, 30);
+    }
+
     private void sendHidKeyDataForKey(Key key) {
         if (key == null) {
             return;
@@ -6664,7 +6679,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (!gamingRepeatActive || gamingRepeatKey != key) {
                         return;
                     }
-                    sendHidKeyDataForKey(key);
+                    sendHidKeyTapForGamingRepeat(key);
                     repeatHandler.postDelayed(this, repeatDelay);
                 }
             };
@@ -6684,6 +6699,7 @@ public class CustomKeyboardView extends LinearLayout {
             repeatHandler.removeCallbacks(gamingRepeatRunnable);
             gamingRepeatRunnable = null;
         }
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
     }
 
     /** Fn-layer numpad 0 → three keypad-zero presses (with release between each). */
