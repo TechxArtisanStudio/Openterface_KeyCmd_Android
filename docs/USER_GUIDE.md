@@ -199,6 +199,15 @@ Shareable layouts use JSON with a **`schemaVersion`** field (see the file you ex
 | Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
 | Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
 | Canvas background (portable JSON) | **`layout.backgroundImageEncoding`** (`base64`), **`layout.backgroundImageMediaType`** (`image/png` / `image/jpeg` / `image/webp`), and **`layout.backgroundImageData`** (raw base64, no `data:` URL). Used when **sharing** a preset so the image travels in one file; after **import**, bytes are saved under app files dir as **`layout.backgroundImageFile`** and embed fields are cleared. Max decoded size about **6 MiB** |
+| Hold-lock / turbo gesture tuning (optional) | **`layout.gestureLockMinPressMs`** (0–1000): finger must stay down at least this many ms before a diagonal hold/turbo gesture can commit on lift (0 = legacy, quickest). **`layout.gestureLockDiagonalRadiusScale`** (0.5–3): multiplies how far you must swipe diagonally before a sector counts (higher = stricter). **`layout.turboPulsePeriodMs`** (25–300): ms between turbo on/off half-steps when latched (lower = faster). When unset, the gamepad **Hold-lock / turbo gestures** dialog (timer toolbar icon or **Adjust gesture timing…** in module config) uses app-wide defaults stored in preferences |
+
+### Hold-lock, turbo, and gesture sensitivity
+
+On **BUTTON**, **SHOULDER**, **TRIGGER**, and **MOUSE_BUTTON** modules you can enable **`keyboardHoldLock`** and/or a per-module **`gestureLock`** object with four diagonal slots (`upLeft`, `upRight`, `downLeft`, `downRight`). Each slot’s **`action`** is one of: `none`, `hold_lock` (keep the mapped key or mouse button down), `turbo` (repeat pulse), `key_hold`, or `key_turbo` (alternate HID key; not allowed on **MOUSE_BUTTON**). If **`keyboardHoldLock`** is true and slots are omitted, defaults are **up-right → hold_lock** and **up-left → turbo**.
+
+**While latched**, tap the same control again and release to clear the latch (badge disappears). **Turbo** repeats on a configurable interval (default 70 ms per on/off half-step) until you unlock; change it in the same timing dialog or via **`layout.turboPulsePeriodMs`** in JSON.
+
+**Accidental latches:** use the toolbar **timer** icon (next to the preset name), or **Adjust gesture timing…** inside any **Button / Shoulder / Trigger / Mouse button** module configuration (same sliders). Preset JSON can override **`layout.gestureLockMinPressMs`**, **`layout.gestureLockDiagonalRadiusScale`**, and **`layout.turboPulsePeriodMs`**; when any of those are set, the timing dialog explains that sliders only change the app default for presets without overrides.
 
 **Engineering synonyms (no extra modules):** hat switch (HID jargon for a D-pad–like switch), silicone dome / tact switch, gimbal, housing — these describe physical hardware, not separate on-screen modules.
 

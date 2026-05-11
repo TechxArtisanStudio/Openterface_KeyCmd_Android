@@ -90,6 +90,32 @@
                 android:orientation="vertical"
                 android:layout_marginBottom="10dp" />
 
+            <LinearLayout
+                android:id="@+id/button_gesture_sensitivity_block"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/button_gesture_sensitivity_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_module_config_gesture_sensitivity_hint"
+                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_gesture_sensitivity_open_btn"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gamepad_module_config_gesture_sensitivity_open"
+                    android:textAllCaps="false"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_key_label"
                 style="@style/Widget.Material3.Button.OutlinedButton"

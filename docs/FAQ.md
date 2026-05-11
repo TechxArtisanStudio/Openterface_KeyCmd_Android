@@ -1,6 +1,6 @@
-# KeyMod FAQ — Keyboard output and strip layouts
+# KeyMod FAQ — Keyboard output, strip layouts, gamepad, and connections
 
-Common questions about what KeyMod can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold). A short **gamepad preset glossary** appears at the end.
+Common questions about what KeyMod can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
 
 ---
 
@@ -95,6 +95,71 @@ Changing this option **rebuilds** the Basic keyboard layout so the new behavior 
 
 ---
 
+## Why do some gamepad layouts look crowded or “messy” in screenshots?
+
+**That is expected.** Gamepad Mode is built around **fully customizable** layouts: you choose positions, sizes, modules, and bindings. A layout that looks busy to someone else may match **one player’s muscle memory and game**. The point is not a single “official” look—it is **software-defined controls** you reshape for your own workflow.
+
+---
+
+## What are hold-and-lock, turbo, and macros in Gamepad Mode?
+
+These are **gamepad-oriented** conveniences (separate from **Keyboard & Mouse (Basic)** “hold key down on the target,” which applies to the Basic full keyboard only):
+
+| Feature | Typical use |
+|--------|----------------|
+| **Hold-and-lock** | Keep an action logically **held** on the target (for example **hold left mouse button** for repeated actions in a game) without keeping your finger on the on-screen control. |
+| **Turbo / rapid-fire** | A button **fires automatically** on a timer while active—useful for repeated clicks or taps. |
+| **Macros** | **Chain several actions** in order; this area is still being **polished** over time in the app. |
+
+Exact controls and labels follow the **Gamepad** screen and preset editor in your app build.
+
+---
+
+## Where does Bluetooth actually connect? Is KeyMod a Bluetooth receiver for my PC?
+
+**No.** The usual **Bluetooth** link for KeyMod is **between your phone and the KeyMod hardware**. KeyMod does **not** act as a **Bluetooth dongle** or receiver for the **target computer** you plug into over USB.
+
+Think of KeyMod as a **portable keyboard and mouse** to the host: **hardware control** (real **keyboard and mouse HID** over USB or the phone–KeyMod link), combined with **software flexibility** on the phone (layouts, mapping, and presets). The target machine does not pair with your phone’s Bluetooth keyboard—that path is **not** “Bluetooth keyboard → PC via KeyMod pairing.”
+
+For wire-format details on how keys reach the host, see **HID Protocol (CH9329)** in [USER_GUIDE.md](USER_GUIDE.md).
+
+---
+
+## Can I pair a Bluetooth keyboard (or controller) only to my phone and still control the target through KeyMod?
+
+**In principle, yes** at the **software** level: the app can treat **different input sources** on the phone (on-screen controls, presets, and—where supported—**mapped** external input) and translate them into what KeyMod sends.
+
+Important caveats:
+
+- There is **no generic “raw Bluetooth HID pipe”** through KeyMod to the PC. Anything coming from another device is handled by **Android and the KeyMod app**, then turned into **outgoing** KeyMod traffic the firmware understands.
+- You still need a **working phone ↔ KeyMod** session for the bridge to run.
+
+So the mental model is **“phone + app in the middle,”** not “KeyMod becomes the PC’s Bluetooth radio.”
+
+---
+
+## If I use a Bluetooth game controller paired to my phone, does the target PC see a real gamepad (Xbox / PlayStation style)?
+
+**Not with current KeyMod hardware.** Today, KeyMod outputs **standard keyboard and mouse HID** to the host (the same family of behavior described around **CH9329** in [USER_GUIDE.md](USER_GUIDE.md)). The app can **map** sticks and buttons to **keys and mouse actions**, so the **target sees a keyboard and mouse**, not native **gamepad HID**.
+
+**Native gamepad HID to the host** may be possible in the future but would need **firmware-level** work, not only app UI.
+
+---
+
+## My desktop has no Bluetooth—can I use KeyMod plus my phone as a kind of “relay”?
+
+**Yes as a workflow idea, with limits.** You can plug KeyMod into the PC over **USB**, connect **phone ↔ KeyMod** (Bluetooth as your setup uses), and drive everything from the **KeyMod app** on the phone—**without** putting a Bluetooth dongle in the PC or pairing a keyboard directly to Windows.
+
+If you also use a **Bluetooth keyboard or controller paired only to the phone**, you are still inside the model above: the **PC never pairs** with that peripheral; the **app** decides how (or whether) those inputs map into **keyboard/mouse** actions toward KeyMod. You do **not** get “the PC thinks my phone is a generic Bluetooth keyboard.”
+
+---
+
+## Can Android talk to KeyMod and another Bluetooth device at the same time?
+
+**Often yes in practice**—many Android devices can keep **more than one Bluetooth connection** alive. Whether **your** phone can reliably use **KeyMod plus** a given **keyboard or controller** at once depends on **Android version, OEM Bluetooth stack, and the peripheral**. For KeyMod, what matters is that the **KeyMod session stays stable** and that any **extra** device is one the **app and OS** can expose for **mapping** into outgoing control—not a guarantee for every accessory on every phone.
+
+---
+
 ## Gamepad preset glossary (quick)
 
 - **D-pad** — preset type **DPAD** (left slot only); variants include cross, **split** (four separate hit targets), disc, pivot, floating, clicky (extra haptic).
@@ -110,5 +175,5 @@ For full detail see **Gamepad Mode → Preset vocabulary** in [USER_GUIDE.md](US
 
 ## See also
 
-- [USER_GUIDE.md](USER_GUIDE.md) — general use, connection, and strip overview  
+- [USER_GUIDE.md](USER_GUIDE.md) — general use, connection, CH9329 / HID overview, and strip overview  
 - [KEYBOARD_ALTERNATES.md](KEYBOARD_ALTERNATES.md) — how some alternate characters use the same Unicode-style entry path as long-press options  

@@ -49,6 +49,7 @@ import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadGestureLock;
+import com.openterface.keymod.gamepad.GamepadGestureLockSensitivity;
 import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
@@ -135,11 +136,17 @@ public class GamepadView extends View {
     private KeyboardHoldLockListener keyboardHoldLockListener;
     private final Map<Integer, HoldLockTracking> keyboardHoldLockByPointer = new HashMap<>();
     private final Map<String, LatchBadgeKind> gestureLatchBadgesByModuleId = new HashMap<>();
+    /** From prefs / preset; diagonal latch commits only after this dwell (see {@link #setGestureLockCommitSensitivity}). */
+    private int gestureLockMinPressMs;
+    /** Scales {@link GamepadGestureLock} diagonal min and cancel radii. */
+    private float gestureLockDiagonalRadiusScale = 1f;
 
     private static final class HoldLockTracking {
         @NonNull final String moduleId;
         final float downRawX;
         final float downRawY;
+        /** {@link MotionEvent#getEventTime()} sample when this pointer went down on the module. */
+        final long downEventTimeMs;
         float lastRawX;
         float lastRawY;
         final boolean diagonalMode;
@@ -150,11 +157,13 @@ public class GamepadView extends View {
                 @NonNull String moduleId,
                 float downRawX,
                 float downRawY,
+                long downEventTimeMs,
                 boolean diagonalMode,
                 @NonNull Runnable showPopupRunnable) {
             this.moduleId = moduleId;
             this.downRawX = downRawX;
             this.downRawY = downRawY;
+            this.downEventTimeMs = downEventTimeMs;
             this.lastRawX = downRawX;
             this.lastRawY = downRawY;
             this.diagonalMode = diagonalMode;
@@ -2398,7 +2407,7 @@ public class GamepadView extends View {
                 int legacyUpIdx = event.findPointerIndex(pointerId);
                 float legacyUpRawX = legacyUpIdx >= 0 ? event.getRawX(legacyUpIdx) : event.getRawX();
                 float legacyUpRawY = legacyUpIdx >= 0 ? event.getRawY(legacyUpIdx) : event.getRawY();
-                releasePointerComponent(pointerId, legacyUpRawX, legacyUpRawY);
+                releasePointerComponent(pointerId, legacyUpRawX, legacyUpRawY, event.getEventTime());
 
                 // For ACTION_UP (last finger), clear all remaining state
                 if (action == MotionEvent.ACTION_UP) {
@@ -2432,7 +2441,7 @@ public class GamepadView extends View {
                 int legacyIdx = event.findPointerIndex(pointerId);
                 float legacyRawX = legacyIdx >= 0 ? event.getRawX(legacyIdx) : event.getRawX();
                 float legacyRawY = legacyIdx >= 0 ? event.getRawY(legacyIdx) : event.getRawY();
-                releasePointerComponent(pointerId, legacyRawX, legacyRawY);
+                releasePointerComponent(pointerId, legacyRawX, legacyRawY, event.getEventTime());
                 return true;
             }
         }
@@ -2441,6 +2450,16 @@ public class GamepadView extends View {
 
     public void setKeyboardHoldLockListener(@Nullable KeyboardHoldLockListener listener) {
         this.keyboardHoldLockListener = listener;
+    }
+
+    /**
+     * Minimum pointer-down duration before diagonal hold/turbo can commit on lift, and scale on diagonal
+     * distance thresholds (see {@link GamepadGestureLockSensitivity}).
+     */
+    public void setGestureLockCommitSensitivity(int minPressMs, float diagonalRadiusScale) {
+        gestureLockMinPressMs = GamepadGestureLockSensitivity.clampMinPressMs(minPressMs);
+        gestureLockDiagonalRadiusScale =
+                GamepadGestureLockSensitivity.clampRadiusScale(diagonalRadiusScale);
     }
 
     /**
@@ -2504,6 +2523,7 @@ public class GamepadView extends View {
                         moduleId,
                         event.getRawX(pointerIndex),
                         event.getRawY(pointerIndex),
+                        event.getEventTime(),
                         diagonal,
                         r);
         keyboardHoldLockByPointer.put(pointerId, t);
@@ -2570,7 +2590,8 @@ public class GamepadView extends View {
         }
     }
 
-    private boolean endKeyboardHoldLockForPointerIfAny(int pointerId, float rawX, float rawY) {
+    private boolean endKeyboardHoldLockForPointerIfAny(
+            int pointerId, float rawX, float rawY, long pointerUpEventTimeMs) {
         HoldLockTracking t = keyboardHoldLockByPointer.remove(pointerId);
         if (t == null) {
             return false;
@@ -2582,12 +2603,19 @@ public class GamepadView extends View {
             float density = getResources().getDisplayMetrics().density;
             float dx = rawX - t.downRawX;
             float dy = rawY - t.downRawY;
-            String slot = GamepadGestureLock.classifyDiagonalSlot(dx, dy, density);
+            float rMinDp = GamepadGestureLock.DIAGONAL_R_MIN_DP * gestureLockDiagonalRadiusScale;
+            float rCancelDp = GamepadGestureLock.DIAGONAL_R_CANCEL_DP * gestureLockDiagonalRadiusScale;
+            String slot =
+                    GamepadGestureLock.classifyDiagonalSlot(dx, dy, density, rMinDp, rCancelDp);
             if (slot != null && !GamepadGestureLock.RESULT_CANCEL.equals(slot)) {
                 String action = GamepadGestureLock.resolvedActionForSlot(mod, slot);
                 if (mod != null
                         && !GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE.equalsIgnoreCase(action)
                         && keyboardHoldLockListener != null) {
+                    long dwell = pointerUpEventTimeMs - t.downEventTimeMs;
+                    if (dwell < gestureLockMinPressMs) {
+                        return false;
+                    }
                     GamepadLayoutPresetDocument.GestureLockSlot slotObj =
                             GamepadGestureLock.slotForKey(mod.gestureLock, slot);
                     Integer hk = slotObj != null ? slotObj.hidKey : null;
@@ -2598,6 +2626,11 @@ public class GamepadView extends View {
                 }
             }
         } else if (t.popup != null) {
+            if (pointerUpEventTimeMs - t.downEventTimeMs < gestureLockMinPressMs) {
+                t.popup.dismiss();
+                t.popup = null;
+                return false;
+            }
             t.popup.updatePointer(rawX, rawY);
             committed = t.popup.commitIfLockSelected();
             t.popup.dismiss();
@@ -2609,8 +2642,9 @@ public class GamepadView extends View {
         return committed;
     }
 
-    private void releasePointerComponent(int pointerId, float rawX, float rawY) {
-        boolean suppressButtonRelease = endKeyboardHoldLockForPointerIfAny(pointerId, rawX, rawY);
+    private void releasePointerComponent(int pointerId, float rawX, float rawY, long pointerUpEventTimeMs) {
+        boolean suppressButtonRelease =
+                endKeyboardHoldLockForPointerIfAny(pointerId, rawX, rawY, pointerUpEventTimeMs);
         String releasedComponent = pointerComponents.remove(pointerId);
         if (releasedComponent != null) {
             if (isDpadComponent(releasedComponent)) {
@@ -2954,7 +2988,7 @@ public class GamepadView extends View {
                 int dynUpIdx = event.findPointerIndex(pointerId);
                 float dynUpRawX = dynUpIdx >= 0 ? event.getRawX(dynUpIdx) : event.getRawX();
                 float dynUpRawY = dynUpIdx >= 0 ? event.getRawY(dynUpIdx) : event.getRawY();
-                releasePointerComponent(pointerId, dynUpRawX, dynUpRawY);
+                releasePointerComponent(pointerId, dynUpRawX, dynUpRawY, event.getEventTime());
                 if (action == MotionEvent.ACTION_UP) {
                     pointerComponents.clear();
                     dpadPressedSet.clear();
@@ -2994,7 +3028,7 @@ public class GamepadView extends View {
                 int dynPuIdx = event.findPointerIndex(pointerId);
                 float dynPuRawX = dynPuIdx >= 0 ? event.getRawX(dynPuIdx) : event.getRawX();
                 float dynPuRawY = dynPuIdx >= 0 ? event.getRawY(dynPuIdx) : event.getRawY();
-                releasePointerComponent(pointerId, dynPuRawX, dynPuRawY);
+                releasePointerComponent(pointerId, dynPuRawX, dynPuRawY, event.getEventTime());
                 invalidate();
                 return true;
             }

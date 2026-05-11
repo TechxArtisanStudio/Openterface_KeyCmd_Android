@@ -762,6 +762,16 @@ by TechxArtisan</string>
     <string name="gamepad_edit_add_module_cd">Add module</string>
     <string name="gamepad_edit_module_config_chip_cd">Module settings</string>
     <string name="gamepad_mapping_hints_toggle_cd">Show or hide key mapping text below controls (for example Esc). Names on the button cap are edited in each button’s configuration dialog.</string>
+    <string name="gamepad_gesture_sensitivity_btn_cd">Hold-lock and turbo gesture timing</string>
+    <string name="gamepad_gesture_sensitivity_dialog_title">Hold-lock / turbo gestures</string>
+    <string name="gamepad_gesture_sensitivity_min_press_label">Minimum press before swipe (ms)</string>
+    <string name="gamepad_gesture_sensitivity_radius_scale_label">Diagonal stroke strictness</string>
+    <string name="gamepad_gesture_sensitivity_preset_override_note">This preset sets its own values in JSON (layout.gestureLockMinPressMs, gestureLockDiagonalRadiusScale, turboPulsePeriodMs); sliders change the app default only.</string>
+    <string name="gamepad_gesture_sensitivity_turbo_period_label">Turbo step interval (ms)</string>
+    <string name="gamepad_gesture_sensitivity_turbo_period_hint">Time between each on/off half-step while turbo is latched. Lower values repeat faster (25–300 ms).</string>
+    <string name="gamepad_gesture_sensitivity_saved">Gesture defaults saved</string>
+    <string name="gamepad_module_config_gesture_sensitivity_hint">Hold-lock and turbo gestures use a minimum press time, diagonal stroke length, and turbo step speed. Defaults apply to this entire preset; optional overrides in preset JSON: layout.gestureLockMinPressMs, layout.gestureLockDiagonalRadiusScale, layout.turboPulsePeriodMs.</string>
+    <string name="gamepad_module_config_gesture_sensitivity_open">Adjust gesture timing…</string>
     <string name="gamepad_cycle_next_preset_cd">Next layout</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">Reset layout to factory default</string>
     <string name="gamepad_edit_session_title">Move modules</string>
@@ -849,10 +859,6 @@ by TechxArtisan</string>
     <!-- Left-thumb slot only: adds cross D-pad by default; open Configure control for stick / split D-pad / pointer modes. -->
     <string name="gamepad_add_dpad_cross_left">D-Pad / Stick</string>
     <string name="gamepad_component_scroll_strip">Scroll strip</string>
-    <string name="gamepad_scroll_strip_size_title">Scroll strip size</string>
-    <string name="gamepad_menu_scroll_strip_resize">Scroll strip size…</string>
-    <string name="gamepad_menu_scroll_strip_behavior">Wheel sensitivity &amp; direction…</string>
-    <string name="gamepad_menu_scroll_strip_color">Scroll strip color…</string>
     <string name="gamepad_scroll_strip_sensitivity_pct">Wheel sensitivity (%)</string>
     <string name="gamepad_scroll_strip_invert_y">Invert vertical wheel</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>

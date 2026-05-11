@@ -31,6 +31,17 @@ public class GamepadGestureLockTest {
         assertNull(GamepadGestureLock.classifyDiagonalSlot(2f, -3f, d));
     }
 
+    @Test
+    public void classifyScaledMinRadiusDoublesEffectiveThreshold() {
+        float d = 2f;
+        float rMin = GamepadGestureLock.DIAGONAL_R_MIN_DP * 2f;
+        float rCancel = GamepadGestureLock.DIAGONAL_R_CANCEL_DP * 2f;
+        assertNull(GamepadGestureLock.classifyDiagonalSlot(-11f, -16f, d, rMin, rCancel));
+        assertEquals(
+                GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_UP_LEFT,
+                GamepadGestureLock.classifyDiagonalSlot(-22f, -32f, d, rMin, rCancel));
+    }
+
     /**
      * With rMin = 9dp, at density 2 the threshold is 18px. A flick just above that should classify
      * (would have been null when rMin was 14dp → 28px).

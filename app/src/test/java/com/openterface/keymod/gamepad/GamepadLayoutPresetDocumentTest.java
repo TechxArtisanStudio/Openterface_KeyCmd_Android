@@ -99,6 +99,42 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
+    public void validateRejectsGestureLockMinPressMsOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.gestureLockMinPressMs = 1001;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("gestureLockMinPressMs"));
+        }
+    }
+
+    @Test
+    public void validateRejectsGestureLockDiagonalRadiusScaleOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.gestureLockDiagonalRadiusScale = 3.01f;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("gestureLockDiagonalRadiusScale"));
+        }
+    }
+
+    @Test
+    public void validateRejectsTurboPulsePeriodMsOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.layout.turboPulsePeriodMs = 24;
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("turboPulsePeriodMs"));
+        }
+    }
+
+    @Test
     public void validateAcceptsScrollStripModule() {
         GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
         GamepadLayoutPresetDocument.GamepadModule strip = new GamepadLayoutPresetDocument.GamepadModule();

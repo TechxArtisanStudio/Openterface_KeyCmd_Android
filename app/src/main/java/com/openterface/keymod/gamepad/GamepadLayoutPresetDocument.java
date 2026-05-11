@@ -117,6 +117,24 @@ public class GamepadLayoutPresetDocument {
         /** When true, device tilt can drive relative pointer movement (see gamepad screen + USER_GUIDE). */
         @Nullable public Boolean gyroEnabled;
         /**
+         * Optional override (ms): finger must stay down at least this long before a diagonal hold/turbo
+         * gesture can commit on lift. Range {@code [0, 1000]} when set. {@code null} = use app default from
+         * preferences (see {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#GESTURE_LOCK_MIN_PRESS_MS}).
+         */
+        @Nullable public Integer gestureLockMinPressMs;
+        /**
+         * Optional override: multiplier on diagonal gesture min/cancel radii (larger = need a longer stroke).
+         * Range {@code [0.5, 3.0]} when set. {@code null} = use app default from preferences
+         * ({@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#GESTURE_LOCK_DIAGONAL_RADIUS_SCALE}).
+         */
+        @Nullable public Float gestureLockDiagonalRadiusScale;
+        /**
+         * Optional override (ms): delay between turbo on/off half-steps when latched. Range {@code [25, 300]} when set.
+         * {@code null} = use app default from preferences
+         * ({@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#TURBO_PULSE_PERIOD_MS}).
+         */
+        @Nullable public Integer turboPulsePeriodMs;
+        /**
          * Custom canvas fill when no {@link #backgroundImageFile} (packed ARGB). Null = use built-in default gradient
          * unless only {@link #backgroundPattern} is set (pattern over default gradient).
          */
@@ -218,9 +236,10 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Boolean mappedKeyLabelVisible;
         /**
-         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, swipe hold-lock gesture is enabled
-         * (legacy: vertical up/down only when {@link #gestureLock} is absent or has no non-{@code none}
-         * actions). {@code null} or {@code false} = off unless {@link #gestureLock} supplies actions.
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, hold/turbo gestures are enabled.
+         * With {@link #gestureLock} absent or all {@code none}, defaults apply on pointer-up diagonals:
+         * up-right → {@code hold_lock}, up-left → {@code turbo} (see {@link GamepadGestureLock}).
+         * {@code null} or {@code false} = off unless {@link #gestureLock} supplies a non-{@code none} action.
          */
         @Nullable public Boolean keyboardHoldLock;
         /**
@@ -332,6 +351,30 @@ public class GamepadLayoutPresetDocument {
             float t = d.layout.touchpadMouseButtonScale;
             if (t < 0.5f || t > 2.0f) {
                 throw new IllegalArgumentException("layout.touchpadMouseButtonScale must be in [0.5, 2]");
+            }
+        }
+        if (d.layout.gestureLockMinPressMs != null) {
+            int g = d.layout.gestureLockMinPressMs;
+            if (g < 0 || g > 1000) {
+                throw new IllegalArgumentException("layout.gestureLockMinPressMs must be in [0, 1000]");
+            }
+        }
+        if (d.layout.gestureLockDiagonalRadiusScale != null) {
+            float s = d.layout.gestureLockDiagonalRadiusScale;
+            if (s < 0.5f || s > 3.0f || Float.isNaN(s) || Float.isInfinite(s)) {
+                throw new IllegalArgumentException("layout.gestureLockDiagonalRadiusScale must be in [0.5, 3]");
+            }
+        }
+        if (d.layout.turboPulsePeriodMs != null) {
+            int t = d.layout.turboPulsePeriodMs;
+            if (t < GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                    || t > GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX) {
+                throw new IllegalArgumentException(
+                        "layout.turboPulsePeriodMs must be in ["
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                                + ", "
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX
+                                + "]");
             }
         }
         validateBackgroundEmbed(d.layout);
