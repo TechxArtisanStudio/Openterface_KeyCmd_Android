@@ -74,6 +74,7 @@ import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
+import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
@@ -204,8 +205,6 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int DISPLAY_MODE_NAME = TopShortcutDisplayModePrefs.MODE_NAME;
     private static final int DISPLAY_MODE_ICON = TopShortcutDisplayModePrefs.MODE_ICON;
     private static final int DISPLAY_MODE_CHORD = TopShortcutDisplayModePrefs.MODE_CHORD;
-    /** When false: hide alternate hints on letter keys and use hold-to-repeat instead of long-press alternates. */
-    private static final String KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED = "keyboard_alternates_hints_enabled";
     private static final int MOD_CTRL = 1;
     private static final int MOD_SHIFT = 2;
     private static final int MOD_ALT = 4;
@@ -653,9 +652,7 @@ public class CustomKeyboardView extends LinearLayout {
         systemImeCaptureMode = context
                 .getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean(KEY_SYSTEM_IME_CAPTURE, false);
-        keyboardAlternatesHintsEnabled = context
-                .getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED, true);
+        keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(context);
 
         // Load keyboard layout based on orientation (matching iOS behavior)
         reloadForCurrentOrientation();
@@ -1285,11 +1282,19 @@ public class CustomKeyboardView extends LinearLayout {
         keyboardAlternatesHintsEnabled = !keyboardAlternatesHintsEnabled;
         Context ctx = getContext();
         if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED, keyboardAlternatesHintsEnabled)
-                    .apply();
+            KeyboardAlternatesHintsPrefs.write(ctx, keyboardAlternatesHintsEnabled);
         }
+        syncKeyboardAlternatesHintsToPartner();
+        updateKeyboard();
+    }
+
+    /** Reload alternate-hints pref from disk and rebuild (e.g. after Keyboard and Mouse Pro setup). */
+    public void reloadKeyboardAlternatesHintsFromPrefs() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(ctx);
         syncKeyboardAlternatesHintsToPartner();
         updateKeyboard();
     }

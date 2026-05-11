@@ -191,6 +191,19 @@ public class CompositeFragment extends Fragment {
         }
     }
 
+    /** Reload alternate-hints preference and rebuild keyboards (Keyboard and Mouse Pro setup). */
+    public void refreshKeyboardAlternatesHintsFromPrefs() {
+        if (keyboardView != null) {
+            keyboardView.reloadKeyboardAlternatesHintsFromPrefs();
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.reloadKeyboardAlternatesHintsFromPrefs();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.reloadKeyboardAlternatesHintsFromPrefs();
+        }
+    }
+
     public static CompositeFragment newInstance(UsbSerialPort port) {
         CompositeFragment fragment = new CompositeFragment();
         fragment.port = port;

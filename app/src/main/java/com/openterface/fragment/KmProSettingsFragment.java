@@ -21,19 +21,21 @@ import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.ProfileUiStrings;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
+import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Keyboard and Mouse Pro setup: shortcut strip display mode (aligned with row-1 DISPLAY key)
- * and active Shortcut Hub profile picker.
+ * Keyboard and Mouse Pro setup: shortcut strip display mode (aligned with row-1 DISPLAY key),
+ * alternate hints on/off, and active Shortcut Hub profile picker.
  */
 public class KmProSettingsFragment extends Fragment {
 
     private ImageButton closeButton;
     private MaterialButtonToggleGroup displayModeToggle;
+    private MaterialButtonToggleGroup alternateHintsToggle;
     private TextInputLayout profileInputLayout;
     private MaterialAutoCompleteTextView profileDropdown;
     private OnBackPressedCallback rootBackCallback;
@@ -43,6 +45,7 @@ public class KmProSettingsFragment extends Fragment {
     private ArrayAdapter<String> profileAdapter;
 
     private boolean suppressDisplayToggleCallback;
+    private boolean suppressAlternateHintsToggleCallback;
 
     @Nullable
     @Override
@@ -52,6 +55,7 @@ public class KmProSettingsFragment extends Fragment {
         profileManager = new ShortcutProfileManager(requireContext());
         closeButton = view.findViewById(R.id.km_pro_settings_close_button);
         displayModeToggle = view.findViewById(R.id.km_pro_display_mode_toggle);
+        alternateHintsToggle = view.findViewById(R.id.km_pro_alternate_hints_toggle);
         profileInputLayout = view.findViewById(R.id.km_pro_profile_input_layout);
         profileDropdown = view.findViewById(R.id.km_pro_profile_dropdown);
 
@@ -68,6 +72,15 @@ public class KmProSettingsFragment extends Fragment {
             int mode = displayModeButtonIdToMode(checkedId);
             TopShortcutDisplayModePrefs.writeMode(requireContext(), mode);
             notifyKeyboardStripRefresh();
+        });
+
+        alternateHintsToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked || suppressAlternateHintsToggleCallback) {
+                return;
+            }
+            boolean enabled = alternateHintsButtonIdToEnabled(checkedId);
+            KeyboardAlternatesHintsPrefs.write(requireContext(), enabled);
+            notifyKeyboardAlternatesHintsRefresh();
         });
 
         profileDropdown.setOnItemClickListener((AdapterView<?> parent, View v, int position, long id) -> {
@@ -102,6 +115,7 @@ public class KmProSettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         syncDisplayModeToggleFromPrefs();
+        syncAlternateHintsToggleFromPrefs();
         bindProfileDropdown();
     }
 
@@ -121,6 +135,25 @@ public class KmProSettingsFragment extends Fragment {
         suppressDisplayToggleCallback = true;
         displayModeToggle.check(buttonId);
         suppressDisplayToggleCallback = false;
+    }
+
+    private void syncAlternateHintsToggleFromPrefs() {
+        if (alternateHintsToggle == null) {
+            return;
+        }
+        boolean enabled = KeyboardAlternatesHintsPrefs.read(requireContext());
+        int buttonId = alternateHintsEnabledToButtonId(enabled);
+        suppressAlternateHintsToggleCallback = true;
+        alternateHintsToggle.check(buttonId);
+        suppressAlternateHintsToggleCallback = false;
+    }
+
+    private static boolean alternateHintsButtonIdToEnabled(int checkedButtonId) {
+        return checkedButtonId == R.id.km_pro_alternate_hints_on;
+    }
+
+    private static int alternateHintsEnabledToButtonId(boolean enabled) {
+        return enabled ? R.id.km_pro_alternate_hints_on : R.id.km_pro_alternate_hints_off;
     }
 
     private static int displayModeButtonIdToMode(int checkedButtonId) {
@@ -175,6 +208,13 @@ public class KmProSettingsFragment extends Fragment {
         Activity a = getActivity();
         if (a instanceof MainActivity) {
             ((MainActivity) a).refreshOpenKeyboardShortcutStripFromPrefs();
+        }
+    }
+
+    private void notifyKeyboardAlternatesHintsRefresh() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshKeyboardAlternatesHintsFromPrefs();
         }
     }
 }

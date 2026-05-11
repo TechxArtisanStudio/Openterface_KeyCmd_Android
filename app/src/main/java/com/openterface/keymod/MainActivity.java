@@ -664,7 +664,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
-    /** Opens full-screen KM Pro settings (shortcut strip display and active Shortcut Hub profile). */
+    /** Opens full-screen KM Pro settings (strip display, alternate hints, active Shortcut Hub profile). */
     public void showKmProSettingsOverlay() {
         if (kmProSettingsOverlay == null) {
             return;
@@ -1632,6 +1632,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (f instanceof CompositeFragment) {
             ((CompositeFragment) f).refreshKeyboardShortcutStripFromExternalHub();
+        }
+    }
+
+    /** Reload alternate-hints pref into the composite keyboard after Pro setup or equivalent. */
+    public void refreshKeyboardAlternatesHintsFromPrefs() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshKeyboardAlternatesHintsFromPrefs();
         }
     }
 
