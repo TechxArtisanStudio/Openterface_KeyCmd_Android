@@ -253,7 +253,7 @@ public class CustomKeyboardView extends LinearLayout {
     private int topShortcutDisplayMode = DISPLAY_MODE_ICON;
     /**
      * When false, lower-keyboard keys that normally support long-press alternates use hold-to-repeat
-     * (gaming) and keycap alternate hints are hidden. Toggled via Fn + slash (0x38).
+     * (gaming) and keycap alternate hints are hidden. Toggled via Fn + comma (0x36) on KM Pro no-GUI layout.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
     private Runnable gamingRepeatRunnable;
@@ -2322,7 +2322,7 @@ public class CustomKeyboardView extends LinearLayout {
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, openAlternates);
                         longPressHandler.postDelayed(openAlternates, ALT_LONG_PRESS_TIMEOUT_MS);
                     }
-                    if (isFnSlashAlternatesToggleKey(key)) {
+                    if (isFnAlternateHintsToggleKey(key)) {
                         v.setPressed(true);
                         return true;
                     }
@@ -2341,7 +2341,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (gamingTouch && gamingHoldActive[0]) {
                         return true;
                     }
-                    if (isFnSlashAlternatesToggleKey(key)) {
+                    if (isFnAlternateHintsToggleKey(key)) {
                         return true;
                     }
                     return false;
@@ -2414,9 +2414,9 @@ public class CustomKeyboardView extends LinearLayout {
         return x >= 0 && x <= view.getWidth() && y >= 0 && y <= view.getHeight();
     }
 
-    /** Fn + slash (0x38): alternates/hints toggle — must own the touch stream (no alternates popup). */
-    private boolean isFnSlashAlternatesToggleKey(Key key) {
-        return isFnLocked && key != null && key.code == 0x38;
+    /** Fn + comma (0x36): alternates/hints toggle — must own the touch stream (no alternates popup). */
+    private boolean isFnAlternateHintsToggleKey(Key key) {
+        return isFnLocked && key != null && key.code == 0x36;
     }
 
     /**
@@ -2433,8 +2433,8 @@ public class CustomKeyboardView extends LinearLayout {
         if (extraNumpadFnLocked && resolveExtraNumpadFnMapping(key) != null) {
             return false;
         }
-        // Fn + slash (0x38): reserved for alternates/hints toggle — no long-press alternates on this cell.
-        if (isFnLocked && key.code == 0x38) {
+        // Fn + comma (0x36): reserved for alternates/hints toggle — no long-press alternates on this cell.
+        if (isFnLocked && key.code == 0x36) {
             return false;
         }
         if (key.code >= 0xE0 && key.code <= 0xE7) {
@@ -2472,8 +2472,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private String getFnDisplayLabel(Key key) {
-        // Fn + slash: long-press alternates toggle uses icons (see getFnDisplayIconResId).
-        if (isFnLocked && key != null && key.code == 0x38) {
+        // Fn + comma: long-press alternates toggle uses icons (see getFnDisplayIconResId).
+        if (isFnLocked && key != null && key.code == 0x36) {
             return null;
         }
         FnMapping mapping = resolveFnMapping(key);
@@ -2481,7 +2481,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private int getFnDisplayIconResId(Key key) {
-        if (isFnLocked && key != null && key.code == 0x38) {
+        if (isFnLocked && key != null && key.code == 0x36) {
             return keyboardAlternatesHintsEnabled
                     ? R.drawable.ic_keyboard_alternate_on
                     : R.drawable.ic_keyboard_alternate_off;
@@ -2497,7 +2497,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code >= 0xE0 && key.code <= 0xE7) {
             return null;
         }
-        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
+        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B || key.code == 0x36) {
             return null;
         }
 
@@ -2632,7 +2632,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Ensures {@code /} always offers backslash and pipe on Up / Down when tokens fail to parse.
+     * Ensures {@code /} offers backslash on Up when missing or wrongly set to pipe; adds pipe on
+     * Down only for the classic Up=\ pairing (not when Up is already another glyph such as €).
      */
     private void normalizeSlashKeyAlternates(Key key, AlternateOption[] slots) {
         if (key == null || TextUtils.isEmpty(key.label) || key.label.length() != 1 || key.label.charAt(0) != '/') {
@@ -2646,7 +2647,12 @@ public class CustomKeyboardView extends LinearLayout {
                 slots[AlternatePopupGeometry.SLOT_UP] = bs;
             }
         }
-        if (slots[AlternatePopupGeometry.SLOT_DOWN] == null && pipe != null) {
+        AlternateOption upAfter = slots[AlternatePopupGeometry.SLOT_UP];
+        if (slots[AlternatePopupGeometry.SLOT_DOWN] == null
+                && pipe != null
+                && slots[AlternatePopupGeometry.SLOT_UP_LEFT] == null
+                && upAfter != null
+                && "\\".equals(upAfter.display)) {
             slots[AlternatePopupGeometry.SLOT_DOWN] = pipe;
         }
     }
@@ -6838,8 +6844,8 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
 
-        // Fn + slash: toggles long-press alternates/hints (must run before generic shortcut send path).
-        if (isFnLocked && key.code == 0x38) {
+        // Fn + comma: toggles long-press alternates/hints (must run before generic shortcut send path).
+        if (isFnLocked && key.code == 0x36) {
             toggleKeyboardAlternatesHintsFromUser();
             return;
         }
