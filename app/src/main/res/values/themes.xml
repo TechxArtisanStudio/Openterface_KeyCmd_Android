@@ -151,6 +151,9 @@
     <!-- Layouts picker: floating dialog (no BottomSheet CoordinatorLayout) so the preset list scrolls reliably. -->
     <style name="Theme.KeyMod.GamepadPresetPickerDialog" parent="Theme.Material3.DayNight.Dialog">
         <item name="android:windowNoTitle">true</item>
+        <!-- Let our explicit window width win; avoid AppCompat-style min-width forcing near full-bleed on some devices. -->
+        <item name="android:windowMinWidthMajor">0%</item>
+        <item name="android:windowMinWidthMinor">0%</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowIsFloating">true</item>

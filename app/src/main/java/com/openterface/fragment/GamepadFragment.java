@@ -62,6 +62,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.app.Activity;
 import android.app.Dialog;
 
 import androidx.appcompat.app.AppCompatDialog;
@@ -2150,6 +2151,7 @@ public class GamepadFragment extends Fragment {
             sheet.setLayoutParams(sheetLp);
         }
         Window dw = dialog.getWindow();
+        int presetsPickerInnerWidthPx = computeGamepadPresetsPickerInnerWidthPx(dlgCtx, getActivity());
         if (dw != null) {
             dw.setWindowAnimations(0);
             dw.setBackgroundDrawableResource(android.R.color.transparent);
@@ -2157,7 +2159,7 @@ public class GamepadFragment extends Fragment {
                 dw.setEnterTransition(null);
                 dw.setExitTransition(null);
             }
-            applyGamepadPresetsPickerWindowLayout(dw, dlgCtx);
+            applyGamepadPresetsPickerWindowLayout(dw, presetsPickerInnerWidthPx);
             dw.setFlags(
                     WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
                     WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
@@ -2168,10 +2170,14 @@ public class GamepadFragment extends Fragment {
         ViewCompat.setOnApplyWindowInsetsListener(sheet, (v, windowInsets) -> {
             Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             Insets cutout = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            // One-sided cutouts (common on phones in landscape) report inset only on e.g. left; applying
+            // that literally makes the sheet look flush on the right. Mirror the larger horizontal
+            // cutout inset to both sides for this centered floating panel.
+            int cutoutHorizontal = Math.max(cutout.left, cutout.right);
             v.setPadding(
-                    sheetPad + Math.max(bars.left, cutout.left),
+                    sheetPad + Math.max(bars.left, cutoutHorizontal),
                     sheetPad + Math.max(bars.top, cutout.top),
-                    sheetPad + Math.max(bars.right, cutout.right),
+                    sheetPad + Math.max(bars.right, cutoutHorizontal),
                     sheetPad + Math.max(bars.bottom, cutout.bottom));
             return windowInsets;
         });
@@ -2190,7 +2196,8 @@ public class GamepadFragment extends Fragment {
 
         DisplayMetrics dm = dlgCtx.getResources().getDisplayMetrics();
         float density = dm.density;
-        int screenWdp = (int) (dm.widthPixels / Math.max(1f, density));
+        int spanBasisPx = presetsPickerInnerWidthPx > 0 ? presetsPickerInnerWidthPx : dm.widthPixels;
+        int screenWdp = (int) (spanBasisPx / Math.max(1f, density));
         int span = Math.max(2, Math.min(4, Math.round(screenWdp / 190f)));
         recycler.setLayoutManager(new GridLayoutManager(dlgCtx, span));
 
@@ -2299,6 +2306,15 @@ public class GamepadFragment extends Fragment {
         }
 
         dialog.show();
+        if (dw != null) {
+            View decor = dw.getDecorView();
+            decor.post(() -> {
+                if (!dialog.isShowing()) {
+                    return;
+                }
+                dw.setLayout(presetsPickerInnerWidthPx, ViewGroup.LayoutParams.MATCH_PARENT);
+            });
+        }
         recycler.post(() -> {
             if (recycler.isAttachedToWindow()) {
                 recycler.requestFocus();
@@ -7774,19 +7790,37 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Positions the Layouts picker: top-centered, full viewport height; sheet uses horizontal margin only.
+     * Width for the Layouts picker content: host window (when available) minus horizontal margin, capped by
+     * {@link DisplayMetrics#widthPixels} so the dialog does not exceed the display when metrics disagree.
      */
-    private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, @NonNull Context ctx) {
+    private static int computeGamepadPresetsPickerInnerWidthPx(
+            @NonNull Context ctx, @Nullable Activity hostActivity) {
+        int margin = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_dialog_horizontal_margin);
+        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        int displayW = Math.max(1, dm.widthPixels);
+        int basis = displayW;
+        if (hostActivity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            int hostW = Math.max(1, hostActivity.getWindowManager().getCurrentWindowMetrics().getBounds().width());
+            basis = Math.min(hostW, displayW);
+        }
+        int inner = basis - 2 * margin;
+        if (inner <= 0) {
+            return WindowManager.LayoutParams.MATCH_PARENT;
+        }
+        return inner;
+    }
+
+    /**
+     * Positions the Layouts picker: top-centered, full viewport height; width is {@code innerWidthPx}
+     * ({@link WindowManager.LayoutParams#MATCH_PARENT} if caller could not compute a positive inner width).
+     */
+    private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, int innerWidthPx) {
         if (window == null) {
             return;
         }
         WindowManager.LayoutParams lp = window.getAttributes();
         lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
-        int screenW = dm.widthPixels;
-        int margin = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_dialog_horizontal_margin);
-        int inner = screenW - 2 * margin;
-        lp.width = inner > 0 ? inner : WindowManager.LayoutParams.MATCH_PARENT;
+        lp.width = innerWidthPx;
         lp.height = WindowManager.LayoutParams.MATCH_PARENT;
         window.setAttributes(lp);
         WindowCompat.setDecorFitsSystemWindows(window, true);
