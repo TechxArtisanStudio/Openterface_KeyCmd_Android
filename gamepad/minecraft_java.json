@@ -16,16 +16,16 @@
   },
   "meta": {
     "creator": "Openterface",
-    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1=hide UI, F2=screenshot, F3=debug overlay, F5=cycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, scroll strip (mouse wheel) for hotbar, Look+L/R. Gyro off.",
+    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1\u003dhide UI, F2\u003dscreenshot, F3\u003ddebug overlay, F5\u003dcycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, scroll strip (mouse wheel) for hotbar, Look+L/R. Gyro off.",
     "displayName": "Minecraft Java",
-    "exportedAt": "2026-05-10T23:45:00Z",
+    "exportedAt": "2026-05-11T11:16:43Z",
     "id": "preset_pack_minecraft_java",
     "sourceAppVersion": "0.17"
   },
   "modules": [
     {
-      "anchorX": 0.12,
-      "anchorY": 0.9,
+      "anchorX": 0.116479404,
+      "anchorY": 0.7391585,
       "id": "stick_left",
       "moduleAccentArgb": -13154481,
       "scale": 1.13,
@@ -37,8 +37,8 @@
       "zIndex": 0
     },
     {
-      "anchorX": 0.65,
-      "anchorY": 0.48,
+      "anchorX": 0.7483146,
+      "anchorY": 0.38415852,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Run",
       "hidKey": 224,
@@ -51,8 +51,8 @@
       "zIndex": 1
     },
     {
-      "anchorX": 0.26,
-      "anchorY": 0.82,
+      "anchorX": 0.16217229,
+      "anchorY": 0.43499187,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Sneak",
       "hidKey": 225,
@@ -66,8 +66,8 @@
       "zIndex": 2
     },
     {
-      "anchorX": 0.82,
-      "anchorY": 0.2,
+      "anchorX": 0.5,
+      "anchorY": 0.38689536,
       "buttonCornerRadiusNorm": 0.57,
       "buttonHeightRatio": 0.87,
       "buttonWidthRatio": 1.47,
@@ -83,8 +83,8 @@
       "zIndex": 3
     },
     {
-      "anchorX": 0.91,
-      "anchorY": 0.22,
+      "anchorX": 0.92826325,
+      "anchorY": 0.49749187,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Jump",
       "gestureLock": {
@@ -111,20 +111,20 @@
       "zIndex": 4
     },
     {
-      "anchorX": 0.8,
-      "anchorY": 0.65,
+      "anchorX": 0.84981275,
+      "anchorY": 0.7878239,
       "displayLabel": "Look",
-      "heightNorm": 0.378,
+      "heightNorm": 0.38,
       "id": "touchpad_1",
       "moduleAccentArgb": -13154481,
       "scale": 0.71,
       "type": "TOUCHPAD",
-      "widthNorm": 0.178,
+      "widthNorm": 0.27,
       "zIndex": 5
     },
     {
-      "anchorX": 0.66,
-      "anchorY": 0.79,
+      "anchorX": 0.6989945,
+      "anchorY": 0.85499185,
       "displayLabel": "L",
       "gestureLock": {
         "downLeft": {
@@ -148,8 +148,8 @@
       "zIndex": 6
     },
     {
-      "anchorX": 0.9,
-      "anchorY": 0.5,
+      "anchorX": 0.7340824,
+      "anchorY": 0.62394613,
       "displayLabel": "R",
       "gestureLock": {
         "downLeft": {
@@ -173,20 +173,20 @@
       "zIndex": 8
     },
     {
-      "anchorX": 0.52,
-      "anchorY": 0.22,
+      "anchorX": 0.644,
+      "anchorY": 0.21825,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Tab",
       "hidKey": 43,
       "id": "button_select",
       "modifierMask": 0,
-      "scale": 0.73,
+      "scale": 0.72,
       "type": "BUTTON",
       "zIndex": 9
     },
     {
-      "anchorX": 0.4,
-      "anchorY": 0.1,
+      "anchorX": 0.356,
+      "anchorY": 0.21825,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "UI",
       "displayLabelColorArgb": -1,
@@ -199,8 +199,8 @@
       "zIndex": 14
     },
     {
-      "anchorX": 0.5,
-      "anchorY": 0.1,
+      "anchorX": 0.428,
+      "anchorY": 0.21825,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Cap",
       "displayLabelColorArgb": -1,
@@ -213,8 +213,8 @@
       "zIndex": 14
     },
     {
-      "anchorX": 0.6,
-      "anchorY": 0.1,
+      "anchorX": 0.5,
+      "anchorY": 0.21825,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Dbg",
       "displayLabelColorArgb": -1,
@@ -227,8 +227,8 @@
       "zIndex": 14
     },
     {
-      "anchorX": 0.7,
-      "anchorY": 0.1,
+      "anchorX": 0.572,
+      "anchorY": 0.21825,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "3rd",
       "displayLabelColorArgb": -1,
@@ -241,8 +241,8 @@
       "zIndex": 14
     },
     {
-      "anchorX": 0.06,
-      "anchorY": 0.14,
+      "anchorX": 0.050561797,
+      "anchorY": 0.20665853,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Esc",
       "hidKey": 41,
@@ -253,8 +253,8 @@
       "zIndex": 10
     },
     {
-      "anchorX": 0.18,
-      "anchorY": 0.74,
+      "anchorX": 0.054681648,
+      "anchorY": 0.42499188,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Jump",
       "hidKey": 44,
@@ -267,8 +267,8 @@
       "zIndex": 20
     },
     {
-      "anchorX": 0.68,
-      "anchorY": 0.2,
+      "anchorX": 0.92771536,
+      "anchorY": 0.21165852,
       "buttonCornerRadiusNorm": 1.0,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -282,8 +282,8 @@
       "zIndex": 21
     },
     {
-      "anchorX": 0.07,
-      "anchorY": 0.2,
+      "anchorX": 0.14719102,
+      "anchorY": 0.16249186,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -298,8 +298,8 @@
       "zIndex": 22
     },
     {
-      "anchorX": 0.72,
-      "anchorY": 0.3,
+      "anchorX": 0.8389513,
+      "anchorY": 0.28165853,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -312,8 +312,8 @@
       "zIndex": 23
     },
     {
-      "anchorX": 0.11,
-      "anchorY": 0.24,
+      "anchorX": 0.21348314,
+      "anchorY": 0.20749186,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -328,8 +328,8 @@
       "zIndex": 24
     },
     {
-      "anchorX": 0.15,
-      "anchorY": 0.32,
+      "anchorX": 0.25955057,
+      "anchorY": 0.29938966,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -344,8 +344,8 @@
       "zIndex": 25
     },
     {
-      "anchorX": 0.19,
-      "anchorY": 0.42,
+      "anchorX": 0.29850188,
+      "anchorY": 0.3973527,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -360,8 +360,8 @@
       "zIndex": 26
     },
     {
-      "anchorX": 0.23,
-      "anchorY": 0.52,
+      "anchorX": 0.34569287,
+      "anchorY": 0.49165854,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -376,8 +376,8 @@
       "zIndex": 27
     },
     {
-      "anchorX": 0.27,
-      "anchorY": 0.62,
+      "anchorX": 0.36610487,
+      "anchorY": 0.5962419,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -392,8 +392,8 @@
       "zIndex": 28
     },
     {
-      "anchorX": 0.3,
-      "anchorY": 0.71,
+      "anchorX": 0.37677902,
+      "anchorY": 0.6979085,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -408,8 +408,8 @@
       "zIndex": 29
     },
     {
-      "anchorX": 0.32,
-      "anchorY": 0.79,
+      "anchorX": 0.36835206,
+      "anchorY": 0.80499184,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -424,8 +424,8 @@
       "zIndex": 30
     },
     {
-      "anchorX": 0.4,
-      "anchorY": 0.7,
+      "anchorX": 0.25205994,
+      "anchorY": 0.8479191,
       "displayLabel": "L",
       "gestureLock": {
         "downLeft": {
@@ -449,8 +449,8 @@
       "zIndex": 31
     },
     {
-      "anchorX": 0.08,
-      "anchorY": 0.58,
+      "anchorX": 0.2411985,
+      "anchorY": 0.59499186,
       "displayLabel": "R",
       "gestureLock": {
         "downLeft": {
@@ -474,8 +474,8 @@
       "zIndex": 32
     },
     {
-      "anchorX": 0.89,
-      "anchorY": 0.36,
+      "anchorX": 0.8246661,
+      "anchorY": 0.5209424,
       "buttonCornerRadiusNorm": 1.0,
       "displayLabel": "Sneak",
       "gestureLock": {
@@ -503,8 +503,8 @@
       "zIndex": 33
     },
     {
-      "anchorX": 0.34,
-      "anchorY": 0.86,
+      "anchorX": 0.35468164,
+      "anchorY": 0.9258252,
       "buttonCornerRadiusNorm": 0.88,
       "buttonHeightRatio": 0.49,
       "buttonWidthRatio": 0.8,
@@ -519,8 +519,8 @@
       "zIndex": 34
     },
     {
-      "anchorX": 0.04,
-      "anchorY": 0.48,
+      "anchorX": 0.5,
+      "anchorY": 0.7108252,
       "displayLabel": "Wheel",
       "heightNorm": 0.42,
       "id": "scroll_strip_1",
