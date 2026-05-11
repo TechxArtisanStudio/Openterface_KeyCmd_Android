@@ -29,13 +29,17 @@
     <string name="km_basic_cd_application_key">Application key</string>
     <string name="km_basic_key_sup">Sup</string>
     <string name="km_basic_setup_button_cd">Basic mode: keyboard and touchpad options</string>
-    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: strip layouts and general options</string>
+    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: shortcut strip display and active Shortcut Hub profile</string>
     <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
     <string name="km_pro_settings_close">Back</string>
-    <string name="km_pro_settings_tab_strip_layouts">Strip layouts</string>
-    <string name="km_pro_settings_tab_general">General</string>
-    <string name="km_pro_settings_create_strip_layout">Create layout</string>
-    <string name="km_pro_settings_import_strip_layout">Import layout</string>
+    <string name="km_pro_settings_section_strip_display">Shortcut strip display</string>
+    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1 on the shortcut strip: names, icons, or combo text.</string>
+    <string name="km_pro_settings_display_mode_name">Names</string>
+    <string name="km_pro_settings_display_mode_icon">Icons</string>
+    <string name="km_pro_settings_display_mode_chord">Combo</string>
+    <string name="km_pro_settings_section_profile">Shortcut Hub profile</string>
+    <string name="km_pro_settings_section_profile_summary">Catalog and favorites for row 1 use the selected profile. Manage profiles in Shortcut Hub.</string>
+    <string name="km_pro_settings_profile_field_hint">Active profile</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>
@@ -590,7 +594,7 @@ by TechxArtisan</string>
     <string name="shortcut_hub_strip_enter_name">Strip profile name</string>
     <string name="shortcut_hub_strip_paste_json_hint">Paste Rows 2–3 strip profile JSON</string>
     <string name="strip_edition_dialog_title">Strip layout</string>
-    <string name="strip_edition_dialog_message">Edit Rows 2–3 strip layouts and slot overrides in Keyboard &amp; Mouse Pro setup (tap the gear between target OS and connection).\n\nSlot overrides on active strip: %1$d</string>
+    <string name="strip_edition_dialog_message">Edit Rows 2–3 strip layouts and slot overrides in Shortcut Hub (Rows 2–3 · Strip tab).\n\nSlot overrides on active strip: %1$d</string>
     <string name="strip_edition_open_shortcut_hub">Open Pro setup</string>
     <string name="shortcut_hub_back">Back</string>
     <string name="shortcut_hub_reset_default">Reset</string>

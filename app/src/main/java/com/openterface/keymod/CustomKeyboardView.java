@@ -81,6 +81,7 @@ import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
+import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.target.CH9329MSKBMap;
@@ -216,13 +217,10 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_NOOP_PLACEHOLDER = -1;
     private static final String APP_PREFS_NAME = "AppPrefs";
     private static final String KEY_SYSTEM_IME_CAPTURE = "system_ime_capture_mode";
-    /** Legacy boolean; migrated once to {@link #KEY_TOP_SHORTCUT_DISPLAY_MODE}. */
-    private static final String KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS = "top_shortcut_show_action_labels";
-    private static final String KEY_TOP_SHORTCUT_DISPLAY_MODE = "top_shortcut_display_mode";
     /** 0 = shortcut name, 1 = icon-first, 2 = chord (e.g. Alt+X). */
-    private static final int DISPLAY_MODE_NAME = 0;
-    private static final int DISPLAY_MODE_ICON = 1;
-    private static final int DISPLAY_MODE_CHORD = 2;
+    private static final int DISPLAY_MODE_NAME = TopShortcutDisplayModePrefs.MODE_NAME;
+    private static final int DISPLAY_MODE_ICON = TopShortcutDisplayModePrefs.MODE_ICON;
+    private static final int DISPLAY_MODE_CHORD = TopShortcutDisplayModePrefs.MODE_CHORD;
     /** When false: hide alternate hints on letter keys and use hold-to-repeat instead of long-press alternates. */
     private static final String KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED = "keyboard_alternates_hints_enabled";
     private static final int MOD_CTRL = 1;
@@ -1040,33 +1038,18 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void loadTopShortcutDisplayModeFromPrefs(Context context) {
-        SharedPreferences sp = context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-        if (!sp.contains(KEY_TOP_SHORTCUT_DISPLAY_MODE)) {
-            boolean legacyOn = sp.getBoolean(KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS, false);
-            int migrated = legacyOn ? DISPLAY_MODE_NAME : DISPLAY_MODE_ICON;
-            sp.edit()
-                    .putInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, migrated)
-                    .remove(KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS)
-                    .apply();
-        }
-        topShortcutDisplayMode = sp.getInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, DISPLAY_MODE_ICON);
+        topShortcutDisplayMode = TopShortcutDisplayModePrefs.readMode(context);
     }
 
     private void setTopShortcutDisplayMode(int mode) {
-        int normalized = mode;
-        if (normalized < DISPLAY_MODE_NAME || normalized > DISPLAY_MODE_CHORD) {
-            normalized = DISPLAY_MODE_ICON;
-        }
+        int normalized = TopShortcutDisplayModePrefs.clamp(mode);
         if (topShortcutDisplayMode == normalized) {
             return;
         }
         topShortcutDisplayMode = normalized;
         Context context = getContext();
         if (context != null) {
-            context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, normalized)
-                    .apply();
+            TopShortcutDisplayModePrefs.writeMode(context, normalized);
         }
         rebuildFixedTopRowsPanels();
         rebuildTopShortcutPanels();
@@ -1370,13 +1353,7 @@ public class CustomKeyboardView extends LinearLayout {
         AlertDialog dialog = new AlertDialog.Builder(act)
                 .setTitle(R.string.strip_edition_dialog_title)
                 .setMessage(ctx.getString(R.string.strip_edition_dialog_message, overrideCount))
-                .setPositiveButton(R.string.strip_edition_open_shortcut_hub, (d, which) -> {
-                    if (act instanceof MainActivity) {
-                        ((MainActivity) act).showKmProSettingsOverlay();
-                    }
-                    d.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, (d, which) -> d.dismiss())
+                .setPositiveButton(android.R.string.ok, (d, which) -> d.dismiss())
                 .create();
         dialog.setOnDismissListener(di -> {
             stripLayoutEditionDialogShowing = false;

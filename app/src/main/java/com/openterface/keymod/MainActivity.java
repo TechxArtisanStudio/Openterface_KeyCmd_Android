@@ -664,7 +664,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
-    /** Opens full-screen KM Pro settings (strip layouts, page 3 hub). */
+    /** Opens full-screen KM Pro settings (shortcut strip display and active Shortcut Hub profile). */
     public void showKmProSettingsOverlay() {
         if (kmProSettingsOverlay == null) {
             return;
