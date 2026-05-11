@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material "layers": bundled / built-in preset (tinted in layout). -->
+<!-- Material Symbol: layers_24px (built-in / bundled preset); tint via ImageView. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="20dp"
-    android:height="20dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M12,16.54l7.37,-4.51l-7.37,-4.57l-7.37,4.57z" />
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M12,4.5l7.5,4.25l-7.5,4.25l-7.5,-4.25z" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M480,842L120,562L186,512L480,740L774,512L840,562L480,842ZM480,640L120,360L480,80L840,360L480,640ZM480,538L710,360L480,182L250,360L480,538Z" />
 </vector>
