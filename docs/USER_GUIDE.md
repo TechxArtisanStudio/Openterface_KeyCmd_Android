@@ -199,7 +199,7 @@ flowchart TB
 
 ### Preset vocabulary (schema)
 
-Shareable layouts use JSON with a **`schemaVersion`** field (see the file you export—currently **v8** in bundled presets). Useful terms:
+Shareable layouts use JSON with a **`schemaVersion`** field (bundled repo presets are **v10** as of the current app). Per-module **`zIndex`** is draw order (lower = behind); the editor can **Bring to front** / **Send to back**, and exports normalize **`zIndex`** to contiguous **0…n−1** for stable diffs. Useful terms:
 
 | Everyday term | In presets / code |
 |---------------|---------------------|

@@ -30,8 +30,13 @@ public final class GamepadLayoutPresetConstants {
      * v9 adds optional {@code SCROLL_STRIP} modules (vertical drag → HID mouse wheel).
      */
     public static final int SCHEMA_VERSION_V9 = 9;
+    /**
+     * v10: canonical {@link GamepadLayoutPresetDocument.GamepadModule#zIndex} values (0..n-1 by draw order) on upgrade
+     * and when persisting/exporting; in-app layer ordering controls (no new JSON fields).
+     */
+    public static final int SCHEMA_VERSION_V10 = 10;
     /** Current preset schema. */
-    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V9;
+    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V10;
 
     /**
      * Dynamic layout (BUTTON, STICK_*, DPAD, TOUCHPAD, SCROLL_STRIP, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by

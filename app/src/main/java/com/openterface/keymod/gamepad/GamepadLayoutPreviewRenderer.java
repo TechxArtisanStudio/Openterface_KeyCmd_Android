@@ -71,6 +71,9 @@ public final class GamepadLayoutPreviewRenderer {
         try {
             String json = GamepadLayoutPresetDocument.toJsonPretty(src);
             GamepadLayoutPresetDocument c = GSON.fromJson(json, GamepadLayoutPresetDocument.class);
+            if (c != null) {
+                GamepadLayoutDocEditor.normalizeModuleZOrder(c);
+            }
             if (c != null && c.layout != null) {
                 c.layout.backgroundImageData = null;
                 c.layout.backgroundImageEncoding = null;

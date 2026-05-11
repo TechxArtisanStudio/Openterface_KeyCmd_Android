@@ -1,15 +1,20 @@
 package com.openterface.keymod.gamepad;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.BuildConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -342,6 +347,28 @@ public class GamepadLayoutPresetDocument {
         return new GsonBuilder().setPrettyPrinting().create().toJson(doc);
     }
 
+    /**
+     * Dev-only: logs when two or more modules share the same {@link GamepadModule#zIndex} (stable draw order is
+     * ambiguous until normalized on save/export).
+     */
+    private static void warnDuplicateZIndicesInDebug(GamepadLayoutPresetDocument d) {
+        if (!BuildConfig.DEBUG || d.modules == null || d.modules.size() < 2) {
+            return;
+        }
+        HashMap<Integer, List<String>> idsByZ = new HashMap<>();
+        for (GamepadModule m : d.modules) {
+            if (m == null || m.id == null) {
+                continue;
+            }
+            idsByZ.computeIfAbsent(m.zIndex, z -> new ArrayList<>()).add(m.id);
+        }
+        for (Map.Entry<Integer, List<String>> e : idsByZ.entrySet()) {
+            if (e.getValue().size() > 1) {
+                Log.w("GamepadLayoutPreset", "Duplicate zIndex " + e.getKey() + " for modules: " + e.getValue());
+            }
+        }
+    }
+
     public static void validateOrThrow(GamepadLayoutPresetDocument d) throws IllegalArgumentException {
         if (d == null) {
             throw new IllegalArgumentException("null document");
@@ -400,6 +427,7 @@ public class GamepadLayoutPresetDocument {
         }
         GamepadLayoutPresetUpgrader.upgradeToLatest(d);
         GamepadLayoutPresetUpgrader.normalizeBundledMouseButtonModuleScales(d);
+        warnDuplicateZIndicesInDebug(d);
         if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported schemaVersion after upgrade: " + d.schemaVersion);
         }

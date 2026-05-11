@@ -59,7 +59,7 @@
       "moduleAccentArgb": -43230,
       "scale": 1.43,
       "type": "BUTTON",
-      "zIndex": 6
+      "zIndex": 2
     },
     {
       "anchorX": 0.5425237,
@@ -74,7 +74,7 @@
       "moduleAccentArgb": -11684126,
       "scale": 1.43,
       "type": "BUTTON",
-      "zIndex": 7
+      "zIndex": 3
     },
     {
       "anchorX": 0.90897244,
@@ -89,7 +89,7 @@
       "moduleAccentArgb": -14575807,
       "scale": 1.43,
       "type": "BUTTON",
-      "zIndex": 8
+      "zIndex": 4
     },
     {
       "anchorX": 0.90971434,
@@ -104,7 +104,7 @@
       "moduleAccentArgb": -1499549,
       "scale": 1.43,
       "type": "BUTTON",
-      "zIndex": 9
+      "zIndex": 5
     },
     {
       "anchorX": 0.7235675,
@@ -119,8 +119,8 @@
       "moduleAccentArgb": -11751600,
       "scale": 1.43,
       "type": "BUTTON",
-      "zIndex": 10
+      "zIndex": 6
     }
   ],
-  "schemaVersion": 9
+  "schemaVersion": 10
 }

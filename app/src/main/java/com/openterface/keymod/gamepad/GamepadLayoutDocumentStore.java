@@ -68,6 +68,7 @@ public final class GamepadLayoutDocumentStore {
     public static void save(Context context, GamepadLayoutPresetDocument doc) {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
         GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
+        GamepadLayoutDocEditor.normalizeModuleZOrder(doc);
         PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc))
                 .apply();

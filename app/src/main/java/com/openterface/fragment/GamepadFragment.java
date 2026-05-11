@@ -39,6 +39,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
@@ -2580,6 +2581,7 @@ public class GamepadFragment extends Fragment {
                 bgBasename = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
             }
             GamepadLayoutPresetBackgroundCodec.injectEmbedForExport(requireContext(), shareDoc, bgBasename);
+            GamepadLayoutDocEditor.normalizeModuleZOrder(shareDoc);
             return GamepadLayoutPresetDocument.toJsonPretty(shareDoc);
         } catch (Exception e) {
             Log.e(TAG, "build preset export json", e);
@@ -3491,6 +3493,64 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
+     * Optional “Bring to front” / “Send to back” row for module sheets (dynamic layout, 2+ modules).
+     */
+    private void appendGamepadModuleLayerRow(
+            @NonNull Context ctx, @NonNull LinearLayout verticalSheet, @NonNull String moduleId) {
+        if (layoutDoc == null || !GamepadLayoutDocEditor.canReorderLayers(layoutDoc) || findModuleById(moduleId) == null) {
+            return;
+        }
+        TextView layerTitle = new TextView(ctx);
+        layerTitle.setText(R.string.gamepad_layer_order_title);
+        layerTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleLp.topMargin = dp(12);
+        verticalSheet.addView(layerTitle, titleLp);
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        int gap = dp(8);
+        MaterialButton front = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        front.setText(R.string.gamepad_menu_bring_to_front);
+        front.setAllCaps(false);
+        LinearLayout.LayoutParams frontLp =
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        frontLp.setMarginEnd(gap);
+        front.setLayoutParams(frontLp);
+        front.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            if (GamepadLayoutDocEditor.bringModuleToFront(layoutDoc, moduleId)) {
+                applyLayoutDocFromMemory();
+            } else {
+                Toast.makeText(ctx, R.string.gamepad_layer_already_front, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(front);
+
+        MaterialButton back = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        back.setText(R.string.gamepad_menu_send_to_back);
+        back.setAllCaps(false);
+        back.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        back.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            if (GamepadLayoutDocEditor.sendModuleToBack(layoutDoc, moduleId)) {
+                applyLayoutDocFromMemory();
+            } else {
+                Toast.makeText(ctx, R.string.gamepad_layer_already_back, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(back);
+
+        verticalSheet.addView(row);
+    }
+
+    /**
      * Divider + Remove (when allowed) / Reset / [Duplicate] / Done row, matching stick & button module sheets.
      */
     private void appendGamepadModuleSheetFooter(
@@ -3658,6 +3718,24 @@ public class GamepadFragment extends Fragment {
             showConfigDialog(moduleId);
         } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
             showConfigDialog(moduleId);
+        } else if (choice.equals(getString(R.string.gamepad_menu_bring_to_front))) {
+            if (getView() != null) {
+                getView().performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            }
+            if (!GamepadLayoutDocEditor.bringModuleToFront(layoutDoc, moduleId)) {
+                Toast.makeText(requireContext(), R.string.gamepad_layer_already_front, Toast.LENGTH_SHORT).show();
+            } else {
+                applyLayoutDocFromMemory();
+            }
+        } else if (choice.equals(getString(R.string.gamepad_menu_send_to_back))) {
+            if (getView() != null) {
+                getView().performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            }
+            if (!GamepadLayoutDocEditor.sendModuleToBack(layoutDoc, moduleId)) {
+                Toast.makeText(requireContext(), R.string.gamepad_layer_already_back, Toast.LENGTH_SHORT).show();
+            } else {
+                applyLayoutDocFromMemory();
+            }
         } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
             GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
             faceButtonPressed.remove(moduleId);
@@ -3749,6 +3827,11 @@ public class GamepadFragment extends Fragment {
                 opts.add(getString(R.string.gamepad_menu_edit_keys));
             }
         }
+        if (GamepadLayoutDocEditor.canReorderLayers(layoutDoc) && moduleId != null
+                && findModuleById(moduleId) != null) {
+            opts.add(getString(R.string.gamepad_menu_bring_to_front));
+            opts.add(getString(R.string.gamepad_menu_send_to_back));
+        }
         if (GamepadLayoutDocEditor.canRemove(moduleId)) {
             opts.add(getString(R.string.gamepad_menu_remove));
         }
@@ -3818,6 +3901,8 @@ public class GamepadFragment extends Fragment {
         root.addView(wSeek);
         root.addView(hTitle);
         root.addView(hSeek);
+
+        appendGamepadModuleLayerRow(ctx, root, touchpadModuleId);
 
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
@@ -3936,6 +4021,8 @@ public class GamepadFragment extends Fragment {
         root.addView(sensTitle);
         root.addView(sensSeek);
         root.addView(invertCb);
+
+        appendGamepadModuleLayerRow(ctx, root, m.id);
 
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
@@ -4155,6 +4242,8 @@ public class GamepadFragment extends Fragment {
         gestureSensOpen.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
         gestureSensOpen.setLayoutParams(hlp);
         root.addView(gestureSensOpen);
+
+        appendGamepadModuleLayerRow(ctx, root, m.id);
 
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);

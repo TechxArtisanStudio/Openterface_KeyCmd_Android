@@ -4,7 +4,10 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -484,14 +487,157 @@ public final class GamepadLayoutDocEditor {
     }
 
     private static int nextZ(GamepadLayoutPresetDocument doc) {
-        int z = 0;
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            z = Math.max(z, m.zIndex);
-        }
-        return z + 1;
+        return maxZ(doc) + 1;
     }
 
-    private static GamepadLayoutPresetDocument.GamepadModule find(GamepadLayoutPresetDocument doc, String id) {
+    /** @return largest {@link GamepadLayoutPresetDocument.GamepadModule#zIndex} among modules, or 0 if none. */
+    public static int maxZ(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        int z = Integer.MIN_VALUE;
+        boolean any = false;
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null) {
+                z = Math.max(z, m.zIndex);
+                any = true;
+            }
+        }
+        return any ? z : 0;
+    }
+
+    /** @return smallest {@link GamepadLayoutPresetDocument.GamepadModule#zIndex} among modules, or 0 if none. */
+    public static int minZ(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        int z = Integer.MAX_VALUE;
+        boolean any = false;
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null) {
+                z = Math.min(z, m.zIndex);
+                any = true;
+            }
+        }
+        return any ? z : 0;
+    }
+
+    public static boolean canReorderLayers(@Nullable GamepadLayoutPresetDocument doc) {
+        return doc != null && doc.modules != null && doc.modules.size() > 1;
+    }
+
+    /**
+     * Reassigns each module’s {@code zIndex} to {@code 0..n-1} in stable draw order (ascending previous zIndex,
+     * then list index). Does not reorder the {@code modules} list.
+     */
+    public static void normalizeModuleZOrder(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return;
+        }
+        if (doc.modules.size() <= 1) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m != null) {
+                    m.zIndex = 0;
+                }
+            }
+            return;
+        }
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < doc.modules.size(); i++) {
+            if (doc.modules.get(i) != null) {
+                indices.add(i);
+            }
+        }
+        indices.sort(Comparator
+                .comparingInt((Integer idx) -> doc.modules.get(idx).zIndex)
+                .thenComparingInt(idx -> idx));
+        int z = 0;
+        for (int idx : indices) {
+            doc.modules.get(idx).zIndex = z++;
+        }
+    }
+
+    /**
+     * @return true if {@code moduleId} is strictly above every other module (unique top layer).
+     */
+    public static boolean isStrictlyInFront(@Nullable GamepadLayoutPresetDocument doc, @Nullable String moduleId) {
+        if (doc == null || doc.modules == null || moduleId == null) {
+            return false;
+        }
+        GamepadLayoutPresetDocument.GamepadModule m = find(doc, moduleId);
+        if (m == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule o : doc.modules) {
+            if (o == null || o.id == null || o.id.equals(moduleId)) {
+                continue;
+            }
+            if (o.zIndex >= m.zIndex) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @return true if {@code moduleId} is strictly below every other module (unique bottom layer).
+     */
+    public static boolean isStrictlyInBack(@Nullable GamepadLayoutPresetDocument doc, @Nullable String moduleId) {
+        if (doc == null || doc.modules == null || moduleId == null) {
+            return false;
+        }
+        GamepadLayoutPresetDocument.GamepadModule m = find(doc, moduleId);
+        if (m == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule o : doc.modules) {
+            if (o == null || o.id == null || o.id.equals(moduleId)) {
+                continue;
+            }
+            if (o.zIndex <= m.zIndex) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** @return false if already the unique top layer or module missing. */
+    public static boolean bringModuleToFront(@Nullable GamepadLayoutPresetDocument doc, @Nullable String moduleId) {
+        if (!canReorderLayers(doc) || moduleId == null) {
+            return false;
+        }
+        GamepadLayoutPresetDocument.GamepadModule m = find(doc, moduleId);
+        if (m == null) {
+            return false;
+        }
+        if (isStrictlyInFront(doc, moduleId)) {
+            return false;
+        }
+        m.zIndex = maxZ(doc) + 1;
+        return true;
+    }
+
+    /** @return false if already the unique bottom layer or module missing. */
+    public static boolean sendModuleToBack(@Nullable GamepadLayoutPresetDocument doc, @Nullable String moduleId) {
+        if (!canReorderLayers(doc) || moduleId == null) {
+            return false;
+        }
+        GamepadLayoutPresetDocument.GamepadModule m = find(doc, moduleId);
+        if (m == null) {
+            return false;
+        }
+        if (isStrictlyInBack(doc, moduleId)) {
+            return false;
+        }
+        m.zIndex = minZ(doc) - 1;
+        return true;
+    }
+
+    private static GamepadLayoutPresetDocument.GamepadModule find(
+            @Nullable GamepadLayoutPresetDocument doc, @Nullable String id) {
+        if (doc == null || doc.modules == null || id == null) {
+            return null;
+        }
         for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
             if (m != null && id.equals(m.id)) {
                 return m;

@@ -91,11 +91,23 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
-    public void upgradeV8ToV9BumpsSchemaVersion() {
+    public void upgradeV8ToLatestBumpsSchemaVersion() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V8;
         GamepadLayoutPresetDocument.validateOrThrow(doc);
-        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION_V9, doc.schemaVersion);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+    }
+
+    @Test
+    public void upgradeV9ToLatestNormalizesDuplicateZIndices() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V9;
+        doc.modules.get(0).zIndex = 10;
+        doc.modules.get(1).zIndex = 10;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+        assertEquals(0, doc.modules.get(0).zIndex);
+        assertEquals(1, doc.modules.get(1).zIndex);
     }
 
     @Test

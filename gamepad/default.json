@@ -58,7 +58,7 @@
       "modifierMask": 0,
       "scale": 0.53,
       "type": "BUTTON",
-      "zIndex": 3
+      "zIndex": 2
     },
     {
       "anchorX": 0.57340825,
@@ -73,7 +73,7 @@
       "modifierMask": 0,
       "scale": 0.53,
       "type": "BUTTON",
-      "zIndex": 4
+      "zIndex": 3
     },
     {
       "anchorX": 0.85355806,
@@ -86,8 +86,8 @@
       "moduleAccentArgb": -1499549,
       "scale": 1.01,
       "type": "BUTTON",
-      "zIndex": 6
+      "zIndex": 4
     }
   ],
-  "schemaVersion": 9
+  "schemaVersion": 10
 }

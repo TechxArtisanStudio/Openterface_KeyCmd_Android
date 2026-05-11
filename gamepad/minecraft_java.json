@@ -16,7 +16,7 @@
   },
   "meta": {
     "creator": "Openterface",
-    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1\u003dhide UI, F2\u003dscreenshot, F3\u003ddebug overlay, F5\u003dcycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, scroll strip (mouse wheel) for hotbar, Look+L/R. Gyro off.",
+    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1=hide UI, F2=screenshot, F3=debug overlay, F5=cycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, scroll strip (mouse wheel) for hotbar, Look+L/R. Gyro off.",
     "displayName": "Minecraft Java",
     "exportedAt": "2026-05-11T11:16:43Z",
     "id": "preset_pack_minecraft_java",
@@ -170,7 +170,7 @@
       "mouseButton": 3,
       "scale": 0.67,
       "type": "MOUSE_BUTTON",
-      "zIndex": 8
+      "zIndex": 7
     },
     {
       "anchorX": 0.644,
@@ -182,7 +182,7 @@
       "modifierMask": 0,
       "scale": 0.72,
       "type": "BUTTON",
-      "zIndex": 9
+      "zIndex": 8
     },
     {
       "anchorX": 0.356,
@@ -196,7 +196,7 @@
       "moduleAccentArgb": -8875876,
       "scale": 0.72,
       "type": "BUTTON",
-      "zIndex": 14
+      "zIndex": 10
     },
     {
       "anchorX": 0.428,
@@ -210,7 +210,7 @@
       "moduleAccentArgb": -14575885,
       "scale": 0.72,
       "type": "BUTTON",
-      "zIndex": 14
+      "zIndex": 11
     },
     {
       "anchorX": 0.5,
@@ -224,7 +224,7 @@
       "moduleAccentArgb": -10011977,
       "scale": 0.72,
       "type": "BUTTON",
-      "zIndex": 14
+      "zIndex": 12
     },
     {
       "anchorX": 0.572,
@@ -238,7 +238,7 @@
       "moduleAccentArgb": -10177034,
       "scale": 0.72,
       "type": "BUTTON",
-      "zIndex": 14
+      "zIndex": 13
     },
     {
       "anchorX": 0.050561797,
@@ -250,7 +250,7 @@
       "modifierMask": 0,
       "scale": 1.04,
       "type": "BUTTON",
-      "zIndex": 10
+      "zIndex": 9
     },
     {
       "anchorX": 0.054681648,
@@ -264,7 +264,7 @@
       "moduleAccentArgb": -11684126,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 20
+      "zIndex": 14
     },
     {
       "anchorX": 0.92771536,
@@ -279,7 +279,7 @@
       "modifierMask": 0,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 21
+      "zIndex": 15
     },
     {
       "anchorX": 0.14719102,
@@ -295,7 +295,7 @@
       "moduleAccentArgb": -769226,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 22
+      "zIndex": 16
     },
     {
       "anchorX": 0.8389513,
@@ -309,7 +309,7 @@
       "modifierMask": 0,
       "scale": 1.17,
       "type": "BUTTON",
-      "zIndex": 23
+      "zIndex": 17
     },
     {
       "anchorX": 0.21348314,
@@ -325,7 +325,7 @@
       "moduleAccentArgb": -26624,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 24
+      "zIndex": 18
     },
     {
       "anchorX": 0.25955057,
@@ -341,7 +341,7 @@
       "moduleAccentArgb": -16121,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 25
+      "zIndex": 19
     },
     {
       "anchorX": 0.29850188,
@@ -357,7 +357,7 @@
       "moduleAccentArgb": -11751600,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 26
+      "zIndex": 20
     },
     {
       "anchorX": 0.34569287,
@@ -373,7 +373,7 @@
       "moduleAccentArgb": -16728876,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 27
+      "zIndex": 21
     },
     {
       "anchorX": 0.36610487,
@@ -389,7 +389,7 @@
       "moduleAccentArgb": -14575885,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 28
+      "zIndex": 22
     },
     {
       "anchorX": 0.37677902,
@@ -405,7 +405,7 @@
       "moduleAccentArgb": -10011977,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 29
+      "zIndex": 23
     },
     {
       "anchorX": 0.36835206,
@@ -421,7 +421,7 @@
       "moduleAccentArgb": -1499549,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 30
+      "zIndex": 24
     },
     {
       "anchorX": 0.25205994,
@@ -446,7 +446,7 @@
       "mouseButton": 1,
       "scale": 0.77,
       "type": "MOUSE_BUTTON",
-      "zIndex": 31
+      "zIndex": 25
     },
     {
       "anchorX": 0.2411985,
@@ -471,7 +471,7 @@
       "mouseButton": 3,
       "scale": 0.67,
       "type": "MOUSE_BUTTON",
-      "zIndex": 32
+      "zIndex": 26
     },
     {
       "anchorX": 0.8246661,
@@ -500,7 +500,7 @@
       "moduleAccentArgb": -14575807,
       "scale": 1.06,
       "type": "BUTTON",
-      "zIndex": 33
+      "zIndex": 27
     },
     {
       "anchorX": 0.35468164,
@@ -516,7 +516,7 @@
       "moduleAccentArgb": -8825528,
       "scale": 1.08,
       "type": "BUTTON",
-      "zIndex": 34
+      "zIndex": 28
     },
     {
       "anchorX": 0.5,
@@ -528,8 +528,8 @@
       "scale": 1.0,
       "type": "SCROLL_STRIP",
       "widthNorm": 0.08,
-      "zIndex": 35
+      "zIndex": 29
     }
   ],
-  "schemaVersion": 9
+  "schemaVersion": 10
 }
