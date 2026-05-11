@@ -476,8 +476,18 @@ public class CompositeFragment extends Fragment {
                 lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
                 lp.width = 0;
                 lp.weight = i == 1 ? 1f : 2f;
-                int m = (int) (getResources().getDisplayMetrics().density * 8f);
-                lp.setMarginStart(i == 0 ? 0 : m);
+                int gap = (int) (getResources().getDisplayMetrics().density * 8f);
+                boolean splitStripHorizontalRow =
+                        splitRoot != null
+                                && KmProTouchpadPrefs.showsMouseKeyStrip(requireContext());
+                int edgeInset =
+                        splitStripHorizontalRow
+                                ? getResources()
+                                        .getDimensionPixelSize(
+                                                R.dimen.pro_touchpad_mouse_keys_split_horizontal_edge_inset)
+                                : 0;
+                lp.setMarginStart(i == 0 ? edgeInset : gap);
+                lp.setMarginEnd(i == n - 1 ? edgeInset : 0);
             }
             c.setLayoutParams(lp);
         }
