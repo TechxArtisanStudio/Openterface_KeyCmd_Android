@@ -147,7 +147,7 @@ public class GamepadLayoutPresetDocument {
      * One drawable plus touch target on the gamepad canvas.
      * <p><b>Layers:</b> {@code id} is <em>which</em> control (e.g. {@code stick_left}, {@code stick_right}).
      * {@code type} is <em>what the host receives</em>
-     * ({@code STICK_KEY}, {@code STICK_MOUSE}, {@code DPAD}, {@code BUTTON}, …). Fields such as
+     * ({@code STICK_KEY}, {@code STICK_MOUSE}, {@code DPAD}, {@code BUTTON}, {@code SCROLL_STRIP}, …). Fields such as
      * {@code dpadVariant}, {@code dpadSplitGapRatio}, {@code stickMouseSensitivity}, and
      * {@code stickVisualVariant} are <em>parameters</em> on that same module, not separate module types.
      * See {@code docs/USER_GUIDE.md} (Gamepad module model) and {@code .cursor/plans/gamepad_module_taxonomy.plan.md}
@@ -269,6 +269,12 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Integer stickPointerCenterMouseMask;
         /**
+         * SCROLL_STRIP only: wheel rate multiplier when null defaults to {@code 1.0}; valid range {@code [0.25, 4]}.
+         */
+        @Nullable public Float scrollStripSensitivity;
+        /** SCROLL_STRIP only: when {@code true}, flip vertical wheel sign vs finger motion. */
+        @Nullable public Boolean scrollStripInvertY;
+        /**
          * Optional per-module accent (ARGB). Null = theme default for sticks/D-pad and template colors for face
          * buttons; see {@link GamepadModuleAccent}.
          */
@@ -377,6 +383,7 @@ public class GamepadLayoutPresetDocument {
             }
         }
         int mouseButtonCount = 0;
+        int scrollStripCount = 0;
         int shoulderCount = 0;
         int triggerCount = 0;
         Set<String> seenModuleIds = new HashSet<>();
@@ -412,6 +419,14 @@ public class GamepadLayoutPresetDocument {
                 if (a < 64) {
                     throw new IllegalArgumentException("Module " + m.id + ": displayLabelColorArgb alpha must be >= 64");
                 }
+            }
+            if (m.scrollStripSensitivity != null
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": scrollStripSensitivity only on SCROLL_STRIP");
+            }
+            if (m.scrollStripInvertY != null
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": scrollStripInvertY only on SCROLL_STRIP");
             }
             if (m.stickVisualVariant != null) {
                 String sv = m.stickVisualVariant.trim();
@@ -591,6 +606,21 @@ public class GamepadLayoutPresetDocument {
                         || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
                     throw new IllegalArgumentException("Module " + m.id + ": TOUCHPAD needs widthNorm/heightNorm in (0,1]");
                 }
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                scrollStripCount++;
+                if (!GamepadLayoutPresetConstants.isScrollStripModuleId(m.id)) {
+                    throw new IllegalArgumentException("Invalid SCROLL_STRIP id (expected scroll_strip_<n>): " + m.id);
+                }
+                if (m.widthNorm == null || m.heightNorm == null
+                        || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
+                    throw new IllegalArgumentException("Module " + m.id + ": SCROLL_STRIP needs widthNorm/heightNorm in (0,1]");
+                }
+                if (m.scrollStripSensitivity != null) {
+                    float s = m.scrollStripSensitivity;
+                    if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.25f || s > 4.0f) {
+                        throw new IllegalArgumentException("Module " + m.id + ": scrollStripSensitivity must be in [0.25, 4]");
+                    }
+                }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
                 mouseButtonCount++;
                 boolean canonicalMouseBtn = GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id)
@@ -646,6 +676,10 @@ public class GamepadLayoutPresetDocument {
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "
                     + GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES + ")");
+        }
+        if (scrollStripCount > GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES) {
+            throw new IllegalArgumentException("Too many SCROLL_STRIP modules (max "
+                    + GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES + ")");
         }
         if (shoulderCount > GamepadLayoutPresetConstants.MAX_SHOULDER_MODULES) {
             throw new IllegalArgumentException("Too many SHOULDER modules (max "

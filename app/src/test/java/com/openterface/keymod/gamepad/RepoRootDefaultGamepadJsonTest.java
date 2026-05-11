@@ -85,6 +85,7 @@ public class RepoRootDefaultGamepadJsonTest {
         assertNotNull(find(doc, "touchpad_1"));
         assertNotNull(find(doc, "mouse_btn_l"));
         assertNotNull(find(doc, "mouse_btn_r"));
+        assertNotNull(find(doc, "scroll_strip_1"));
         GamepadLayoutPresetDocument.GamepadModule sneak = find(doc, "button_x");
         assertNotNull(sneak);
         assertTrue(Boolean.TRUE.equals(sneak.keyboardHoldLock));

@@ -845,8 +845,16 @@ by TechxArtisan</string>
     <string name="gamepad_add_module_title">Add module</string>
     <string name="gamepad_add_extra_button">Button</string>
     <string name="gamepad_add_touchpad">Touchpad</string>
+    <string name="gamepad_add_scroll_strip">Scroll strip (mouse wheel)</string>
     <!-- Left-thumb slot only: adds cross D-pad by default; open Configure control for stick / split D-pad / pointer modes. -->
     <string name="gamepad_add_dpad_cross_left">D-Pad / Stick</string>
+    <string name="gamepad_component_scroll_strip">Scroll strip</string>
+    <string name="gamepad_scroll_strip_size_title">Scroll strip size</string>
+    <string name="gamepad_menu_scroll_strip_resize">Scroll strip size…</string>
+    <string name="gamepad_menu_scroll_strip_behavior">Wheel sensitivity &amp; direction…</string>
+    <string name="gamepad_menu_scroll_strip_color">Scroll strip color…</string>
+    <string name="gamepad_scroll_strip_sensitivity_pct">Wheel sensitivity (%)</string>
+    <string name="gamepad_scroll_strip_invert_y">Invert vertical wheel</string>
     <string name="gamepad_menu_touchpad_resize">Touchpad size…</string>
     <string name="gamepad_menu_touchpad_mouse_btn_size">All touchpad mouse buttons size…</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">Re-add left mouse button (L)</string>

@@ -16,11 +16,11 @@
   },
   "meta": {
     "creator": "Openterface",
-    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1=hide UI, F2=screenshot, F3=debug overlay, F5=cycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, Look+L/R. Gyro off.",
+    "description": "Minecraft Java (US QWERTY): thumb clusters at bottom corners; top strip F1=hide UI, F2=screenshot, F3=debug overlay, F5=cycle camera (1st/3rd person). Tab/Inv/Swap/Drop, WASD, hotbar 1–9, scroll strip (mouse wheel) for hotbar, Look+L/R. Gyro off.",
     "displayName": "Minecraft Java",
     "exportedAt": "2026-05-10T23:45:00Z",
     "id": "preset_pack_minecraft_java",
-    "sourceAppVersion": "0.16"
+    "sourceAppVersion": "0.17"
   },
   "modules": [
     {
@@ -517,7 +517,19 @@
       "scale": 1.08,
       "type": "BUTTON",
       "zIndex": 34
+    },
+    {
+      "anchorX": 0.04,
+      "anchorY": 0.48,
+      "displayLabel": "Wheel",
+      "heightNorm": 0.42,
+      "id": "scroll_strip_1",
+      "moduleAccentArgb": -13154481,
+      "scale": 1.0,
+      "type": "SCROLL_STRIP",
+      "widthNorm": 0.08,
+      "zIndex": 35
     }
   ],
-  "schemaVersion": 8
+  "schemaVersion": 9
 }

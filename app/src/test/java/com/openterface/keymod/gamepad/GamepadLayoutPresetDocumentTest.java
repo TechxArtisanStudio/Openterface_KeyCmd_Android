@@ -83,11 +83,59 @@ public class GamepadLayoutPresetDocumentTest {
     }
 
     @Test
-    public void upgradeV7ToV8BumpsSchemaVersion() {
+    public void upgradeV7ToLatestBumpsSchemaVersion() {
         GamepadLayoutPresetDocument doc = minimalValidDocument();
         doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V7;
         GamepadLayoutPresetDocument.validateOrThrow(doc);
-        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION_V8, doc.schemaVersion);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+    }
+
+    @Test
+    public void upgradeV8ToV9BumpsSchemaVersion() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V8;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(GamepadLayoutPresetConstants.SCHEMA_VERSION_V9, doc.schemaVersion);
+    }
+
+    @Test
+    public void validateAcceptsScrollStripModule() {
+        GamepadLayoutPresetDocument doc = layoutWithRightStickTouchpadMouse();
+        GamepadLayoutPresetDocument.GamepadModule strip = new GamepadLayoutPresetDocument.GamepadModule();
+        strip.id = "scroll_strip_1";
+        strip.type = GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP;
+        strip.zIndex = 50;
+        strip.scale = 1f;
+        strip.anchorX = 0.05f;
+        strip.anchorY = 0.5f;
+        strip.widthNorm = 0.1f;
+        strip.heightNorm = 0.35f;
+        strip.scrollStripSensitivity = 1.5f;
+        strip.scrollStripInvertY = Boolean.TRUE;
+        doc.modules.add(strip);
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateRejectsScrollStripSensitivityOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        GamepadLayoutPresetDocument.GamepadModule strip = new GamepadLayoutPresetDocument.GamepadModule();
+        strip.id = "scroll_strip_1";
+        strip.type = GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP;
+        strip.zIndex = 50;
+        strip.scale = 1f;
+        strip.anchorX = 0.05f;
+        strip.anchorY = 0.5f;
+        strip.widthNorm = 0.1f;
+        strip.heightNorm = 0.35f;
+        strip.scrollStripSensitivity = 10f;
+        doc.modules.add(strip);
+        try {
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            throw new AssertionError("expected validation failure");
+        } catch (IllegalArgumentException ex) {
+            assertTrue(ex.getMessage().contains("scrollStripSensitivity"));
+        }
     }
 
     @Test

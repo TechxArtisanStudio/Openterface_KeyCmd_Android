@@ -157,14 +157,14 @@ Virtual game controller with:
 Presets are a list of **modules**. Each module is one on-screen control (draw + touch). Think in three layers so “sub-modules” do not feel like mystery types:
 
 1. **Slot / identity (`id`)** — *which* control on the canvas. Thumb modules use the fixed slots **`stick_left`** and **`stick_right`** (plus other module kinds such as buttons and touchpads with their own ids).
-2. **Behavior (`type`)** — *what the host receives*: **`STICK_KEY`** (direction keys from a thumb ring), **`STICK_MOUSE`** (relative pointer / “mouse” deltas), **`DPAD`** (digital pad with a **`dpadVariant`** such as cross or split), **`BUTTON`**, **`TOUCHPAD`**, etc. The in-app “mode” choices for sticks map to these types (and for the left slot, D-pad is `DPAD`, not a parallel stick type).
+2. **Behavior (`type`)** — *what the host receives*: **`STICK_KEY`** (direction keys from a thumb ring), **`STICK_MOUSE`** (relative pointer / “mouse” deltas), **`DPAD`** (digital pad with a **`dpadVariant`** such as cross or split), **`BUTTON`**, **`TOUCHPAD`** (relative pointer motion on the host), **`SCROLL_STRIP`** (vertical drag → HID **mouse wheel** for hotbars, zoom, lists), etc. The in-app “mode” choices for sticks map to these types (and for the left slot, D-pad is `DPAD`, not a parallel stick type).
 3. **Parameters** — tuning on the **same** module: `dpadVariant`, split gap sliders, `stickMouseSensitivity`, `stickVisualVariant` (mostly look), accent color, size. These are **fields**, not separate module kinds.
 
 The **right** stick can use **`stickMouseSensitivity`** when its type is **STICK_MOUSE** (pointer speed tuning in Configure control).
 
 ### Cross-device sizing (share / import)
 
-Positions use normalized **`anchorX`** / **`anchorY`** (0–1 of the gamepad **content** rectangle, after system-bar safe area). **Button**, **stick**, **D-pad**, **touchpad L/M/R**, and **shoulder/trigger** **on-screen sizes** also scale with the **smaller content edge** so the same preset JSON is less likely to overlap or clip on a narrower or shorter phone than the one it was edited on. **Touchpads** still use **`widthNorm`** and **`heightNorm`** (fractions of content width/height). There is **no** per-export “designed at this resolution” field today—authors should still sanity-check dense layouts (e.g. many face buttons) on the **smallest target device** they care about.
+Positions use normalized **`anchorX`** / **`anchorY`** (0–1 of the gamepad **content** rectangle, after system-bar safe area). **Button**, **stick**, **D-pad**, **touchpad L/M/R**, and **shoulder/trigger** **on-screen sizes** also scale with the **smaller content edge** so the same preset JSON is less likely to overlap or clip on a narrower or shorter phone than the one it was edited on. **Touchpads** and **`SCROLL_STRIP`** modules use **`widthNorm`** and **`heightNorm`** (fractions of content width/height). There is **no** per-export “designed at this resolution” field today—authors should still sanity-check dense layouts (e.g. many face buttons) on the **smallest target device** they care about.
 
 ```mermaid
 flowchart TB

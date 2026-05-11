@@ -14,6 +14,9 @@ public final class GamepadLayoutDocEditor {
 
     /** Default touchpad footprint: square (normalized to view width/height). */
     public static final float TOUCHPAD_DEFAULT_SIZE_NORM = 0.28f;
+    /** Default scroll strip: narrow vertical bar. */
+    public static final float SCROLL_STRIP_DEFAULT_WIDTH_NORM = 0.10f;
+    public static final float SCROLL_STRIP_DEFAULT_HEIGHT_NORM = 0.36f;
 
     private static final Gson DUPLICATE_GSON = new Gson();
 
@@ -188,6 +191,43 @@ public final class GamepadLayoutDocEditor {
         appendBundledMouseButtonsIfNeeded(doc);
     }
 
+    public static int countScrollStripModules(@Nullable GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return 0;
+        }
+        int n = 0;
+        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+            if (m != null && GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** Adds a {@link GamepadLayoutPresetConstants#MODULE_TYPE_SCROLL_STRIP} module if under the per-layout cap. */
+    public static void addScrollStrip(GamepadLayoutPresetDocument doc) {
+        if (doc == null || doc.modules == null) {
+            return;
+        }
+        if (countScrollStripModules(doc) >= GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES) {
+            return;
+        }
+        int idx = countScrollStripModules(doc);
+        GamepadLayoutPresetDocument.GamepadModule m = new GamepadLayoutPresetDocument.GamepadModule();
+        m.id = GamepadLayoutDocumentStore.nextScrollStripModuleId(doc);
+        m.type = GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP;
+        m.zIndex = nextZ(doc);
+        m.scale = 1.0f;
+        float ax = 0.06f + 0.05f * (idx % 5);
+        float ay = 0.48f + 0.04f * (idx / 5);
+        m.anchorX = Math.max(0.06f, Math.min(0.94f, ax));
+        m.anchorY = Math.max(0.2f, Math.min(0.8f, ay));
+        m.widthNorm = SCROLL_STRIP_DEFAULT_WIDTH_NORM;
+        m.heightNorm = SCROLL_STRIP_DEFAULT_HEIGHT_NORM;
+        m.displayLabel = "Wheel";
+        doc.modules.add(m);
+    }
+
     /**
      * When a touchpad is first added, bundle left + right only (no middle by default).
      * Fills in either side if missing so re-imported layouts can self-heal missing halves.
@@ -329,6 +369,9 @@ public final class GamepadLayoutDocEditor {
         if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(src.type)) {
             return true;
         }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(src.type)) {
+            return countScrollStripModules(doc) < GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES;
+        }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(src.type)) {
             return countMouseButtonModules(doc) < GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES;
         }
@@ -382,6 +425,9 @@ public final class GamepadLayoutDocEditor {
         }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD.equals(clone.type)) {
             return GamepadLayoutDocumentStore.nextTouchpadModuleId(doc);
+        }
+        if (GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(clone.type)) {
+            return GamepadLayoutDocumentStore.nextScrollStripModuleId(doc);
         }
         if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(clone.type)) {
             return GamepadLayoutDocumentStore.nextMouseButtonCopyModuleId(doc);

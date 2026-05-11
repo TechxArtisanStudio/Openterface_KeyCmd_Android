@@ -206,6 +206,23 @@ public final class GamepadLayoutDocumentStore {
         return "touchpad_" + (maxNum + 1);
     }
 
+    /** Next id {@code scroll_strip_1}, {@code scroll_strip_2}, … based on existing SCROLL_STRIP modules. */
+    public static String nextScrollStripModuleId(GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("scroll_strip_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("scroll_strip_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return "scroll_strip_" + (maxNum + 1);
+    }
+
     /** Next id {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … for duplicated {@code MOUSE_BUTTON} modules. */
     public static String nextMouseButtonCopyModuleId(@Nullable GamepadLayoutPresetDocument doc) {
         int maxNum = 0;

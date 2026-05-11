@@ -28,7 +28,9 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +49,7 @@ import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadGestureLock;
+import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
@@ -242,6 +245,17 @@ public class GamepadView extends View {
     private int touchpadPointerId = -1;
     private float touchpadLastX;
     private float touchpadLastY;
+
+    private ScrollStripWheelListener scrollStripWheelListener;
+    private static final float SCROLL_STRIP_PIXELS_PER_WHEEL_UNIT = 5f;
+
+    private static final class ScrollStripPointerState {
+        String moduleId;
+        float lastY;
+        float accumY;
+    }
+
+    private final Map<Integer, ScrollStripPointerState> scrollStripPointerState = new HashMap<>();
 
     /**
      * Layout-level multiplier for {@code MOUSE_BUTTON} radius (L/M/R with touchpad). Set from preset
@@ -1207,6 +1221,7 @@ public class GamepadView extends View {
         dynamicPointerStick.clear();
         dynamicStickOffset.clear();
         touchpadPointerId = -1;
+        scrollStripPointerState.clear();
         invalidate();
     }
 
@@ -1216,6 +1231,10 @@ public class GamepadView extends View {
 
     public void setTouchpadDeltaListener(@androidx.annotation.Nullable TouchpadDeltaListener listener) {
         this.touchpadDeltaListener = listener;
+    }
+
+    public void setScrollStripWheelListener(@androidx.annotation.Nullable ScrollStripWheelListener listener) {
+        this.scrollStripWheelListener = listener;
     }
 
     /**
@@ -1354,6 +1373,16 @@ public class GamepadView extends View {
         float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
         float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
         drawTouchpadModule(canvas, m, x, y, ww, hh);
+        dynamicHitTestOrder.add(m.id);
+    }
+
+    /** @see GamepadDynamicLayoutRegistry */
+    public void drawDynamicScrollStripModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float x = m.anchorX * w;
+        float y = m.anchorY * h;
+        float ww = (m.widthNorm != null ? m.widthNorm : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_WIDTH_NORM) * w;
+        float hh = (m.heightNorm != null ? m.heightNorm : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_HEIGHT_NORM) * h;
+        drawScrollStripModule(canvas, m, x, y, ww, hh);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1503,6 +1532,130 @@ public class GamepadView extends View {
             retroTextPaint.setTypeface(retroLabelTypeface);
             canvas.drawText(title, cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
             retroTextPaint.setLetterSpacing(0f);
+        }
+    }
+
+    private void drawScrollStripModule(Canvas canvas, @NonNull GamepadLayoutPresetDocument.GamepadModule m,
+                                       float cx, float cy, float ww, float hh) {
+        String id = m.id;
+        @Nullable Integer moduleAccentArgb = m.moduleAccentArgb;
+        float density = getResources().getDisplayMetrics().density;
+        float corner = 8f * density;
+        float borderW = 1f * density;
+        RectF bounds = new RectF(cx - ww / 2f, cy - hh / 2f, cx + ww / 2f, cy + hh / 2f);
+        componentBounds.put(id, bounds);
+
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3f * density, BlurMaskFilter.Blur.NORMAL));
+        retroShadowPaint.setColor(0x34000000);
+        RectF shadowBounds = new RectF(bounds);
+        shadowBounds.offset(0, 1.25f * density);
+        canvas.drawRoundRect(shadowBounds, corner, corner, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+
+        int surfTop = Color.parseColor("#E4E7EE");
+        int surfBot = Color.parseColor("#CED3DC");
+        int borderCol = Color.parseColor("#9AA0AC");
+        int labelCol = Color.parseColor("#4B5058");
+        if (moduleAccentArgb != null) {
+            int ac = GamepadModuleAccent.toOpaqueArgb(moduleAccentArgb);
+            surfTop = ColorUtils.blendARGB(surfTop, ac, 0.32f);
+            surfBot = ColorUtils.blendARGB(surfBot, ac, 0.36f);
+            borderCol = ColorUtils.blendARGB(borderCol, ac, 0.4f);
+            labelCol = ColorUtils.blendARGB(labelCol, ac, 0.3f);
+        }
+        if (m.displayLabelColorArgb != null) {
+            labelCol = GamepadModuleAccent.toOpaqueArgb(m.displayLabelColorArgb);
+        }
+        Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
+                surfTop, surfBot, Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(surface);
+        canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(borderW);
+        retroRingPaint.setColor(borderCol);
+        retroRingPaint.setShader(null);
+        canvas.drawRoundRect(bounds, corner, corner, retroRingPaint);
+
+        Context ctx = getContext();
+        if (ctx != null) {
+            int chevronTint = ContextCompat.getColor(ctx, R.color.km_basic_scroll_strip_chevron);
+            Drawable up = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_up);
+            Drawable dn = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_down);
+            if (up != null && dn != null) {
+                up = DrawableCompat.wrap(up.mutate());
+                dn = DrawableCompat.wrap(dn.mutate());
+                DrawableCompat.setTint(up, chevronTint);
+                DrawableCompat.setTint(dn, chevronTint);
+                float pad = 6f * density;
+                float maxChev = 22f * density;
+                float chevSize = Math.min(maxChev, ww * 0.72f);
+                chevSize = Math.max(6f * density, chevSize);
+                int left = Math.round(cx - chevSize / 2f);
+                int top = Math.round(bounds.top + pad);
+                up.setBounds(left, top, Math.round(left + chevSize), Math.round(top + chevSize));
+                up.draw(canvas);
+                int bottomTop = Math.round(bounds.bottom - pad - chevSize);
+                dn.setBounds(left, bottomTop, Math.round(left + chevSize), Math.round(bounds.bottom - pad));
+                dn.draw(canvas);
+            }
+        }
+
+        if (keyMappingHintsVisible) {
+            String title = presetDisplayLabel(m);
+            if (title == null || title.isEmpty()) {
+                title = "SCROLL";
+            }
+            retroTextPaint.setColor(labelCol);
+            retroTextPaint.setTextAlign(Paint.Align.CENTER);
+            retroTextPaint.setTextSize(Math.min(ww, hh) * 0.11f);
+            retroTextPaint.setFakeBoldText(true);
+            retroTextPaint.setLetterSpacing(0.08f);
+            retroTextPaint.setTypeface(retroLabelTypeface);
+            canvas.drawText(title, cx, cy + retroTextPaint.getTextSize() * 0.28f, retroTextPaint);
+            retroTextPaint.setLetterSpacing(0f);
+        }
+    }
+
+    @Nullable
+    private GamepadLayoutPresetDocument.GamepadModule findDynamicModuleById(@Nullable String moduleId) {
+        if (layoutDocument == null || layoutDocument.modules == null || moduleId == null) {
+            return null;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule mod : layoutDocument.modules) {
+            if (mod != null && moduleId.equals(mod.id)) {
+                return mod;
+            }
+        }
+        return null;
+    }
+
+    private void applyScrollStripMoveForPointer(int pointerId, @NonNull MotionEvent event) {
+        ScrollStripPointerState st = scrollStripPointerState.get(pointerId);
+        if (st == null || scrollStripWheelListener == null) {
+            return;
+        }
+        int idx = event.findPointerIndex(pointerId);
+        if (idx < 0) {
+            return;
+        }
+        float ny = event.getY(idx);
+        float dy = ny - st.lastY;
+        st.lastY = ny;
+        GamepadLayoutPresetDocument.GamepadModule mod = findDynamicModuleById(st.moduleId);
+        float sensitivity = 1f;
+        if (mod != null && mod.scrollStripSensitivity != null) {
+            sensitivity = mod.scrollStripSensitivity;
+        }
+        if (mod != null && Boolean.TRUE.equals(mod.scrollStripInvertY)) {
+            dy = -dy;
+        }
+        st.accumY += (-dy / SCROLL_STRIP_PIXELS_PER_WHEEL_UNIT) * sensitivity;
+        int sy = (int) st.accumY;
+        if (sy != 0) {
+            st.accumY -= sy;
+            scrollStripWheelListener.onScrollStripWheel(st.moduleId, 0, sy);
         }
     }
 
@@ -2589,6 +2742,12 @@ public class GamepadView extends View {
                         touchpadPointerId = pointerId;
                         touchpadLastX = x;
                         touchpadLastY = y;
+                    } else if (GamepadLayoutPresetConstants.isScrollStripModuleId(componentId) && !isEditMode) {
+                        ScrollStripPointerState sst = new ScrollStripPointerState();
+                        sst.moduleId = componentId;
+                        sst.lastY = y;
+                        sst.accumY = 0f;
+                        scrollStripPointerState.put(pointerId, sst);
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -2628,6 +2787,12 @@ public class GamepadView extends View {
                             touchpadLastX = x;
                             touchpadLastY = y;
                         }
+                    } else if (GamepadLayoutPresetConstants.isScrollStripModuleId(componentId) && !isEditMode) {
+                        ScrollStripPointerState sst = new ScrollStripPointerState();
+                        sst.moduleId = componentId;
+                        sst.lastY = y;
+                        sst.accumY = 0f;
+                        scrollStripPointerState.put(pointerId, sst);
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -2711,6 +2876,11 @@ public class GamepadView extends View {
                             touchpadLastY = ny;
                         }
                     }
+                    if (!scrollStripPointerState.isEmpty()) {
+                        for (int pid : new ArrayList<>(scrollStripPointerState.keySet())) {
+                            applyScrollStripMoveForPointer(pid, event);
+                        }
+                    }
                     if (!dynamicPointerStick.isEmpty() && analogStickListener != null) {
                         for (Map.Entry<Integer, String> e : dynamicPointerStick.entrySet()) {
                             String sid = e.getValue();
@@ -2776,6 +2946,7 @@ public class GamepadView extends View {
                 if (touchpadPointerId == pointerId) {
                     touchpadPointerId = -1;
                 }
+                scrollStripPointerState.remove(pointerId);
                 if (draggedComponentId != null) {
                     draggedComponentId = null;
                     dragPointerId = -1;
@@ -2789,6 +2960,7 @@ public class GamepadView extends View {
                     dpadPressedSet.clear();
                     buttonsPressedSet.clear();
                     touchpadPointerId = -1;
+                    scrollStripPointerState.clear();
                     cancelAllKeyboardHoldLockTracking();
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
@@ -2818,6 +2990,7 @@ public class GamepadView extends View {
                 if (touchpadPointerId == pointerId) {
                     touchpadPointerId = -1;
                 }
+                scrollStripPointerState.remove(pointerId);
                 int dynPuIdx = event.findPointerIndex(pointerId);
                 float dynPuRawX = dynPuIdx >= 0 ? event.getRawX(dynPuIdx) : event.getRawX();
                 float dynPuRawY = dynPuIdx >= 0 ? event.getRawY(dynPuIdx) : event.getRawY();
@@ -3317,6 +3490,11 @@ public class GamepadView extends View {
 
     public interface TouchpadDeltaListener {
         void onTouchpadDelta(float dxPixels, float dyPixels);
+    }
+
+    /** HID mouse wheel ticks from a {@link GamepadLayoutPresetConstants#MODULE_TYPE_SCROLL_STRIP} module. */
+    public interface ScrollStripWheelListener {
+        void onScrollStripWheel(String moduleId, int deltaX, int deltaY);
     }
 
     @Override

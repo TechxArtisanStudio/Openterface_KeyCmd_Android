@@ -26,11 +26,15 @@ public final class GamepadLayoutPresetConstants {
      * swipe actions: hold lock, turbo, optional alternate key).
      */
     public static final int SCHEMA_VERSION_V8 = 8;
+    /**
+     * v9 adds optional {@code SCROLL_STRIP} modules (vertical drag → HID mouse wheel).
+     */
+    public static final int SCHEMA_VERSION_V9 = 9;
     /** Current preset schema. */
-    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
+    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V9;
 
     /**
-     * Dynamic layout (BUTTON, STICK_*, DPAD, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by
+     * Dynamic layout (BUTTON, STICK_*, DPAD, TOUCHPAD, SCROLL_STRIP, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by
      * {@code min(contentW, contentH) / REFERENCE} so presets stay usable across phones and aspect ratios.
      * Legacy fixed-pixel bases (100 / 180) matched roughly this reference on a typical landscape phone.
      */
@@ -149,6 +153,11 @@ public final class GamepadLayoutPresetConstants {
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
+    /**
+     * Vertical scroll strip: finger drag along the module sends relative mouse wheel (not pointer motion).
+     * Ids {@code scroll_strip_1}, {@code scroll_strip_2}, …
+     */
+    public static final String MODULE_TYPE_SCROLL_STRIP = "SCROLL_STRIP";
     /** Physical mouse buttons (HID mouse report), not keyboard keys. */
     public static final String MODULE_TYPE_MOUSE_BUTTON = "MOUSE_BUTTON";
     /** Digital shoulder / bumper (e.g. L1/R1); uses {@code hidKey}. */
@@ -228,6 +237,14 @@ public final class GamepadLayoutPresetConstants {
     public static boolean isTouchpadModuleId(@Nullable String id) {
         return id != null && id.matches("touchpad_[0-9]+");
     }
+
+    /** Preset scroll-strip modules use ids {@code scroll_strip_1}, {@code scroll_strip_2}, … */
+    public static boolean isScrollStripModuleId(@Nullable String id) {
+        return id != null && id.matches("scroll_strip_[0-9]+");
+    }
+
+    /** Max {@link #MODULE_TYPE_SCROLL_STRIP} modules per layout (arbitrary cap). */
+    public static final int MAX_SCROLL_STRIP_MODULES = 8;
 
     /** {@code true} for ids {@code mouse_btn_copy_}<em>n</em> with positive integer {@code n}. */
     public static boolean isMouseButtonCopyModuleId(@Nullable String id) {
