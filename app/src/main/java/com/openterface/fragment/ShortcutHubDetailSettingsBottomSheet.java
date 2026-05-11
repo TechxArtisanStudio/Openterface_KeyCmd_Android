@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 
@@ -133,7 +134,7 @@ public class ShortcutHubDetailSettingsBottomSheet extends BottomSheetDialogFragm
         if (displayToggle == null || !isAdded()) {
             return;
         }
-        View parent = displayToggle.getParent();
+        ViewParent parent = displayToggle.getParent();
         if (!(parent instanceof HorizontalScrollView)) {
             return;
         }
