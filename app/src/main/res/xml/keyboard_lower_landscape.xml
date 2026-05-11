@@ -25,10 +25,10 @@
         <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates="$,€,¥,£" custom:keyCornerHint="$" android:keyWidth="9.35%p"/>
         <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates="%" custom:keyCornerHint="%" android:keyWidth="9.35%p"/>
         <Key android:codes="0A" android:keyLabel="g" custom:keySymbolLabel="G" custom:keyAlternates="^" custom:keyCornerHint="^" android:keyWidth="9.35%p"/>
-        <Key android:codes="0B" android:keyLabel="h" custom:keySymbolLabel="H" custom:keyAlternates="&amp;" custom:keyCornerHint="&amp;" android:keyWidth="9.35%p"/>
-        <Key android:codes="0D" android:keyLabel="j" custom:keySymbolLabel="J" custom:keyAlternates="*" custom:keyCornerHint="*" android:keyWidth="9.35%p"/>
-        <Key android:codes="0E" android:keyLabel="k" custom:keySymbolLabel="K" custom:keyAlternates="(,{,[,&lt;" custom:keyCornerHint="(" android:keyWidth="9.35%p"/>
-        <Key android:codes="0F" android:keyLabel="l" custom:keySymbolLabel="L" custom:keyAlternates="),},],&gt;" custom:keyCornerHint=")" android:keyWidth="9.35%p"/>
+        <Key android:codes="0B" android:keyLabel="h" custom:keySymbolLabel="H" custom:keyAlternates=",,&#123;,&#125;" custom:keyCornerHint="&#123;" android:keyWidth="9.35%p"/>
+        <Key android:codes="0D" android:keyLabel="j" custom:keySymbolLabel="J" custom:keyAlternates=",,&lt;,&gt;" custom:keyCornerHint="&lt;" android:keyWidth="9.35%p"/>
+        <Key android:codes="0E" android:keyLabel="k" custom:keySymbolLabel="K" custom:keyAlternates=",,(,)" custom:keyCornerHint="(" android:keyWidth="9.35%p"/>
+        <Key android:codes="0F" android:keyLabel="l" custom:keySymbolLabel="L" custom:keyAlternates=",,[,]" custom:keyCornerHint="[" android:keyWidth="9.35%p"/>
         <Key android:codes="2A" android:keyLabel="@string/BackSpace" android:isRepeatable="true" android:keyWidth="11.5%p"/>
     </Row>
 
