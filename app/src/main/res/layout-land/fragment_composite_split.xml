@@ -162,6 +162,8 @@
 
                 <include layout="@layout/include_pro_touchpad_mouse_keys" />
 
+            </LinearLayout>
+
             <!-- Toggle Handle (right side) -->
             <LinearLayout
                 android:id="@+id/toggle_handle"
