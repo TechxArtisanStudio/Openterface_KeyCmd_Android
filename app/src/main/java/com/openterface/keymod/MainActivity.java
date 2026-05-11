@@ -636,8 +636,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         updateImmersiveForTopFragment();
         applyWindowSystemBarAppearanceForHostFragment(f);
         if (drawerLayout != null) {
+            // Pro + gamepad: lock edge swipe so left-edge typing / gestures do not open the drawer;
+            // hamburger and programmatic openDrawer() still work.
             int lockMode =
-                    f instanceof GamepadFragment
+                    (f instanceof GamepadFragment || f instanceof CompositeFragment)
                             ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                             : DrawerLayout.LOCK_MODE_UNLOCKED;
             drawerLayout.setDrawerLockMode(lockMode, GravityCompat.START);
