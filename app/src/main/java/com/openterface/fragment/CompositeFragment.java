@@ -101,6 +101,7 @@ public class CompositeFragment extends Fragment {
     private EditText splitImeEdit;
     private LinearLayout splitLeftColumn;
     private LinearLayout splitRightColumn;
+    private View splitToggleHandleView;
     private FrameLayout splitTopLeftFrame;
     private FrameLayout splitTopRightFrame;
     private LinearLayout splitImeShortcutsRow;
@@ -115,7 +116,14 @@ public class CompositeFragment extends Fragment {
     private static final float SPLIT_IME_INNER_TEXT_WEIGHT = 1.0f;
     private static final float SPLIT_TOUCHPAD_SECTION_WEIGHT_NORMAL = 1.2f;
     private static final float SPLIT_TOUCHPAD_SECTION_WEIGHT_IME_FULL_WIDTH = 1f;
+    private static final float SPLIT_COMPOSE_TOP_ROW_WEIGHT = 1f;
+    private static final float SPLIT_COMPOSE_TEXT_ROW_WEIGHT = 1f;
+    private static final float SPLIT_COMPOSE_SHORTCUTS_TOTAL_WEIGHT = 2f;
+    private static final float SPLIT_COMPOSE_TOUCHPAD_WEIGHT = 2f;
+    private static final float SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT = 1f;
     private View splitTouchPadInfoButton;
+    /** Latest landscape split IME visibility from insets (true when software keyboard is visible). */
+    private boolean splitLandscapeImeVisible;
     @Nullable
     private PopOutTouchPadDialog imePopOutTouchPad;
     private boolean imeSubComposeChromeSnapshotValid;
@@ -465,6 +473,11 @@ public class CompositeFragment extends Fragment {
                 || proTouchpadMouseKeys == null
                 || touchpadSection == null
                 || !KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
+            return;
+        }
+        if (isSplitLandscapeComposeSendMode()) {
+            proTouchpadMouseLayoutCompact = true;
+            applySplitComposeTouchpadStripRatios();
             return;
         }
         int th = touchpadSection.getHeight();
@@ -1116,6 +1129,15 @@ public class CompositeFragment extends Fragment {
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
             int imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
             v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), imeBottom);
+            if (splitLayoutRoot != null && v == splitLayoutRoot) {
+                boolean imeVisible = imeBottom > 0;
+                if (splitLandscapeImeVisible != imeVisible) {
+                    splitLandscapeImeVisible = imeVisible;
+                    if (isSplitLandscapeComposeSendMode()) {
+                        v.post(this::applySplitLandscapeComposeRows);
+                    }
+                }
+            }
             return windowInsets;
         });
         root.post(() -> ViewCompat.requestApplyInsets(root));
@@ -1211,6 +1233,101 @@ public class CompositeFragment extends Fragment {
         splitShortcutsReparentedForIme = false;
     }
 
+    private boolean isSplitLandscapeComposeSendMode() {
+        if (splitRoot == null) {
+            return false;
+        }
+        if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            return false;
+        }
+        CustomKeyboardView imeSource = keyboardViewRight != null ? keyboardViewRight : keyboardViewLeft;
+        if (imeSource == null) {
+            return false;
+        }
+        return imeSource.isSystemImeCaptureMode() && !imeSource.isImeSubComposeDirectHidMode();
+    }
+
+    private void applySplitComposeTouchpadStripRatios() {
+        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
+            return;
+        }
+        if (splitToggleHandleView != null) {
+            splitToggleHandleView.setVisibility(View.GONE);
+        }
+        proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
+        padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        padLp.width = 0;
+        padLp.weight = SPLIT_COMPOSE_TOUCHPAD_WEIGHT;
+        touchpadPadHost.setLayoutParams(padLp);
+
+        LinearLayout.LayoutParams mouseLp =
+                (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        mouseLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        mouseLp.width = 0;
+        mouseLp.weight = SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT;
+        proTouchpadMouseKeys.setLayoutParams(mouseLp);
+
+        int topPad =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
+        int bottomPad =
+                getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
+        int sidePad =
+                getResources()
+                        .getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_strip_padding_horizontal);
+        proTouchpadMouseKeys.setPaddingRelative(sidePad, topPad, sidePad, bottomPad);
+        configureProMouseKeysRow(true);
+        applyProTouchpadScrollStripLayout();
+    }
+
+    /** Landscape split compose mode: IME hidden -> 1:1 top/text rows; IME shown -> top row hidden. */
+    private void applySplitLandscapeComposeRows() {
+        if (!isSplitLandscapeComposeSendMode()
+                || splitImeHost == null
+                || splitImeEdit == null
+                || splitTouchpadSection == null
+                || splitRoot == null) {
+            return;
+        }
+        ViewParent parent = splitRoot.getParent();
+        if (!(parent instanceof LinearLayout)) {
+            return;
+        }
+        LinearLayout outer = (LinearLayout) parent;
+        LinearLayout.LayoutParams rootLp = (LinearLayout.LayoutParams) splitRoot.getLayoutParams();
+        LinearLayout.LayoutParams imeLp = (LinearLayout.LayoutParams) splitImeHost.getLayoutParams();
+        LinearLayout.LayoutParams touchLp = (LinearLayout.LayoutParams) splitTouchpadSection.getLayoutParams();
+        boolean imeVisible = splitLandscapeImeVisible;
+        if (imeVisible) {
+            splitRoot.setVisibility(View.GONE);
+            rootLp.weight = 0f;
+            imeLp.weight = 1f;
+        } else {
+            splitRoot.setVisibility(View.VISIBLE);
+            rootLp.weight = SPLIT_COMPOSE_TOP_ROW_WEIGHT;
+            imeLp.weight = SPLIT_COMPOSE_TEXT_ROW_WEIGHT;
+        }
+        splitImeHost.setVisibility(View.VISIBLE);
+        if (splitImeShortcutsRow != null) {
+            splitImeShortcutsRow.setVisibility(View.GONE);
+        }
+        LinearLayout.LayoutParams editLp = (LinearLayout.LayoutParams) splitImeEdit.getLayoutParams();
+        editLp.height = 0;
+        editLp.weight = 1f;
+        splitImeEdit.setLayoutParams(editLp);
+
+        touchLp.weight =
+                SPLIT_COMPOSE_SHORTCUTS_TOTAL_WEIGHT
+                        + SPLIT_COMPOSE_TOUCHPAD_WEIGHT
+                        + SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT;
+        splitTouchpadSection.setLayoutParams(touchLp);
+        setSplitKeyboardColumnWeight(0f);
+        applySplitComposeTouchpadStripRatios();
+        splitRoot.setLayoutParams(rootLp);
+        splitImeHost.setLayoutParams(imeLp);
+        outer.requestLayout();
+    }
+
     private void applySplitImeLayout(boolean imeMode) {
         if (splitImeHost == null || splitImeEdit == null || splitTouchpadSection == null || splitRoot == null) {
             return;
@@ -1223,14 +1340,26 @@ public class CompositeFragment extends Fragment {
         LinearLayout.LayoutParams rootLp = (LinearLayout.LayoutParams) splitRoot.getLayoutParams();
         LinearLayout.LayoutParams imeLp = (LinearLayout.LayoutParams) splitImeHost.getLayoutParams();
         LinearLayout.LayoutParams touchLp = (LinearLayout.LayoutParams) splitTouchpadSection.getLayoutParams();
+        boolean handledByComposeRows = false;
         InputMethodManager imm =
                 (InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
         if (imeMode) {
-            dockSplitShortcutsForIme();
-            rootLp.weight = SPLIT_IME_OUTER_UPPER_WEIGHT;
-            imeLp.weight = SPLIT_IME_OUTER_LOWER_WEIGHT;
-            splitImeHost.setVisibility(View.VISIBLE);
-            applySplitImeHostInnerWeights();
+            if (isSplitLandscapeComposeSendMode()) {
+                undockSplitShortcutsFromIme();
+                splitLandscapeImeVisible = false;
+                applySplitLandscapeComposeRows();
+                handledByComposeRows = true;
+            } else {
+                if (splitToggleHandleView != null) {
+                    splitToggleHandleView.setVisibility(View.VISIBLE);
+                }
+                dockSplitShortcutsForIme();
+                rootLp.weight = SPLIT_IME_OUTER_UPPER_WEIGHT;
+                imeLp.weight = SPLIT_IME_OUTER_LOWER_WEIGHT;
+                splitRoot.setVisibility(View.VISIBLE);
+                splitImeHost.setVisibility(View.VISIBLE);
+                applySplitImeHostInnerWeights();
+            }
             if (splitImeHost instanceof ViewGroup) {
                 ((ViewGroup) splitImeHost).setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
             }
@@ -1258,10 +1387,14 @@ public class CompositeFragment extends Fragment {
             requestCompositeImeInsetsAfterImeChange();
         } else {
             undockSplitShortcutsFromIme();
+            if (splitToggleHandleView != null) {
+                splitToggleHandleView.setVisibility(View.VISIBLE);
+            }
             ImeTextForwarder.detach(splitImeEdit);
             splitImeEdit.setText("");
             imeLp.weight = 0f;
             splitImeHost.setVisibility(View.GONE);
+            splitRoot.setVisibility(View.VISIBLE);
             touchLp.weight = SPLIT_TOUCHPAD_SECTION_WEIGHT_NORMAL;
             rootLp.weight = 1f;
             if (imm != null) {
@@ -1269,11 +1402,13 @@ public class CompositeFragment extends Fragment {
             }
             requestCompositeImeInsetsAfterImeChange();
         }
-        splitRoot.setLayoutParams(rootLp);
-        splitImeHost.setLayoutParams(imeLp);
-        splitTouchpadSection.setLayoutParams(touchLp);
-        setSplitKeyboardColumnWeight(imeMode ? 0f : 22f);
-        outer.requestLayout();
+        if (!handledByComposeRows) {
+            splitRoot.setLayoutParams(rootLp);
+            splitImeHost.setLayoutParams(imeLp);
+            splitTouchpadSection.setLayoutParams(touchLp);
+            setSplitKeyboardColumnWeight(imeMode ? 0f : 22f);
+            outer.requestLayout();
+        }
     }
 
     private void setSplitKeyboardColumnWeight(float keyboardWeight) {
@@ -1560,6 +1695,7 @@ public class CompositeFragment extends Fragment {
         splitTouchPadTips = view.findViewById(R.id.touchPadTips);
         splitTouchPadHelpOverlay = view.findViewById(R.id.touchPadHelpOverlay);
         View splitToggleHandle = view.findViewById(R.id.toggle_handle);
+        splitToggleHandleView = splitToggleHandle;
         setupBottomWashOverlays();
 
         if (splitTouchPadTips != null) {
@@ -1886,6 +2022,7 @@ public class CompositeFragment extends Fragment {
             splitLayoutRoot = null;
             splitTouchPadInfoButton = null;
             splitTouchpadSection = null;
+            splitToggleHandleView = null;
 
             View normalView = LayoutInflater.from(requireContext()).inflate(
                     R.layout.fragment_composite, contentContainer, false);
