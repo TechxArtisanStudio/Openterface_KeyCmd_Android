@@ -577,9 +577,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
         kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
-        if (kmProSetupHeaderButton != null) {
-            kmProSetupHeaderButton.setOnClickListener(v -> toggleKmProSettingsOverlay());
-        }
         applyHeaderRightClusterNavInsets();
         applyHeaderEndScrollLayoutForOrientation();
         setupHeaderModeSlotButtons();
@@ -726,19 +723,47 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         updateKmProHeaderSetupChrome();
     }
 
+    /**
+     * Header gear between Target OS and connection: KM Pro setup overlay on Pro mode, or Shortcut Hub
+     * per-profile display settings when a profile detail is open.
+     */
+    public void refreshHeaderSetupGearChrome() {
+        updateKmProHeaderSetupChrome();
+    }
+
     private void updateKmProHeaderSetupChrome() {
+        if (kmProSetupHeaderButton == null) {
+            return;
+        }
         Fragment host = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        boolean pro = host instanceof CompositeFragment;
-        if (kmProSetupHeaderButton != null) {
-            kmProSetupHeaderButton.setVisibility(pro ? View.VISIBLE : View.GONE);
-            boolean settingsOpen =
-                    kmProSettingsOverlay != null && kmProSettingsOverlay.getVisibility() == View.VISIBLE;
+        boolean kmProOverlayOpen =
+                kmProSettingsOverlay != null && kmProSettingsOverlay.getVisibility() == View.VISIBLE;
+
+        if (host instanceof CompositeFragment) {
+            kmProSetupHeaderButton.setVisibility(View.VISIBLE);
+            kmProSetupHeaderButton.setOnClickListener(v -> toggleKmProSettingsOverlay());
+            kmProSetupHeaderButton.setContentDescription(getString(R.string.km_pro_setup_button_cd));
             int tint =
                     ContextCompat.getColor(
-                            this,
-                            settingsOpen ? R.color.primary : R.color.text_secondary);
+                            this, kmProOverlayOpen ? R.color.primary : R.color.text_secondary);
             kmProSetupHeaderButton.setImageTintList(ColorStateList.valueOf(tint));
+            return;
         }
+
+        if (host instanceof ShortcutHubFragment) {
+            ShortcutHubFragment hub = (ShortcutHubFragment) host;
+            if (hub.isShortcutHubProfileDetailShowing()) {
+                kmProSetupHeaderButton.setVisibility(View.VISIBLE);
+                kmProSetupHeaderButton.setOnClickListener(v -> hub.openHubDetailSettingsFromHost());
+                kmProSetupHeaderButton.setContentDescription(getString(R.string.shortcut_hub_detail_settings_cd));
+                kmProSetupHeaderButton.setImageTintList(
+                        ColorStateList.valueOf(ContextCompat.getColor(this, R.color.text_secondary)));
+                return;
+            }
+        }
+
+        kmProSetupHeaderButton.setVisibility(View.GONE);
+        kmProSetupHeaderButton.setOnClickListener(null);
     }
 
     /**

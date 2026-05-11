@@ -2,9 +2,13 @@ package com.openterface.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.TextView;
+
+import androidx.core.widget.NestedScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -73,6 +77,7 @@ public class ShortcutHubDetailSettingsBottomSheet extends BottomSheetDialogFragm
 
         layoutToggle = view.findViewById(R.id.hub_detail_layout_toggle);
         displayToggle = view.findViewById(R.id.hub_detail_display_toggle);
+        setupDisplayToggleHorizontalScroll(view);
 
         if (layoutToggle != null) {
             layoutToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
@@ -95,10 +100,69 @@ public class ShortcutHubDetailSettingsBottomSheet extends BottomSheetDialogFragm
                 int mode = displayButtonIdToMode(checkedId);
                 ShortcutHubDetailUiPrefs.writeDisplay(requireContext(), profileId, mode);
                 notifyHostHubUiChanged();
+                scrollDisplayToggleToCheckedIfNeeded();
             });
         }
 
         syncTogglesFromPrefs();
+    }
+
+    /**
+     * Lets the Shortcut display segment row scroll horizontally without the outer
+     * {@link NestedScrollView} stealing the gesture.
+     */
+    private void setupDisplayToggleHorizontalScroll(@NonNull View root) {
+        NestedScrollView nested = root.findViewById(R.id.hub_detail_settings_nested_scroll);
+        HorizontalScrollView hsv = root.findViewById(R.id.hub_detail_display_toggle_scroll);
+        if (nested == null || hsv == null) {
+            return;
+        }
+        hsv.setOnTouchListener((v, event) -> {
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                nested.requestDisallowInterceptTouchEvent(true);
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                nested.requestDisallowInterceptTouchEvent(false);
+            }
+            return false;
+        });
+    }
+
+    /** Scrolls the horizontal strip so the checked display mode is fully visible. */
+    private void scrollDisplayToggleToCheckedIfNeeded() {
+        if (displayToggle == null || !isAdded()) {
+            return;
+        }
+        View parent = displayToggle.getParent();
+        if (!(parent instanceof HorizontalScrollView)) {
+            return;
+        }
+        HorizontalScrollView hsv = (HorizontalScrollView) parent;
+        int checkedId = displayToggle.getCheckedButtonId();
+        if (checkedId == View.NO_ID) {
+            return;
+        }
+        View checked = displayToggle.findViewById(checkedId);
+        if (checked == null) {
+            return;
+        }
+        hsv.post(() -> {
+            if (!isAdded() || checked.getParent() != displayToggle) {
+                return;
+            }
+            int viewport = hsv.getWidth();
+            if (viewport <= 0) {
+                return;
+            }
+            int left = checked.getLeft();
+            int right = checked.getRight();
+            int scrollX = hsv.getScrollX();
+            if (left < scrollX) {
+                hsv.smoothScrollTo(Math.max(0, left - 12), 0);
+            } else if (right > scrollX + viewport) {
+                hsv.smoothScrollTo(Math.max(0, right - viewport + 12), 0);
+            }
+        });
     }
 
     private void notifyHostHubUiChanged() {
@@ -127,6 +191,7 @@ public class ShortcutHubDetailSettingsBottomSheet extends BottomSheetDialogFragm
             suppressDisplayCallback = true;
             displayToggle.check(displayModeToButtonId(display));
             suppressDisplayCallback = false;
+            scrollDisplayToggleToCheckedIfNeeded();
         }
     }
 

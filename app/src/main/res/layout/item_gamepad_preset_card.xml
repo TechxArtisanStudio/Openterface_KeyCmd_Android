@@ -31,6 +31,23 @@
                 tools:ignore="ContentDescription" />
 
             <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/preset_card_builtin_indicator"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="end|top"
+                android:layout_marginTop="@dimen/spacing_tiny"
+                android:layout_marginEnd="@dimen/spacing_tiny"
+                android:alpha="0.52"
+                android:clickable="false"
+                android:contentDescription="@string/gamepad_presets_builtin_badge"
+                android:focusable="false"
+                android:importantForAccessibility="yes"
+                android:visibility="gone"
+                app:srcCompat="@drawable/ic_gamepad_preset_builtin_20"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:visibility="visible" />
+
+            <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/preset_card_drag_handle"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
@@ -46,7 +63,7 @@
                 tools:visibility="visible" />
         </FrameLayout>
 
-        <!-- Single row: built-in icon (when shipped) | title | overflow -->
+        <!-- Title + overflow (built-in cue is on preview, top-end) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,18 +73,6 @@
             android:paddingHorizontal="@dimen/spacing_small"
             android:paddingTop="@dimen/spacing_tiny"
             android:paddingBottom="@dimen/spacing_small">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/preset_card_builtin_indicator"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="@dimen/spacing_tiny"
-                android:contentDescription="@string/gamepad_presets_builtin_badge"
-                android:importantForAccessibility="yes"
-                android:visibility="gone"
-                app:srcCompat="@drawable/ic_gamepad_preset_builtin_20"
-                app:tint="?attr/colorOnSurfaceVariant"
-                tools:visibility="visible" />
 
             <TextView
                 android:id="@+id/preset_card_title"

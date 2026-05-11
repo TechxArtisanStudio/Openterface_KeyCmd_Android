@@ -65,8 +65,9 @@ import java.util.Comparator;
 import java.util.List;
 /**
  * Shortcut Hub: shortcut profiles (Favorites, categories, import/export), Rows 2–3 strip layouts,
- * and the strip catalog. Profile detail header gear opens per-profile list/card layout and Hub-only
- * shortcut display modes; Keyboard and Mouse Pro setup covers row-1 strip display and active profile.
+ * and the strip catalog. Per-profile list/card layout and Hub-only shortcut display modes open from
+ * the app header setup gear (when a profile detail is visible); Keyboard and Mouse Pro setup covers
+ * row-1 strip display and active profile.
  */
 public class ShortcutHubFragment extends Fragment implements ProfileChangeListener {
 
@@ -87,12 +88,10 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
-    private Button backButton;
-    private ImageButton hubDetailSettingsButton;
-    private Button resetDefaultProfileButton;
-    private Button addShortcutButton;
+    private ImageButton backButton;
+    private ImageButton resetDefaultProfileButton;
+    private ImageButton addShortcutButton;
     private TextView detailProfileName;
-    private TextView detailProfileDescription;
     private TabLayout hubDetailTabs;
     private RecyclerView browseShortcutsRecyclerView;
     private RecyclerView myShortcutsRecyclerView;
@@ -159,6 +158,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             profileManager.reloadProfilesFromPreferences();
             loadProfiles();
         }
+        requestMainActivityHeaderSetupGearRefresh();
     }
 
     @Override
@@ -181,11 +181,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
         backButton = view.findViewById(R.id.back_button);
-        hubDetailSettingsButton = view.findViewById(R.id.hub_detail_settings_button);
         resetDefaultProfileButton = view.findViewById(R.id.reset_default_profile_button);
         addShortcutButton = view.findViewById(R.id.add_shortcut_button);
         detailProfileName = view.findViewById(R.id.detail_profile_name);
-        detailProfileDescription = view.findViewById(R.id.detail_profile_description);
         hubDetailTabs = view.findViewById(R.id.hub_detail_tabs);
         browseShortcutsRecyclerView = view.findViewById(R.id.browse_shortcuts_recycler);
         myShortcutsRecyclerView = view.findViewById(R.id.my_shortcuts_recycler);
@@ -379,19 +377,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Back button - return to profile list
         backButton.setOnClickListener(v -> showProfileList());
 
-        if (hubDetailSettingsButton != null) {
-            hubDetailSettingsButton.setOnClickListener(v -> {
-                if (selectedProfile == null || selectedProfile.id == null) {
-                    return;
-                }
-                if (getChildFragmentManager().findFragmentByTag(ShortcutHubDetailSettingsBottomSheet.TAG) != null) {
-                    return;
-                }
-                ShortcutHubDetailSettingsBottomSheet.newInstance(selectedProfile.id)
-                        .show(getChildFragmentManager(), ShortcutHubDetailSettingsBottomSheet.TAG);
-            });
-        }
-
         resetDefaultProfileButton.setOnClickListener(v -> showResetDefaultProfileDialog());
 
         // Add shortcut button
@@ -438,7 +423,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         currentCategoryId = null;
 
         detailProfileName.setText(ProfileUiStrings.displayName(requireContext(), profile));
-        detailProfileDescription.setText(ProfileUiStrings.displayDescription(requireContext(), profile));
 
         resetDefaultProfileButton.setVisibility("default".equals(profile.id) ? View.VISIBLE : View.GONE);
 
@@ -453,12 +437,46 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         panelProfilesList.setVisibility(View.GONE);
         panelShortcutsDetail.setVisibility(View.VISIBLE);
+        requestMainActivityHeaderSetupGearRefresh();
     }
 
     private void showProfileList() {
+        dismissHubDetailSettingsIfVisible();
         selectedProfile = null;
         panelShortcutsDetail.setVisibility(View.GONE);
         panelProfilesList.setVisibility(View.VISIBLE);
+        requestMainActivityHeaderSetupGearRefresh();
+    }
+
+    /** Whether the profile shortcuts detail panel is visible (header setup gear opens Hub settings). */
+    public boolean isShortcutHubProfileDetailShowing() {
+        return panelShortcutsDetail != null && panelShortcutsDetail.getVisibility() == View.VISIBLE;
+    }
+
+    /** Opens list/card and shortcut display settings; invoked from {@link MainActivity} header. */
+    public void openHubDetailSettingsFromHost() {
+        if (selectedProfile == null || selectedProfile.id == null || !isAdded()) {
+            return;
+        }
+        if (getChildFragmentManager().findFragmentByTag(ShortcutHubDetailSettingsBottomSheet.TAG) != null) {
+            return;
+        }
+        ShortcutHubDetailSettingsBottomSheet.newInstance(selectedProfile.id)
+                .show(getChildFragmentManager(), ShortcutHubDetailSettingsBottomSheet.TAG);
+    }
+
+    private void dismissHubDetailSettingsIfVisible() {
+        Fragment f = getChildFragmentManager().findFragmentByTag(ShortcutHubDetailSettingsBottomSheet.TAG);
+        if (f instanceof ShortcutHubDetailSettingsBottomSheet) {
+            ((ShortcutHubDetailSettingsBottomSheet) f).dismissAllowingStateLoss();
+        }
+    }
+
+    private void requestMainActivityHeaderSetupGearRefresh() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshHeaderSetupGearChrome();
+        }
     }
 
 

@@ -123,78 +123,58 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingTop="12dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="4dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/back_button"
-                    style="@style/Widget.KeyMod.HubHeaderButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="72dp"
-                    android:text="@string/shortcut_hub_back" />
-
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                android:paddingStart="4dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="10dp">
 
                 <ImageButton
-                    android:id="@+id/hub_detail_settings_button"
+                    android:id="@+id/back_button"
                     android:layout_width="@dimen/header_icon_size"
                     android:layout_height="@dimen/header_icon_size"
-                    android:layout_marginEnd="4dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/shortcut_hub_detail_settings_cd"
+                    android:contentDescription="@string/shortcut_hub_back"
                     android:padding="@dimen/button_icon_padding"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/ic_settings"
+                    android:src="@drawable/ic_arrow_back_material_24"
                     android:tint="@color/text_primary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/reset_default_profile_button"
-                    style="@style/Widget.KeyMod.HubHeaderButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:minWidth="72dp"
-                    android:text="@string/shortcut_hub_reset_default"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/add_shortcut_button"
-                    style="@style/Widget.KeyMod.HubHeaderButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="72dp"
-                    android:text="@string/shortcut_hub_add_shortcut" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="12dp">
 
                 <TextView
                     android:id="@+id/detail_profile_name"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="22sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/detail_profile_description"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                <ImageButton
+                    android:id="@+id/reset_default_profile_button"
+                    android:layout_width="@dimen/header_icon_size"
+                    android:layout_height="@dimen/header_icon_size"
+                    android:layout_marginEnd="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/shortcut_hub_reset_default"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_reset"
+                    android:tint="@color/text_primary"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/add_shortcut_button"
+                    android:layout_width="@dimen/header_icon_size"
+                    android:layout_height="@dimen/header_icon_size"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/shortcut_hub_add_shortcut"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_add_material_24"
+                    android:tint="@color/text_primary" />
             </LinearLayout>
 
             <View
