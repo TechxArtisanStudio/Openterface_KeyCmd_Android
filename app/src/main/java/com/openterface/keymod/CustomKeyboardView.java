@@ -2497,24 +2497,36 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code >= 0xE0 && key.code <= 0xE7) {
             return null;
         }
-        if (key.code == KEY_MODE_FN || key.code == 0x2A || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
+        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
             return null;
         }
 
-        // Function-row mapping.
+        // KM Pro lower keyboard (km_pro_keys_layout): Fn+Q–P → digits 1–0; Fn+A–L → F1–F9; Fn+Z,X,C → F10–F12;
+        // Fn+Backspace → Del (see also sendHidKeyDataForKey forward-delete path).
         switch (key.code) {
-            case 0x14: return new FnMapping("F1", 0x3A, 0);  // q
-            case 0x1A: return new FnMapping("F2", 0x3B, 0);  // w
-            case 0x08: return new FnMapping("F3", 0x3C, 0);  // e
-            case 0x15: return new FnMapping("F4", 0x3D, 0);  // r
-            case 0x17: return new FnMapping("F5", 0x3E, 0);  // t
-            case 0x1C: return new FnMapping("F6", 0x3F, 0);  // y
-            case 0x18: return new FnMapping("F7", 0x40, 0);  // u
-            case 0x0C: return new FnMapping("F8", 0x41, 0);  // i
-            case 0x12: return new FnMapping("F9", 0x42, 0);  // o
-            case 0x13: return new FnMapping("F10", 0x43, 0); // p
-            case 0x04: return new FnMapping("F11", 0x44, 0); // a
-            case 0x16: return new FnMapping("F12", 0x45, 0); // s (adjacent to F11)
+            case 0x14: return new FnMapping("1", 0x1E, 0);  // q
+            case 0x1A: return new FnMapping("2", 0x1F, 0);  // w
+            case 0x08: return new FnMapping("3", 0x20, 0);  // e
+            case 0x15: return new FnMapping("4", 0x21, 0);  // r
+            case 0x17: return new FnMapping("5", 0x22, 0);  // t
+            case 0x1C: return new FnMapping("6", 0x23, 0);  // y
+            case 0x18: return new FnMapping("7", 0x24, 0);  // u
+            case 0x0C: return new FnMapping("8", 0x25, 0);  // i
+            case 0x12: return new FnMapping("9", 0x26, 0);  // o
+            case 0x13: return new FnMapping("0", 0x27, 0);   // p
+            case 0x04: return new FnMapping("F1", 0x3A, 0);  // a
+            case 0x16: return new FnMapping("F2", 0x3B, 0);  // s
+            case 0x07: return new FnMapping("F3", 0x3C, 0);  // d
+            case 0x09: return new FnMapping("F4", 0x3D, 0);  // f
+            case 0x0A: return new FnMapping("F5", 0x3E, 0);  // g
+            case 0x0B: return new FnMapping("F6", 0x3F, 0);  // h
+            case 0x0D: return new FnMapping("F7", 0x40, 0);  // j
+            case 0x0E: return new FnMapping("F8", 0x41, 0);  // k
+            case 0x0F: return new FnMapping("F9", 0x42, 0);  // l
+            case 0x1D: return new FnMapping("F10", 0x43, 0); // z
+            case 0x1B: return new FnMapping("F11", 0x44, 0); // x
+            case 0x06: return new FnMapping("F12", 0x45, 0); // c
+            case 0x2A: return new FnMapping("Del", 0x4C, 0, R.drawable.backspace_24);
             default: return null;
         }
     }
@@ -6919,12 +6931,13 @@ public class CustomKeyboardView extends LinearLayout {
                 ? fixedTopLocalFn
                 : (extraNumpadFn != null ? extraNumpadFn : resolveFnMapping(key));
         int effectiveKeyCode = fnMapping != null ? fnMapping.keyCode : key.code;
-        boolean effectiveShiftLocked = isShiftLeftLocked;
         int fnModifierMask = fnMapping != null ? fnMapping.modifierMask : 0;
-        if (isBackspaceKey(key) && isFnLocked) {
-            // Fn+Backspace switches to forward delete behavior.
+        // Forward delete: Fn+Backspace (layout overlay) or Shift+Backspace (shift cap shows Del).
+        boolean backspaceForwardDelete = isBackspaceKey(key) && (isFnLocked || isShiftLeftLocked);
+        if (backspaceForwardDelete) {
             effectiveKeyCode = 0x4C;
         }
+        boolean effectiveShiftLocked = isShiftLeftLocked && !backspaceForwardDelete;
 
         int combinedValue = 0;
         combinedValue += isCtrlLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl")) : 0;

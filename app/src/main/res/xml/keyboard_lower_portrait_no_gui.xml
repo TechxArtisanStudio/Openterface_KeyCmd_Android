@@ -7,48 +7,48 @@
     android:keyHeight="10%p">
 
     <Row>
-        <Key android:codes="14" android:keyLabel="q" custom:keySymbolLabel="Q" custom:keyAlternates="1" custom:keyCornerHint="1"/>
-        <Key android:codes="1A" android:keyLabel="w" custom:keySymbolLabel="W" custom:keyAlternates="2" custom:keyCornerHint="2"/>
-        <Key android:codes="08" android:keyLabel="e" custom:keySymbolLabel="E" custom:keyAlternates="3" custom:keyCornerHint="3"/>
-        <Key android:codes="15" android:keyLabel="r" custom:keySymbolLabel="R" custom:keyAlternates="4" custom:keyCornerHint="4"/>
-        <Key android:codes="17" android:keyLabel="t" custom:keySymbolLabel="T" custom:keyAlternates="5" custom:keyCornerHint="5"/>
-        <Key android:codes="1C" android:keyLabel="y" custom:keySymbolLabel="Y" custom:keyAlternates="6" custom:keyCornerHint="6"/>
-        <Key android:codes="18" android:keyLabel="u" custom:keySymbolLabel="U" custom:keyAlternates="7" custom:keyCornerHint="7"/>
-        <Key android:codes="0C" android:keyLabel="i" custom:keySymbolLabel="I" custom:keyAlternates="8" custom:keyCornerHint="8"/>
+        <Key android:codes="14" android:keyLabel="q" custom:keySymbolLabel="Q" custom:keyAlternates="1,!" custom:keyCornerHint="1"/>
+        <Key android:codes="1A" android:keyLabel="w" custom:keySymbolLabel="W" custom:keyAlternates="2,@" custom:keyCornerHint="2"/>
+        <Key android:codes="08" android:keyLabel="e" custom:keySymbolLabel="E" custom:keyAlternates="3,#" custom:keyCornerHint="3"/>
+        <Key android:codes="15" android:keyLabel="r" custom:keySymbolLabel="R" custom:keyAlternates="4,$" custom:keyCornerHint="4"/>
+        <Key android:codes="17" android:keyLabel="t" custom:keySymbolLabel="T" custom:keyAlternates="5,%" custom:keyCornerHint="5"/>
+        <Key android:codes="1C" android:keyLabel="y" custom:keySymbolLabel="Y" custom:keyAlternates="6,^" custom:keyCornerHint="6"/>
+        <Key android:codes="18" android:keyLabel="u" custom:keySymbolLabel="U" custom:keyAlternates="7,&amp;" custom:keyCornerHint="7"/>
+        <Key android:codes="0C" android:keyLabel="i" custom:keySymbolLabel="I" custom:keyAlternates="8,*" custom:keyCornerHint="8"/>
         <Key android:codes="12" android:keyLabel="o" custom:keySymbolLabel="O" custom:keyAlternates="9" custom:keyCornerHint="9"/>
         <Key android:codes="13" android:keyLabel="p" custom:keySymbolLabel="P" custom:keyAlternates="0" custom:keyCornerHint="0"/>
     </Row>
 
     <Row>
-        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="@" custom:keyCornerHint="@" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
-        <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates="#" custom:keyCornerHint="#" android:keyWidth="9.35%p"/>
-        <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates="$,€,¥,£" custom:keyCornerHint="$" android:keyWidth="9.35%p"/>
-        <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates="%" custom:keyCornerHint="%" android:keyWidth="9.35%p"/>
-        <Key android:codes="0A" android:keyLabel="g" custom:keySymbolLabel="G" custom:keyAlternates="^" custom:keyCornerHint="^" android:keyWidth="9.35%p"/>
-        <Key android:codes="0B" android:keyLabel="h" custom:keySymbolLabel="H" custom:keyAlternates="&amp;,,&#123;,&#125;" custom:keyCornerHint="&amp;" android:keyWidth="9.35%p"/>
-        <Key android:codes="0D" android:keyLabel="j" custom:keySymbolLabel="J" custom:keyAlternates="*,,&lt;,&gt;" custom:keyCornerHint="*" android:keyWidth="9.35%p"/>
-        <Key android:codes="0E" android:keyLabel="k" custom:keySymbolLabel="K" custom:keyAlternates=",,(,)" custom:keyCornerHint="(" android:keyWidth="9.35%p"/>
-        <Key android:codes="0F" android:keyLabel="l" custom:keySymbolLabel="L" custom:keyAlternates=",,[,]" custom:keyCornerHint="[" android:keyWidth="9.35%p"/>
-        <Key android:codes="2A" android:keyLabel="@string/BackSpace" android:isRepeatable="true" android:keyWidth="11.5%p"/>
+        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
+        <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates=",,`,~" custom:keyCornerHint="`" android:keyWidth="9.35%p"/>
+        <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates=",,-,_" custom:keyCornerHint="-" android:keyWidth="9.35%p"/>
+        <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates=",,+,=" custom:keyCornerHint="+" android:keyWidth="9.35%p"/>
+        <Key android:codes="0A" android:keyLabel="g" custom:keySymbolLabel="G" custom:keyAlternates=",,/,?" custom:keyCornerHint="/" android:keyWidth="9.35%p"/>
+        <Key android:codes="0B" android:keyLabel="h" custom:keySymbolLabel="H" custom:keyAlternates=",,&lt;,&gt;" custom:keyCornerHint="&lt;" android:keyWidth="9.35%p"/>
+        <Key android:codes="0D" android:keyLabel="j" custom:keySymbolLabel="J" custom:keyAlternates=",,[,]" custom:keyCornerHint="[" android:keyWidth="9.35%p"/>
+        <Key android:codes="0E" android:keyLabel="k" custom:keySymbolLabel="K" custom:keyAlternates=",,{,}" custom:keyCornerHint="{" android:keyWidth="9.35%p"/>
+        <Key android:codes="0F" android:keyLabel="l" custom:keySymbolLabel="L" custom:keyAlternates=",,(,)" custom:keyCornerHint="(" android:keyWidth="9.35%p"/>
+        <Key android:codes="2A" android:keyLabel="@string/BackSpace" custom:keySymbolLabel="Del" android:isRepeatable="true" android:keyWidth="11.5%p"/>
     </Row>
 
     <Row>
         <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="15%p"/>
-        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="!" custom:keyCornerHint="!"/>
-        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="=,&#63;" custom:keyCornerHint="&#63;"/>
-        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,~" custom:keyCornerHint=";"/>
-        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,&#96;" custom:keyCornerHint="&#96;"/>
-        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="',-" custom:keyCornerHint="'"/>
-        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&quot;,'" custom:keyCornerHint="&quot;"/>
-        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="+,_" custom:keyCornerHint="+"/>
-        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="&#92;,&#124;" custom:keyCornerHint="&#92;" android:keyWidth="15%p"/>
+        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates=",,,\\,|" custom:keyCornerHint="\\" android:keyWidth="10%p"/>
+        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates=",,:,;" custom:keyCornerHint=":" android:keyWidth="10%p"/>
+        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=",,,&#34;," custom:keyCornerHint="&#34;" android:keyWidth="10%p"/>
+        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" android:keyWidth="10%p"/>
+        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" android:keyWidth="10%p"/>
+        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" android:keyWidth="10%p"/>
+        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" android:keyWidth="10%p"/>
+        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="15%p"/>
     </Row>
 
     <Row>
         <Key android:codes="F005" android:keyLabel="Fn" android:keyWidth="15%p"/>
-        <Key android:codes="36" android:keyLabel="," custom:keySymbolLabel=";" android:keyWidth="10%p"/>
+        <Key android:codes="36" android:keyLabel="," custom:keySymbolLabel=";" custom:keyAlternates="¥" custom:keyCornerHint="¥" android:keyWidth="10%p"/>
         <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:keyWidth="50%p"/>
-        <Key android:codes="37" android:keyLabel="." custom:keySymbolLabel="'" android:keyWidth="10%p"/>
-        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="15%p"/>
+        <Key android:codes="37" android:keyLabel="." custom:keySymbolLabel="'" custom:keyAlternates="£" custom:keyCornerHint="£" android:keyWidth="10%p"/>
+        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="€,\\,&#124;," custom:keyCornerHint="€" android:keyWidth="15%p"/>
     </Row>
 </Keyboard>
