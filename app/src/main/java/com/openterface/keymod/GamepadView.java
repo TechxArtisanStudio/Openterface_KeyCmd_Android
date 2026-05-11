@@ -266,6 +266,17 @@ public class GamepadView extends View {
 
     private final Map<Integer, ScrollStripPointerState> scrollStripPointerState = new HashMap<>();
 
+    private final Handler scrollStripHighlightHandler = new Handler(Looper.getMainLooper());
+    @Nullable private String scrollStripHighlightModuleId;
+    /** +1 = emphasize upper chevron (positive wheel delta), -1 = lower chevron. */
+    private int scrollStripHighlightDir;
+    private final Runnable clearScrollStripChevronHighlight = () -> {
+        scrollStripHighlightModuleId = null;
+        scrollStripHighlightDir = 0;
+        invalidate();
+    };
+    private static final long SCROLL_STRIP_CHEVRON_PULSE_MS = 100L;
+
     /**
      * Layout-level multiplier for {@code MOUSE_BUTTON} radius (L/M/R with touchpad). Set from preset
      * {@code layout.touchpadMouseButtonScale}; default 1.0. Clamped to {@code [0.5, 2.0]}.
@@ -1231,6 +1242,9 @@ public class GamepadView extends View {
         dynamicStickOffset.clear();
         touchpadPointerId = -1;
         scrollStripPointerState.clear();
+        scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
+        scrollStripHighlightModuleId = null;
+        scrollStripHighlightDir = 0;
         invalidate();
     }
 
@@ -1575,6 +1589,21 @@ public class GamepadView extends View {
         if (m.displayLabelColorArgb != null) {
             labelCol = GamepadModuleAccent.toOpaqueArgb(m.displayLabelColorArgb);
         }
+        boolean stripHeld = false;
+        if (!scrollStripPointerState.isEmpty()) {
+            for (ScrollStripPointerState st : scrollStripPointerState.values()) {
+                if (st != null && id.equals(st.moduleId)) {
+                    stripHeld = true;
+                    break;
+                }
+            }
+        }
+        if (stripHeld) {
+            int glow = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
+            surfTop = ColorUtils.blendARGB(surfTop, glow, 0.14f);
+            surfBot = ColorUtils.blendARGB(surfBot, glow, 0.16f);
+            borderCol = ColorUtils.blendARGB(borderCol, glow, 0.18f);
+        }
         Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
                 surfTop, surfBot, Shader.TileMode.CLAMP);
         retroBodyPaint.setShader(surface);
@@ -1595,8 +1624,13 @@ public class GamepadView extends View {
             if (up != null && dn != null) {
                 up = DrawableCompat.wrap(up.mutate());
                 dn = DrawableCompat.wrap(dn.mutate());
-                DrawableCompat.setTint(up, chevronTint);
-                DrawableCompat.setTint(dn, chevronTint);
+                int accent = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
+                boolean pulseUp = id.equals(scrollStripHighlightModuleId) && scrollStripHighlightDir > 0;
+                boolean pulseDown = id.equals(scrollStripHighlightModuleId) && scrollStripHighlightDir < 0;
+                int upTint = pulseUp ? ColorUtils.blendARGB(chevronTint, accent, 0.62f) : chevronTint;
+                int dnTint = pulseDown ? ColorUtils.blendARGB(chevronTint, accent, 0.62f) : chevronTint;
+                DrawableCompat.setTint(up, upTint);
+                DrawableCompat.setTint(dn, dnTint);
                 float pad = 6f * density;
                 float maxChev = 22f * density;
                 float chevSize = Math.min(maxChev, ww * 0.72f);
@@ -1665,6 +1699,11 @@ public class GamepadView extends View {
         if (sy != 0) {
             st.accumY -= sy;
             scrollStripWheelListener.onScrollStripWheel(st.moduleId, 0, sy);
+            scrollStripHighlightModuleId = st.moduleId;
+            scrollStripHighlightDir = sy > 0 ? 1 : -1;
+            scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
+            scrollStripHighlightHandler.postDelayed(clearScrollStripChevronHighlight, SCROLL_STRIP_CHEVRON_PULSE_MS);
+            invalidate();
         }
     }
 
@@ -2786,6 +2825,7 @@ public class GamepadView extends View {
                         sst.lastY = y;
                         sst.accumY = 0f;
                         scrollStripPointerState.put(pointerId, sst);
+                        invalidate();
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -2831,6 +2871,7 @@ public class GamepadView extends View {
                         sst.lastY = y;
                         sst.accumY = 0f;
                         scrollStripPointerState.put(pointerId, sst);
+                        invalidate();
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -3537,6 +3578,7 @@ public class GamepadView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
+        scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
         cancelAllKeyboardHoldLockTracking();
         super.onDetachedFromWindow();
     }

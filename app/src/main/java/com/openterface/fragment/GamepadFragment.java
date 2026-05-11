@@ -1420,6 +1420,9 @@ public class GamepadFragment extends Fragment {
     }
 
     private void onScrollStripWheel(String moduleId, int deltaX, int deltaY) {
+        if (deltaX != 0 || deltaY != 0) {
+            vibrateGamepadTick();
+        }
         if (!(getActivity() instanceof MainActivity)) {
             return;
         }
