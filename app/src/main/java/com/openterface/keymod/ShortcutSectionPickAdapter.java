@@ -13,6 +13,7 @@ import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.openterface.keymod.prefs.ShortcutHubDetailUiPrefs;
 import com.openterface.keymod.util.ShortcutFavoriteRowViews;
 
 import java.util.ArrayList;
@@ -57,10 +58,26 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
     @Nullable
     private ItemTouchHelper dragHelper;
 
+    /** When false, compact list + strip binding (e.g. reorder bottom sheet). */
+    private boolean shortcutHubDetailEnabled;
+    private boolean shortcutHubCardLayout;
+    private int shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.DISPLAY_NAME;
+
     public ShortcutSectionPickAdapter(Context context, String targetOs,
             List<ShortcutProfileManager.Shortcut> items) {
         this.targetOs = targetOs != null ? targetOs : "macos";
         this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
+    }
+
+    /**
+     * Shortcut Hub profile detail: list vs card and row display. When {@code enabled} is false,
+     * uses compact list + {@link ShortcutFavoriteRowViews#bindFavoriteStripRow}.
+     */
+    public void setShortcutHubDetailPresentation(boolean enabled, boolean cardLayout, int displayMode) {
+        shortcutHubDetailEnabled = enabled;
+        shortcutHubCardLayout = cardLayout;
+        shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.clampDisplay(displayMode);
+        notifyDataSetChanged();
     }
 
     public void setDragHelper(@Nullable ItemTouchHelper helper) {
@@ -108,15 +125,28 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_shortcut_section_pick_row, parent, false);
+        int layout = shortcutHubDetailEnabled && shortcutHubCardLayout
+                ? R.layout.item_shortcut_section_pick_row_card
+                : R.layout.item_shortcut_section_pick_row;
+        View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
         return new VH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         ShortcutProfileManager.Shortcut shortcut = items.get(position);
-        ShortcutFavoriteRowViews.bindFavoriteStripRow(holder.itemView.getContext(), holder.contentRow, shortcut, targetOs);
+        if (shortcutHubDetailEnabled) {
+            ShortcutFavoriteRowViews.bindShortcutHubDetailRow(
+                    holder.itemView.getContext(),
+                    holder.contentRow,
+                    shortcut,
+                    targetOs,
+                    shortcutHubDisplayMode,
+                    shortcutHubCardLayout);
+        } else {
+            ShortcutFavoriteRowViews.bindFavoriteStripRow(
+                    holder.itemView.getContext(), holder.contentRow, shortcut, targetOs);
+        }
 
         boolean inFavorites = favoriteChecker != null && favoriteChecker.isInMyFavorites(shortcut);
         holder.bookmark.setImageResource(inFavorites ? R.drawable.ic_bookmark_star_24 : R.drawable.ic_bookmark_add_24);

@@ -20,6 +20,7 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,6 +33,7 @@ import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -51,6 +53,7 @@ import com.openterface.keymod.ShortcutSectionPickAdapter;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.ShortcutProfileManager.ShortcutProfile;
 import com.openterface.keymod.ShortcutProfileManager.ProfileChangeListener;
+import com.openterface.keymod.prefs.ShortcutHubDetailUiPrefs;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -60,7 +63,8 @@ import java.util.Comparator;
 import java.util.List;
 /**
  * Shortcut Hub: shortcut profiles (Favorites, categories, import/export), Rows 2–3 strip layouts,
- * and the strip catalog. Keyboard and Mouse Pro setup (header gear) covers strip display mode and active profile.
+ * and the strip catalog. Profile detail header gear opens per-profile list/card layout and Hub-only
+ * shortcut display modes; Keyboard and Mouse Pro setup covers row-1 strip display and active profile.
  */
 public class ShortcutHubFragment extends Fragment implements ProfileChangeListener {
 
@@ -82,6 +86,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
     private Button backButton;
+    private ImageButton hubDetailSettingsButton;
     private Button resetDefaultProfileButton;
     private Button addShortcutButton;
     private TextView detailProfileName;
@@ -174,6 +179,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         // Shortcuts detail panel
         panelShortcutsDetail = view.findViewById(R.id.panel_shortcuts_detail);
         backButton = view.findViewById(R.id.back_button);
+        hubDetailSettingsButton = view.findViewById(R.id.hub_detail_settings_button);
         resetDefaultProfileButton = view.findViewById(R.id.reset_default_profile_button);
         addShortcutButton = view.findViewById(R.id.add_shortcut_button);
         detailProfileName = view.findViewById(R.id.detail_profile_name);
@@ -226,6 +232,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         });
         browseShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         browseShortcutsRecyclerView.setAdapter(browsePickAdapter);
+        browsePickAdapter.setShortcutHubDetailPresentation(true, false, ShortcutHubDetailUiPrefs.DISPLAY_NAME);
     }
 
     private String getTargetOs() {
@@ -299,6 +306,19 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         // Back button - return to profile list
         backButton.setOnClickListener(v -> showProfileList());
+
+        if (hubDetailSettingsButton != null) {
+            hubDetailSettingsButton.setOnClickListener(v -> {
+                if (selectedProfile == null || selectedProfile.id == null) {
+                    return;
+                }
+                if (getChildFragmentManager().findFragmentByTag(ShortcutHubDetailSettingsBottomSheet.TAG) != null) {
+                    return;
+                }
+                ShortcutHubDetailSettingsBottomSheet.newInstance(selectedProfile.id)
+                        .show(getChildFragmentManager(), ShortcutHubDetailSettingsBottomSheet.TAG);
+            });
+        }
 
         resetDefaultProfileButton.setOnClickListener(v -> showResetDefaultProfileDialog());
 
@@ -430,6 +450,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         myShortcutsList.clear();
         myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
 
+        ensureHubDetailLayoutManagersAndAdapterModes();
+
         boolean hasCategories = selectedProfile.categories != null && !selectedProfile.categories.isEmpty();
 
         List<ShortcutProfileManager.Shortcut> toShow = new ArrayList<>();
@@ -452,7 +474,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             browsePickAdapter.notifyDataSetChanged();
 
             ItemTouchHelper.Callback categoryCallback = new ItemTouchHelper.SimpleCallback(
-                    ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                    hubDetailDragFlags(), 0) {
                 @Override
                 public boolean onMove(@NonNull RecyclerView recyclerView,
                         @NonNull RecyclerView.ViewHolder viewHolder,
@@ -546,6 +568,68 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }
     }
 
+    /** Called from {@link ShortcutHubDetailSettingsBottomSheet} when layout or display prefs change. */
+    public void onShortcutHubDetailUiPrefsChanged() {
+        if (selectedProfile == null) {
+            return;
+        }
+        refreshShortcutsGrid();
+    }
+
+    private int hubDetailDragFlags() {
+        if (selectedProfile == null || selectedProfile.id == null) {
+            return ItemTouchHelper.UP | ItemTouchHelper.DOWN;
+        }
+        int layout = ShortcutHubDetailUiPrefs.readLayout(requireContext(), selectedProfile.id);
+        if (layout == ShortcutHubDetailUiPrefs.LAYOUT_CARD) {
+            return ItemTouchHelper.UP | ItemTouchHelper.DOWN
+                    | ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
+        }
+        return ItemTouchHelper.UP | ItemTouchHelper.DOWN;
+    }
+
+    private void ensureHubDetailLayoutManagersAndAdapterModes() {
+        if (selectedProfile == null || selectedProfile.id == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        String profileId = selectedProfile.id;
+        boolean card = ShortcutHubDetailUiPrefs.readLayout(ctx, profileId) == ShortcutHubDetailUiPrefs.LAYOUT_CARD;
+        int display = ShortcutHubDetailUiPrefs.readDisplay(ctx, profileId);
+        int span = getResources().getInteger(R.integer.shortcut_hub_card_span_count);
+
+        if (browsePickAdapter != null) {
+            browsePickAdapter.setShortcutHubDetailPresentation(true, card, display);
+        }
+        if (myShortcutsReorderAdapter != null) {
+            myShortcutsReorderAdapter.setShortcutHubDetailPresentation(true, card, display);
+        }
+
+        RecyclerView.LayoutManager browseLm = browseShortcutsRecyclerView.getLayoutManager();
+        if (card) {
+            if (!(browseLm instanceof GridLayoutManager)
+                    || ((GridLayoutManager) browseLm).getSpanCount() != span) {
+                browseShortcutsRecyclerView.setLayoutManager(new GridLayoutManager(ctx, span));
+            }
+        } else {
+            if (!(browseLm instanceof LinearLayoutManager)) {
+                browseShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(ctx));
+            }
+        }
+
+        RecyclerView.LayoutManager myLm = myShortcutsRecyclerView.getLayoutManager();
+        if (card) {
+            if (!(myLm instanceof GridLayoutManager)
+                    || ((GridLayoutManager) myLm).getSpanCount() != span) {
+                myShortcutsRecyclerView.setLayoutManager(new GridLayoutManager(ctx, span));
+            }
+        } else {
+            if (!(myLm instanceof LinearLayoutManager)) {
+                myShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(ctx));
+            }
+        }
+    }
+
     private void pulseShortcutRowFeedback(@NonNull View rowContent) {
         rowContent.animate().cancel();
         Object prevAnim = rowContent.getTag(R.id.tag_shortcut_hub_row_flash_animator);
@@ -612,7 +696,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         if (myShortcutsReorderAdapter == null) {
             myShortcutsReorderAdapter = new MyShortcutsReorderAdapter(requireContext(), targetOs, ordered);
-            myShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
             myShortcutsRecyclerView.setAdapter(myShortcutsReorderAdapter);
             myShortcutsReorderAdapter.setRowInteraction(new MyShortcutsReorderAdapter.RowInteraction() {
                 @Override
@@ -630,6 +713,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             myShortcutsReorderAdapter.replaceItems(ordered);
         }
 
+        ensureHubDetailLayoutManagersAndAdapterModes();
+
         myShortcutsReorderAdapter.setOnEditShortcutClickListener(this::openEditShortcutFromBrowse);
         myShortcutsReorderAdapter.setRemoveFavoriteClickListener((shortcut, position) -> {
             if (shortcut == null || shortcut.id == null || shortcut.id.isEmpty()) {
@@ -641,7 +726,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         detachMyShortcutsReorderTouchHelper();
 
         ItemTouchHelper.Callback callback = new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                hubDetailDragFlags(), 0) {
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView,
                     @NonNull RecyclerView.ViewHolder viewHolder,

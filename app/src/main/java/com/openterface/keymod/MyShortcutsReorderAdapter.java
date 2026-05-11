@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.openterface.keymod.prefs.ShortcutHubDetailUiPrefs;
 import com.openterface.keymod.util.ShortcutFavoriteRowViews;
 
 import java.util.List;
@@ -39,6 +40,11 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     @Nullable
     private OnEditShortcutClickListener editShortcutClickListener;
 
+    /** When false, always compact list row + strip binding (keyboard reorder sheet). */
+    private boolean shortcutHubDetailEnabled;
+    private boolean shortcutHubCardLayout;
+    private int shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.DISPLAY_NAME;
+
     public interface OnRemoveFavoriteClickListener {
         void onRemoveFavoriteClick(@NonNull ShortcutProfileManager.Shortcut shortcut, int position);
     }
@@ -47,6 +53,16 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             List<ShortcutProfileManager.Shortcut> items) {
         this.targetOs = targetOs != null ? targetOs : "macos";
         this.items = items;
+    }
+
+    /**
+     * Shortcut Hub profile detail: list vs card and row display. Ignored when {@code enabled} is false.
+     */
+    public void setShortcutHubDetailPresentation(boolean enabled, boolean cardLayout, int displayMode) {
+        shortcutHubDetailEnabled = enabled;
+        shortcutHubCardLayout = cardLayout;
+        shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.clampDisplay(displayMode);
+        notifyDataSetChanged();
     }
 
     public void setDragHelper(ItemTouchHelper helper) {
@@ -89,16 +105,28 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_my_shortcuts_reorder_row_compact, parent, false);
+        int layout = shortcutHubDetailEnabled && shortcutHubCardLayout
+                ? R.layout.item_my_shortcuts_reorder_row_card
+                : R.layout.item_my_shortcuts_reorder_row_compact;
+        View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
         return new VH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         ShortcutProfileManager.Shortcut shortcut = items.get(position);
-        ShortcutFavoriteRowViews.bindFavoriteStripRow(
-                holder.itemView.getContext(), holder.content, shortcut, targetOs);
+        if (shortcutHubDetailEnabled) {
+            ShortcutFavoriteRowViews.bindShortcutHubDetailRow(
+                    holder.itemView.getContext(),
+                    holder.content,
+                    shortcut,
+                    targetOs,
+                    shortcutHubDisplayMode,
+                    shortcutHubCardLayout);
+        } else {
+            ShortcutFavoriteRowViews.bindFavoriteStripRow(
+                    holder.itemView.getContext(), holder.content, shortcut, targetOs);
+        }
         if (dragHelper != null) {
             holder.dragHandle.setOnTouchListener((v, event) -> {
                 if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
