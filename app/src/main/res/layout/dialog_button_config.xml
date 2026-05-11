@@ -106,6 +106,14 @@
                     android:textColor="?android:attr/textColorSecondary"
                     android:layout_marginBottom="8dp" />
 
+                <LinearLayout
+                    android:id="@+id/button_module_gesture_timing_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="8dp" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_gesture_sensitivity_open_btn"
                     style="@style/Widget.Material3.Button.OutlinedButton"
@@ -114,14 +122,6 @@
                     android:text="@string/gamepad_module_config_gesture_sensitivity_open"
                     android:textAllCaps="false"
                     app:cornerRadius="12dp" />
-
-                <LinearLayout
-                    android:id="@+id/button_module_gesture_timing_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    android:layout_marginTop="4dp" />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton

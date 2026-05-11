@@ -1562,17 +1562,8 @@ public class GamepadFragment extends Fragment {
                 || m.turboPulsePeriodMs != null;
     }
 
-    private boolean presetHasGestureTimingOverrideAnywhere() {
-        if (layoutDoc == null) {
-            return false;
-        }
-        if (layoutDoc.layout != null
-                && (layoutDoc.layout.gestureLockMinPressMs != null
-                        || layoutDoc.layout.gestureLockDiagonalRadiusScale != null
-                        || layoutDoc.layout.turboPulsePeriodMs != null)) {
-            return true;
-        }
-        if (layoutDoc.modules == null) {
+    private boolean presetHasPerModuleGestureTimingOverride() {
+        if (layoutDoc == null || layoutDoc.modules == null) {
             return false;
         }
         for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
@@ -1728,7 +1719,9 @@ public class GamepadFragment extends Fragment {
     }
 
     private void showGamepadGestureSensitivityDialog() {
-        if (prefs == null) {
+        if (layoutDoc == null || layoutDoc.layout == null) {
+            Toast.makeText(requireContext(), R.string.gamepad_gesture_sensitivity_need_layout, Toast.LENGTH_SHORT)
+                    .show();
             return;
         }
         Context ctx = requireContext();
@@ -1738,8 +1731,7 @@ public class GamepadFragment extends Fragment {
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad, pad, pad);
-        boolean presetOverrides = presetHasGestureTimingOverrideAnywhere();
-        if (presetOverrides) {
+        if (presetHasPerModuleGestureTimingOverride()) {
             TextView note = new TextView(ctx);
             note.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
             note.setText(R.string.gamepad_gesture_sensitivity_preset_override_note);
@@ -1750,16 +1742,8 @@ public class GamepadFragment extends Fragment {
             note.setLayoutParams(nlp);
             root.addView(note);
         }
-        int dwellInit =
-                GamepadGestureLockSensitivity.clampMinPressMs(
-                        prefs.getInt(
-                                GamepadPreferenceKeys.GESTURE_LOCK_MIN_PRESS_MS,
-                                GamepadGestureLockSensitivity.MIN_PRESS_MS_DEFAULT));
-        float scaleInit =
-                GamepadGestureLockSensitivity.clampRadiusScale(
-                        prefs.getFloat(
-                                GamepadPreferenceKeys.GESTURE_LOCK_DIAGONAL_RADIUS_SCALE,
-                                GamepadGestureLockSensitivity.RADIUS_SCALE_DEFAULT));
+        int dwellInit = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+        float scaleInit = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
 
         TextView dwellLabel = new TextView(ctx);
         dwellLabel.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
@@ -1793,11 +1777,7 @@ public class GamepadFragment extends Fragment {
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scaleSlider);
 
-        int turboInit =
-                GamepadGestureLockSensitivity.clampTurboPulsePeriodMs(
-                        prefs.getInt(
-                                GamepadPreferenceKeys.TURBO_PULSE_PERIOD_MS,
-                                GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_DEFAULT));
+        int turboInit = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
         TextView turboLabel = new TextView(ctx);
         turboLabel.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
         turboLabel.setText(R.string.gamepad_gesture_sensitivity_turbo_period_label);
@@ -1840,6 +1820,17 @@ public class GamepadFragment extends Fragment {
                 .setTitle(R.string.gamepad_gesture_sensitivity_dialog_title)
                 .setView(scroll)
                 .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(
+                        R.string.gamepad_gesture_sensitivity_clear_preset_timing,
+                        (d, w) -> {
+                            layoutDoc.layout.gestureLockMinPressMs = null;
+                            layoutDoc.layout.gestureLockDiagonalRadiusScale = null;
+                            layoutDoc.layout.turboPulsePeriodMs = null;
+                            applyLayoutDocFromMemory();
+                            applyGestureLockSensitivityToGamepadView();
+                            Toast.makeText(ctx, R.string.gamepad_gesture_sensitivity_cleared, Toast.LENGTH_SHORT)
+                                    .show();
+                        })
                 .setPositiveButton(
                         R.string.gamepad_key_picker_save,
                         (d, w) -> {
@@ -1850,11 +1841,10 @@ public class GamepadFragment extends Fragment {
                             int turboMs =
                                     GamepadGestureLockSensitivity.clampTurboPulsePeriodMs(
                                             Math.round(turboSlider.getValue()));
-                            prefs.edit()
-                                    .putInt(GamepadPreferenceKeys.GESTURE_LOCK_MIN_PRESS_MS, ms)
-                                    .putFloat(GamepadPreferenceKeys.GESTURE_LOCK_DIAGONAL_RADIUS_SCALE, sc)
-                                    .putInt(GamepadPreferenceKeys.TURBO_PULSE_PERIOD_MS, turboMs)
-                                    .apply();
+                            layoutDoc.layout.gestureLockMinPressMs = ms;
+                            layoutDoc.layout.gestureLockDiagonalRadiusScale = sc;
+                            layoutDoc.layout.turboPulsePeriodMs = turboMs;
+                            applyLayoutDocFromMemory();
                             applyGestureLockSensitivityToGamepadView();
                             Toast.makeText(ctx, R.string.gamepad_gesture_sensitivity_saved, Toast.LENGTH_SHORT)
                                     .show();
@@ -4053,14 +4043,6 @@ public class GamepadFragment extends Fragment {
         gestureSensHint.setLayoutParams(sensHintLp);
         root.addView(gestureSensHint);
 
-        MaterialButton gestureSensOpen =
-                new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
-        gestureSensOpen.setText(R.string.gamepad_module_config_gesture_sensitivity_open);
-        gestureSensOpen.setAllCaps(false);
-        gestureSensOpen.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
-        gestureSensOpen.setLayoutParams(hlp);
-        root.addView(gestureSensOpen);
-
         LinearLayout mouseGestureTiming = new LinearLayout(ctx);
         mouseGestureTiming.setOrientation(LinearLayout.VERTICAL);
         mouseGestureTiming.setLayoutParams(
@@ -4069,6 +4051,14 @@ public class GamepadFragment extends Fragment {
         root.addView(mouseGestureTiming);
         Runnable refreshMouseGestureTimingSliders =
                 attachModuleGestureTimingOverrideSection(ctx, mouseGestureTiming, m);
+
+        MaterialButton gestureSensOpen =
+                new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        gestureSensOpen.setText(R.string.gamepad_module_config_gesture_sensitivity_open);
+        gestureSensOpen.setAllCaps(false);
+        gestureSensOpen.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
+        gestureSensOpen.setLayoutParams(hlp);
+        root.addView(gestureSensOpen);
 
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
