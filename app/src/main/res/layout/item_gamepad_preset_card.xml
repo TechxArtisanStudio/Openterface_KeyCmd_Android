@@ -44,22 +44,6 @@
                 app:srcCompat="@drawable/ic_drag_handle_24"
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:visibility="visible" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/preset_card_overflow"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_gravity="end|top"
-                android:contentDescription="@string/gamepad_preset_row_menu_cd"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="40dp"
-                android:minHeight="40dp"
-                app:icon="@drawable/three_dots"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconTint="?attr/colorOnSurface" />
         </FrameLayout>
 
         <LinearLayout
@@ -93,6 +77,18 @@
                 android:textColor="?attr/colorPrimary"
                 android:visibility="gone"
                 tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/preset_card_more"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_tiny"
+                android:contentDescription="@string/gamepad_preset_row_menu_cd"
+                android:minHeight="40dp"
+                android:minWidth="48dp"
+                android:text="@string/gamepad_presets_more"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <TextView

@@ -233,7 +233,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
             h.card.setStrokeColor(ColorStateList.valueOf(Color.TRANSPARENT));
         }
 
-        h.overflow.setIconTint(ColorStateList.valueOf(onSurface));
+        h.more.setTextColor(onSurface);
 
         h.card.setOnClickListener(v -> {
             if (reorderMode) {
@@ -243,9 +243,9 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
                 listener.onActivatePreset(row.id);
             }
         });
-        h.overflow.setOnClickListener(v -> {
+        h.more.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onOverflow(row.id, h.overflow);
+                listener.onOverflow(row.id, h.more);
             }
         });
 
@@ -328,7 +328,12 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
         if (reorderMode) {
             a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_card_a11y_reorder_suffix));
         } else {
-            a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_card_a11y_activate));
+            a11y.append(". ")
+                    .append(ctx.getString(R.string.gamepad_presets_more))
+                    .append(": ")
+                    .append(ctx.getString(R.string.gamepad_preset_row_menu_cd))
+                    .append(". ")
+                    .append(ctx.getString(R.string.gamepad_presets_card_a11y_activate));
         }
         h.card.setContentDescription(a11y.toString());
     }
@@ -369,7 +374,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
         final TextView activeBadge;
         final TextView builtinBadge;
         final AppCompatImageView dragHandle;
-        final MaterialButton overflow;
+        final MaterialButton more;
 
         VH(@NonNull View itemView) {
             super(itemView);
@@ -379,7 +384,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
             activeBadge = itemView.findViewById(R.id.preset_card_active_badge);
             builtinBadge = itemView.findViewById(R.id.preset_card_builtin_chip);
             dragHandle = itemView.findViewById(R.id.preset_card_drag_handle);
-            overflow = itemView.findViewById(R.id.preset_card_overflow);
+            more = itemView.findViewById(R.id.preset_card_more);
         }
     }
 }

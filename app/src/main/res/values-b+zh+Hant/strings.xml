@@ -593,6 +593,7 @@
     <string name="gamepad_presets_reorder_cd">顯示拖曳控點以變更版面順序</string>
     <string name="gamepad_presets_builtin_badge">內建</string>
     <string name="gamepad_presets_active_badge">使用中</string>
+    <string name="gamepad_presets_more">更多</string>
     <string name="gamepad_presets_card_a11y_activate">點兩下以啟用此版面。</string>
     <string name="gamepad_presets_card_a11y_reorder_suffix">排序模式：拖曳卡片上的控點，再移到新位置。</string>
     <string name="gamepad_preset_row_menu_cd">版面選項</string>

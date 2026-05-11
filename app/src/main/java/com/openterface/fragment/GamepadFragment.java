@@ -97,6 +97,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -2162,6 +2163,20 @@ public class GamepadFragment extends Fragment {
                     WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
                     WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
         }
+
+        int sheetPad = dlgCtx.getResources().getDimensionPixelSize(R.dimen.spacing_medium);
+        sheet.setPadding(sheetPad, sheetPad, sheetPad, sheetPad);
+        ViewCompat.setOnApplyWindowInsetsListener(sheet, (v, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets cutout = windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(
+                    sheetPad + Math.max(bars.left, cutout.left),
+                    sheetPad + Math.max(bars.top, cutout.top),
+                    sheetPad + Math.max(bars.right, cutout.right),
+                    sheetPad + Math.max(bars.bottom, cutout.bottom));
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(sheet);
 
         RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
         recycler.setHasFixedSize(true);
@@ -7756,23 +7771,22 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Positions the Layouts picker: bottom-centered, wide dialog for the card grid (full width minus margin).
+     * Positions the Layouts picker: top-centered, full viewport height; sheet uses horizontal margin only.
      */
     private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, @NonNull Context ctx) {
         if (window == null) {
             return;
         }
         WindowManager.LayoutParams lp = window.getAttributes();
-        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        lp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
         int screenW = dm.widthPixels;
         int margin = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_dialog_horizontal_margin);
         int inner = screenW - 2 * margin;
         lp.width = inner > 0 ? inner : WindowManager.LayoutParams.MATCH_PARENT;
-        int screenH = dm.heightPixels;
-        // Cap height so the sheet fits on screen; RecyclerView uses layout_weight and scrolls inside.
-        lp.height = Math.max(1, Math.round(screenH * 0.88f));
+        lp.height = WindowManager.LayoutParams.MATCH_PARENT;
         window.setAttributes(lp);
+        WindowCompat.setDecorFitsSystemWindows(window, true);
     }
 
     private static class KeyInfo {

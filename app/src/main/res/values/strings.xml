@@ -813,6 +813,7 @@ by TechxArtisan</string>
     <string name="gamepad_presets_reorder_cd">Show drag handles to change layout order</string>
     <string name="gamepad_presets_builtin_badge">Built-in</string>
     <string name="gamepad_presets_active_badge">Active</string>
+    <string name="gamepad_presets_more">More</string>
     <string name="gamepad_presets_card_a11y_activate">Double-tap to activate this layout.</string>
     <string name="gamepad_presets_card_a11y_reorder_suffix">Reorder mode on: drag the handle on a card, then move to a new position.</string>
     <string name="gamepad_preset_row_menu_cd">Layout options</string>

@@ -593,6 +593,7 @@
     <string name="gamepad_presets_reorder_cd">显示拖动手柄以更改布局顺序</string>
     <string name="gamepad_presets_builtin_badge">内置</string>
     <string name="gamepad_presets_active_badge">当前</string>
+    <string name="gamepad_presets_more">更多</string>
     <string name="gamepad_presets_card_a11y_activate">双击以激活此布局。</string>
     <string name="gamepad_presets_card_a11y_reorder_suffix">排序模式已开启：拖住卡片上的手柄，再移动到新的位置。</string>
     <string name="gamepad_preset_row_menu_cd">布局选项</string>
