@@ -1304,9 +1304,9 @@ TechxArtisan により</string>
     ]]></string>
     <string name="settings_km_basic_modifier_sticky_desc"><![CDATA[Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.
     ]]></string>
-    <string name="settings_km_basic_section_summary"><![CDATA[Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.
+    <string name="km_basic_settings_title"><![CDATA[Keyboard & Mouse Basic setup
     ]]></string>
-    <string name="settings_km_basic_section_title"><![CDATA[KM Basic keyboard
+    <string name="settings_km_basic_section_title"><![CDATA[Keyboard & Mouse Basic setup
     ]]></string>
     <string name="settings_km_basic_strip_scroll_sensitivity"><![CDATA[Vertical scroll strip sensitivity
     ]]></string>

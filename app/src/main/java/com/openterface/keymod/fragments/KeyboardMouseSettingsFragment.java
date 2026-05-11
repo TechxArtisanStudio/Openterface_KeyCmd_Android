@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -16,6 +17,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.fragment.KeyboardMouseFragment;
 import com.openterface.keymod.R;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.basic.KmBasicTouchpadPrefs;
@@ -48,6 +50,16 @@ public class KeyboardMouseSettingsFragment extends Fragment {
         sustainSwitch = view.findViewById(R.id.km_basic_chord_sustain_switch);
         stripScrollSensitivitySeekBar = view.findViewById(R.id.km_basic_strip_scroll_sensitivity_seekbar);
         stripScrollSensitivityValueText = view.findViewById(R.id.km_basic_strip_scroll_sensitivity_value_text);
+
+        ImageButton back = view.findViewById(R.id.km_basic_settings_back_button);
+        back.setOnClickListener(
+                v -> {
+                    Fragment parent = getParentFragment();
+                    if (parent instanceof KeyboardMouseFragment) {
+                        ((KeyboardMouseFragment) parent)
+                                .requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
+                    }
+                });
 
         loading = true;
         if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(

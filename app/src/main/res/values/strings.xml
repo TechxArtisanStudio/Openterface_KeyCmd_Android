@@ -7,8 +7,8 @@
     <string name="settings_tab_history">History</string>
 
     <!-- KM Basic preferences (KeyboardMouseSettingsFragment); opened from chrome setup icon -->
-    <string name="settings_km_basic_section_title">KM Basic keyboard</string>
-    <string name="settings_km_basic_section_summary">Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.</string>
+    <string name="km_basic_settings_title">Keyboard &amp; Mouse Basic setup</string>
+    <string name="settings_km_basic_section_title">Keyboard &amp; Mouse Basic setup</string>
     <string name="settings_km_basic_modifier_sticky">Sticky modifiers</string>
     <string name="settings_km_basic_modifier_sticky_desc">Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.</string>
     <string name="settings_km_basic_modifier_chord">Momentary and long-press chord (default)</string>
@@ -29,15 +29,13 @@
     <string name="km_basic_cd_application_key">Application key</string>
     <string name="km_basic_key_sup">Sup</string>
     <string name="km_basic_setup_button_cd">Basic mode: keyboard and touchpad options</string>
-    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: strip layouts and page 3 hub keys</string>
+    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: strip layouts and general options</string>
     <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
-    <string name="km_pro_settings_close">Close</string>
+    <string name="km_pro_settings_close">Back</string>
     <string name="km_pro_settings_tab_strip_layouts">Strip layouts</string>
-    <string name="km_pro_settings_tab_page3_hub">Page 3 hub keys</string>
+    <string name="km_pro_settings_tab_general">General</string>
     <string name="km_pro_settings_create_strip_layout">Create layout</string>
     <string name="km_pro_settings_import_strip_layout">Import layout</string>
-    <string name="km_pro_settings_page3_info_title">Page 3 on the keyboard strip</string>
-    <string name="km_pro_settings_page3_info_body">Swipe the fixed rows on the keyboard to page 3.\n\n• Row 2: tap activates the Shortcut Hub profile for that slot. Long-press to pick which profile is bound.\n• Row 3: tap activates a strip layout. Long-press to pick which layout each slot shows.\n\nEdit strip key caps and layouts on the Strip layouts tab above.</string>
 
     <string name="settings_language_section_title">Language</string>
     <string name="settings_app_language_label">App language</string>

@@ -1046,8 +1046,8 @@
     <string name="settings_km_basic_modifier_chord_desc">短按向目标发送一次该修饰键。长按修饰键并保持，再点其他键可和弦（例如长按 Shift 再点 1 输入 !）。松开修饰键即结束。</string>
     <string name="settings_km_basic_modifier_sticky">粘性修饰键</string>
     <string name="settings_km_basic_modifier_sticky_desc">点按一次锁定修饰键，再点一次关闭。高亮显示当前锁定的键。适合先点 Shift 再单独点符号键输入大写符号。</string>
-    <string name="settings_km_basic_section_summary">键盘 + 鼠标（基础）模式下的全键盘：Ctrl、Shift、Alt/Option 与 Win/Cmd 的行为方式。</string>
-    <string name="settings_km_basic_section_title">KM 基础键盘</string>
+    <string name="km_basic_settings_title">键盘与鼠标（基础）设置</string>
+    <string name="settings_km_basic_section_title">键盘与鼠标（基础）设置</string>
     <string name="settings_km_basic_strip_scroll_sensitivity">垂直滑动条灵敏度</string>
     <string name="settings_km_basic_strip_scroll_sensitivity_desc">拖动触控板旁竖条时内容滚动的速度。与「常规 → 触控板双指滚动灵敏度」相互独立。</string>
     <string name="settings_km_basic_touchpad_section_summary">键盘与鼠标（基础）模式下的触控板子模式：右侧边缘用于页面滚动的竖条。</string>

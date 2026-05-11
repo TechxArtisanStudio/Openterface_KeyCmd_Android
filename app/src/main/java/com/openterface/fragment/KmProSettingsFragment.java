@@ -18,9 +18,9 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -57,7 +57,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Keyboard & Mouse Pro setup: Rows 2–3 strip layouts and page 3 hub key bindings.
+ * Keyboard & Mouse Pro setup: Rows 2–3 strip layouts and a General tab for future Pro preferences.
  */
 public class KmProSettingsFragment extends Fragment implements Rows23SlotEditorHost {
 
@@ -67,11 +67,11 @@ public class KmProSettingsFragment extends Fragment implements Rows23SlotEditorH
     private ShortcutProfileManager profileManager;
     private Rows23StripProfileManager stripProfileManager;
 
-    private MaterialButton closeButton;
+    private ImageButton closeButton;
     private TabLayout kmProSettingsTabs;
     private LinearLayout kmProTabContentStrip;
     @Nullable
-    private ScrollView kmProTabContentPage3;
+    private View kmProTabContentGeneral;
     private LinearLayout panelStripProfileList;
     private LinearLayout panelStripProfileDetail;
     private Button createStripProfileButton;
@@ -175,7 +175,7 @@ public class KmProSettingsFragment extends Fragment implements Rows23SlotEditorH
         closeButton = view.findViewById(R.id.km_pro_settings_close_button);
         kmProSettingsTabs = view.findViewById(R.id.km_pro_settings_tabs);
         kmProTabContentStrip = view.findViewById(R.id.km_pro_tab_content_strip);
-        kmProTabContentPage3 = view.findViewById(R.id.km_pro_tab_content_page3);
+        kmProTabContentGeneral = view.findViewById(R.id.km_pro_tab_content_general);
         panelStripProfileList = view.findViewById(R.id.panel_strip_profile_list);
         panelStripProfileDetail = view.findViewById(R.id.panel_strip_profile_detail);
         createStripProfileButton = view.findViewById(R.id.create_strip_profile_button);
@@ -230,15 +230,15 @@ public class KmProSettingsFragment extends Fragment implements Rows23SlotEditorH
         if (kmProTabContentStrip == null) {
             return;
         }
-        if (position == 1) {
+        if (position == 0) {
             kmProTabContentStrip.setVisibility(View.GONE);
-            if (kmProTabContentPage3 != null) {
-                kmProTabContentPage3.setVisibility(View.VISIBLE);
+            if (kmProTabContentGeneral != null) {
+                kmProTabContentGeneral.setVisibility(View.VISIBLE);
             }
         } else {
             kmProTabContentStrip.setVisibility(View.VISIBLE);
-            if (kmProTabContentPage3 != null) {
-                kmProTabContentPage3.setVisibility(View.GONE);
+            if (kmProTabContentGeneral != null) {
+                kmProTabContentGeneral.setVisibility(View.GONE);
             }
             loadStripProfiles();
             if (selectedStripDetailProfile != null && panelStripProfileDetail != null

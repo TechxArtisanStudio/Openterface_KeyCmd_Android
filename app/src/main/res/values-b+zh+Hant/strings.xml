@@ -1046,8 +1046,8 @@
     <string name="settings_km_basic_modifier_chord_desc">短按嚮目標發送一次該脩飾鍵。長按脩飾鍵並保持，再點其他鍵可和絃（例如長按 Shift 再點 1 輸入 !）。鬆開脩飾鍵即結束。</string>
     <string name="settings_km_basic_modifier_sticky">粘性脩飾鍵</string>
     <string name="settings_km_basic_modifier_sticky_desc">點按一次鎖定脩飾鍵，再點一次關閉。高亮顯示當前鎖定的鍵。適閤先點 Shift 再單獨點符號鍵輸入大寫符號。</string>
-    <string name="settings_km_basic_section_summary">鍵盤 + 滑鼠（基礎）模式下的全鍵盤：Ctrl、Shift、Alt/Option 與 Win/Cmd 的行爲方式。</string>
-    <string name="settings_km_basic_section_title">KM 基礎鍵盤</string>
+    <string name="km_basic_settings_title">鍵盤與滑鼠（基礎）設定</string>
+    <string name="settings_km_basic_section_title">鍵盤與滑鼠（基礎）設定</string>
     <string name="settings_km_basic_strip_scroll_sensitivity">垂直滑動條靈敏度</string>
     <string name="settings_km_basic_strip_scroll_sensitivity_desc">拖動觸控闆旁豎條時內容滾動的速度。與「常規 → 觸控闆雙指滾動靈敏度」相互獨立。</string>
     <string name="settings_km_basic_touchpad_section_summary">鍵盤與滑鼠（基礎）模式下的觸控闆子模式：右側邊緣用於頁麪滾動的豎條。</string>

@@ -8,7 +8,7 @@ Common questions about what KeyMod can type over USB, especially **Rows 2–3 st
 
 **Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and Compose & Send screen, plus a **Setup** gear icon (next to the target OS control) for KM Basic preferences. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
 
-**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with strip rows, split options, and richer IME behavior. In Pro, tap the **Setup** gear in the app header (**between** target OS and connection) to edit **strip layouts** and **page 3 hub** bindings.
+**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with strip rows, split options, and richer IME behavior. In Pro, tap the **Setup** gear in the app header (**between** target OS and connection) to edit **strip layouts** and open the **General** tab (for more preferences over time). **Page 3** profile and strip slot picks are still done with **long-press** on the keyboard strip.
 
 ---
 
@@ -70,7 +70,7 @@ When **off**, you still get the on-screen chord highlight, but the host may only
 
 ## On the Basic full keyboard, holding a key types the same character many times. Can it act like one long press instead?
 
-**Yes.** In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon; in the **KM Basic keyboard** section, pick **Hold key down on the target** instead of **Repeat key presses while held (default)**.
+**Yes.** In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon; on **Keyboard & Mouse Basic setup**, pick **Hold key down on the target** instead of **Repeat key presses while held (default)**.
 
 | Option | What happens on the connected computer |
 |--------|------------------------------------------|
