@@ -3665,11 +3665,8 @@ public class CustomKeyboardView extends LinearLayout {
         // Row 2: CTRL, ALT, WIN/Command (target-OS aware), TAB(icon), Up, Enter(icon), keyboard (IME) toggle
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE0), 1, 2, 0));
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE2), 1, 2, 1));
-        if (showGuiHidKey) {
-            keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE3), 1, 2, 2));
-        } else {
-            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 1, 2, 2));
-        }
+        // GUI (Win/Cmd/Super) always on strip page 1; {@link #showGuiHidKey} only omits it from the main keyboard XML.
+        keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE3), 1, 2, 2));
         keys.add(fixedStripSlotKey(new Key("TAB", "", 0x2B, "2B", 1f, R.drawable.keyboard_tab_24, 0f, false, false, -1, true), 1, 2, 3));
         keys.add(fixedStripSlotKey(new Key("UP", "", 0x52, "52", 1f, R.drawable.keyboard_arrow_up_24, 0f, false, false, -1, true), 1, 2, 4));
         keys.add(fixedStripSlotKey(new Key("ENTER", "", 0x28, "28", 1f, R.drawable.keyboard_return_24px, 0f, false, false, -1, true), 1, 2, 5));
