@@ -234,7 +234,8 @@ public class CustomKeyboardView extends LinearLayout {
     private int topShortcutDisplayMode = DISPLAY_MODE_ICON;
     /**
      * When false, lower-keyboard keys that normally support long-press alternates use hold-to-repeat
-     * (gaming) and keycap alternate hints are hidden. Toggled via Fn + comma (0x36) on KM Pro no-GUI layout.
+     * (gaming) and keycap alternate hints are hidden. Toggled via the main keyboard left Shift key
+     * (built-in Pro layout: row below letters, left of Z) when main keyboard Fn is latched.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
     private Runnable gamingRepeatRunnable;
@@ -1967,15 +1968,23 @@ public class CustomKeyboardView extends LinearLayout {
                     } else {
                         imageButton.setBackgroundResource(R.drawable.key_background);
                     }
-                    if (key.iconResId != 0) {
-                        imageButton.setImageResource(key.iconResId);
+                    boolean fnHintsOnMainShift = isFnAlternateHintsToggleKey(key);
+                    if (key.iconResId != 0 || fnHintsOnMainShift) {
+                        int capIconRes =
+                                fnHintsOnMainShift
+                                        ? (keyboardAlternatesHintsEnabled
+                                                ? R.drawable.ic_keyboard_alternate_on
+                                                : R.drawable.ic_keyboard_alternate_off)
+                                        : key.iconResId;
+                        imageButton.setImageResource(capIconRes);
                         imageButton.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
                         if (isBackspaceKey(key)) {
                             imageButton.setScaleX(isFnLocked ? -1f : 1f);
                         }
                         if ("Win".equals(key.label) || "Cmd".equals(key.label) || "Super".equals(key.label)
                                 || "BackSpace".equals(key.label) || "Shift".equals(key.label)
-                                || "Enter".equals(key.label) || "Space".equals(key.label)) {
+                                || "Enter".equals(key.label) || "Space".equals(key.label)
+                                || fnHintsOnMainShift) {
                             imageButton.setColorFilter(resolveThemeTextColor());
                         }
                     }
@@ -2255,9 +2264,20 @@ public class CustomKeyboardView extends LinearLayout {
         return x >= 0 && x <= view.getWidth() && y >= 0 && y <= view.getHeight();
     }
 
-    /** Fn + comma (0x36): alternates/hints toggle — must own the touch stream (no alternates popup). */
+    /**
+     * Main lower-keyboard left Shift (HID 0xE1): same key as XML row above Fn — not the top shortcut
+     * strip. When {@link #isFnLocked} is true, toggles long-press alternates/hints and must own the
+     * touch stream (no shift-lock tap path on that cap).
+     */
+    private static boolean isMainKeyboardBuiltInShiftLeft(Key key) {
+        return key != null
+                && key.code == 0xE1
+                && !key.isTopPanelKey
+                && key.stripSlotPage < 0;
+    }
+
     private boolean isFnAlternateHintsToggleKey(Key key) {
-        return isFnLocked && key != null && key.code == 0x36;
+        return isFnLocked && !showGuiHidKey && isMainKeyboardBuiltInShiftLeft(key);
     }
 
     /**
@@ -2272,10 +2292,6 @@ public class CustomKeyboardView extends LinearLayout {
             return false;
         }
         if (extraNumpadFnLocked && resolveExtraNumpadFnMapping(key) != null) {
-            return false;
-        }
-        // Fn + comma (0x36): reserved for alternates/hints toggle — no long-press alternates on this cell.
-        if (isFnLocked && key.code == 0x36) {
             return false;
         }
         if (key.code >= 0xE0 && key.code <= 0xE7) {
@@ -2313,8 +2329,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private String getFnDisplayLabel(Key key) {
-        // Fn + comma: long-press alternates toggle uses icons (see getFnDisplayIconResId).
-        if (isFnLocked && key != null && key.code == 0x36) {
+        if (isFnAlternateHintsToggleKey(key)) {
             return null;
         }
         FnMapping mapping = resolveFnMapping(key);
@@ -2322,7 +2337,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private int getFnDisplayIconResId(Key key) {
-        if (isFnLocked && key != null && key.code == 0x36) {
+        if (isFnAlternateHintsToggleKey(key)) {
             return keyboardAlternatesHintsEnabled
                     ? R.drawable.ic_keyboard_alternate_on
                     : R.drawable.ic_keyboard_alternate_off;
@@ -2338,7 +2353,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code >= 0xE0 && key.code <= 0xE7) {
             return null;
         }
-        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B || key.code == 0x36) {
+        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
             return null;
         }
 
@@ -6294,8 +6309,8 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
 
-        // Fn + comma: toggles long-press alternates/hints (must run before generic shortcut send path).
-        if (isFnLocked && key.code == 0x36) {
+        // Fn latched: main keyboard left Shift toggles long-press alternates/hints (before shortcut path).
+        if (isFnAlternateHintsToggleKey(key)) {
             toggleKeyboardAlternatesHintsFromUser();
             return;
         }

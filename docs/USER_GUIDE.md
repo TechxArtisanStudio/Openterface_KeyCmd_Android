@@ -104,7 +104,7 @@ The virtual keyboard provides a **full QWERTY layout** with these sections:
 
 - Hold **modifier keys** (Ctrl, Alt, Win) then tap a letter for combos like `Ctrl+C`
 - Tap **Shift** for uppercase or top-row symbols
-- Tap **Fn** to latch the function layer on the main keyboard. In **Keyboard & Mouse Pro**, with Fn on: **Q–P** send digits **1–0**; **A–L** send **F1–F9**; **Z**, **X**, and **C** send **F10–F12**; **comma (`,`)** toggles long‑press **alternate hints**; **Backspace** sends **Delete** (with **Shift** locked, the Backspace cap shows **Del** and also sends Delete).
+- Tap **Fn** to latch the function layer on the main keyboard. In **Keyboard & Mouse Pro**, with Fn on: **Q–P** send digits **1–0**; **A–L** send **F1–F9**; **Z**, **X**, and **C** send **F10–F12**; the main keyboard **Shift** key (left of **Z**, same row as **Z**) toggles long‑press **alternate hints**; **Backspace** sends **Delete** (with **Shift** locked, the Backspace cap shows **Del** and also sends Delete).
 - Tap **?123** to switch to number/symbol layout
 
 ### Fixed Shortcut Strip (Top Rows)
