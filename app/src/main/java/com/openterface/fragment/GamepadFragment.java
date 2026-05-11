@@ -5165,15 +5165,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void updateButtonLabel(Button label, int key, int modifiers) {
-        StringBuilder sb = new StringBuilder(keyCodeToLabel(key));
-        if (modifiers != 0) {
-            sb.insert(0, "+");
-            if ((modifiers & 0x01) != 0) sb.insert(0, "Ctrl");
-            if ((modifiers & 0x02) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Shift"); }
-            if ((modifiers & 0x04) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Alt"); }
-            if ((modifiers & 0x08) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Fn"); }
-        }
-        label.setText(sb.toString());
+        label.setText(formatKeyWithModifiers(key, modifiers));
     }
 
     private void showKeyPicker(Button displayButton, int currentKeyCode, java.util.function.IntConsumer listener) {
@@ -5990,13 +5982,49 @@ public class GamepadFragment extends Fragment {
     }
 
     private String buildFullLabel(int key, int modifiers) {
-        StringBuilder sb = new StringBuilder();
-        if ((modifiers & 0x02) != 0) sb.append("Shift+");
-        if ((modifiers & 0x01) != 0) sb.append("Ctrl+");
-        if ((modifiers & 0x04) != 0) sb.append("Alt+");
-        if ((modifiers & 0x08) != 0) sb.append("Fn+");
-        sb.append(keyCodeToLabel(key));
-        return sb.toString();
+        return formatKeyWithModifiers(key, modifiers);
+    }
+
+    /**
+     * Human-readable chord for config UI and mapping hints: modifier bitmask + key, with no raw HID
+     * for standard modifiers. When {@code hidKey} is a modifier (224–231) and the same side is already
+     * set in {@code modifiers}, the key is omitted (e.g. Sneak Shift+225 preset shows {@code Shift}).
+     */
+    private String formatKeyWithModifiers(int key, int modifiers) {
+        java.util.ArrayList<String> parts = new java.util.ArrayList<>();
+        if ((modifiers & 0x01) != 0) {
+            parts.add("Ctrl");
+        }
+        if ((modifiers & 0x02) != 0) {
+            parts.add("Shift");
+        }
+        if ((modifiers & 0x04) != 0) {
+            parts.add("Alt");
+        }
+        if ((modifiers & 0x08) != 0) {
+            parts.add("Fn");
+        }
+        if ((modifiers & 0x10) != 0) {
+            parts.add("RCtrl");
+        }
+        if ((modifiers & 0x20) != 0) {
+            parts.add("RShift");
+        }
+        if ((modifiers & 0x40) != 0) {
+            parts.add("RAlt");
+        }
+        if ((modifiers & 0x80) != 0) {
+            parts.add("RGui");
+        }
+        if (isModifierKey(key)) {
+            int bit = modifierBit(key);
+            if (bit == 0 || (modifiers & bit) == 0) {
+                parts.add(keyCodeToLabel(key));
+            }
+        } else {
+            parts.add(keyCodeToLabel(key));
+        }
+        return String.join("+", parts);
     }
 
     // ── Input handling ──────────────────────────────────────────────
@@ -6814,6 +6842,27 @@ public class GamepadFragment extends Fragment {
     private String keyCodeToLabel(int keyCode) {
         for (String[] opt : KEY_OPTIONS) {
             if (Integer.parseInt(opt[1]) == keyCode) return opt[0];
+        }
+        // HID keyboard modifier keys (usage page 0x07); left matches MODIFIER_KEYS, right disambiguated.
+        if (keyCode >= 224 && keyCode <= 231) {
+            switch (keyCode) {
+                case 224:
+                    return "Ctrl";
+                case 225:
+                    return "Shift";
+                case 226:
+                    return "Alt";
+                case 227:
+                    return "Fn";
+                case 228:
+                    return "RCtrl";
+                case 229:
+                    return "RShift";
+                case 230:
+                    return "RAlt";
+                case 231:
+                    return "RGui";
+            }
         }
         // Normal digits 1-9 (HID 30-38)
         if (keyCode >= 30 && keyCode <= 38) return String.valueOf(keyCode - 29);
