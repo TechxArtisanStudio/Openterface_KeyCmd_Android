@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:layout_marginVertical="@dimen/spacing_small"
     android:background="@drawable/bg_presentation_touchpad_dialog"
     android:clipToOutline="true"
@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/spacing_small"
-        android:fillViewport="true"
+        android:fillViewport="false"
         android:scrollbars="none">
 
         <LinearLayout
@@ -80,10 +80,11 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/gamepad_presets_recycler"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/gamepad_presets_grid_recycler_height"
+        android:layout_height="0dp"
         android:layout_marginTop="@dimen/spacing_medium"
+        android:layout_weight="1"
         android:clipToPadding="false"
-        android:minHeight="120dp"
+        android:minHeight="160dp"
         android:nestedScrollingEnabled="true"
         android:overScrollMode="ifContentScrolls"
         android:paddingTop="0dp"

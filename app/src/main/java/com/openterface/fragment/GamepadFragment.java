@@ -2138,6 +2138,16 @@ public class GamepadFragment extends Fragment {
         AppCompatDialog dialog = new AppCompatDialog(dlgCtx);
         View sheet = LayoutInflater.from(dlgCtx).inflate(R.layout.dialog_gamepad_presets_grid, null, false);
         dialog.setContentView(sheet);
+        ViewGroup.LayoutParams sheetLp = sheet.getLayoutParams();
+        if (sheetLp == null) {
+            sheet.setLayoutParams(new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        } else {
+            sheetLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            sheetLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            sheet.setLayoutParams(sheetLp);
+        }
         Window dw = dialog.getWindow();
         if (dw != null) {
             dw.setWindowAnimations(0);
@@ -7670,7 +7680,9 @@ public class GamepadFragment extends Fragment {
         int margin = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_dialog_horizontal_margin);
         int inner = screenW - 2 * margin;
         lp.width = inner > 0 ? inner : WindowManager.LayoutParams.MATCH_PARENT;
-        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        int screenH = dm.heightPixels;
+        // Cap height so the sheet fits on screen; RecyclerView uses layout_weight and scrolls inside.
+        lp.height = Math.max(1, Math.round(screenH * 0.88f));
         window.setAttributes(lp);
     }
 
