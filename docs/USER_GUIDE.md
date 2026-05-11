@@ -74,6 +74,17 @@ In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon (to the right of th
 
 Changing this setting rebuilds the Basic keyboard; any latched modifiers are cleared.
 
+### Keyboard & Mouse Pro setup (modifiers)
+
+**Keyboard & Mouse Pro** uses the **same modifier preferences** as Basic (**Sticky** vs **Momentary and long-press chord**, and **Hold modifier on target while chording** when chord mode is on). Configure them from **Keyboard & Mouse (Basic)** setup or from **Keyboard & Mouse Pro** setup (header **Setup** gear → **Modifiers**).
+
+On the **Pro** letter keyboard and on **top strip / fixed-row** **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** cells:
+
+- **Sticky:** tap toggles the modifier latch; **press and hold ~1 second**, then **swipe up** on the lock affordance to apply a **host-side** swipe lock (same swipe-up lock flow as Basic).
+- **Chord:** short tap sends a momentary modifier; **long-press** keeps chording until you release. Optional **sustain** matches Basic.
+
+Changing the modifier mode or chord-sustain switch **rebuilds** the Pro keyboard and **clears** latched modifiers and ephemeral chord state. **Swipe-locked** modifiers from the hold gesture are cleared when you **leave Keyboard & Mouse Pro** or when the **USB / Bluetooth** connection used for HID is lost.
+
 ### Layout
 
 The virtual keyboard provides a **full QWERTY layout** with these sections:
@@ -124,7 +135,7 @@ On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row
 
 - **Row 2** sends **Scroll Lock**, **PrtSc**, **Caps Lock**, **Pause/Break**, **Home**, **PgUp**; the IME toggle key is unchanged.
 - **Row 3** sends **Space**, **Bksp**, **Del**, **Insert**, **End**, **PgDn**.  
-  Ctrl/Alt/Win positions still support **long‑press** modifier lock using the underlying modifier keys.
+  Ctrl/Alt/Win cells follow the **same modifier mode** as the main Pro keyboard (sticky vs chord, hold-then-swipe-up lock, and optional chord sustain)—not a separate “strip-only” long‑press latch.
 
 On **Page 2** of the fixed strip (**Shortcut Hub**), **local Fn** toggles two full punctuation rows (strip display modes use the row‑1 DISPLAY key after Create, not the fixed strip).
 

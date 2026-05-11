@@ -103,7 +103,6 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 refreshModifierVisuals();
             };
 
-    private static final long KM_BASIC_HOLD_LOCK_MS = 1000L;
     /**
      * macOS distinguishes Caps tap (input-source / 中英 toggle) vs long-press (Caps Lock) by hold time.
      * Hold slightly above the host threshold so long-press reliably engages Caps Lock.
@@ -402,7 +401,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     handler.postDelayed(
                             chordLongPressRunnable,
                             ViewConfiguration.get(v.getContext()).getLongPressTimeout());
-                    handler.postDelayed(holdLockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
+                    handler.postDelayed(holdLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
                     if (previewText != null) {
                         keyPreview.show(v, previewText.get());
                     }
@@ -841,7 +840,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     holdLockPendingModMask = stickyMaskBit;
                     holdLockGestureRawX = event.getRawX();
                     holdLockGestureRawY = event.getRawY();
-                    handler.postDelayed(holdLockPopupRunnable, KM_BASIC_HOLD_LOCK_MS);
+                    handler.postDelayed(holdLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
                     if (previewText != null) {
                         keyPreview.show(v, previewText.get());
                     }

@@ -1738,12 +1738,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 keyboardView.setPort(newPort);
             }
         } else if (currentFragment instanceof CompositeFragment) {
-            ((CompositeFragment) currentFragment).port = newPort;
-            CustomKeyboardView keyboardView = currentFragment.getView() != null ?
-                    currentFragment.getView().findViewById(R.id.keyboard_view) : null;
-            if (keyboardView != null) {
-                keyboardView.setPort(newPort);
-            }
+            ((CompositeFragment) currentFragment).applyHostPortToKeyboardViews(newPort);
         } else if (currentFragment instanceof KeyboardMouseFragment) {
             ((KeyboardMouseFragment) currentFragment).onPortChanged(newPort);
         } else if (currentFragment instanceof MouseFragment) {

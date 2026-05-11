@@ -41,6 +41,7 @@ import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CustomKeyboardView;
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.TouchPadView;
@@ -159,6 +160,9 @@ public class CompositeFragment extends Fragment {
     private enum DisplayMode { BOTH, KEYBOARD, TOUCHPAD, SPLIT }
     private DisplayMode displayMode = DisplayMode.BOTH;
 
+    /** Keyboard &amp; Mouse Pro: swipe-up host modifier locks (separate from KM Basic’s controller). */
+    private final KmBasicHoldLockController proHoldLockController = new KmBasicHoldLockController();
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -214,6 +218,47 @@ public class CompositeFragment extends Fragment {
         }
         if (keyboardViewRight != null) {
             keyboardViewRight.rebuildKeyboardFromKmProSetup();
+        }
+    }
+
+    /** Updates {@link #port} on all keyboard halves and clears Pro hold-locks when the host disconnects. */
+    public void applyHostPortToKeyboardViews(@Nullable UsbSerialPort newPort) {
+        port = newPort;
+        if (keyboardView != null) {
+            keyboardView.setPort(newPort);
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.setPort(newPort);
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.setPort(newPort);
+        }
+        if (newPort == null) {
+            proHoldLockController.clearAllAndReleaseHid(null, bluetoothService, isServiceBound);
+        }
+    }
+
+    private void bindProHoldLockControllerToKeyboardViews() {
+        if (keyboardView != null) {
+            keyboardView.setHoldLockController(proHoldLockController);
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.setHoldLockController(proHoldLockController);
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.setHoldLockController(proHoldLockController);
+        }
+    }
+
+    private void detachProHoldLockControllerFromKeyboardViews() {
+        if (keyboardView != null) {
+            keyboardView.setHoldLockController(null);
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.setHoldLockController(null);
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.setHoldLockController(null);
         }
     }
 
@@ -1035,6 +1080,7 @@ public class CompositeFragment extends Fragment {
         if (keyboardView != null) {
             keyboardView.post(this::syncNormalImeChromeFromPrefs);
         }
+        bindProHoldLockControllerToKeyboardViews();
 
         if (savedInstanceState == null && touchPad != null) {
             touchPad.post(() -> {
@@ -1050,6 +1096,8 @@ public class CompositeFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        detachProHoldLockControllerFromKeyboardViews();
+        proHoldLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
         if (imePopOutTouchPad != null) {
             imePopOutTouchPad.dismissIfShowing();
             imePopOutTouchPad = null;
@@ -1184,6 +1232,7 @@ public class CompositeFragment extends Fragment {
             registerKeyboardOsListener(keyboardViewRight);
             registerTopModeShortcutListener(keyboardViewRight);
         }
+        bindProHoldLockControllerToKeyboardViews();
 
         splitImeHost = view.findViewById(R.id.composite_split_ime_host);
         splitImeEdit = view.findViewById(R.id.composite_split_ime_edit);
@@ -1477,6 +1526,7 @@ public class CompositeFragment extends Fragment {
             if (keyboardView != null) {
                 keyboardView.post(this::syncNormalImeChromeFromPrefs);
             }
+            bindProHoldLockControllerToKeyboardViews();
         }
         applyOrientationLayout();
     }

@@ -39,6 +39,8 @@
     <string name="km_pro_settings_display_mode_chord">Combo</string>
     <string name="km_pro_settings_section_alternate_hints">Alternate hints</string>
     <string name="km_pro_settings_section_alternate_hints_summary">When on, letter keys show small long-press hint glyphs and support the alternates popup. When off, those keys use hold-to-repeat (gaming style).</string>
+    <string name="km_pro_settings_section_modifiers">Modifiers (main keyboard and strip)</string>
+    <string name="km_pro_settings_section_modifiers_summary">Same options as Keyboard &amp; Mouse (Basic): sticky latch, or momentary tap with long-press to chord, plus hold then swipe up to lock on the host. Applies to Ctrl, Shift, Alt, and Win/Cmd on the QWERTY row and on the top shortcut strip.</string>
     <string name="km_pro_settings_alternate_hints_on">On</string>
     <string name="km_pro_settings_alternate_hints_off">Off</string>
     <string name="km_pro_settings_section_gaming_key_behavior">When hints are off: letter keys</string>

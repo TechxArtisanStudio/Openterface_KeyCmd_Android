@@ -72,6 +72,10 @@ import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.basic.BasicHoldLockPopup;
+import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
+import com.openterface.keymod.basic.KmBasicHoldLockTiming;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
@@ -214,6 +218,32 @@ public class CustomKeyboardView extends LinearLayout {
     private boolean isCtrlLeftLocked = false;
     private boolean isAltLeftLocked = false;
     private boolean isWinLeftLocked = false;
+    @Nullable private KmBasicHoldLockController holdLockController;
+    private final KmBasicHoldLockController.Listener proHoldLockListener =
+            controller -> {
+                if (isAttachedToWindow()) {
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                }
+            };
+    @Nullable private BasicHoldLockPopup activeHoldLockPopup;
+    @Nullable private View holdLockPopupAnchorView;
+    private boolean holdLockFingerDown;
+    private float holdLockGestureRawX;
+    private float holdLockGestureRawY;
+    private int holdLockPendingModMask;
+    private final Runnable proHoldLockPopupRunnable = this::onProHoldLockPopupTimeout;
+    private int proChordHeldModMask;
+    private boolean proChordLongPressActivated;
+    private boolean proChordSustainFingerDown;
+    private boolean proChordHostHoldSent;
+    private int proChordActiveExtKey;
+    private int proChordLongPressPendingMask;
+    @Nullable private View proChordLongPressAnchorView;
+    @Nullable private View proChordHeldView;
+    private final Runnable proChordLongPressRunnable = this::onProChordLongPressThreshold;
+    private final SharedPreferences.OnSharedPreferenceChangeListener kmProModifierPrefListener =
+            this::onKmProModifierPreferenceChanged;
     private boolean isRunning = true;
     private boolean isSymbolMode = false;
     private boolean isFnLocked = false;
@@ -923,6 +953,226 @@ public class CustomKeyboardView extends LinearLayout {
     /** Set the paired keyboard view in split mode for syncing modifier states. */
     public void setSplitPartner(CustomKeyboardView partner) {
         splitPartner = partner;
+    }
+
+    /** KM Pro: host swipe-up modifier locks (injected from {@link com.openterface.fragment.CompositeFragment}). */
+    public void setHoldLockController(@Nullable KmBasicHoldLockController controller) {
+        if (holdLockController != null) {
+            holdLockController.removeListener(proHoldLockListener);
+        }
+        holdLockController = controller;
+        if (holdLockController != null) {
+            holdLockController.addListener(proHoldLockListener);
+        }
+    }
+
+    private void dismissProHoldLockPopup() {
+        if (activeHoldLockPopup != null) {
+            activeHoldLockPopup.dismiss();
+            activeHoldLockPopup = null;
+        }
+        holdLockPopupAnchorView = null;
+        holdLockFingerDown = false;
+    }
+
+    private void onProHoldLockPopupTimeout() {
+        if (holdLockPopupAnchorView == null || !holdLockFingerDown) {
+            return;
+        }
+        activeHoldLockPopup = new BasicHoldLockPopup();
+        activeHoldLockPopup.show(holdLockPopupAnchorView, holdLockGestureRawX, holdLockGestureRawY);
+    }
+
+    private void clearProChordUiPreserveHostForLock() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        proChordSustainFingerDown = false;
+        proChordLongPressActivated = false;
+        proChordHeldModMask = 0;
+        proChordHostHoldSent = false;
+        if (proChordHeldView != null) {
+            proChordHeldView.setSelected(false);
+            proChordHeldView = null;
+        }
+        proChordLongPressAnchorView = null;
+    }
+
+    private void clearProChordAndHoldLockPopupUiState() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+        dismissProHoldLockPopup();
+        if (proChordHostHoldSent) {
+            sendKeyboardAllKeysReleasedSync();
+            reassertKeyboardAfterHidRelease();
+        }
+        proChordHostHoldSent = false;
+        proChordSustainFingerDown = false;
+        proChordLongPressActivated = false;
+        proChordHeldModMask = 0;
+        proChordActiveExtKey = 0;
+        if (proChordHeldView != null) {
+            proChordHeldView.setSelected(false);
+            proChordHeldView = null;
+        }
+        proChordLongPressAnchorView = null;
+    }
+
+    /** Split primary: clear partner ephemeral chord UI (does not clear this side’s host hold-locks). */
+    private void clearPartnerChordStateFromPrimary() {
+        if (splitPartner == null) {
+            return;
+        }
+        splitPartner.clearPartnerChordStateFromRemote();
+    }
+
+    private void clearPartnerChordStateFromRemote() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        if (proChordHostHoldSent) {
+            sendKeyboardAllKeysReleasedSync();
+            reassertKeyboardAfterHidRelease();
+        }
+        proChordHostHoldSent = false;
+        proChordSustainFingerDown = false;
+        proChordLongPressActivated = false;
+        proChordHeldModMask = 0;
+        proChordActiveExtKey = 0;
+        if (proChordHeldView != null) {
+            proChordHeldView.setSelected(false);
+            proChordHeldView = null;
+        }
+        proChordLongPressAnchorView = null;
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
+    }
+
+    private void onKmProModifierPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (!isAttachedToWindow()) {
+            return;
+        }
+        if (KmBasicKeyboardPrefs.PREF_CHORD_SUSTAIN_HID.equals(key)) {
+            clearProChordAndHoldLockPopupUiState();
+            refreshVisibleTopPanelButtonStates();
+            post(this::refreshBuiltInModifierKeyCapsFromTree);
+            return;
+        }
+        if (KmBasicKeyboardPrefs.PREF_KEY.equals(key)) {
+            clearProChordAndHoldLockPopupUiState();
+            if (holdLockController != null) {
+                holdLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
+            }
+            isShiftLeftLocked = false;
+            isCtrlLeftLocked = false;
+            isAltLeftLocked = false;
+            isWinLeftLocked = false;
+            syncModifierStates();
+            updateKeyboard();
+        }
+    }
+
+    private void onProChordLongPressThreshold() {
+        if (proChordLongPressAnchorView == null) {
+            return;
+        }
+        proChordLongPressActivated = true;
+        proChordHeldModMask = proChordLongPressPendingMask;
+        proChordHeldView = proChordLongPressAnchorView;
+        proChordHeldView.setSelected(true);
+        proChordSustainFingerDown = true;
+        Context ctx = getContext();
+        if (ctx != null && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)) {
+            if (proChordHeldModMask != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port, bluetoothService, isServiceBound, proChordHeldModMask, 0);
+            } else if (proChordActiveExtKey != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port, bluetoothService, isServiceBound, 0, proChordActiveExtKey);
+            }
+            proChordHostHoldSent = true;
+        } else {
+            proChordHostHoldSent = false;
+        }
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
+    }
+
+    private void reassertKeyboardAfterHidRelease() {
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(port, bluetoothService, isServiceBound);
+        }
+        Context ctx = getContext();
+        if (ctx != null
+                && KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)
+                && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)
+                && proChordSustainFingerDown
+                && proChordLongPressActivated) {
+            if (proChordHeldModMask != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port, bluetoothService, isServiceBound, proChordHeldModMask, 0);
+            } else if (proChordActiveExtKey != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port, bluetoothService, isServiceBound, 0, proChordActiveExtKey);
+            }
+            proChordHostHoldSent = true;
+        }
+    }
+
+    private int bootModifierMaskForBuiltInExtendedKey(int extKey) {
+        switch (extKey) {
+            case 0xE0:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
+            case 0xE1:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift"));
+            case 0xE2:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt"));
+            case 0xE3:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Win"));
+            default:
+                return 0;
+        }
+    }
+
+    private int getHoldLockedBootModMaskOr0() {
+        if (holdLockController == null) {
+            return 0;
+        }
+        return holdLockController.getLockedModMask();
+    }
+
+    private int mergeHoldLockedBootMask(int modifiers) {
+        return modifiers | getHoldLockedBootModMaskOr0();
+    }
+
+    /** ORs chord-held boot modifier bits into HID sends while a chord long-press is active (KM Basic parity). */
+    private int mergeChordHeldBootMask(int modifiers) {
+        Context ctx = getContext();
+        if (ctx == null
+                || !KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)
+                || !proChordLongPressActivated) {
+            return modifiers;
+        }
+        return modifiers | proChordHeldModMask;
+    }
+
+    private boolean isProBuiltInModifierTouchKey(Key key) {
+        if (key == null || key.isTopPanelKey) {
+            return false;
+        }
+        if (isFnAlternateHintsToggleKey(key)) {
+            return false;
+        }
+        int c = key.code;
+        return c == 0xE0 || c == 0xE1 || c == 0xE2 || c == 0xE3;
+    }
+
+    private void tapProModifierMomentary(Key key) {
+        if (key == null) {
+            return;
+        }
+        sendKeyData(0, key.code);
+        maybeShowModifierLockHint(key);
+    }
+
+    private void reassertLockedKeyboardAfterAllKeysReleased() {
+        reassertKeyboardAfterHidRelease();
     }
 
     public void setOnTopModeShortcutListener(OnTopModeShortcutListener listener) {
@@ -1992,23 +2242,68 @@ public class CustomKeyboardView extends LinearLayout {
         v.setBackgroundResource(R.drawable.key_background);
         if (isFunctionalKey) {
             v.setBackgroundResource(R.drawable.function_button_background);
-        } else if (key.code == 0xE1 && isShiftLeftLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
+        } else if (key.code == 0xE1 && isFnAlternateHintsToggleKey(key)) {
+            if (isShiftLeftLocked) {
+                v.setBackgroundResource(R.drawable.press_button_background);
+            }
             if (v instanceof TextView) {
                 ((TextView) v).setSelected(isShiftLeftLocked);
             } else {
                 v.setSelected(isShiftLeftLocked);
             }
+        } else if (isProBuiltInModifierTouchKey(key)) {
+            boolean on = isProModifierCapVisualOn(key);
+            if (on) {
+                v.setBackgroundResource(R.drawable.press_button_background);
+            }
+            v.setSelected(on);
         } else if (key.code == KEY_MODE_FN && isFnLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
-        } else if (key.code == 0xE0 && isCtrlLeftLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
-        } else if (key.code == 0xE2 && isAltLeftLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
-        } else if (key.code == 0xE3 && isWinLeftLocked) {
             v.setBackgroundResource(R.drawable.press_button_background);
         } else if (key.code == 16) {
             v.setBackgroundResource(R.drawable.key_background);
+        }
+    }
+
+    private boolean isProModifierCapVisualOn(Key key) {
+        if (key == null) {
+            return false;
+        }
+        int ext = key.code;
+        int boot = bootModifierMaskForBuiltInExtendedKey(ext);
+        boolean latched = isModifierLockedStateForKey(key);
+        boolean held =
+                holdLockController != null && boot != 0 && holdLockController.isModifierLocked(boot);
+        boolean chordHighlight =
+                proChordLongPressActivated
+                        && proChordSustainFingerDown
+                        && ((proChordHeldModMask != 0 && boot != 0 && (proChordHeldModMask & boot) != 0)
+                                || proChordActiveExtKey == ext);
+        return latched || held || chordHighlight;
+    }
+
+    private void refreshBuiltInModifierKeyCapsFromTree() {
+        refreshBuiltInModifierKeyCapsRecursive(this);
+    }
+
+    private void refreshBuiltInModifierKeyCapsRecursive(View v) {
+        if (v == null) {
+            return;
+        }
+        Object tag = v.getTag();
+        if (tag instanceof Key) {
+            Key k = (Key) tag;
+            if (k.isTopPanelKey && isTopModifierLockCandidate(k)) {
+                boolean on = isProModifierCapVisualOn(k);
+                applyTopPanelKeyCapBackground(v, k, on);
+                v.setSelected(on);
+            } else if (isProBuiltInModifierTouchKey(k)) {
+                applyLetterRowKeyFaceBackground(v, k, false);
+            }
+        } else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                refreshBuiltInModifierKeyCapsRecursive(g.getChildAt(i));
+            }
         }
     }
 
@@ -2353,6 +2648,10 @@ public class CustomKeyboardView extends LinearLayout {
 
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
+        if (isProBuiltInModifierTouchKey(key)) {
+            btn.setOnTouchListener(createProMainKeyboardModifierTouchListener(key));
+            return;
+        }
         final boolean[] gamingHoldActive = new boolean[]{false};
         btn.setOnTouchListener((v, event) -> {
             final boolean gamingTouch = !keyboardAlternatesHintsEnabled && keySupportsAlternatesWhenEnabled(key);
@@ -4264,9 +4563,12 @@ public class CustomKeyboardView extends LinearLayout {
                     || (k.code == 0xE3 && isWinLeftLocked);
                 // Fn-layer lock only tints the local Fn key — never other keys (modifier locks stay
                 // independent when Fn toggles).
-                boolean keyLockedVisualState = isFixedTopLocalFnKey(k)
-                        ? fixedTopLocalFnLocked
-                        : modifierLocked;
+                boolean keyLockedVisualState =
+                        isFixedTopLocalFnKey(k)
+                                ? fixedTopLocalFnLocked
+                                : (isTopModifierLockCandidate(k)
+                                        ? isProModifierCapVisualOn(k)
+                                        : modifierLocked);
                 FnMapping fixedTopLocalFn = fixedRowsSlice
                         ? resolveFixedTopLocalFnMapping(k, fixedTopPageForResolvers)
                         : resolveFixedTopLocalFnMapping(k);
@@ -4536,6 +4838,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
         syncModifierStates();
         refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
         if (splitPartner != null) {
             splitPartner.refreshVisibleTopPanelButtonStates();
         }
@@ -4568,11 +4871,464 @@ public class CustomKeyboardView extends LinearLayout {
         sendKeyData(combinedValue, effectiveKeyCode);
     }
 
+    private boolean isProMomentaryChordMode() {
+        Context ctx = getContext();
+        return ctx != null && KmBasicKeyboardPrefs.isMomentaryChordMode(ctx);
+    }
+
+    /**
+     * Top strip / fixed rows: Ctrl, Shift, Alt, Win (and macOS Fn→Caps on those cells). Sticky +
+     * hold-lock popup matches KM Basic; chord mode matches KM Basic long-press + sustain.
+     *
+     * @param fixedRows {@code true} for fixed rows 2–3 pager; {@code false} for scrolling row-1 strip.
+     */
+    private OnTouchListener createProTopStripModifierTouchListener(Key key, boolean fixedRows) {
+        final boolean[] longPressConsumed = new boolean[1];
+        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
+        final boolean[] macCapsLongFired = new boolean[1];
+        final boolean[] macCapsDownActive = new boolean[1];
+        final long[] macCapsDownTime = new long[1];
+
+        return (v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    macCapsDownActive[0] = false;
+                    longPressConsumed[0] = false;
+                    if (fixedRows) {
+                        cancelFixedTopRowsAnimations();
+                    } else {
+                        cancelTopPanelAnimations();
+                    }
+                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        macCapsLongFired[0] = false;
+                        macCapsDownActive[0] = true;
+                        macCapsDownTime[0] = SystemClock.uptimeMillis();
+                        pendingMacCapsLongPress[0] =
+                                () -> {
+                                    macCapsLongFired[0] = true;
+                                    performKeyHapticFeedback(v);
+                                    pendingMacCapsLongPress[0] = null;
+                                };
+                        longPressHandler.postDelayed(
+                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
+                        sendMomentaryModifierClick(key);
+                    } else if (isProMomentaryChordMode()) {
+                        clearPartnerChordStateFromPrimary();
+                        dismissProHoldLockPopup();
+                        performKeyHapticFeedback(v);
+                        proChordLongPressActivated = false;
+                        proChordActiveExtKey = key.code;
+                        proChordLongPressAnchorView = v;
+                        proChordLongPressPendingMask = bootModifierMaskForBuiltInExtendedKey(key.code);
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = proChordLongPressPendingMask;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proChordLongPressRunnable,
+                                ALT_LONG_PRESS_TIMEOUT_MS);
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    } else {
+                        dismissProHoldLockPopup();
+                        performKeyHapticFeedback(v);
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = bootModifierMaskForBuiltInExtendedKey(key.code);
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    }
+                    v.setPressed(true);
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        return true;
+                    } else if (isProMomentaryChordMode()) {
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        boolean insideChord = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (insideChord) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideChord);
+                        if (!insideChord) {
+                            longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    } else {
+                        boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        if (insideSticky) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideSticky);
+                        if (!insideSticky) {
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    if (macCapsDownActive[0] && isMacCapsMomentaryFromTopStripModifier(key)) {
+                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            dismissProHoldLockPopup();
+                            return true;
+                        }
+                        if (longPressConsumed[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            dismissProHoldLockPopup();
+                            return true;
+                        }
+                        performKeyHapticFeedback(v);
+                        v.performClick();
+                        long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
+                        if (!macCapsLongFired[0]) {
+                            long delay =
+                                    elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
+                                            ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
+                                            : 0;
+                            repeatHandler.postDelayed(this::sendReleaseData, delay);
+                        } else {
+                            sendReleaseData();
+                        }
+                        macCapsDownActive[0] = false;
+                        dismissProHoldLockPopup();
+                        return true;
+                    }
+                    if (event.getActionMasked() == MotionEvent.ACTION_UP && !longPressConsumed[0]) {
+                        performKeyHapticFeedback(v);
+                        v.performClick();
+                        holdLockFingerDown = false;
+                        MainActivity ma = unwrapMainActivityForHid();
+                        boolean committedLock = false;
+                        if (activeHoldLockPopup != null) {
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            committedLock = activeHoldLockPopup.commitIfLockSelected();
+                        }
+                        dismissProHoldLockPopup();
+                        if (committedLock && holdLockController != null && ma != null) {
+                            setModifierLockedStateForKey(key, false);
+                            holdLockController.lockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound());
+                            clearProChordUiPreserveHostForLock();
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            holdLockPopupAnchorView = null;
+                            repeatHandler.postDelayed(this::sendReleaseData, 30);
+                            return true;
+                        }
+                        if (isProMomentaryChordMode()) {
+                            if (proChordLongPressActivated) {
+                                if (proChordHostHoldSent) {
+                                    sendKeyboardAllKeysReleasedSync();
+                                    reassertLockedKeyboardAfterAllKeysReleased();
+                                    proChordHostHoldSent = false;
+                                }
+                                proChordSustainFingerDown = false;
+                                proChordHeldModMask = 0;
+                                if (proChordHeldView != null) {
+                                    proChordHeldView.setSelected(false);
+                                    proChordHeldView = null;
+                                }
+                                proChordLongPressActivated = false;
+                                proChordLongPressAnchorView = null;
+                            } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
+                                int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
+                                if (holdLockController != null
+                                        && ma != null
+                                        && holdLockController.isModifierLocked(boot)) {
+                                    holdLockController.unlockModifier(
+                                            boot,
+                                            port,
+                                            ma.getBluetoothService(),
+                                            ma.isBluetoothServiceBound());
+                                } else {
+                                    tapProModifierMomentary(key);
+                                }
+                            }
+                            holdLockPopupAnchorView = null;
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                        } else {
+                            if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
+                                int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
+                                if (holdLockController != null
+                                        && holdLockController.isModifierLocked(boot)) {
+                                    holdLockController.unlockModifier(
+                                            boot,
+                                            port,
+                                            ma.getBluetoothService(),
+                                            ma.isBluetoothServiceBound());
+                                } else {
+                                    setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
+                                }
+                                refreshVisibleTopPanelButtonStates();
+                                post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            }
+                            holdLockPopupAnchorView = null;
+                        }
+                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                    } else {
+                        dismissProHoldLockPopup();
+                        if (isProMomentaryChordMode() && proChordLongPressActivated) {
+                            if (proChordHostHoldSent) {
+                                sendKeyboardAllKeysReleasedSync();
+                                reassertLockedKeyboardAfterAllKeysReleased();
+                                proChordHostHoldSent = false;
+                            }
+                            proChordSustainFingerDown = false;
+                            proChordHeldModMask = 0;
+                            if (proChordHeldView != null) {
+                                proChordHeldView.setSelected(false);
+                                proChordHeldView = null;
+                            }
+                            proChordLongPressActivated = false;
+                        }
+                        proChordLongPressAnchorView = null;
+                        holdLockPopupAnchorView = null;
+                        holdLockFingerDown = false;
+                    }
+                    return true;
+                default:
+                    return false;
+            }
+        };
+    }
+
+    @Nullable
+    private MainActivity unwrapMainActivityForHid() {
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        return act instanceof MainActivity ? (MainActivity) act : null;
+    }
+
+    private OnTouchListener createProMainKeyboardModifierTouchListener(Key key) {
+        final int ext = key.code;
+        final int boot = bootModifierMaskForBuiltInExtendedKey(ext);
+        return (v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    clearPartnerChordStateFromPrimary();
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    dismissProHoldLockPopup();
+                    v.setPressed(true);
+                    performKeyHapticFeedback(v);
+                    if (isProMomentaryChordMode()) {
+                        proChordLongPressActivated = false;
+                        proChordActiveExtKey = ext;
+                        proChordLongPressAnchorView = v;
+                        proChordLongPressPendingMask = boot;
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = boot;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proChordLongPressRunnable, ALT_LONG_PRESS_TIMEOUT_MS);
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    } else {
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = boot;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    }
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (isProMomentaryChordMode()) {
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        boolean inside = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (inside) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(inside);
+                        if (!inside) {
+                            longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    } else {
+                        boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        if (insideSticky) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideSticky);
+                        if (!insideSticky) {
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    holdLockFingerDown = false;
+                    MainActivity ma = unwrapMainActivityForHid();
+                    if (activeHoldLockPopup != null) {
+                        activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                        boolean committedLock = activeHoldLockPopup.commitIfLockSelected();
+                        dismissProHoldLockPopup();
+                        if (committedLock && holdLockController != null && ma != null) {
+                            setModifierLockedStateForKey(key, false);
+                            holdLockController.lockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound());
+                            clearProChordUiPreserveHostForLock();
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            holdLockPopupAnchorView = null;
+                            repeatHandler.postDelayed(this::sendReleaseData, 30);
+                            return true;
+                        }
+                    }
+                    dismissProHoldLockPopup();
+                    if (isProMomentaryChordMode()) {
+                        if (proChordLongPressActivated) {
+                            if (proChordHostHoldSent) {
+                                sendKeyboardAllKeysReleasedSync();
+                                reassertLockedKeyboardAfterAllKeysReleased();
+                                proChordHostHoldSent = false;
+                            }
+                            proChordSustainFingerDown = false;
+                            proChordHeldModMask = 0;
+                            if (proChordHeldView != null) {
+                                proChordHeldView.setSelected(false);
+                                proChordHeldView = null;
+                            }
+                            proChordLongPressActivated = false;
+                            proChordLongPressAnchorView = null;
+                        } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
+                            if (holdLockController != null
+                                    && ma != null
+                                    && holdLockController.isModifierLocked(boot)) {
+                                holdLockController.unlockModifier(
+                                        boot,
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                            } else {
+                                tapProModifierMomentary(key);
+                            }
+                        }
+                    } else {
+                        if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
+                            if (holdLockController != null && holdLockController.isModifierLocked(boot)) {
+                                holdLockController.unlockModifier(
+                                        boot,
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                            } else {
+                                setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
+                            }
+                        }
+                    }
+                    holdLockPopupAnchorView = null;
+                    proChordLongPressAnchorView = null;
+                    performKeyHapticFeedback(v);
+                    v.performClick();
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    repeatHandler.postDelayed(this::sendReleaseData, 30);
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    dismissProHoldLockPopup();
+                    if (isProMomentaryChordMode() && proChordLongPressActivated) {
+                        if (proChordHostHoldSent) {
+                            sendKeyboardAllKeysReleasedSync();
+                            reassertLockedKeyboardAfterAllKeysReleased();
+                            proChordHostHoldSent = false;
+                        }
+                        proChordSustainFingerDown = false;
+                        proChordHeldModMask = 0;
+                        if (proChordHeldView != null) {
+                            proChordHeldView.setSelected(false);
+                            proChordHeldView = null;
+                        }
+                        proChordLongPressActivated = false;
+                    }
+                    proChordLongPressAnchorView = null;
+                    holdLockPopupAnchorView = null;
+                    holdLockFingerDown = false;
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    return true;
+                default:
+                    return false;
+            }
+        };
+    }
+
     private void maybeShowModifierLockHint(Key key) {
-        if (key == null || !isTopModifierLockCandidate(key)) {
+        if (key == null) {
             return;
         }
-        if (fixedTopRowsPageIndex != FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX) {
+        if (!isTopModifierLockCandidate(key) && !isProBuiltInModifierTouchKey(key)) {
+            return;
+        }
+        if (isTopModifierLockCandidate(key)
+                && fixedTopRowsPageIndex != FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX) {
             rapidTapModifierCode = -1;
             rapidTapModifierCount = 0;
             rapidTapModifierLastTapMs = 0L;
@@ -4600,23 +5356,20 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTouchListener createTopPanelTouchListener(Key key) {
+        if (key != null && isTopModifierLockCandidate(key)) {
+            return createProTopStripModifierTouchListener(key, false);
+        }
         final float[] startX = new float[1];
         final float[] startY = new float[1];
         final boolean[] isDragging = new boolean[1];
         final boolean[] longPressConsumed = new boolean[1];
         final Runnable[] pendingModeLongPress = new Runnable[1];
-        final Runnable[] pendingModifierLongPress = new Runnable[1];
         final Runnable[] pendingMyFavoritesLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
         final int modeSlotIndex = key != null ? topModeSlotIndexFromKeyCode(key.code) : 0;
         final int myFavoritesSlotIndex = key != null ? key.topStripFavoriteSlotIndex : -1;
-        final boolean canSwipePanel = (key == null || key.allowTopPanelPagingGesture)
-                && !isTopModifierLockCandidate(key);
-        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
-        final boolean[] macCapsLongFired = new boolean[1];
-        final boolean[] macCapsDownActive = new boolean[1];
-        final long[] macCapsDownTime = new long[1];
+        final boolean canSwipePanel = key == null || key.allowTopPanelPagingGesture;
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
@@ -4625,19 +5378,10 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                         pendingModeLongPress[0] = null;
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingMyFavoritesLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
-                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
@@ -4650,28 +5394,6 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingModeLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingModeLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (isMacCapsMomentaryFromTopStripModifier(key)) {
-                        macCapsLongFired[0] = false;
-                        macCapsDownActive[0] = true;
-                        macCapsDownTime[0] = SystemClock.uptimeMillis();
-                        pendingMacCapsLongPress[0] =
-                                () -> {
-                                    macCapsLongFired[0] = true;
-                                    performKeyHapticFeedback(v);
-                                    pendingMacCapsLongPress[0] = null;
-                                };
-                        longPressHandler.postDelayed(
-                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
-                        sendMomentaryModifierClick(key);
-                    } else if (isTopModifierLockCandidate(key)) {
-                        pendingModifierLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            // Option A: local-Fn overlays on these cells still long-press lock the
-                            // underlying modifier state (Ctrl/Shift/Alt/Win).
-                            setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
-                            pendingModifierLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingModifierLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
                     } else if (myFavoritesSlotIndex >= 0) {
                         pendingMyFavoritesLongPress[0] = () -> {
                             longPressConsumed[0] = true;
@@ -4698,21 +5420,9 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                             pendingModeLongPress[0] = null;
                         }
-                        if (pendingModifierLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                            pendingModifierLongPress[0] = null;
-                        }
                         if (pendingMyFavoritesLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                             pendingMyFavoritesLongPress[0] = null;
-                        }
-                        if (pendingMacCapsLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                            pendingMacCapsLongPress[0] = null;
-                        }
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
                         }
                     }
                     if (isDragging[0] && hasAnyTopPanelMode()) {
@@ -4728,68 +5438,19 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                         pendingModeLongPress[0] = null;
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingMyFavoritesLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                        }
                         finishTopPanelSwipe(totalDx, swipeThreshold);
                         return true;
-                    }
-                    if (macCapsDownActive[0] && key != null) {
-                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
-                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                            if (longPressConsumed[0]) {
-                                sendReleaseData();
-                                macCapsDownActive[0] = false;
-                                return true;
-                            }
-                            performKeyHapticFeedback(v);
-                            v.performClick();
-                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
-                            if (!macCapsLongFired[0]) {
-                                long delay =
-                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
-                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
-                                                : 0;
-                                repeatHandler.postDelayed(this::sendReleaseData, delay);
-                            } else {
-                                sendReleaseData();
-                            }
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
                     }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);
                         v.performClick();
-                        if (isTopModifierLockCandidate(key)) {
-                            if (isModifierLockedStateForKey(key)) {
-                                setModifierLockedStateForKey(key, false);
-                                return true;
-                            }
-                            sendMomentaryModifierClick(key);
-                            maybeShowModifierLockHint(key);
-                        } else {
-                            handleKeyPress(key);
-                        }
+                        handleKeyPress(key);
                         repeatHandler.postDelayed(this::sendReleaseData, 30);
                     }
                     return true;
@@ -4800,66 +5461,33 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTouchListener createFixedTopRowsTouchListener(Key key) {
+        if (key != null && isTopModifierLockCandidate(key)) {
+            return createProTopStripModifierTouchListener(key, true);
+        }
         final float[] startX = new float[1];
         final float[] startY = new float[1];
         final boolean[] isDragging = new boolean[1];
         final boolean[] longPressConsumed = new boolean[1];
-        final Runnable[] pendingModifierLongPress = new Runnable[1];
         final Runnable[] pendingFnStripEditLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
-        final boolean canSwipePanel = !isTopModifierLockCandidate(key);
+        final boolean canSwipePanel = true;
         final boolean isLocalFnStripKey = isFixedTopLocalFnKey(key);
-        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
-        final boolean[] macCapsLongFired = new boolean[1];
-        final boolean[] macCapsDownActive = new boolean[1];
-        final long[] macCapsDownTime = new long[1];
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
-                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
                     holdRepeatSuppressUpTap = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
                     isDragging[0] = false;
                     cancelFixedTopRowsAnimations();
-                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
-                        macCapsLongFired[0] = false;
-                        macCapsDownActive[0] = true;
-                        macCapsDownTime[0] = SystemClock.uptimeMillis();
-                        pendingMacCapsLongPress[0] =
-                                () -> {
-                                    macCapsLongFired[0] = true;
-                                    performKeyHapticFeedback(v);
-                                    pendingMacCapsLongPress[0] = null;
-                                };
-                        longPressHandler.postDelayed(
-                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
-                        sendMomentaryModifierClick(key);
-                    } else if (isTopModifierLockCandidate(key)) {
-                        pendingModifierLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            // Option A: local-Fn overlays on these cells still long-press lock the
-                            // underlying modifier state (Ctrl/Shift/Alt/Win).
-                            setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
-                            pendingModifierLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingModifierLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (isLocalFnStripKey) {
+                    if (isLocalFnStripKey) {
                         pendingFnStripEditLongPress[0] = () -> {
                             longPressConsumed[0] = true;
                             performKeyHapticFeedback(v);
@@ -4886,21 +5514,9 @@ public class CustomKeyboardView extends LinearLayout {
                         if (key != null) {
                             v.setPressed(false);
                         }
-                        if (pendingModifierLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                            pendingModifierLongPress[0] = null;
-                        }
                         if (pendingFnStripEditLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                             pendingFnStripEditLongPress[0] = null;
-                        }
-                        if (pendingMacCapsLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                            pendingMacCapsLongPress[0] = null;
-                        }
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
                         }
                     }
                     if (isDragging[0] && hasAnyFixedRowsPagerMode()) {
@@ -4916,74 +5532,21 @@ public class CustomKeyboardView extends LinearLayout {
                     if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
                         stopRepeatingDelete();
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                        }
                         finishFixedTopRowsSwipe(totalDx, swipeThreshold);
                         holdRepeatSuppressUpTap = false;
                         return true;
                     }
-                    if (macCapsDownActive[0] && key != null) {
-                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                            holdRepeatSuppressUpTap = false;
-                            return true;
-                        }
-                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                            if (longPressConsumed[0]) {
-                                sendReleaseData();
-                                macCapsDownActive[0] = false;
-                                holdRepeatSuppressUpTap = false;
-                                return true;
-                            }
-                            performKeyHapticFeedback(v);
-                            v.performClick();
-                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
-                            if (!macCapsLongFired[0]) {
-                                long delay =
-                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
-                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
-                                                : 0;
-                                repeatHandler.postDelayed(this::sendReleaseData, delay);
-                            } else {
-                                sendReleaseData();
-                            }
-                            macCapsDownActive[0] = false;
-                            holdRepeatSuppressUpTap = false;
-                            return true;
-                        }
-                    }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);
                         v.performClick();
-                        if (isTopModifierLockCandidate(key)) {
-                            if (isModifierLockedStateForKey(key)) {
-                                setModifierLockedStateForKey(key, false);
-                                holdRepeatSuppressUpTap = false;
-                                return true;
-                            }
-                            sendMomentaryModifierClick(key);
-                            maybeShowModifierLockHint(key);
-                        } else {
-                            if (!stripSuppressTapUp) {
-                                handleKeyPress(key);
-                            }
+                        if (!stripSuppressTapUp) {
+                            handleKeyPress(key);
                         }
                         repeatHandler.postDelayed(this::sendReleaseData, 30);
                         holdRepeatSuppressUpTap = false;
@@ -5553,9 +6116,12 @@ public class CustomKeyboardView extends LinearLayout {
                         || (key.code == 0xE1 && isShiftLeftLocked)
                         || (key.code == 0xE2 && isAltLeftLocked)
                         || (key.code == 0xE3 && isWinLeftLocked);
-                boolean keyLockedVisualState = isFixedTopLocalFnKey(key)
-                        ? fixedTopLocalFnLocked
-                        : modifierLocked;
+                boolean keyLockedVisualState =
+                        isFixedTopLocalFnKey(key)
+                                ? fixedTopLocalFnLocked
+                                : (isTopModifierLockCandidate(key)
+                                        ? isProModifierCapVisualOn(key)
+                                        : modifierLocked);
                 applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
                 view.setSelected(keyLockedVisualState);
             }
@@ -6445,6 +7011,9 @@ public class CustomKeyboardView extends LinearLayout {
 
     public void setPort(UsbSerialPort port) {
         this.port = port;
+        if (port == null) {
+            clearProChordAndHoldLockPopupUiState();
+        }
         Log.d(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
     }
 
@@ -6454,25 +7023,29 @@ public class CustomKeyboardView extends LinearLayout {
 
     public void sendReleaseData() {
         new Thread(() -> {
-            String releaseSendMSData = "57AB00020800000000000000000C";
-            if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                try {
-                    byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                    Thread.sleep(10);
-                    bluetoothService.sendData(releaseSendKBDataBytes);
-                    Log.d(TAG, "Sent Bluetooth release data");
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
+            try {
+                String releaseSendMSData = "57AB00020800000000000000000C";
+                if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
+                    try {
+                        byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
+                        Thread.sleep(10);
+                        bluetoothService.sendData(releaseSendKBDataBytes);
+                        Log.d(TAG, "Sent Bluetooth release data");
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
+                    }
+                } else if (port != null) {
+                    try {
+                        byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
+                        Thread.sleep(10);
+                        port.write(releaseSendKBDataBytes, 20);
+                        Log.d(TAG, "Sent USB release data");
+                    } catch (IOException | InterruptedException e) {
+                        Log.e(TAG, "Error sending USB release data: " + e.getMessage());
+                    }
                 }
-            } else if (port != null) {
-                try {
-                    byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                    Thread.sleep(10);
-                    port.write(releaseSendKBDataBytes, 20);
-                    Log.d(TAG, "Sent USB release data");
-                } catch (IOException | InterruptedException e) {
-                    Log.e(TAG, "Error sending USB release data: " + e.getMessage());
-                }
+            } finally {
+                post(this::reassertKeyboardAfterHidRelease);
             }
         }).start();
     }
@@ -6564,6 +7137,11 @@ public class CustomKeyboardView extends LinearLayout {
         // Fn latched: main keyboard left Shift toggles long-press alternates/hints (before shortcut path).
         if (isFnAlternateHintsToggleKey(key)) {
             toggleKeyboardAlternatesHintsFromUser();
+            return;
+        }
+
+        // QWERTY-row Ctrl/Shift/Alt/Win: dedicated touch listener (sticky / chord + hold-lock).
+        if (isProBuiltInModifierTouchKey(key)) {
             return;
         }
 
@@ -6819,7 +7397,9 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyData(int modifiers, int keyCode) {
-        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, modifiers, keyCode);
+        int m = mergeHoldLockedBootMask(modifiers);
+        m = mergeChordHeldBootMask(m);
+        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, m, keyCode);
     }
 
     /**
@@ -7641,7 +8221,22 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        Context ctx = getContext();
+        if (ctx != null) {
+            PreferenceManager.getDefaultSharedPreferences(ctx)
+                    .registerOnSharedPreferenceChangeListener(kmProModifierPrefListener);
+        }
+    }
+
+    @Override
     protected void onDetachedFromWindow() {
+        Context ctx = getContext();
+        if (ctx != null) {
+            PreferenceManager.getDefaultSharedPreferences(ctx)
+                    .unregisterOnSharedPreferenceChangeListener(kmProModifierPrefListener);
+        }
         super.onDetachedFromWindow();
         imeSubComposeSendExecutor.shutdownNow();
         detachLocalImeFieldQuiet();

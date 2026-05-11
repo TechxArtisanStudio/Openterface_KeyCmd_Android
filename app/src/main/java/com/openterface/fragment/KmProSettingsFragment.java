@@ -1,6 +1,7 @@
 package com.openterface.fragment;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,11 +10,14 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -41,6 +45,9 @@ public class KmProSettingsFragment extends Fragment {
     private MaterialButtonToggleGroup alternateHintsToggle;
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
+    private RadioGroup modifierBehaviorGroup;
+    private LinearLayout chordSustainCard;
+    private SwitchCompat chordSustainSwitch;
     private TextInputLayout profileInputLayout;
     private MaterialAutoCompleteTextView profileDropdown;
     private OnBackPressedCallback rootBackCallback;
@@ -52,6 +59,9 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressDisplayToggleCallback;
     private boolean suppressAlternateHintsToggleCallback;
     private boolean suppressGamingBehaviorToggleCallback;
+    private boolean suppressModifierBehaviorCallback;
+    private boolean suppressChordSustainCallback;
+    private boolean loadingModifierPrefs;
 
     @Nullable
     @Override
@@ -64,6 +74,9 @@ public class KmProSettingsFragment extends Fragment {
         alternateHintsToggle = view.findViewById(R.id.km_pro_alternate_hints_toggle);
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
+        modifierBehaviorGroup = view.findViewById(R.id.km_pro_modifier_behavior_group);
+        chordSustainCard = view.findViewById(R.id.km_pro_chord_sustain_card);
+        chordSustainSwitch = view.findViewById(R.id.km_pro_chord_sustain_switch);
         profileInputLayout = view.findViewById(R.id.km_pro_profile_input_layout);
         profileDropdown = view.findViewById(R.id.km_pro_profile_dropdown);
 
@@ -124,6 +137,49 @@ public class KmProSettingsFragment extends Fragment {
 
         profileDropdown.setOnClickListener(v -> profileDropdown.showDropDown());
 
+        loadingModifierPrefs = true;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        RadioButton sticky = view.findViewById(R.id.km_pro_modifier_sticky);
+        RadioButton chord = view.findViewById(R.id.km_pro_modifier_chord);
+        if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
+                prefs.getString(KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.PREF_DEFAULT_VALUE))) {
+            chord.setChecked(true);
+        } else {
+            sticky.setChecked(true);
+        }
+        if (chordSustainSwitch != null) {
+            chordSustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
+        }
+        updateChordSustainCardVisibility(chord != null && chord.isChecked());
+        loadingModifierPrefs = false;
+
+        if (modifierBehaviorGroup != null) {
+            modifierBehaviorGroup.setOnCheckedChangeListener(
+                    (group, checkedId) -> {
+                        if (loadingModifierPrefs || suppressModifierBehaviorCallback) {
+                            return;
+                        }
+                        String value =
+                                checkedId == R.id.km_pro_modifier_chord
+                                        ? KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD
+                                        : KmBasicKeyboardPrefs.VALUE_STICKY;
+                        prefs.edit().putString(KmBasicKeyboardPrefs.PREF_KEY, value).apply();
+                        updateChordSustainCardVisibility(checkedId == R.id.km_pro_modifier_chord);
+                        notifyCompositeKeyboardLayoutFromKmProSetup();
+                    });
+        }
+        if (chordSustainSwitch != null) {
+            chordSustainSwitch.setOnCheckedChangeListener(
+                    (buttonView, isChecked) -> {
+                        if (loadingModifierPrefs || suppressChordSustainCallback) {
+                            return;
+                        }
+                        prefs.edit()
+                                .putBoolean(KmBasicKeyboardPrefs.PREF_CHORD_SUSTAIN_HID, isChecked)
+                                .apply();
+                    });
+        }
+
         return view;
     }
 
@@ -146,6 +202,7 @@ public class KmProSettingsFragment extends Fragment {
         syncAlternateHintsToggleFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
+        syncModifierBehaviorFromPrefs();
         bindProfileDropdown();
     }
 
@@ -275,6 +332,34 @@ public class KmProSettingsFragment extends Fragment {
         Activity a = getActivity();
         if (a instanceof MainActivity) {
             ((MainActivity) a).refreshCompositeKeyboardLayoutFromKmProSetup();
+        }
+    }
+
+    private void syncModifierBehaviorFromPrefs() {
+        if (modifierBehaviorGroup == null) {
+            return;
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        int checkedId =
+                KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
+                                prefs.getString(
+                                        KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.PREF_DEFAULT_VALUE))
+                        ? R.id.km_pro_modifier_chord
+                        : R.id.km_pro_modifier_sticky;
+        suppressModifierBehaviorCallback = true;
+        modifierBehaviorGroup.check(checkedId);
+        suppressModifierBehaviorCallback = false;
+        updateChordSustainCardVisibility(checkedId == R.id.km_pro_modifier_chord);
+        if (chordSustainSwitch != null) {
+            suppressChordSustainCallback = true;
+            chordSustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
+            suppressChordSustainCallback = false;
+        }
+    }
+
+    private void updateChordSustainCardVisibility(boolean chordModeSelected) {
+        if (chordSustainCard != null) {
+            chordSustainCard.setVisibility(chordModeSelected ? View.VISIBLE : View.GONE);
         }
     }
 }

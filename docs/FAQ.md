@@ -46,21 +46,21 @@ Built-in **Default** and **Mine** start from the **factory strip layout** (no ov
 
 ---
 
-## What is the difference between sticky modifiers and long-press chord on the Basic keyboard?
+## What is the difference between sticky modifiers and long-press chord?
 
-These options apply only to the **full keyboard** in **Keyboard & Mouse (Basic)** (open **Setup** from the gear icon next to the target OS control).
+The same choices apply to **Keyboard & Mouse (Basic)** (full keyboard) and to **Ctrl / Shift / Alt / Win** on **Keyboard & Mouse Pro** (main QWERTY row and top strip / fixed-row modifier cells). They share one preference: set them under **Keyboard & Mouse Basic setup** or under **Keyboard & Mouse Pro** setup → **Modifiers**.
 
-**Sticky modifiers:** Tap **Ctrl**, **Shift**, **Alt**, or **Win/Cmd** once to **latch** it on (highlighted). Tap again to turn off. To type **!**, tap **Shift**, then tap **1** as separate steps—like sticky keys on a physical keyboard.
+**Sticky modifiers:** Tap **Ctrl**, **Shift**, **Alt**, or **Win/Cmd** once to **latch** it on (highlighted). Tap again to turn off. To type **!**, tap **Shift**, then tap **1** as separate steps—like sticky keys on a physical keyboard. **Press and hold ~1 second**, then **swipe up** on the lock hint, for a **host-side** swipe lock (Basic and Pro).
 
 **Momentary and long-press chord (default):** A **short tap** sends that modifier **once** to the target (quick press and release). **Long-press** a modifier and **keep your finger on it**, then tap other keys to chord (for example long-press **Shift** and tap **1** for **!**). **Lift your finger** from the modifier to stop.
 
-Changing modifier mode **rebuilds** the Basic keyboard and clears latched modifiers.
+Changing modifier mode **rebuilds** the active keyboard (**Basic** or **Pro**) and clears latched modifiers and chord UI state.
 
 ---
 
 ## What does “Hold modifier on target while chording” do?
 
-This switch appears when **Momentary and long-press chord** is selected. It is **on** by default.
+This switch appears when **Momentary and long-press chord** is selected. It is **on** by default. It applies to **Basic** full-keyboard chording and to **Pro** chording on the main keyboard and strip modifier keys.
 
 When **on**, after you long-press a modifier, KeyMod sends a **real modifier-down** to the connected device and, after each chorded key, sends the **hold again** so the target keeps treating the modifier as pressed while your finger stays on the modifier. That supports several shifted symbols in a row (for example **!** then **@** without releasing Shift between number taps).
 
@@ -85,7 +85,9 @@ Changing this option **rebuilds** the Basic keyboard layout so the new behavior 
 
 ## Do Basic modifier settings affect Pro mode or the shortcut strip?
 
-**No.** Sticky vs chord and “Hold modifier on target while chording” apply to **Keyboard & Mouse (Basic)** only. **Keyboard & Mouse Pro** and the shortcut **strip** use separate behavior.
+**Yes, for modifier keys.** Sticky vs chord and **Hold modifier on target while chording** use the **same app preferences** for **Keyboard & Mouse (Basic)** and for **Ctrl / Shift / Alt / Win** on **Keyboard & Mouse Pro** (QWERTY row and strip). Other strip shortcuts and non-modifier keys are unchanged.
+
+Swipe-locked modifiers from the hold gesture are **cleared** when you leave Pro or when the HID connection drops, so they do not leak into other modes.
 
 ---
 
