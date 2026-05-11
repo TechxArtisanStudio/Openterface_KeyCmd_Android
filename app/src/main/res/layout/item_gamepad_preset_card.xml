@@ -46,21 +46,7 @@
                 tools:visibility="visible" />
         </FrameLayout>
 
-        <!-- Row 1: layout name (single line) -->
-        <TextView
-            android:id="@+id/preset_card_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:paddingHorizontal="@dimen/spacing_small"
-            android:paddingTop="@dimen/spacing_tiny"
-            android:paddingBottom="2dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-            android:textColor="?attr/colorOnSurface"
-            tools:text="Minecraft Java" />
-
-        <!-- Row 2: Built-in (when applicable) | flex | More -->
+        <!-- Single row: built-in icon (when shipped) | title | overflow -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -68,28 +54,31 @@
             android:minHeight="40dp"
             android:orientation="horizontal"
             android:paddingHorizontal="@dimen/spacing_small"
-            android:paddingTop="2dp"
+            android:paddingTop="@dimen/spacing_tiny"
             android:paddingBottom="@dimen/spacing_small">
 
-            <TextView
-                android:id="@+id/preset_card_builtin_chip"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/gamepad_meta_pill_builtin"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:text="@string/gamepad_presets_builtin_badge"
-                android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                android:textColor="?attr/colorOnSecondaryContainer"
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/preset_card_builtin_indicator"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginEnd="@dimen/spacing_tiny"
+                android:contentDescription="@string/gamepad_presets_builtin_badge"
+                android:importantForAccessibility="yes"
                 android:visibility="gone"
+                app:srcCompat="@drawable/ic_gamepad_preset_builtin_20"
+                app:tint="?attr/colorOnSurfaceVariant"
                 tools:visibility="visible" />
 
-            <Space
+            <TextView
+                android:id="@+id/preset_card_title"
                 android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="Minecraft Java" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/preset_card_more"

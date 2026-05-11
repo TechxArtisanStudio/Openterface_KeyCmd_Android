@@ -221,7 +221,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
             h.title.setTextColor(onSurface);
         }
 
-        h.builtinBadge.setVisibility(row.builtin ? View.VISIBLE : View.GONE);
+        h.builtinIndicator.setVisibility(row.builtin ? View.VISIBLE : View.GONE);
 
         float density = ctx.getResources().getDisplayMetrics().density;
         int strokePx = row.selected ? Math.round(2f * density) : 0;
@@ -370,7 +370,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
         final MaterialCardView card;
         final ImageView preview;
         final TextView title;
-        final TextView builtinBadge;
+        final AppCompatImageView builtinIndicator;
         final AppCompatImageView dragHandle;
         final MaterialButton more;
 
@@ -379,7 +379,7 @@ public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<Gam
             card = itemView.findViewById(R.id.preset_card_root);
             preview = itemView.findViewById(R.id.preset_card_preview);
             title = itemView.findViewById(R.id.preset_card_title);
-            builtinBadge = itemView.findViewById(R.id.preset_card_builtin_chip);
+            builtinIndicator = itemView.findViewById(R.id.preset_card_builtin_indicator);
             dragHandle = itemView.findViewById(R.id.preset_card_drag_handle);
             more = itemView.findViewById(R.id.preset_card_more);
         }
