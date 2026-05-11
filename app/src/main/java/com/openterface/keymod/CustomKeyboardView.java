@@ -72,6 +72,7 @@ import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
@@ -790,8 +791,8 @@ public class CustomKeyboardView extends LinearLayout {
                         key.label = guiNameLabel;
                         key.iconResId = guiIconResId;
                     } else if (key.code == 0x2C) {
-                        key.label = context.getString(R.string.Space_Button);
-                        key.iconResId = 0;
+                        key.label = "";
+                        key.iconResId = R.drawable.space_bar_24px;
                     } else if (key.code == 0xE1) {
                         key.label = context.getString(R.string.Shift);
                         key.iconResId = R.drawable.shift_24px;
@@ -833,18 +834,6 @@ public class CustomKeyboardView extends LinearLayout {
                 }
             }
         }
-    }
-
-    /**
-     * Pro QWERTY bottom space: strip Icons mode shows the word {@code Space} (text) instead of the
-     * space-bar glyph, matching Tab/Ctrl/Opt as text in that mode.
-     */
-    private boolean isProQwertySpaceAsTextInStripIconMode(Key key) {
-        return !showGuiHidKey
-                && key != null
-                && key.code == 0x2C
-                && topShortcutDisplayMode == DISPLAY_MODE_ICON
-                && key.iconResId == 0;
     }
 
     /** Split partner: sync display mode, strip panels, and QWERTY row after primary updates prefs. */
@@ -1457,6 +1446,11 @@ public class CustomKeyboardView extends LinearLayout {
         updateKeyboard();
     }
 
+    /** Full layout rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
+    public void rebuildKeyboardFromKmProSetup() {
+        updateKeyboard();
+    }
+
     /** Create a shared top scrolling panel view for split mode. */
     public FrameLayout createTopPanel() {
         rebuildTopShortcutPanels();
@@ -1934,12 +1928,11 @@ public class CustomKeyboardView extends LinearLayout {
      * right keyboards each get a space bar.
      */
     private List<List<Key>> expandSpaceBarForSplitRows(List<List<Key>> rows) {
-        String spaceLabel = getContext().getString(R.string.Space_Button);
         List<List<Key>> result = new ArrayList<>();
         for (List<Key> row : rows) {
             List<Key> newRow = new ArrayList<>();
             for (Key k : row) {
-                if (k != null && k.code == 0x2C && spaceLabel.equals(k.label)) {
+                if (k != null && k.code == 0x2C) {
                     float half = k.widthPercent / 2f;
                     newRow.add(cloneKeyWithWidth(k, half));
                     newRow.add(cloneKeyWithWidth(k, half));
@@ -2136,8 +2129,7 @@ public class CustomKeyboardView extends LinearLayout {
                 // icon on bottom-row 0xE3 so Cmd/Win/Super render as text).
                 boolean shouldUseIconButton = (key.label.equals("Win") && key.iconResId != 0)
                         || (key.label.equals("Cmd") && key.iconResId != 0)
-                        || (key.code == 0x2C && key.iconResId != 0
-                                && !isProQwertySpaceAsTextInStripIconMode(key))
+                        || (key.code == 0x2C && key.iconResId != 0)
                         || (key.code == 0x2A && key.iconResId != 0)
                         || (key.code == 0xE1 && key.iconResId != 0)
                         || (key.code == 0x28 && key.iconResId != 0)
@@ -2155,6 +2147,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (key.code == 0x2B && key.iconResId != 0) {
                         imageButton.setContentDescription(
                                 getContext().getString(R.string.key_display_name_tab));
+                    }
+                    if (key.code == 0x2C && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.Space_Button));
                     }
                     if ((key.code == 0xE3 && isWinLeftLocked) || (key.code == 0xE1 && isShiftLeftLocked)) {
                         imageButton.setBackgroundResource(R.drawable.press_button_background);
@@ -2365,7 +2361,9 @@ public class CustomKeyboardView extends LinearLayout {
                         v.setPressed(true);
                         gamingHoldActive[0] = true;
                         sendHidKeyDataForKey(key);
-                        startGamingKeyRepeat(key);
+                        if (!KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+                            startGamingKeyRepeat(key);
+                        }
                         return true;
                     }
                     if (shouldEnableAlternates(key)) {

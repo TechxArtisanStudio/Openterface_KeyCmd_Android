@@ -204,6 +204,19 @@ public class CompositeFragment extends Fragment {
         }
     }
 
+    /** Full keyboard rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
+    public void refreshCompositeKeyboardLayoutFromKmProSetup() {
+        if (keyboardView != null) {
+            keyboardView.rebuildKeyboardFromKmProSetup();
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.rebuildKeyboardFromKmProSetup();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.rebuildKeyboardFromKmProSetup();
+        }
+    }
+
     public static CompositeFragment newInstance(UsbSerialPort port) {
         CompositeFragment fragment = new CompositeFragment();
         fragment.port = port;

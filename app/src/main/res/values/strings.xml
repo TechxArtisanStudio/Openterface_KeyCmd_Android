@@ -41,6 +41,8 @@
     <string name="km_pro_settings_section_alternate_hints_summary">When on, letter keys show small long-press hint glyphs and support the alternates popup. When off, those keys use hold-to-repeat (gaming style).</string>
     <string name="km_pro_settings_alternate_hints_on">On</string>
     <string name="km_pro_settings_alternate_hints_off">Off</string>
+    <string name="km_pro_settings_section_gaming_key_behavior">When hints are off: letter keys</string>
+    <string name="km_pro_settings_section_gaming_key_behavior_summary">Same options as Keyboard &amp; Mouse (Basic) setup: repeat taps while you hold, or one key-down until you lift your finger.</string>
     <string name="km_pro_settings_section_profile">Shortcut Hub profile</string>
     <string name="km_pro_settings_section_profile_summary">Catalog and favorites for row 1 use the selected profile. Manage profiles in Shortcut Hub.</string>
     <string name="km_pro_settings_profile_field_hint">Active profile</string>

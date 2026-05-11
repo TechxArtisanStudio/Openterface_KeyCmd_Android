@@ -8,11 +8,13 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -21,6 +23,7 @@ import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.ProfileUiStrings;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
+import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 
@@ -36,6 +39,8 @@ public class KmProSettingsFragment extends Fragment {
     private ImageButton closeButton;
     private MaterialButtonToggleGroup displayModeToggle;
     private MaterialButtonToggleGroup alternateHintsToggle;
+    private LinearLayout gamingKeyBehaviorSection;
+    private MaterialButtonToggleGroup longPressBehaviorToggle;
     private TextInputLayout profileInputLayout;
     private MaterialAutoCompleteTextView profileDropdown;
     private OnBackPressedCallback rootBackCallback;
@@ -46,6 +51,7 @@ public class KmProSettingsFragment extends Fragment {
 
     private boolean suppressDisplayToggleCallback;
     private boolean suppressAlternateHintsToggleCallback;
+    private boolean suppressGamingBehaviorToggleCallback;
 
     @Nullable
     @Override
@@ -56,6 +62,8 @@ public class KmProSettingsFragment extends Fragment {
         closeButton = view.findViewById(R.id.km_pro_settings_close_button);
         displayModeToggle = view.findViewById(R.id.km_pro_display_mode_toggle);
         alternateHintsToggle = view.findViewById(R.id.km_pro_alternate_hints_toggle);
+        gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
+        longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
         profileInputLayout = view.findViewById(R.id.km_pro_profile_input_layout);
         profileDropdown = view.findViewById(R.id.km_pro_profile_dropdown);
 
@@ -81,6 +89,26 @@ public class KmProSettingsFragment extends Fragment {
             boolean enabled = alternateHintsButtonIdToEnabled(checkedId);
             KeyboardAlternatesHintsPrefs.write(requireContext(), enabled);
             notifyKeyboardAlternatesHintsRefresh();
+            updateGamingKeyBehaviorSectionVisibility();
+            if (gamingKeyBehaviorSection != null
+                    && gamingKeyBehaviorSection.getVisibility() == View.VISIBLE) {
+                syncGamingKeyBehaviorToggleFromPrefs();
+            }
+        });
+
+        longPressBehaviorToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked || suppressGamingBehaviorToggleCallback) {
+                return;
+            }
+            String value =
+                    checkedId == R.id.km_pro_long_press_hold
+                            ? KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD
+                            : KmBasicKeyboardPrefs.VALUE_LONG_PRESS_REPEAT;
+            PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .edit()
+                    .putString(KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR, value)
+                    .apply();
+            notifyCompositeKeyboardLayoutFromKmProSetup();
         });
 
         profileDropdown.setOnItemClickListener((AdapterView<?> parent, View v, int position, long id) -> {
@@ -116,6 +144,8 @@ public class KmProSettingsFragment extends Fragment {
         super.onResume();
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
+        updateGamingKeyBehaviorSectionVisibility();
+        syncGamingKeyBehaviorToggleFromPrefs();
         bindProfileDropdown();
     }
 
@@ -154,6 +184,29 @@ public class KmProSettingsFragment extends Fragment {
 
     private static int alternateHintsEnabledToButtonId(boolean enabled) {
         return enabled ? R.id.km_pro_alternate_hints_on : R.id.km_pro_alternate_hints_off;
+    }
+
+    private void updateGamingKeyBehaviorSectionVisibility() {
+        if (gamingKeyBehaviorSection == null) {
+            return;
+        }
+        boolean hintsOn = KeyboardAlternatesHintsPrefs.read(requireContext());
+        gamingKeyBehaviorSection.setVisibility(hintsOn ? View.GONE : View.VISIBLE);
+    }
+
+    private void syncGamingKeyBehaviorToggleFromPrefs() {
+        if (longPressBehaviorToggle == null
+                || gamingKeyBehaviorSection == null
+                || gamingKeyBehaviorSection.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        int buttonId =
+                KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(requireContext())
+                        ? R.id.km_pro_long_press_hold
+                        : R.id.km_pro_long_press_repeat;
+        suppressGamingBehaviorToggleCallback = true;
+        longPressBehaviorToggle.check(buttonId);
+        suppressGamingBehaviorToggleCallback = false;
     }
 
     private static int displayModeButtonIdToMode(int checkedButtonId) {
@@ -215,6 +268,13 @@ public class KmProSettingsFragment extends Fragment {
         Activity a = getActivity();
         if (a instanceof MainActivity) {
             ((MainActivity) a).refreshKeyboardAlternatesHintsFromPrefs();
+        }
+    }
+
+    private void notifyCompositeKeyboardLayoutFromKmProSetup() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshCompositeKeyboardLayoutFromKmProSetup();
         }
     }
 }
