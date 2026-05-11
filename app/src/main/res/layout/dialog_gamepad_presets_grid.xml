@@ -8,75 +8,114 @@
     android:clipToOutline="true"
     android:orientation="vertical">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/gamepad_presets_sheet_title"
-        android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
-        android:textColor="?attr/colorOnSurface"
-        tools:text="Layouts" />
+        android:gravity="center_vertical"
+        android:minHeight="40dp"
+        android:orientation="horizontal">
 
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/spacing_small"
-        android:fillViewport="false"
-        android:scrollbars="none">
+        <TextView
+            android:id="@+id/gamepad_presets_sheet_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingEnd="@dimen/spacing_small"
+            android:text="@string/gamepad_presets_sheet_title"
+            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="Layouts" />
 
-        <LinearLayout
+        <HorizontalScrollView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:fillViewport="false"
+            android:scrollbars="none">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/gamepad_presets_new_layout"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:text="@string/gamepad_presets_new_layout_short"
-                android:textSize="13sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/gamepad_presets_import_btn"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_tiny"
-                android:minHeight="48dp"
-                android:text="@string/gamepad_presets_import_short"
-                android:textSize="13sp"
-                app:strokeColor="?attr/colorOutline" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/gamepad_presets_new_layout"
+                    style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@string/gamepad_presets_new_layout"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    app:icon="@drawable/add_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp" />
 
-            <com.google.android.material.checkbox.MaterialCheckBox
-                android:id="@+id/gamepad_presets_reorder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_small"
-                android:contentDescription="@string/gamepad_presets_reorder_cd"
-                android:minHeight="48dp"
-                android:text="@string/gamepad_presets_reorder"
-                android:textSize="13sp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/gamepad_presets_import_btn"
+                    style="@style/Widget.Material3.Button.IconButton.Outlined"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="@dimen/spacing_tiny"
+                    android:contentDescription="@string/gamepad_presets_import"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    app:icon="@drawable/folder_open_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    app:strokeColor="?attr/colorOutline" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/gamepad_presets_reset_shipped_btn"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_small"
-                android:minHeight="48dp"
-                android:text="@string/gamepad_presets_reset_shipped_short"
-                android:textColor="?attr/colorError"
-                android:textSize="13sp" />
-        </LinearLayout>
-    </HorizontalScrollView>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/gamepad_presets_reorder"
+                    style="@style/Widget.Material3.Button.IconButton.Outlined"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="@dimen/spacing_tiny"
+                    android:checkable="true"
+                    android:contentDescription="@string/gamepad_presets_reorder_cd"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    app:icon="@drawable/ic_drag_handle_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    app:strokeColor="?attr/colorOutline" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/gamepad_presets_reset_shipped_btn"
+                    style="@style/Widget.Material3.Button.IconButton.Outlined"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="@dimen/spacing_tiny"
+                    android:contentDescription="@string/gamepad_presets_reset_shipped"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    app:icon="@drawable/change_circle_24px"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    app:iconTint="?attr/colorError"
+                    app:strokeColor="?attr/colorOutline" />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/gamepad_presets_recycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/spacing_medium"
+        android:layout_marginTop="@dimen/spacing_small"
         android:layout_weight="1"
         android:clipToPadding="false"
         android:minHeight="160dp"

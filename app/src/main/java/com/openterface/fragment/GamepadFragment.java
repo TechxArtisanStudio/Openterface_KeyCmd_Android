@@ -71,7 +71,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
@@ -2186,7 +2185,7 @@ public class GamepadFragment extends Fragment {
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
-        MaterialCheckBox reorderCb = sheet.findViewById(R.id.gamepad_presets_reorder);
+        MaterialButton reorderBtn = sheet.findViewById(R.id.gamepad_presets_reorder);
 
         DisplayMetrics dm = dlgCtx.getResources().getDisplayMetrics();
         float density = dm.density;
@@ -2254,9 +2253,9 @@ public class GamepadFragment extends Fragment {
         GamepadPresetCardGridAdapter adapter = presetListAdapterRef[0];
         recycler.setAdapter(adapter);
         refreshPresetSheetAdapter(adapter);
-        if (reorderCb != null) {
-            reorderCb.setChecked(false);
-            reorderCb.setOnCheckedChangeListener((buttonView, isChecked) ->
+        if (reorderBtn != null) {
+            reorderBtn.setChecked(false);
+            reorderBtn.addOnCheckedChangeListener((btn, isChecked) ->
                     presetListAdapterRef[0].setReorderMode(isChecked));
         }
 
