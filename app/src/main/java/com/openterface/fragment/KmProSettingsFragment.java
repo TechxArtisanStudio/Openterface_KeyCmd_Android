@@ -29,6 +29,7 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class KmProSettingsFragment extends Fragment {
     private MaterialButtonToggleGroup alternateHintsToggle;
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
+    private MaterialButtonToggleGroup touchpadModeToggle;
     private RadioGroup modifierBehaviorGroup;
     private LinearLayout chordSustainCard;
     private SwitchCompat chordSustainSwitch;
@@ -61,6 +63,7 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressGamingBehaviorToggleCallback;
     private boolean suppressModifierBehaviorCallback;
     private boolean suppressChordSustainCallback;
+    private boolean suppressTouchpadModeToggleCallback;
     private boolean loadingModifierPrefs;
 
     @Nullable
@@ -74,6 +77,7 @@ public class KmProSettingsFragment extends Fragment {
         alternateHintsToggle = view.findViewById(R.id.km_pro_alternate_hints_toggle);
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
+        touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
         modifierBehaviorGroup = view.findViewById(R.id.km_pro_modifier_behavior_group);
         chordSustainCard = view.findViewById(R.id.km_pro_chord_sustain_card);
         chordSustainSwitch = view.findViewById(R.id.km_pro_chord_sustain_switch);
@@ -108,6 +112,17 @@ public class KmProSettingsFragment extends Fragment {
                 syncGamingKeyBehaviorToggleFromPrefs();
             }
         });
+
+        if (touchpadModeToggle != null) {
+            touchpadModeToggle.addOnButtonCheckedListener(
+                    (group, checkedId, isChecked) -> {
+                        if (!isChecked || suppressTouchpadModeToggleCallback) {
+                            return;
+                        }
+                        KmProTouchpadPrefs.writeMode(requireContext(), touchpadModeButtonIdToMode(checkedId));
+                        notifyCompositeTouchpadChromeFromKmProSetup();
+                    });
+        }
 
         longPressBehaviorToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked || suppressGamingBehaviorToggleCallback) {
@@ -200,6 +215,7 @@ public class KmProSettingsFragment extends Fragment {
         super.onResume();
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
+        syncTouchpadModeToggleFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
         syncModifierBehaviorFromPrefs();
@@ -332,6 +348,46 @@ public class KmProSettingsFragment extends Fragment {
         Activity a = getActivity();
         if (a instanceof MainActivity) {
             ((MainActivity) a).refreshCompositeKeyboardLayoutFromKmProSetup();
+        }
+    }
+
+    private void notifyCompositeTouchpadChromeFromKmProSetup() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshCompositeTouchpadChromeFromKmProSetup();
+        }
+    }
+
+    private void syncTouchpadModeToggleFromPrefs() {
+        if (touchpadModeToggle == null) {
+            return;
+        }
+        int mode = KmProTouchpadPrefs.readMode(requireContext());
+        int buttonId = touchpadModeToButtonId(mode);
+        suppressTouchpadModeToggleCallback = true;
+        touchpadModeToggle.check(buttonId);
+        suppressTouchpadModeToggleCallback = false;
+    }
+
+    private static int touchpadModeButtonIdToMode(int checkedButtonId) {
+        if (checkedButtonId == R.id.km_pro_touchpad_mode_strip) {
+            return KmProTouchpadPrefs.MODE_MOUSE_KEYS_BASIC;
+        }
+        if (checkedButtonId == R.id.km_pro_touchpad_mode_hybrid) {
+            return KmProTouchpadPrefs.MODE_HYBRID;
+        }
+        return KmProTouchpadPrefs.MODE_GESTURES_ONLY;
+    }
+
+    private static int touchpadModeToButtonId(int mode) {
+        switch (KmProTouchpadPrefs.clampMode(mode)) {
+            case KmProTouchpadPrefs.MODE_MOUSE_KEYS_BASIC:
+                return R.id.km_pro_touchpad_mode_strip;
+            case KmProTouchpadPrefs.MODE_HYBRID:
+                return R.id.km_pro_touchpad_mode_hybrid;
+            case KmProTouchpadPrefs.MODE_GESTURES_ONLY:
+            default:
+                return R.id.km_pro_touchpad_mode_gestures;
         }
     }
 

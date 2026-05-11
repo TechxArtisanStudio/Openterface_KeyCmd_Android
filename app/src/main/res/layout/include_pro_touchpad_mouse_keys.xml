@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pro_touchpad_mouse_keys"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="@dimen/pro_touchpad_mouse_row_min_height"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/pro_touchpad_btn_left"
+        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:contentDescription="@string/kb_basic_touchpad_mouse_left_a11y"
+        android:text="@string/kb_basic_touchpad_mouse_left_label" />
+
+    <TextView
+        android:id="@+id/pro_touchpad_btn_middle"
+        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/kb_basic_touchpad_mouse_middle_a11y"
+        android:text="@string/kb_basic_touchpad_mouse_middle_label" />
+
+    <TextView
+        android:id="@+id/pro_touchpad_btn_right"
+        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_weight="2"
+        android:contentDescription="@string/kb_basic_touchpad_mouse_right_a11y"
+        android:text="@string/kb_basic_touchpad_mouse_right_label" />
+</LinearLayout>

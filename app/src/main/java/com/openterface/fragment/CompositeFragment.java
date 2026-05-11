@@ -40,6 +40,9 @@ import androidx.fragment.app.Fragment;
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CustomKeyboardView;
+import com.openterface.keymod.hid.MouseRelHidTransport;
+import com.openterface.keymod.prefs.KmProTouchpadPrefs;
+import com.openterface.keymod.touchpad.TouchpadMouseStripBinder;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.R;
@@ -163,6 +166,42 @@ public class CompositeFragment extends Fragment {
     /** Keyboard &amp; Mouse Pro: swipe-up host modifier locks (separate from KM Basic’s controller). */
     private final KmBasicHoldLockController proHoldLockController = new KmBasicHoldLockController();
 
+    @Nullable private LinearLayout proTouchpadChromeRoot;
+    @Nullable private ViewGroup proTouchpadMouseKeys;
+    @Nullable private FrameLayout touchpadPadHost;
+    @Nullable private TouchpadMouseStripBinder proMouseStripBinder;
+    @Nullable private TextView proMouseBtnLeft;
+    @Nullable private TextView proMouseBtnMiddle;
+    @Nullable private TextView proMouseBtnRight;
+    private boolean proTouchpadMouseLayoutCompact;
+    private final TouchpadMouseStripBinder.Host proMouseStripHost =
+            new TouchpadMouseStripBinder.Host() {
+                @Override
+                public UsbSerialPort getUsbPort() {
+                    return port;
+                }
+
+                @Override
+                public BluetoothService getBluetoothService() {
+                    return bluetoothService;
+                }
+
+                @Override
+                public boolean isBluetoothServiceBound() {
+                    return isServiceBound;
+                }
+            };
+
+    private final View.OnLayoutChangeListener proTouchpadSectionLayoutListener =
+            (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                if (!isAdded()) {
+                    return;
+                }
+                if (KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
+                    applyProTouchpadMouseLayoutCompactOrComfortable();
+                }
+            };
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -219,6 +258,245 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.rebuildKeyboardFromKmProSetup();
         }
+    }
+
+    /** Apply KM Pro touchpad prefs (mouse strip visibility, binder, compact layout). */
+    public void refreshProTouchpadChromeFromKmProSetup() {
+        if (!isAdded()) {
+            return;
+        }
+        bindProTouchpadChromeReferences();
+        boolean show = KmProTouchpadPrefs.showsMouseKeyStrip(requireContext());
+        if (proTouchpadMouseKeys != null) {
+            proTouchpadMouseKeys.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        detachProMouseStripBinder();
+        if (show) {
+            attachProMouseStripBinderIfNeeded();
+            applyProTouchpadMouseLayoutCompactOrComfortable();
+            if (proTouchpadMouseKeys != null) {
+                proTouchpadMouseKeys.post(CompositeFragment.this::applyProTouchpadMouseLayoutCompactOrComfortable);
+            }
+        } else {
+            proTouchpadMouseLayoutCompact = false;
+            resetProTouchpadChromeOrientationComfortable();
+        }
+        updateHybridDragLeftVisual();
+    }
+
+    private void bindProTouchpadChromeReferences() {
+        View root = contentContainer != null && contentContainer.getChildCount() > 0
+                ? contentContainer.getChildAt(0)
+                : null;
+        if (root == null) {
+            proTouchpadChromeRoot = null;
+            proTouchpadMouseKeys = null;
+            touchpadPadHost = null;
+            proMouseBtnLeft = null;
+            proMouseBtnMiddle = null;
+            proMouseBtnRight = null;
+            return;
+        }
+        proTouchpadChromeRoot = root.findViewById(R.id.pro_touchpad_chrome_root);
+        proTouchpadMouseKeys = root.findViewById(R.id.pro_touchpad_mouse_keys);
+        touchpadPadHost = root.findViewById(R.id.touchpad_pad_host);
+        proMouseBtnLeft = root.findViewById(R.id.pro_touchpad_btn_left);
+        proMouseBtnMiddle = root.findViewById(R.id.pro_touchpad_btn_middle);
+        proMouseBtnRight = root.findViewById(R.id.pro_touchpad_btn_right);
+    }
+
+    private void detachProMouseStripBinder() {
+        if (proMouseStripBinder != null) {
+            proMouseStripBinder.detach();
+            proMouseStripBinder = null;
+        }
+    }
+
+    private void registerProTouchpadSectionLayoutListener() {
+        if (touchpadSection != null) {
+            touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
+            touchpadSection.addOnLayoutChangeListener(proTouchpadSectionLayoutListener);
+        }
+    }
+
+    private void attachProMouseStripBinderIfNeeded() {
+        if (!KmProTouchpadPrefs.showsMouseKeyStrip(requireContext()) || touchpadSection == null) {
+            return;
+        }
+        View left = touchpadSection.findViewById(R.id.pro_touchpad_btn_left);
+        View mid = touchpadSection.findViewById(R.id.pro_touchpad_btn_middle);
+        View right = touchpadSection.findViewById(R.id.pro_touchpad_btn_right);
+        if (left == null && mid == null && right == null) {
+            return;
+        }
+        proMouseStripBinder = new TouchpadMouseStripBinder(this, proMouseStripHost, proHoldLockController);
+        proMouseStripBinder.attach(left, mid, right);
+    }
+
+    private int stripAndLockMaskWithoutGestureDrag() {
+        if (proMouseStripBinder != null) {
+            return proMouseStripBinder.effectiveMouseMaskForHid();
+        }
+        return proHoldLockController.getLockedMouseMask() & 0xFF;
+    }
+
+    private int snapshotProRelMoveButtonMask() {
+        int drag = isDragMode ? TouchpadMouseStripBinder.BTN_LEFT : 0;
+        if (!KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
+            return drag & 0xFF;
+        }
+        return (drag | stripAndLockMaskWithoutGestureDrag()) & 0xFF;
+    }
+
+    private void resetProTouchpadChromeOrientationComfortable() {
+        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
+            return;
+        }
+        proTouchpadChromeRoot.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
+        padLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        padLp.height = 0;
+        padLp.weight = 1f;
+        touchpadPadHost.setLayoutParams(padLp);
+        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        mLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        mLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        mLp.weight = 0f;
+        proTouchpadMouseKeys.setLayoutParams(mLp);
+        configureProMouseKeysRow(false);
+    }
+
+    private void applyProTouchpadMouseLayoutCompactOrComfortable() {
+        if (proTouchpadChromeRoot == null
+                || touchpadPadHost == null
+                || proTouchpadMouseKeys == null
+                || touchpadSection == null
+                || !KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
+            return;
+        }
+        int th = touchpadSection.getHeight();
+        if (th <= 0) {
+            return;
+        }
+        int threshold =
+                getResources()
+                        .getDimensionPixelSize(R.dimen.pro_touchpad_section_compact_height_threshold);
+        boolean compact = th <= threshold;
+        proTouchpadMouseLayoutCompact = compact;
+        if (compact) {
+            proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
+            padLp.width = 0;
+            padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            padLp.weight = 1f;
+            touchpadPadHost.setLayoutParams(padLp);
+            LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+            mLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            mLp.weight = 0f;
+            proTouchpadMouseKeys.setLayoutParams(mLp);
+            configureProMouseKeysRow(true);
+        } else {
+            resetProTouchpadChromeOrientationComfortable();
+        }
+    }
+
+    private void configureProMouseKeysRow(boolean compactVerticalStrip) {
+        if (!(proTouchpadMouseKeys instanceof LinearLayout)) {
+            return;
+        }
+        LinearLayout row = (LinearLayout) proTouchpadMouseKeys;
+        row.setOrientation(compactVerticalStrip ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        int n = row.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View c = row.getChildAt(i);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) c.getLayoutParams();
+            if (compactVerticalStrip) {
+                lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                lp.height = 0;
+                lp.weight = 1f;
+                lp.setMarginStart(0);
+                lp.setMarginEnd(0);
+            } else {
+                lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+                lp.width = 0;
+                lp.weight = i == 1 ? 1f : 2f;
+                int m = (int) (getResources().getDisplayMetrics().density * 8f);
+                lp.setMarginStart(i == 0 ? 0 : m);
+            }
+            c.setLayoutParams(lp);
+        }
+    }
+
+    private void updateHybridDragLeftVisual() {
+        if (proMouseBtnLeft == null || !KmProTouchpadPrefs.isHybridMode(requireContext())) {
+            return;
+        }
+        if (proHoldLockController.isMouseLocked(TouchpadMouseStripBinder.BTN_LEFT)) {
+            return;
+        }
+        boolean stripLeft =
+                proMouseStripBinder != null
+                        && (proMouseStripBinder.getStripHeldMask() & TouchpadMouseStripBinder.BTN_LEFT)
+                                != 0;
+        proMouseBtnLeft.setPressed(!stripLeft && isDragMode);
+    }
+
+    /**
+     * {@link MouseRelHidTransport#sendLeftClick} (and similar) ends with {@link
+     * MouseRelHidTransport#releaseAll}; if L/M/R strip or hold-lock still has buttons down, put the
+     * mask back after a short delay.
+     */
+    private void scheduleReassertStripAndLockMouseButtons(long delayMs) {
+        int held = stripAndLockMaskWithoutGestureDrag();
+        if (held == 0) {
+            return;
+        }
+        tipHandler.postDelayed(
+                () -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    int h = stripAndLockMaskWithoutGestureDrag();
+                    if (h != 0) {
+                        MouseRelHidTransport.sendRelButtonsNoMotion(
+                                port, bluetoothService, isServiceBound, h);
+                    }
+                },
+                delayMs);
+    }
+
+    private void pulseProMouseKeyHybrid(int buttonBit) {
+        if (!KmProTouchpadPrefs.isHybridMode(requireContext())) {
+            return;
+        }
+        TextView key =
+                buttonBit == TouchpadMouseStripBinder.BTN_LEFT
+                        ? proMouseBtnLeft
+                        : buttonBit == TouchpadMouseStripBinder.BTN_RIGHT
+                                ? proMouseBtnRight
+                                : proMouseBtnMiddle;
+        if (key == null) {
+            return;
+        }
+        if (key.isSelected()) {
+            return;
+        }
+        if (proMouseStripBinder != null
+                && (proMouseStripBinder.getStripHeldMask() & buttonBit) != 0) {
+            return;
+        }
+        if (!isAdded()) {
+            return;
+        }
+        key.setPressed(true);
+        tipHandler.postDelayed(
+                () -> {
+                    if (key.isPressed()) {
+                        key.setPressed(false);
+                    }
+                },
+                85);
     }
 
     /** Updates {@link #port} on all keyboard halves and clears Pro hold-locks when the host disconnects. */
@@ -335,7 +613,9 @@ public class CompositeFragment extends Fragment {
     private void setDragMode(boolean enabled) {
         cancelTouchPadButtonPulseAnimation();
         isDragMode = enabled;
-        sendMouseButtonState(enabled ? 0x01 : 0x00);
+        int base = stripAndLockMaskWithoutGestureDrag();
+        int mask = enabled ? (base | TouchpadMouseStripBinder.BTN_LEFT) : base;
+        MouseRelHidTransport.sendRelButtonsNoMotion(port, bluetoothService, isServiceBound, mask);
         if (enabled) {
             applyBottomWashIntensity(TOUCHPAD_WASH_DRAG_BASE_INTENSITY);
         } else {
@@ -343,6 +623,7 @@ public class CompositeFragment extends Fragment {
         }
         updateTouchPadTips();
         updateSplitTouchPadTips();
+        updateHybridDragLeftVisual();
         Log.d(TAG, "Drag mode " + (enabled ? "ON" : "OFF"));
     }
 
@@ -911,134 +1192,22 @@ public class CompositeFragment extends Fragment {
     }
 
     public void sendHexRelData(float StartMoveMSX, float StartMoveMSY, float LastMoveMSX, float LastMoveMSY) {
-        new Thread(() -> {
-            try {
-                int xMovement = (int) (StartMoveMSX - LastMoveMSX);
-                int yMovement = (int) (StartMoveMSY - LastMoveMSY);
-
-                if (Math.abs(xMovement) < 2 && Math.abs(yMovement) < 2) {
-                    return;
-                }
-
-                String xByte;
-                if (xMovement == 0) {
-                    xByte = "00";
-                } else if (LastMoveMSX == 0) {
-                    xByte = "00";
-                } else if (xMovement > 0) {
-                    xByte = String.format("%02X", Math.min(xMovement, 0x7F));
-                } else {
-                    xByte = String.format("%02X", 0x100 + xMovement);
-                }
-
-                String yByte;
-                if (yMovement == 0) {
-                    yByte = "00";
-                } else if (LastMoveMSY == 0) {
-                    yByte = "00";
-                } else if (yMovement > 0) {
-                    yByte = String.format("%02X", Math.min(yMovement, 0x7F));
-                } else {
-                    yByte = String.format("%02X", 0x100 + yMovement);
-                }
-
-                String buttonByte = isDragMode ? "01" : CH9329MSKBMap.MSAbsData().get("SecNullData");
-                String sendMSData =
-                        CH9329MSKBMap.getKeyCodeMap().get("prefix1") +
-                                CH9329MSKBMap.getKeyCodeMap().get("prefix2") +
-                                CH9329MSKBMap.getKeyCodeMap().get("address") +
-                                CH9329MSKBMap.CmdData().get("CmdMS_REL") +
-                                CH9329MSKBMap.DataLen().get("DataLenRelMS") +
-                                CH9329MSKBMap.MSRelData().get("FirstData") +
-                        buttonByte + // MS key
-                                xByte +
-                                yByte +
-                                CH9329MSKBMap.DataNull().get("DataNull");
-
-                sendMSData = sendMSData + makeChecksum(sendMSData);
-
-                if (sendMSData.length() % 2 != 0) {
-                    sendMSData += "0";
-                }
-                checkSendLogData(sendMSData);
-
-                byte[] sendKBDataBytes = hexStringToByteArray(sendMSData);
-
-                if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                    try {
-                        bluetoothService.sendData(sendKBDataBytes);
-                        Log.d(TAG, "Sent Bluetooth relative mouse data: " + sendMSData);
-//                        releaseAllMSData();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error sending Bluetooth relative mouse data: " + e.getMessage());
-                    }
-                } else if (port != null) {
-                    try {
-                        port.write(sendKBDataBytes, 20);
-                        Log.d(TAG, "Sent USB relative mouse data: " + sendMSData);
-//                        releaseAllMSData();
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error sending USB relative mouse data: " + e.getMessage());
-                    }
-                } else {
-                    Log.w(TAG, "No connection available for relative mouse data");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error processing relative mouse data: " + e.getMessage());
-            }
-        }).start();
+        int mask = snapshotProRelMoveButtonMask();
+        MouseRelHidTransport.sendRelMove(
+                port,
+                bluetoothService,
+                isServiceBound,
+                mask,
+                StartMoveMSX,
+                StartMoveMSY,
+                LastMoveMSX,
+                LastMoveMSY);
     }
 
     /** Send a scroll-wheel packet. deltaY>0 scrolls up, deltaY<0 scrolls down (natural). */
     public void sendScrollData(int deltaX, int deltaY) {
-        new Thread(() -> {
-            try {
-                // Skip empty scroll events.
-                if (deltaX == 0 && deltaY == 0) return;
-
-                String base =
-                        CH9329MSKBMap.getKeyCodeMap().get("prefix1") +
-                        CH9329MSKBMap.getKeyCodeMap().get("prefix2") +
-                        CH9329MSKBMap.getKeyCodeMap().get("address") +
-                        CH9329MSKBMap.CmdData().get("CmdMS_REL") +
-                        CH9329MSKBMap.DataLen().get("DataLenRelMS") +
-                        CH9329MSKBMap.MSRelData().get("FirstData") +
-                        "00"; // no button
-
-                // Vertical scroll (wheel byte)
-                if (deltaY != 0) {
-                    String wheelByte = deltaY > 0
-                            ? String.format("%02X", Math.min(deltaY, 0x7F))
-                            : String.format("%02X", 0x100 + Math.max(deltaY, -0x7F));
-                    String packet = base + "00" + "00" + wheelByte;
-                    packet += makeChecksum(packet);
-                    byte[] bytes = hexStringToByteArray(packet);
-                    if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                        bluetoothService.sendData(bytes);
-                    } else if (port != null) {
-                        port.write(bytes, 20);
-                    }
-                }
-
-                // Horizontal scroll fallback (put deltaX in X byte, wheel=0), matching iOS behavior.
-                if (deltaX != 0) {
-                    int boundedX = Math.max(-127, Math.min(127, deltaX));
-                    String xByte = boundedX >= 0
-                            ? String.format("%02X", boundedX)
-                            : String.format("%02X", 0x100 + boundedX);
-                    String packet = base + xByte + "00" + "00";
-                    packet += makeChecksum(packet);
-                    byte[] bytes = hexStringToByteArray(packet);
-                    if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                        bluetoothService.sendData(bytes);
-                    } else if (port != null) {
-                        port.write(bytes, 20);
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending scroll data: " + e.getMessage());
-            }
-        }).start();
+        int mask = snapshotProRelMoveButtonMask();
+        MouseRelHidTransport.sendScroll(port, bluetoothService, isServiceBound, deltaX, deltaY, mask);
     }
 
     @Nullable
@@ -1096,6 +1265,10 @@ public class CompositeFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (touchpadSection != null) {
+            touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
+        }
+        detachProMouseStripBinder();
         detachProHoldLockControllerFromKeyboardViews();
         proHoldLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
         if (imePopOutTouchPad != null) {
@@ -1159,6 +1332,12 @@ public class CompositeFragment extends Fragment {
         keyboardView = view.findViewById(R.id.keyboard_view);
         touchPad = view.findViewById(R.id.touchPad);
         touchpadSection = view.findViewById(R.id.touchpad_section);
+        proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
+        proTouchpadMouseKeys = view.findViewById(R.id.pro_touchpad_mouse_keys);
+        touchpadPadHost = view.findViewById(R.id.touchpad_pad_host);
+        proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
+        proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
+        proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
         toggleHandle = view.findViewById(R.id.toggle_handle);
         toggleHandlePill = view.findViewById(R.id.toggle_handle_pill);
         touchPadTips = view.findViewById(R.id.touchPadTips);
@@ -1166,6 +1345,8 @@ public class CompositeFragment extends Fragment {
         touchPadInfoButton = view.findViewById(R.id.touchPadInfo);
         setupBottomWashOverlays();
         updateTouchPadTips();
+        registerProTouchpadSectionLayoutListener();
+        touchpadSection.post(CompositeFragment.this::refreshProTouchpadChromeFromKmProSetup);
     }
 
     private void setupSplitViews(View view) {
@@ -1181,7 +1362,8 @@ public class CompositeFragment extends Fragment {
         splitShortcutsReparentedForIme = false;
         keyboardViewLeft = view.findViewById(R.id.keyboard_view_left);
         keyboardViewRight = view.findViewById(R.id.keyboard_view_right);
-        splitTouchpadSection = view.findViewById(R.id.touchpad_section);
+        touchpadSection = view.findViewById(R.id.touchpad_section);
+        splitTouchpadSection = touchpadSection;
         splitTouchPad = view.findViewById(R.id.touchPad);
         splitTouchPadTips = view.findViewById(R.id.touchPadTips);
         splitTouchPadHelpOverlay = view.findViewById(R.id.touchPadHelpOverlay);
@@ -1237,11 +1419,21 @@ public class CompositeFragment extends Fragment {
         splitImeHost = view.findViewById(R.id.composite_split_ime_host);
         splitImeEdit = view.findViewById(R.id.composite_split_ime_edit);
         splitTouchPadInfoButton = view.findViewById(R.id.touchPadInfo);
+        proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
+        proTouchpadMouseKeys = view.findViewById(R.id.pro_touchpad_mouse_keys);
+        touchpadPadHost = view.findViewById(R.id.touchpad_pad_host);
+        proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
+        proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
+        proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
         setupTouchPad(splitTouchPad, splitTouchPadTips, splitTouchPadInfoButton);
+        registerProTouchpadSectionLayoutListener();
         registerImeCaptureListener(keyboardViewLeft);
         registerImeCaptureListener(keyboardViewRight);
         if (keyboardViewRight != null) {
             keyboardViewRight.post(this::syncSplitImeChromeFromPrefs);
+        }
+        if (touchpadSection != null) {
+            touchpadSection.post(CompositeFragment.this::refreshProTouchpadChromeFromKmProSetup);
         }
     }
 
@@ -1275,24 +1467,15 @@ public class CompositeFragment extends Fragment {
                     setDragMode(false);
                     return;
                 }
+                if (KmProTouchpadPrefs.showsMouseKeyStrip(pad.getContext())
+                        && (stripAndLockMaskWithoutGestureDrag() & TouchpadMouseStripBinder.BTN_LEFT) != 0) {
+                    return;
+                }
                 pulseTouchPadButtonVisual();
+                pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT);
                 TouchPadHaptics.onLeftClick(pad.getContext());
-                new Thread(() -> {
-                    try {
-                        String sendKBData = "57AB0005050101000000";
-                        sendKBData += makeChecksum(sendKBData);
-                        byte[] bytes = hexStringToByteArray(sendKBData);
-                        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                            bluetoothService.sendData(bytes);
-                        } else if (port != null) {
-                            port.write(bytes, 20);
-                        }
-                        Thread.sleep(30);
-                        releaseAllMSData();
-                    } catch (IOException | InterruptedException e) {
-                        Log.e(TAG, "Error sending tap left click: " + e.getMessage());
-                    }
-                }).start();
+                MouseRelHidTransport.sendLeftClick(port, bluetoothService, isServiceBound);
+                scheduleReassertStripAndLockMouseButtons(50);
             }
 
             @Override
@@ -1301,50 +1484,30 @@ public class CompositeFragment extends Fragment {
                     setDragMode(false);
                     return;
                 }
+                if (KmProTouchpadPrefs.showsMouseKeyStrip(pad.getContext())
+                        && (stripAndLockMaskWithoutGestureDrag() & TouchpadMouseStripBinder.BTN_LEFT) != 0) {
+                    return;
+                }
                 pulseTouchPadButtonVisual();
+                pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT);
+                tipHandler.postDelayed(
+                        () -> pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT), 160);
                 TouchPadHaptics.onDoubleClick(pad.getContext());
-                new Thread(() -> {
-                    try {
-                        String clickData = "57AB0005050101000000";
-                        clickData += makeChecksum(clickData);
-                        byte[] bytes = hexStringToByteArray(clickData);
-                        for (int i = 0; i < 2; i++) {
-                            tipHandler.post(CompositeFragment.this::pulseTouchPadButtonVisual);
-                            if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                                bluetoothService.sendData(bytes);
-                            } else if (port != null) {
-                                port.write(bytes, 20);
-                            }
-                            Thread.sleep(30);
-                            releaseAllMSData();
-                            Thread.sleep(30);
-                        }
-                    } catch (IOException | InterruptedException e) {
-                        Log.e(TAG, "Error sending double click: " + e.getMessage());
-                    }
-                }).start();
+                MouseRelHidTransport.sendDoubleClick(port, bluetoothService, isServiceBound);
+                scheduleReassertStripAndLockMouseButtons(120);
             }
 
             @Override
             public void onTouchRightClick() {
+                if (KmProTouchpadPrefs.showsMouseKeyStrip(pad.getContext())
+                        && (stripAndLockMaskWithoutGestureDrag() & TouchpadMouseStripBinder.BTN_RIGHT) != 0) {
+                    return;
+                }
                 pulseTouchPadButtonVisual();
+                pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_RIGHT);
                 TouchPadHaptics.onRightClick(pad.getContext());
-                new Thread(() -> {
-                    try {
-                        String sendKBData = "57AB0005050102000000";
-                        sendKBData += makeChecksum(sendKBData);
-                        byte[] bytes = hexStringToByteArray(sendKBData);
-                        if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                            bluetoothService.sendData(bytes);
-                        } else if (port != null) {
-                            port.write(bytes, 20);
-                        }
-                        Thread.sleep(30);
-                        releaseAllMSData();
-                    } catch (IOException | InterruptedException e) {
-                        Log.e(TAG, "Error sending right click: " + e.getMessage());
-                    }
-                }).start();
+                MouseRelHidTransport.sendRightClick(port, bluetoothService, isServiceBound);
+                scheduleReassertStripAndLockMouseButtons(50);
             }
 
             @Override
@@ -1359,8 +1522,15 @@ public class CompositeFragment extends Fragment {
             @Override
             public void onTouchRelease() {
                 clearPointerPhaseForFingerUp();
-                if (!isDragMode) {
+                if (isDragMode) {
+                    return;
+                }
+                int held = stripAndLockMaskWithoutGestureDrag();
+                if (held == 0) {
                     releaseAllMSData();
+                } else if (KmProTouchpadPrefs.showsMouseKeyStrip(pad.getContext())) {
+                    MouseRelHidTransport.sendRelButtonsNoMotion(
+                            port, bluetoothService, isServiceBound, held);
                 }
             }
         });
@@ -1489,6 +1659,10 @@ public class CompositeFragment extends Fragment {
             if (splitImeEdit != null) {
                 ImeTextForwarder.detach(splitImeEdit);
             }
+            detachProMouseStripBinder();
+            if (touchpadSection != null) {
+                touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
+            }
             TouchPadHelpOverlay.clear(splitTouchPadHelpOverlay);
             splitTouchPadHelpOverlay = null;
             View split = contentContainer.getChildAt(0);
@@ -1508,6 +1682,7 @@ public class CompositeFragment extends Fragment {
             splitShortcutsReparentedForIme = false;
             splitLayoutRoot = null;
             splitTouchPadInfoButton = null;
+            splitTouchpadSection = null;
 
             View normalView = LayoutInflater.from(requireContext()).inflate(
                     R.layout.fragment_composite, contentContainer, false);
@@ -1591,6 +1766,9 @@ public class CompositeFragment extends Fragment {
             if (toggleHandlePill != null) {
                 toggleHandlePill.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(40), dpToPx(4)));
             }
+        }
+        if (touchpadSection != null) {
+            touchpadSection.post(this::applyProTouchpadMouseLayoutCompactOrComfortable);
         }
         if (!isLandscape
                 && keyboardView != null

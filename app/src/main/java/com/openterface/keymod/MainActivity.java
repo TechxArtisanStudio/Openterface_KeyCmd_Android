@@ -1651,6 +1651,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
+    /** Apply KM Pro touchpad mouse-key strip / hybrid prefs to the composite touchpad chrome. */
+    public void refreshCompositeTouchpadChromeFromKmProSetup() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshProTouchpadChromeFromKmProSetup();
+        }
+    }
+
     private void showVoiceInputFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();

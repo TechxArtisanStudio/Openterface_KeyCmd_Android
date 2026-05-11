@@ -36,6 +36,11 @@ import com.openterface.keymod.TouchPadView;
  * Pop-out touchpad using {@link R.layout#dialog_touchpad}: same wash, tips, help overlay,
  * scroll vs move, and drag behavior as {@link com.openterface.fragment.PresentationFragment}.
  * Optional presentation pointer HID {@code 'C'} toggle on show/dismiss.
+ *
+ * <p>KM Pro mouse-key strip and hold-lock are implemented on the inline composite touchpad only
+ * ({@link com.openterface.fragment.CompositeFragment}); this floating touchpad stays gesture-only
+ * so it does not duplicate {@link com.openterface.keymod.prefs.KmProTouchpadPrefs} state or
+ * {@link com.openterface.keymod.ConnectionManager} mouse-button hold paths.
  */
 public class PopOutTouchPadDialog {
 
