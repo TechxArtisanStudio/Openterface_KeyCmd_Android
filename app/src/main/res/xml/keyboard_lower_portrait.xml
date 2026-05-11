@@ -15,12 +15,12 @@
         <Key android:codes="1C" android:keyLabel="y" custom:keySymbolLabel="Y" custom:keyAlternates="6" custom:keyCornerHint="6"/>
         <Key android:codes="18" android:keyLabel="u" custom:keySymbolLabel="U" custom:keyAlternates="7" custom:keyCornerHint="7"/>
         <Key android:codes="0C" android:keyLabel="i" custom:keySymbolLabel="I" custom:keyAlternates="8" custom:keyCornerHint="8"/>
-        <Key android:codes="12" android:keyLabel="o" custom:keySymbolLabel="O" custom:keyAlternates="9" custom:keyCornerHint="9"/>
-        <Key android:codes="13" android:keyLabel="p" custom:keySymbolLabel="P" custom:keyAlternates="0" custom:keyCornerHint="0"/>
+        <Key android:codes="12" android:keyLabel="o" custom:keySymbolLabel="O" custom:keyAlternates="," custom:keyCornerHint=","/>
+        <Key android:codes="13" android:keyLabel="p" custom:keySymbolLabel="P" custom:keyAlternates="." custom:keyCornerHint="."/>
     </Row>
 
     <Row>
-        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="@" custom:keyCornerHint="@" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
+        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,,€,,£,," custom:keyCornerHint="¥" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
         <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates="#" custom:keyCornerHint="#" android:keyWidth="9.35%p"/>
         <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates="$,€,¥,£" custom:keyCornerHint="$" android:keyWidth="9.35%p"/>
         <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates="%" custom:keyCornerHint="%" android:keyWidth="9.35%p"/>

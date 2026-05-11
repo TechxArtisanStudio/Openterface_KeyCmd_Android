@@ -16,7 +16,7 @@ Keep **landscape and portrait** definitions aligned unless you intentionally div
 | Layer | Location | Purpose |
 |--------|----------|---------|
 | Parse XML | `CustomKeyboardView.parseKeyboard()` | Reads `android:codes`, `keyLabel`, `keySymbolLabel`, `keyAlternates`, `keyCornerHint`. Custom attrs are passed through `decodeKeyboardXmlEntities` so values like `&#92;` / `&amp;` become real single characters (XmlPullParser does not decode these in custom attrs). |
-| Slot fill | `fillAlternateSlotOptions(Key, AlternateOption[])` | Nine logical slots (`SLOT_CENTER` … `SLOT_DOWN_RIGHT`). **Center** = capital when `keyLabel` is `a`–`z`, else mappable single-character label. **`keyAlternates` tokens** (up to **eight**) map in order to **Up, Down, Left, Right**, then **Up-Left, Up-Right, Down-Left, Down-Right** (geometry indices 5–8). `splitAlternatesTokens` keeps **empty** comma-separated fields so a later token (e.g. a corner symbol) stays aligned with the correct slot. There is no automatic lowercase fill for Down. For **`/`**, `normalizeSlashKeyAlternates` fills missing or wrong Up/Down defaults when **Up** resolves to backslash (classic `\` / `|` pair on generic layouts). **Keyboard & Mouse Pro** (`keyboard_lower_*_no_gui.xml`) often sets **Up = €** only; in that case defaults do not add **`|`** on **Down**. |
+| Slot fill | `fillAlternateSlotOptions(Key, AlternateOption[])` | Nine logical slots (`SLOT_CENTER` … `SLOT_DOWN_RIGHT`). **Center** = capital when `keyLabel` is `a`–`z`, else mappable single-character label. **`keyAlternates` tokens** (up to **eight**) map in order to **Up, Down, Left, Right**, then **Up-Left, Up-Right, Down-Left, Down-Right** (geometry indices 5–8). `splitAlternatesTokens` keeps **empty** comma-separated fields so a later token (e.g. a corner symbol) stays aligned with the correct slot. **Comma as the only alternate** (`keyAlternates=","`) and **two-character `,9` / `.0`** (comma or period on **Up**, digit on **Down**) are handled explicitly because comma is also the token delimiter. A legacy **`,9,,`** string is normalized so the first slot is comma, not empty. There is no automatic lowercase fill for Down. For **`/`**, `normalizeSlashKeyAlternates` fills missing or wrong Up/Down defaults when **Up** resolves to backslash (classic `\` / `|` pair on generic layouts). **Keyboard & Mouse Pro** (`keyboard_lower_*_no_gui.xml`) often sets **Up = €** only; in that case defaults do not add **`|`** on **Down**. |
 | Popup layout | `showAlternatesPopup` | **3×3** grid matching screen directions (see diagram below). Cells with a mapped option are shown; empty cells are omitted when trimming the popup bounds. |
 | Gesture → slot | `AlternatePopupGeometry.pickSlot` | Delta from touch-down: inner radius → default (center); outer radius → cancel; else classify into outer cells using **axis deadbands** plus a **neutral cross** (both axes weak → stays default highlight). Corner cells use the same thresholds as cardinals (`AlternatePopupGeometryTest`). |
 | Character → HID / Unicode | `mapAsciiAlternate(String token)` | Each token must be **one Unicode code point** and supported here, or that slot is **empty**. Some symbols use HID usage + modifiers; others set `unicodeCodePoint` and send via `HidTextKeystrokeSender`. |
@@ -75,9 +75,9 @@ Base HID = `android:codes` (hex). The table’s **`keyAlternates`** column lists
 | y | 1C | Y | 6 | 6 |
 | u | 18 | U | 7 | 7 |
 | i | 0C | I | 8 | 8 |
-| o | 12 | O | 9 | 9 |
-| p | 13 | P | 0 | 0 |
-| a | 04 | A | @ | @ |
+| o | 12 | O | , (↑) | , |
+| p | 13 | P | . (↑) | . |
+| a | 04 | A | ¥ (↑), empty ↓/←, € (→), empty UL, £ (UR), empty DL/DR | ¥ |
 | s | 16 | S | # | # |
 | d | 07 | D | $ , € , ¥ , (empty ×4) , ₺ (↑↓←→ then UL–DR); £ / ₹ / ₩ / ₽ removed — unreliable on device | $ |
 | f | 09 | F | % | % |

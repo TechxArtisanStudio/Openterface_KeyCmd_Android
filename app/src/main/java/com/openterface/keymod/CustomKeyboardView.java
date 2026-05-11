@@ -1553,6 +1553,21 @@ public class CustomKeyboardView extends LinearLayout {
         if (TextUtils.isEmpty(alternates)) {
             return Collections.emptyList();
         }
+        int len = alternates.length();
+        // A lone comma is one Up-slot token; naive comma-split would yield two empty segments.
+        if (len == 1) {
+            return Collections.singletonList(alternates);
+        }
+        // Shorthand for comma or period on Up when the next character is not a delimiter comma.
+        if (len == 2) {
+            char c0 = alternates.charAt(0);
+            if (c0 == ',' && alternates.charAt(1) != ',') {
+                return Arrays.asList(",", alternates.substring(1));
+            }
+            if (c0 == '.') {
+                return Arrays.asList(".", alternates.substring(1));
+            }
+        }
         List<String> out = new ArrayList<>();
         int start = 0;
         for (int i = 0; i < alternates.length(); i++) {
@@ -1562,6 +1577,18 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
         out.add(alternates.substring(start).trim());
+        // Legacy ",9,," style: leading comma + digit meant comma on Up and digit on Down (comma is the separator).
+        if (out.size() >= 2 && out.get(0).isEmpty()) {
+            String second = out.get(1);
+            if (second.length() == 1 && Character.isDigit(second.charAt(0))) {
+                String d = second;
+                if (alternates.startsWith("," + d)) {
+                    out.set(0, ",");
+                } else if (alternates.startsWith("." + d)) {
+                    out.set(0, ".");
+                }
+            }
+        }
         return out;
     }
 
