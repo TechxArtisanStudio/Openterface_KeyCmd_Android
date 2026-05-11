@@ -314,8 +314,12 @@ public class CustomKeyboardView extends LinearLayout {
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
     private Handler repeatHandler = new Handler();
-    private Runnable repeatRunnable;
-    private boolean isRepeating = false;
+    /** Hold-to-repeat for Space / Bksp / DEL / arrows: tap-like HID pairs after {@link ViewConfiguration} delays. */
+    private Runnable holdKeyRepeatRunnable;
+    private Runnable holdKeyRepeatStarterRunnable;
+    private Key holdKeyRepeatKey;
+    private boolean holdKeyRepeatActive;
+    private boolean holdRepeatSuppressUpTap;
     private static final int ALT_LONG_PRESS_TIMEOUT_MS = ViewConfiguration.getLongPressTimeout();
     /**
      * macOS: brief Caps (0x39) tap toggles input source; longer hold toggles Caps Lock LED. Use a hold
@@ -2349,14 +2353,13 @@ public class CustomKeyboardView extends LinearLayout {
 
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
-        final boolean[] longPressConsumed = new boolean[]{false};
         final boolean[] gamingHoldActive = new boolean[]{false};
         btn.setOnTouchListener((v, event) -> {
             final boolean gamingTouch = !keyboardAlternatesHintsEnabled && keySupportsAlternatesWhenEnabled(key);
             int action = event.getActionMasked();
             switch (action) {
                 case MotionEvent.ACTION_DOWN: {
-                    longPressConsumed[0] = false;
+                    holdRepeatSuppressUpTap = false;
                     gamingHoldActive[0] = false;
                     performKeyHapticFeedback(v);
                     if (gamingTouch) {
@@ -2369,6 +2372,9 @@ public class CustomKeyboardView extends LinearLayout {
                             startGamingKeyRepeat(key);
                         }
                         return true;
+                    }
+                    if (shouldRepeatOnLongPress(key) && getContext() != null) {
+                        startHoldKeyRepeatFromDown(key);
                     }
                     if (shouldEnableAlternates(key)) {
                         alternatesGestureStartRawX = event.getRawX();
@@ -2396,6 +2402,9 @@ public class CustomKeyboardView extends LinearLayout {
                     if (gamingTouch && gamingHoldActive[0]) {
                         return true;
                     }
+                    if (holdKeyRepeatActive && holdKeyRepeatKey == key && !isTouchInsideView(v, event)) {
+                        stopRepeatingDelete();
+                    }
                     if (isFnAlternateHintsToggleKey(key)) {
                         return true;
                     }
@@ -2421,10 +2430,14 @@ public class CustomKeyboardView extends LinearLayout {
                         repeatHandler.postDelayed(this::sendReleaseData, 30);
                         return true;
                     }
-                    if (shouldRepeatOnLongPress(key)) stopRepeatingDelete();
-                    if (!longPressConsumed[0] && isTouchInsideView(v, event)) {
+                    boolean suppressTapUp = holdRepeatSuppressUpTap;
+                    if (shouldRepeatOnLongPress(key)) {
+                        stopRepeatingDelete();
+                    }
+                    if (!suppressTapUp && isTouchInsideView(v, event)) {
                         handleKeyPress(key);
                     }
+                    holdRepeatSuppressUpTap = false;
                     repeatHandler.postDelayed(this::sendReleaseData, 30);
                     return false;
                 }
@@ -2446,7 +2459,10 @@ public class CustomKeyboardView extends LinearLayout {
                         dismissAlternatesPopup();
                         return true;
                     }
-                    if (shouldRepeatOnLongPress(key)) stopRepeatingDelete();
+                    if (shouldRepeatOnLongPress(key)) {
+                        stopRepeatingDelete();
+                    }
+                    holdRepeatSuppressUpTap = false;
                     repeatHandler.postDelayed(this::sendReleaseData, 30);
                     return false;
                 }
@@ -2454,13 +2470,6 @@ public class CustomKeyboardView extends LinearLayout {
                     return false;
             }
         });
-        if (shouldRepeatOnLongPress(key)) {
-            btn.setOnLongClickListener(v -> {
-                longPressConsumed[0] = true;
-                startRepeatingDelete(key);
-                return true;
-            });
-        }
     }
 
     private boolean isTouchInsideView(View view, MotionEvent event) {
@@ -2610,7 +2619,23 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private boolean shouldRepeatOnLongPress(Key key) {
-        return key != null && (key.isRepeatable || isArrowKey(key) || isBackspaceKey(key));
+        if (key == null) {
+            return false;
+        }
+        if (key.isRepeatable || isArrowKey(key) || isBackspaceKey(key)) {
+            return true;
+        }
+        // Space (0x2C) and forward-delete (0x4C, e.g. KM Pro fixed-strip DEL) — XML may omit isRepeatable.
+        return key.code == 0x2C || key.code == 0x4C;
+    }
+
+    /** Fixed-strip keys that may use hold-repeat (excludes modifier lock, Fn strip editor, Caps timing). */
+    private boolean fixedStripCellSupportsHoldRepeat(Key key) {
+        return key != null
+                && shouldRepeatOnLongPress(key)
+                && !isMacCapsMomentaryFromTopStripModifier(key)
+                && !isTopModifierLockCandidate(key)
+                && !isFixedTopLocalFnKey(key);
     }
 
     private boolean isArrowKey(Key key) {
@@ -4807,6 +4832,7 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
+                    holdRepeatSuppressUpTap = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
                     isDragging[0] = false;
@@ -4842,6 +4868,9 @@ public class CustomKeyboardView extends LinearLayout {
                         };
                         longPressHandler.postDelayed(pendingFnStripEditLongPress[0], STRIP_EDIT_VIA_FN_MS);
                     }
+                    if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
+                        startHoldKeyRepeatFromDown(key);
+                    }
                     if (key != null) {
                         v.setPressed(true);
                     }
@@ -4851,6 +4880,9 @@ public class CustomKeyboardView extends LinearLayout {
                     float dy = event.getRawY() - startY[0];
                     if (canSwipePanel && !isDragging[0] && Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
                         isDragging[0] = true;
+                        if (holdKeyRepeatActive && holdKeyRepeatKey == key) {
+                            stopRepeatingDelete();
+                        }
                         if (key != null) {
                             v.setPressed(false);
                         }
@@ -4880,6 +4912,10 @@ public class CustomKeyboardView extends LinearLayout {
                     if (key != null) {
                         v.setPressed(false);
                     }
+                    boolean stripSuppressTapUp = holdRepeatSuppressUpTap;
+                    if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
+                        stopRepeatingDelete();
+                    }
                     if (pendingModifierLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
                         pendingModifierLongPress[0] = null;
@@ -4899,18 +4935,21 @@ public class CustomKeyboardView extends LinearLayout {
                             macCapsDownActive[0] = false;
                         }
                         finishFixedTopRowsSwipe(totalDx, swipeThreshold);
+                        holdRepeatSuppressUpTap = false;
                         return true;
                     }
                     if (macCapsDownActive[0] && key != null) {
                         if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
                             sendReleaseData();
                             macCapsDownActive[0] = false;
+                            holdRepeatSuppressUpTap = false;
                             return true;
                         }
                         if (event.getActionMasked() == MotionEvent.ACTION_UP) {
                             if (longPressConsumed[0]) {
                                 sendReleaseData();
                                 macCapsDownActive[0] = false;
+                                holdRepeatSuppressUpTap = false;
                                 return true;
                             }
                             performKeyHapticFeedback(v);
@@ -4926,6 +4965,7 @@ public class CustomKeyboardView extends LinearLayout {
                                 sendReleaseData();
                             }
                             macCapsDownActive[0] = false;
+                            holdRepeatSuppressUpTap = false;
                             return true;
                         }
                     }
@@ -4935,14 +4975,20 @@ public class CustomKeyboardView extends LinearLayout {
                         if (isTopModifierLockCandidate(key)) {
                             if (isModifierLockedStateForKey(key)) {
                                 setModifierLockedStateForKey(key, false);
+                                holdRepeatSuppressUpTap = false;
                                 return true;
                             }
                             sendMomentaryModifierClick(key);
                             maybeShowModifierLockHint(key);
                         } else {
-                            handleKeyPress(key);
+                            if (!stripSuppressTapUp) {
+                                handleKeyPress(key);
+                            }
                         }
                         repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        holdRepeatSuppressUpTap = false;
+                    } else {
+                        holdRepeatSuppressUpTap = false;
                     }
                     return true;
                 default:
@@ -6776,28 +6822,61 @@ public class CustomKeyboardView extends LinearLayout {
         KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, modifiers, keyCode);
     }
 
-    private void startRepeatingDelete(Key key) {
-        if (isRepeating) return;
-        isRepeating = true;
-
-        repeatRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isRepeating) {
-                    handleKeyPress(key);
-                    repeatHandler.postDelayed(this, 10);
-                }
+    /**
+     * Begins hold-to-repeat using system key-repeat timing; each tick sends a tap-like HID pair
+     * so the host sees distinct presses (same idea as {@link #sendHidKeyTapForGamingRepeat}).
+     */
+    private void startHoldKeyRepeatFromDown(Key key) {
+        Context ctx = getContext();
+        if (key == null || ctx == null) {
+            return;
+        }
+        stopGamingKeyRepeat();
+        stopHoldKeyRepeatOnly();
+        holdKeyRepeatKey = key;
+        holdKeyRepeatActive = true;
+        holdRepeatSuppressUpTap = false;
+        ViewConfiguration vc = ViewConfiguration.get(ctx);
+        final int initialDelay = vc.getKeyRepeatTimeout();
+        final int repeatDelay = Math.max(vc.getKeyRepeatDelay(), 50);
+        holdKeyRepeatStarterRunnable = () -> {
+            if (!holdKeyRepeatActive || holdKeyRepeatKey != key) {
+                return;
             }
+            holdKeyRepeatStarterRunnable = null;
+            holdKeyRepeatRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (!holdKeyRepeatActive || holdKeyRepeatKey != key) {
+                        return;
+                    }
+                    sendHidKeyTapForGamingRepeat(key);
+                    holdRepeatSuppressUpTap = true;
+                    repeatHandler.postDelayed(this, repeatDelay);
+                }
+            };
+            repeatHandler.post(holdKeyRepeatRunnable);
         };
+        repeatHandler.postDelayed(holdKeyRepeatStarterRunnable, initialDelay);
+    }
 
-        repeatHandler.post(repeatRunnable);
+    /** Stops hold-repeat runnables without clearing {@link #holdRepeatSuppressUpTap} (caller reads it first on UP). */
+    private void stopHoldKeyRepeatOnly() {
+        holdKeyRepeatActive = false;
+        holdKeyRepeatKey = null;
+        if (holdKeyRepeatStarterRunnable != null) {
+            repeatHandler.removeCallbacks(holdKeyRepeatStarterRunnable);
+            holdKeyRepeatStarterRunnable = null;
+        }
+        if (holdKeyRepeatRunnable != null) {
+            repeatHandler.removeCallbacks(holdKeyRepeatRunnable);
+            holdKeyRepeatRunnable = null;
+        }
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
     }
 
     private void stopRepeatingDelete() {
-        isRepeating = false;
-        if (repeatRunnable != null) {
-            repeatHandler.removeCallbacks(repeatRunnable);
-        }
+        stopHoldKeyRepeatOnly();
     }
 
     private int dpToPx(int dp) {
