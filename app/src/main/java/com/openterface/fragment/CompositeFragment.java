@@ -72,6 +72,9 @@ public class CompositeFragment extends Fragment {
     private static final long TOUCHPAD_WASH_CLICK_FADE_IN_MS = 70L;
     private static final long TOUCHPAD_WASH_CLICK_FADE_OUT_MS = 460L;
     private static final long TOUCHPAD_WASH_DRAG_OFF_FADE_OUT_MS = 340L;
+    private static final long HYBRID_MOUSE_KEY_PULSE_MS = 85L;
+    /** First pulse release, then gap, then second pulse (sequenced double-click flash). */
+    private static final long HYBRID_DOUBLE_LEFT_SECOND_FLASH_DELAY_MS = HYBRID_MOUSE_KEY_PULSE_MS + 50L;
     private CustomKeyboardView keyboardView;
     private TouchPadView touchPad;
     private LinearLayout rootLayout;
@@ -147,6 +150,8 @@ public class CompositeFragment extends Fragment {
 
     private static final long POINTER_IDLE_AFTER_MS = 400L;
     private final Handler tipHandler = new Handler(Looper.getMainLooper());
+    @Nullable
+    private Runnable hybridDoubleLeftSecondFlashRunnable;
     private TouchPadPointerPhase pointerPhase = TouchPadPointerPhase.IDLE;
     private View touchPadBottomWashOverlay;
     private View splitTouchPadBottomWashOverlay;
@@ -281,7 +286,28 @@ public class CompositeFragment extends Fragment {
             proTouchpadMouseLayoutCompact = false;
             resetProTouchpadChromeOrientationComfortable();
         }
+        applyPadClickDragGesturesToTouchPads(requireContext());
+        updateTouchPadTips();
+        updateSplitTouchPadTips();
         updateHybridDragLeftVisual();
+    }
+
+    private void applyPadClickDragGesturesToTouchPads(Context context) {
+        boolean padClickDrag =
+                !KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(context);
+        if (touchPad != null) {
+            touchPad.setPadClickDragGesturesEnabled(padClickDrag);
+        }
+        if (splitTouchPad != null) {
+            splitTouchPad.setPadClickDragGesturesEnabled(padClickDrag);
+        }
+    }
+
+    private void cancelHybridDoubleLeftSecondFlash() {
+        if (hybridDoubleLeftSecondFlashRunnable != null) {
+            tipHandler.removeCallbacks(hybridDoubleLeftSecondFlashRunnable);
+            hybridDoubleLeftSecondFlashRunnable = null;
+        }
     }
 
     private void bindProTouchpadChromeReferences() {
@@ -429,7 +455,17 @@ public class CompositeFragment extends Fragment {
     }
 
     private void updateHybridDragLeftVisual() {
-        if (proMouseBtnLeft == null || !KmProTouchpadPrefs.isHybridMode(requireContext())) {
+        if (!isAdded()) {
+            return;
+        }
+        bindProTouchpadChromeReferences();
+        if (proMouseBtnLeft == null) {
+            return;
+        }
+        if (!KmProTouchpadPrefs.isHybridMode(requireContext())) {
+            proMouseBtnLeft.setPressed(false);
+            proMouseBtnLeft.refreshDrawableState();
+            proMouseBtnLeft.invalidate();
             return;
         }
         if (proHoldLockController.isMouseLocked(TouchpadMouseStripBinder.BTN_LEFT)) {
@@ -439,7 +475,13 @@ public class CompositeFragment extends Fragment {
                 proMouseStripBinder != null
                         && (proMouseStripBinder.getStripHeldMask() & TouchpadMouseStripBinder.BTN_LEFT)
                                 != 0;
-        proMouseBtnLeft.setPressed(!stripLeft && isDragMode);
+        boolean pressed = !stripLeft && isDragMode;
+        proMouseBtnLeft.setPressed(pressed);
+        proMouseBtnLeft.refreshDrawableState();
+        if (pressed) {
+            proMouseBtnLeft.jumpDrawablesToCurrentState();
+        }
+        proMouseBtnLeft.invalidate();
     }
 
     /**
@@ -467,9 +509,10 @@ public class CompositeFragment extends Fragment {
     }
 
     private void pulseProMouseKeyHybrid(int buttonBit) {
-        if (!KmProTouchpadPrefs.isHybridMode(requireContext())) {
+        if (!KmProTouchpadPrefs.isHybridMode(requireContext()) || !isAdded()) {
             return;
         }
+        bindProTouchpadChromeReferences();
         TextView key =
                 buttonBit == TouchpadMouseStripBinder.BTN_LEFT
                         ? proMouseBtnLeft
@@ -486,17 +529,30 @@ public class CompositeFragment extends Fragment {
                 && (proMouseStripBinder.getStripHeldMask() & buttonBit) != 0) {
             return;
         }
-        if (!isAdded()) {
-            return;
-        }
         key.setPressed(true);
+        key.refreshDrawableState();
+        key.jumpDrawablesToCurrentState();
+        key.invalidate();
+        final int bit = buttonBit;
         tipHandler.postDelayed(
                 () -> {
-                    if (key.isPressed()) {
-                        key.setPressed(false);
+                    if (!isAdded()) {
+                        return;
+                    }
+                    bindProTouchpadChromeReferences();
+                    TextView k =
+                            bit == TouchpadMouseStripBinder.BTN_LEFT
+                                    ? proMouseBtnLeft
+                                    : bit == TouchpadMouseStripBinder.BTN_RIGHT
+                                            ? proMouseBtnRight
+                                            : proMouseBtnMiddle;
+                    if (k != null) {
+                        k.setPressed(false);
+                        k.refreshDrawableState();
+                        k.invalidate();
                     }
                 },
-                85);
+                HYBRID_MOUSE_KEY_PULSE_MS);
     }
 
     /** Updates {@link #port} on all keyboard halves and clears Pro hold-locks when the host disconnects. */
@@ -759,6 +815,10 @@ public class CompositeFragment extends Fragment {
 
     private void updateTouchPadTips() {
         if (touchPadTips == null || splitRoot != null) {
+            return;
+        }
+        if (KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(requireContext())) {
+            touchPadTips.setVisibility(View.GONE);
             return;
         }
         touchPadTips.setVisibility(View.VISIBLE);
@@ -1144,7 +1204,14 @@ public class CompositeFragment extends Fragment {
     }
 
     private void updateSplitTouchPadTips() {
-        if (splitTouchPadTips == null) return;
+        if (splitTouchPadTips == null) {
+            return;
+        }
+        if (KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(requireContext())) {
+            splitTouchPadTips.setVisibility(View.GONE);
+            return;
+        }
+        splitTouchPadTips.setVisibility(View.VISIBLE);
         splitTouchPadTips.setText(
                 TouchPadTipsFormatter.buildCompact(requireContext(), isDragMode, pointerPhase));
     }
@@ -1252,12 +1319,17 @@ public class CompositeFragment extends Fragment {
         bindProHoldLockControllerToKeyboardViews();
 
         if (savedInstanceState == null && touchPad != null) {
-            touchPad.post(() -> {
-                if (isPortraitNumpadTouchpadMode()) {
-                    return;
-                }
-                TouchPadHelpOverlay.show(helpOverlayForPad(touchPad));
-            });
+            touchPad.post(
+                    () -> {
+                        if (isPortraitNumpadTouchpadMode()) {
+                            return;
+                        }
+                        if (KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(
+                                requireContext())) {
+                            return;
+                        }
+                        TouchPadHelpOverlay.show(helpOverlayForPad(touchPad));
+                    });
         }
 
         return contentContainer;
@@ -1279,6 +1351,7 @@ public class CompositeFragment extends Fragment {
         undockSplitShortcutsFromIme();
         ImeTextForwarder.detach(splitImeEdit);
         tipHandler.removeCallbacks(pointerIdleRunnable);
+        cancelHybridDoubleLeftSecondFlash();
         cancelTouchPadButtonPulseAnimation();
         if (touchPadBottomWashOverlay != null) {
             ViewParent parent = touchPadBottomWashOverlay.getParent();
@@ -1446,6 +1519,8 @@ public class CompositeFragment extends Fragment {
 
     private void setupTouchPad(TouchPadView pad, TextView tips, View infoButton) {
         if (pad == null) return;
+        pad.setPadClickDragGesturesEnabled(
+                !KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(pad.getContext()));
         if (infoButton != null) {
             infoButton.setOnClickListener(v -> TouchPadHelpOverlay.onInfoPressed(helpOverlayForPad(pad)));
         }
@@ -1489,9 +1564,16 @@ public class CompositeFragment extends Fragment {
                     return;
                 }
                 pulseTouchPadButtonVisual();
+                cancelHybridDoubleLeftSecondFlash();
                 pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT);
+                hybridDoubleLeftSecondFlashRunnable =
+                        () -> {
+                            hybridDoubleLeftSecondFlashRunnable = null;
+                            pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT);
+                        };
                 tipHandler.postDelayed(
-                        () -> pulseProMouseKeyHybrid(TouchpadMouseStripBinder.BTN_LEFT), 160);
+                        hybridDoubleLeftSecondFlashRunnable,
+                        HYBRID_DOUBLE_LEFT_SECOND_FLASH_DELAY_MS);
                 TouchPadHaptics.onDoubleClick(pad.getContext());
                 MouseRelHidTransport.sendDoubleClick(port, bluetoothService, isServiceBound);
                 scheduleReassertStripAndLockMouseButtons(120);

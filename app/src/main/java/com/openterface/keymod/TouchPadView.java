@@ -45,6 +45,13 @@ public class TouchPadView extends View {
     private OnTouchPadListener listener;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    /**
+     * When false, the pad still sends pointer moves and two-finger scroll, but does not emit
+     * single-tap, double-tap, long-press (drag), or two-finger right-click. Used for KM Pro
+     * "Pad + mouse keys" strip-only click mode.
+     */
+    private boolean padClickDragGesturesEnabled = true;
+
     // 1-finger move state
     private float lastMoveX, lastMoveY;
     private boolean isDragging = false;
@@ -91,7 +98,9 @@ public class TouchPadView extends View {
             public boolean onDoubleTap(MotionEvent e) {
                 cancelPendingSingleTap();
                 suppressSingleTapFromDoubleTap = true;
-                if (listener != null) listener.onTouchDoubleClick();
+                if (padClickDragGesturesEnabled && listener != null) {
+                    listener.onTouchDoubleClick();
+                }
                 return true;
             }
 
@@ -99,10 +108,28 @@ public class TouchPadView extends View {
             public void onLongPress(MotionEvent e) {
                 if (e.getPointerCount() == 1) {
                     cancelPendingSingleTap();
-                    if (listener != null) listener.onTouchLongPress();
+                    if (padClickDragGesturesEnabled && listener != null) {
+                        listener.onTouchLongPress();
+                    }
                 }
             }
         });
+    }
+
+    /**
+     * @param enabled false for strip-only clicks (pointer + two-finger scroll only).
+     */
+    public void setPadClickDragGesturesEnabled(boolean enabled) {
+        if (padClickDragGesturesEnabled == enabled) {
+            return;
+        }
+        padClickDragGesturesEnabled = enabled;
+        cancelPendingSingleTap();
+        suppressSingleTapFromDoubleTap = false;
+    }
+
+    public boolean isPadClickDragGesturesEnabled() {
+        return padClickDragGesturesEnabled;
     }
 
     public void setOnTouchPadListener(OnTouchPadListener listener) {
@@ -175,8 +202,10 @@ public class TouchPadView extends View {
 
                 case MotionEvent.ACTION_POINTER_UP:
                     // 2-finger tap if there wasn't meaningful movement/scrolling
-                    if (!twoFingerMoved && !isTwoFingerScrolling) {
-                        if (listener != null) listener.onTouchRightClick();
+                    if (padClickDragGesturesEnabled && !twoFingerMoved && !isTwoFingerScrolling) {
+                        if (listener != null) {
+                            listener.onTouchRightClick();
+                        }
                     }
                     if (listener != null) listener.onTouchRelease();
                     twoFingerScrollAccumX = 0f;
@@ -236,7 +265,7 @@ public class TouchPadView extends View {
                         && duration < TAP_DURATION_MAX_MS
                         && distLifted <= TAP_MOVE_THRESHOLD;
 
-                if (validTap) {
+                if (validTap && padClickDragGesturesEnabled) {
                     // Schedule a delayed single-tap; GestureDetector will fire
                     // onDoubleTap before this fires if a second tap comes in time.
                     pendingSingleTap = () -> {

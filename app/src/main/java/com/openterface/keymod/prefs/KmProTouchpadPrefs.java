@@ -53,4 +53,12 @@ public final class KmProTouchpadPrefs {
         int m = readMode(context);
         return m == MODE_MOUSE_KEYS_BASIC || m == MODE_HYBRID;
     }
+
+    /**
+     * {@code true} for "Pad + mouse keys" only: pointer move and two-finger scroll on the pad;
+     * clicks and drag come from the L/M/R strip, not pad tap/long-press/two-finger-right.
+     */
+    public static boolean isPadPlusMouseKeysNoTouchClickGestures(Context context) {
+        return readMode(context) == MODE_MOUSE_KEYS_BASIC;
+    }
 }
