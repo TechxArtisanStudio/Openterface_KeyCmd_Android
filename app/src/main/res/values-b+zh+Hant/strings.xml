@@ -483,6 +483,12 @@
     <string name="shortcut_hub_detail_settings_display_icon">圖示</string>
     <string name="shortcut_hub_detail_settings_display_chord">組合鍵</string>
     <string name="shortcut_hub_detail_settings_display_hybrid">混合</string>
+    <string name="hub_card_overflow_cd">更多選項</string>
+    <string name="hub_card_drag_handle_cd">拖曳以重新排序</string>
+    <string name="shortcut_hub_card_overflow_edit">編輯快捷方式</string>
+    <string name="shortcut_hub_card_overflow_favorite_add">新增到收藏</string>
+    <string name="shortcut_hub_card_overflow_favorite_remove">從收藏移除</string>
+    <string name="shortcut_hub_card_overflow_remove_favorite">從收藏移除</string>
     <string name="shortcut_hub_profile_shortcut_count">%1$d 個快捷方式</string>
     <string name="shortcut_hub_profile_active_badge">當前</string>
     <string name="shortcut_hub_empty_favorites">暫無收藏。\n開啟其他標籤，點按書籤將快捷方式新增到這裡。</string>

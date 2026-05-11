@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/hub_overflow_edit"
+        android:title="@string/shortcut_hub_card_overflow_edit" />
+    <item
+        android:id="@+id/hub_overflow_remove_favorite"
+        android:title="@string/shortcut_hub_card_overflow_remove_favorite" />
+</menu>

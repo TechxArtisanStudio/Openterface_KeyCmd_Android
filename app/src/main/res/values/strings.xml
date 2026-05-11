@@ -637,6 +637,12 @@ by TechxArtisan</string>
     <string name="shortcut_hub_detail_settings_display_icon">Icon</string>
     <string name="shortcut_hub_detail_settings_display_chord">Chord</string>
     <string name="shortcut_hub_detail_settings_display_hybrid">Hybrid</string>
+    <string name="hub_card_overflow_cd">More options</string>
+    <string name="hub_card_drag_handle_cd">Drag to reorder</string>
+    <string name="shortcut_hub_card_overflow_edit">Edit shortcut</string>
+    <string name="shortcut_hub_card_overflow_favorite_add">Add to Favorites</string>
+    <string name="shortcut_hub_card_overflow_favorite_remove">Remove from Favorites</string>
+    <string name="shortcut_hub_card_overflow_remove_favorite">Remove from Favorites</string>
     <string name="shortcut_hub_cd_share_profile">Share profile JSON</string>
     <string name="shortcut_hub_share_profile_chooser">Share profile</string>
     <string name="shortcut_hub_profile_shortcut_count">%1$d shortcuts</string>

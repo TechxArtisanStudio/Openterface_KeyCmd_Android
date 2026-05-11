@@ -15,6 +15,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
@@ -31,6 +32,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import androidx.core.graphics.ColorUtils;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -230,6 +232,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 onBrowsePickRemoveFromFavorites(shortcut);
             }
         });
+        browsePickAdapter.setHubCardOverflowMenuRequestListener(this::showBrowseShortcutHubCardOverflowMenu);
         browseShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         browseShortcutsRecyclerView.setAdapter(browsePickAdapter);
         browsePickAdapter.setShortcutHubDetailPresentation(true, false, ShortcutHubDetailUiPrefs.DISPLAY_NAME);
@@ -272,6 +275,75 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             browsePickAdapter.notifyDataSetChanged();
         }
         refreshShortcutsGrid();
+    }
+
+    private boolean isShortcutInMyShortcutsList(@NonNull ShortcutProfileManager.Shortcut shortcut) {
+        if (shortcut.id == null) {
+            return false;
+        }
+        for (ShortcutProfileManager.Shortcut x : myShortcutsList) {
+            if (x != null && shortcut.id.equals(x.id)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showBrowseShortcutHubCardOverflowMenu(
+            @NonNull ShortcutProfileManager.Shortcut shortcut,
+            @NonNull View anchor) {
+        if (!isAdded()) {
+            return;
+        }
+        PopupMenu pm = new PopupMenu(requireContext(), anchor);
+        pm.inflate(R.menu.hub_shortcut_card_overflow_browse);
+        boolean in = isShortcutInMyShortcutsList(shortcut);
+        MenuItem fav = pm.getMenu().findItem(R.id.hub_overflow_favorite);
+        if (fav != null) {
+            fav.setTitle(in
+                    ? getString(R.string.shortcut_hub_card_overflow_favorite_remove)
+                    : getString(R.string.shortcut_hub_card_overflow_favorite_add));
+        }
+        pm.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.hub_overflow_edit) {
+                openEditShortcutFromBrowse(shortcut);
+                return true;
+            }
+            if (id == R.id.hub_overflow_favorite) {
+                if (isShortcutInMyShortcutsList(shortcut)) {
+                    onBrowsePickRemoveFromFavorites(shortcut);
+                } else {
+                    onBrowsePickAddToFavorites(shortcut);
+                }
+                return true;
+            }
+            return false;
+        });
+        pm.show();
+    }
+
+    private void showMyShortcutsHubCardOverflowMenu(
+            @NonNull ShortcutProfileManager.Shortcut shortcut,
+            @NonNull View anchor) {
+        if (!isAdded()) {
+            return;
+        }
+        PopupMenu pm = new PopupMenu(requireContext(), anchor);
+        pm.inflate(R.menu.hub_shortcut_card_overflow_favorites);
+        pm.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.hub_overflow_edit) {
+                openEditShortcutFromBrowse(shortcut);
+                return true;
+            }
+            if (id == R.id.hub_overflow_remove_favorite) {
+                removeShortcutFromMyShortcuts(shortcut);
+                return true;
+            }
+            return false;
+        });
+        pm.show();
     }
 
     private void loadProfiles() {
@@ -612,7 +684,9 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 browseShortcutsRecyclerView.setLayoutManager(new GridLayoutManager(ctx, span));
             }
         } else {
-            if (!(browseLm instanceof LinearLayoutManager)) {
+            // GridLayoutManager subclasses LinearLayoutManager — must replace when leaving card mode.
+            if (browseLm instanceof GridLayoutManager
+                    || !(browseLm instanceof LinearLayoutManager)) {
                 browseShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(ctx));
             }
         }
@@ -624,7 +698,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 myShortcutsRecyclerView.setLayoutManager(new GridLayoutManager(ctx, span));
             }
         } else {
-            if (!(myLm instanceof LinearLayoutManager)) {
+            if (myLm instanceof GridLayoutManager
+                    || !(myLm instanceof LinearLayoutManager)) {
                 myShortcutsRecyclerView.setLayoutManager(new LinearLayoutManager(ctx));
             }
         }
@@ -722,6 +797,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             }
             removeShortcutFromMyShortcuts(shortcut);
         });
+        myShortcutsReorderAdapter.setHubCardOverflowMenuRequestListener(this::showMyShortcutsHubCardOverflowMenu);
 
         detachMyShortcutsReorderTouchHelper();
 
