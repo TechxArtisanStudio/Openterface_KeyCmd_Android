@@ -615,9 +615,9 @@
     <string name="gamepad_preset_delete_confirm">刪除</string>
     <string name="top_mode_label_shortcuts">快捷方式中心</string>
     <string name="top_mode_label_macros">宏</string>
-    <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>
-    <string name="top_shortcut_display_mode_cd_icon">Shortcut strip: showing icons. Tap to switch to combo text.</string>
-    <string name="top_shortcut_display_mode_cd_chord">Shortcut strip: showing combo keys (e.g. Alt+X). Tap to switch to names.</string>
+    <string name="top_shortcut_display_mode_cd_name">快捷列與主鍵盤：名稱顯示。點按切換到圖示。</string>
+    <string name="top_shortcut_display_mode_cd_icon">快捷列與主鍵盤：圖示顯示。點按切換到組合鍵文字。</string>
+    <string name="top_shortcut_display_mode_cd_chord">快捷列：組合鍵（如 Alt+X）。主鍵盤 Tab 與修飾鍵為名稱。點按切換到捷徑名稱。</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
     <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
     <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>

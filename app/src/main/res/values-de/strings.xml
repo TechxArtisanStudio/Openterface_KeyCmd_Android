@@ -425,9 +425,9 @@ von TechxArtisan</string>
     <string name="gamepad_toast_image_load_failed">Bild konnte nicht geladen werden</string>
     <string name="top_mode_label_shortcuts">Shortcut-Hub</string>
     <string name="top_mode_label_macros">Makros</string>
-    <string name="top_shortcut_display_mode_cd_name">Shortcut-Leiste: Zeigt Shortcut-Namen an. Tippen Sie, um zu den Symbolen zu wechseln.</string>
-    <string name="top_shortcut_display_mode_cd_icon">Shortcut-Leiste: Symbole anzeigen. Tippen Sie, um zum Kombinationstext zu wechseln.</string>
-    <string name="top_shortcut_display_mode_cd_chord">Shortcut-Leiste: Zeigt Kombinationstasten an (z. B. Alt+X). Tippen Sie, um zu Namen zu wechseln.</string>
+    <string name="top_shortcut_display_mode_cd_name">Leiste und Haupttastatur: Namen. Tippen Sie, um zu Symbolen zu wechseln.</string>
+    <string name="top_shortcut_display_mode_cd_icon">Leiste und Haupttastatur: Symbole. Tippen Sie, um zum Kombinationstext zu wechseln.</string>
+    <string name="top_shortcut_display_mode_cd_chord">Leiste: Kombinationstasten (z. B. Alt+X). Haupttastatur: Tab und Modifikatoren als Namen. Tippen Sie, um zu Shortcut-Namen zu wechseln.</string>
     <string name="ime_capture_hint">Geben Sie hier den Langtext ein und bearbeiten Sie ihn – tippen Sie auf Senden, um ihn an das verbundene Gerät zu senden</string>
     <string name="top_shortcut_ime_toggle_keymod">KeyMod-Tastatur (tippen für System-IME)</string>
     <string name="top_shortcut_ime_toggle_system">System-IME (tippen für KeyMod-Tastatur)</string>

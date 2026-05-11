@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Keyboard and Mouse Pro setup: shortcut strip display mode (aligned with row-1 DISPLAY key),
- * alternate hints on/off, and active Shortcut Hub profile picker.
+ * Keyboard and Mouse Pro setup: keys display mode for the shortcut strip and main keyboard
+ * (aligned with row-1 DISPLAY key), alternate hints on/off, and active Shortcut Hub profile picker.
  */
 public class KmProSettingsFragment extends Fragment {
 

@@ -426,9 +426,9 @@ por TechxArtisan</string>
     <string name="gamepad_toast_image_load_failed">No se pudo cargar la imagen</string>
     <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
-    <string name="top_shortcut_display_mode_cd_name">Banda de atajos: muestra los nombres de los atajos. Toque para cambiar a íconos.</string>
-    <string name="top_shortcut_display_mode_cd_icon">Banda de acceso directo: muestra íconos. Toque para cambiar al texto combinado.</string>
-    <string name="top_shortcut_display_mode_cd_chord">Banda de acceso directo: muestra teclas combinadas (por ejemplo, Alt+X). Toque para cambiar a nombres.</string>
+    <string name="top_shortcut_display_mode_cd_name">Banda y teclado principal: nombres. Toque para cambiar a íconos.</string>
+    <string name="top_shortcut_display_mode_cd_icon">Banda y teclado principal: íconos. Toque para cambiar al texto combinado.</string>
+    <string name="top_shortcut_display_mode_cd_chord">Banda: teclas combinadas (p. ej., Alt+X). Teclado principal: Tab y modificadores como nombres. Toque para cambiar a nombres de atajos.</string>
     <string name="ime_capture_hint">Escriba y edite texto largo aquí: toque Enviar para enviarlo al dispositivo conectado</string>
     <string name="top_shortcut_ime_toggle_keymod">Teclado KeyMod (toque para IME del sistema)</string>
     <string name="top_shortcut_ime_toggle_system">IME del sistema (toque para teclado KeyMod)</string>

@@ -29,11 +29,11 @@
     <string name="km_basic_cd_application_key">Application key</string>
     <string name="km_basic_key_sup">Sup</string>
     <string name="km_basic_setup_button_cd">Basic mode: keyboard and touchpad options</string>
-    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: shortcut strip display, alternate hints, and active Shortcut Hub profile</string>
+    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: keys display (strip and main keyboard), alternate hints, and active Shortcut Hub profile</string>
     <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
     <string name="km_pro_settings_close">Back</string>
-    <string name="km_pro_settings_section_strip_display">Shortcut strip display</string>
-    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1 on the shortcut strip: names, icons, or combo text.</string>
+    <string name="km_pro_settings_section_strip_display">Keys display</string>
+    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1: how shortcuts on the strip look (names, icons, or combo text), and how Tab and the bottom-row modifier keys on the main keyboard look.</string>
     <string name="km_pro_settings_display_mode_name">Names</string>
     <string name="km_pro_settings_display_mode_icon">Icons</string>
     <string name="km_pro_settings_display_mode_chord">Combo</string>
@@ -308,6 +308,8 @@ by TechxArtisan</string>
     <string name="Win">Win</string>
     <string name="Cmd">Cmd</string>
     <string name="Super">Super</string>
+    <string name="key_display_name_tab">Tab</string>
+    <string name="key_display_name_bksp">Bksp</string>
     <string name="modifier_control">Ctrl</string>
     <string name="modifier_option">Opt</string>
     <string name="modifier_command">Cmd</string>
@@ -1000,9 +1002,9 @@ by TechxArtisan</string>
     <string name="gamepad_module_remove_confirm_message">Remove this control from the layout?</string>
     <string name="top_mode_label_shortcuts">Shortcut Hub</string>
     <string name="top_mode_label_macros">Macros</string>
-    <string name="top_shortcut_display_mode_cd_name">Shortcut strip: showing shortcut names. Tap to switch to icons.</string>
-    <string name="top_shortcut_display_mode_cd_icon">Shortcut strip: showing icons. Tap to switch to combo text.</string>
-    <string name="top_shortcut_display_mode_cd_chord">Shortcut strip: showing combo keys (e.g. Alt+X). Tap to switch to names.</string>
+    <string name="top_shortcut_display_mode_cd_name">Strip and main keyboard: showing names. Tap to switch to icons.</string>
+    <string name="top_shortcut_display_mode_cd_icon">Strip and main keyboard: showing icons. Tap to switch to combo text.</string>
+    <string name="top_shortcut_display_mode_cd_chord">Strip: showing combo keys (e.g. Alt+X). Main keyboard Tab and modifier keys use names. Tap to switch to shortcut names.</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
     <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
     <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>

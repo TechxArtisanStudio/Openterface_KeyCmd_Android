@@ -461,9 +461,9 @@ TechxArtisan により</string>
     <string name="gamepad_preset_delete_confirm">削除</string>
     <string name="top_mode_label_shortcuts">ショートカットハブ</string>
     <string name="top_mode_label_macros">マクロ</string>
-    <string name="top_shortcut_display_mode_cd_name">ショートカット ストリップ: ショートカット名を表示します。タップするとアイコンに切り替わります。</string>
-    <string name="top_shortcut_display_mode_cd_icon">ショートカット ストリップ: アイコンを表示します。タップしてコンボテキストに切り替えます。</string>
-    <string name="top_shortcut_display_mode_cd_chord">ショートカット ストリップ: コンボ キーを表示します (例: Alt+X)。タップすると名前に切り替わります。</string>
+    <string name="top_shortcut_display_mode_cd_name">ショートカット帯とメインキーボード: 名前表示。タップでアイコンに切り替え。</string>
+    <string name="top_shortcut_display_mode_cd_icon">ショートカット帯とメインキーボード: アイコン表示。タップでコンボ表記に切り替え。</string>
+    <string name="top_shortcut_display_mode_cd_chord">ショートカット帯: コンボキー (例 Alt+X)。メインキーボードの Tab と修飾キーは名前。タップでショートカット名表示に切り替え。</string>
     <string name="ime_capture_hint">ここに長いテキストを入力して編集します。[送信] をタップして、接続されているデバイスに送信します。</string>
     <string name="top_shortcut_ime_toggle_keymod">KeyMod キーボード (システム IME の場合はタップ)</string>
     <string name="top_shortcut_ime_toggle_system">システム IME (KeyMod キーボードの場合はタップ)</string>

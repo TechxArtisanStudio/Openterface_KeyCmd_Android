@@ -348,6 +348,12 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int ALT_POPUP_CELL_MIN_SIZE_DP = 40;
     private static final float BASE_KEYCAP_TEXT_SP_PORTRAIT = 17f;
     private static final float BASE_KEYCAP_TEXT_SP_LANDSCAPE = 19f;
+    /**
+     * Bottom row on Keyboard &amp; Mouse Pro (narrow Tab / Ctrl / Alt slots). Slightly smaller than
+     * {@link #BASE_KEYCAP_TEXT_SP_LANDSCAPE} / {@link #BASE_KEYCAP_TEXT_SP_PORTRAIT} to avoid wrap.
+     */
+    private static final float PRO_BOTTOM_ROW_TEXT_SP_LANDSCAPE = 14.5f;
+    private static final float PRO_BOTTOM_ROW_TEXT_SP_PORTRAIT = 13f;
     private static final int KEY_OUTER_MARGIN_DP = 2;
     private final Handler longPressHandler = new Handler();
     private PopupWindow alternatePopupWindow;
@@ -682,6 +688,9 @@ public class CustomKeyboardView extends LinearLayout {
         }
         lowerKeys = parseKeyboard(context, keyboardResId);
         applyTargetOsLabels(context);
+        if (!showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(context);
+        }
     }
 
     /** Update key labels based on target OS (Win → Cmd for macOS) */
@@ -697,27 +706,169 @@ public class CustomKeyboardView extends LinearLayout {
         String targetOs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
                 .getString("target_os", "macos");
 
-        String newLabel;
-        int newIconResId;
+        String guiLabel;
+        int guiIconResId;
         if ("macos".equals(targetOs)) {
-            newLabel = context.getString(R.string.Cmd);
-            newIconResId = R.drawable.keyboard_command_key_24px;
+            guiLabel = context.getString(R.string.modifier_command);
+            guiIconResId = R.drawable.keyboard_command_key_24px;
         } else if ("linux".equals(targetOs)) {
-            newLabel = context.getString(R.string.Super);
-            newIconResId = R.drawable.ic_os_linux;
+            guiLabel = context.getString(R.string.Super);
+            guiIconResId = R.drawable.ic_os_linux;
         } else {
-            newLabel = context.getString(R.string.Win);
-            newIconResId = R.drawable.windows;
+            guiLabel = context.getString(R.string.Win);
+            guiIconResId = R.drawable.windows;
         }
 
         for (List<Key> row : lowerKeys) {
             for (Key key : row) {
-                if ("Win".equals(key.label)) {
-                    key.label = newLabel;
-                    key.iconResId = newIconResId;
+                if (key == null) {
+                    continue;
+                }
+                if (key.code == 0xE0) {
+                    key.label = context.getString(R.string.modifier_control);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE2) {
+                    key.label = "macos".equals(targetOs)
+                            ? context.getString(R.string.modifier_option)
+                            : context.getString(R.string.Alt);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE3) {
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
+                } else if ("Win".equals(key.label)) {
+                    // Legacy layouts: @string/Win resolved to the literal "Win" (English).
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
                 }
             }
         }
+    }
+
+    /**
+     * Keyboard &amp; Mouse Pro (no-GUI): letter-grid keys follow Keys display (names / icons / chord)
+     * like the shortcut strip. Call after {@link #applyTargetOsLabels(Context)}.
+     */
+    private void applyProQwertyDisplayModePresentation(Context context) {
+        if (showGuiHidKey || lowerKeys == null) {
+            return;
+        }
+        String targetOs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                .getString("target_os", "macos");
+        final int mode = topShortcutDisplayMode;
+
+        String guiNameLabel;
+        int guiIconResId;
+        if ("macos".equals(targetOs)) {
+            guiNameLabel = context.getString(R.string.modifier_command);
+            guiIconResId = R.drawable.keyboard_command_key_24px;
+        } else if ("linux".equals(targetOs)) {
+            guiNameLabel = context.getString(R.string.Super);
+            guiIconResId = R.drawable.ic_os_linux;
+        } else {
+            guiNameLabel = context.getString(R.string.Win);
+            guiIconResId = R.drawable.windows;
+        }
+
+        for (List<Key> row : lowerKeys) {
+            for (Key key : row) {
+                if (key == null) {
+                    continue;
+                }
+                if (mode == DISPLAY_MODE_ICON) {
+                    if (key.code == 0x2B) {
+                        key.label = "";
+                        key.iconResId = R.drawable.keyboard_tab_24;
+                    } else if (key.code == 0xE0) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE2) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE3) {
+                        key.label = guiNameLabel;
+                        key.iconResId = guiIconResId;
+                    } else if (key.code == 0x2C) {
+                        key.label = context.getString(R.string.Space_Button);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE1) {
+                        key.label = context.getString(R.string.Shift);
+                        key.iconResId = R.drawable.shift_24px;
+                    } else if (key.code == 0x28) {
+                        key.label = context.getString(R.string.Enter_Button);
+                        key.iconResId = R.drawable.keyboard_return_24px;
+                    } else if (key.code == 0x2A) {
+                        key.label = context.getString(R.string.BackSpace);
+                        key.iconResId = R.drawable.backspace;
+                    }
+                } else if (mode == DISPLAY_MODE_NAME || mode == DISPLAY_MODE_CHORD) {
+                    if (key.code == 0x2B) {
+                        key.label = context.getString(R.string.key_display_name_tab);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE0) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE2) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE3) {
+                        key.label = guiNameLabel;
+                        key.iconResId = 0;
+                    } else if (key.code == 0x2C) {
+                        key.label = context.getString(R.string.Space_Button);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE1) {
+                        key.label = context.getString(R.string.Shift);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x28) {
+                        key.label = context.getString(R.string.Enter_Button);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x2A) {
+                        key.label = context.getString(R.string.key_display_name_bksp);
+                        key.iconResId = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Pro QWERTY bottom space: strip Icons mode shows the word {@code Space} (text) instead of the
+     * space-bar glyph, matching Tab/Ctrl/Opt as text in that mode.
+     */
+    private boolean isProQwertySpaceAsTextInStripIconMode(Key key) {
+        return !showGuiHidKey
+                && key != null
+                && key.code == 0x2C
+                && topShortcutDisplayMode == DISPLAY_MODE_ICON
+                && key.iconResId == 0;
+    }
+
+    /** Split partner: sync display mode, strip panels, and QWERTY row after primary updates prefs. */
+    private void syncTopShortcutDisplayModeFromPrimary(int normalized) {
+        topShortcutDisplayMode = normalized;
+        rebuildFixedTopRowsPanels();
+        rebuildTopShortcutPanels();
+        syncTopPanelViewportContent();
+        Context ctx = getContext();
+        if (ctx != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(ctx);
+        }
+        removeAllViews();
+        updateKeyboard();
+    }
+
+    /** After prefs sync (Shortcut Hub / KM Pro setup): refresh bottom-row presentation and full layout. */
+    private void refreshProQwertyLetterGridOnlySelf() {
+        Context ctx = getContext();
+        if (ctx != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(ctx);
+        }
+        removeAllViews();
+        updateKeyboard();
     }
 
     public void setShowExtraPortraitKeys(boolean enabled) {
@@ -861,7 +1012,9 @@ public class CustomKeyboardView extends LinearLayout {
             splitPartner.reloadShortcutProfileManagerFromPrefs();
             splitPartner.loadTopShortcutDisplayModeFromPrefs(splitPartner.getContext());
             splitPartner.refreshProfileSlotStrip();
+            splitPartner.refreshProQwertyLetterGridOnlySelf();
         }
+        refreshProQwertyLetterGridOnlySelf();
     }
 
     /** Rebuild fixed strip + scrolling row 1 after profile-slot prefs or active profile change. */
@@ -979,8 +1132,13 @@ public class CustomKeyboardView extends LinearLayout {
         rebuildTopShortcutPanels();
         syncTopPanelViewportContent();
         if (splitPartner != null) {
-            splitPartner.setTopShortcutDisplayMode(normalized);
+            splitPartner.syncTopShortcutDisplayModeFromPrimary(normalized);
         }
+        if (context != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(context);
+        }
+        removeAllViews();
+        updateKeyboard();
     }
 
     private void cycleTopShortcutDisplayMode() {
@@ -1794,6 +1952,25 @@ public class CustomKeyboardView extends LinearLayout {
         return result;
     }
 
+    /**
+     * Pro no-GUI QWERTY: compact cap size for Tab, modifiers, Space, Shift, Enter, and Bksp when
+     * shown as text (aligned with Tab / Ctrl / Opt).
+     */
+    private static boolean isProBottomRowCompactTextKey(Key key, boolean noGuiKeyboard) {
+        return noGuiKeyboard
+                && key != null
+                && (key.code == 0x2B || key.code == 0xE0 || key.code == 0xE2 || key.code == 0xE3
+                        || key.code == 0x2C || key.code == 0xE1 || key.code == 0x28 || key.code == 0x2A);
+    }
+
+    private float baseKeycapTextSpForKey(Key key) {
+        boolean land = isLandscape(getContext());
+        if (isProBottomRowCompactTextKey(key, !showGuiHidKey)) {
+            return land ? PRO_BOTTOM_ROW_TEXT_SP_LANDSCAPE : PRO_BOTTOM_ROW_TEXT_SP_PORTRAIT;
+        }
+        return land ? BASE_KEYCAP_TEXT_SP_LANDSCAPE : BASE_KEYCAP_TEXT_SP_PORTRAIT;
+    }
+
     private static Key cloneKeyWithWidth(Key src, float widthPercent) {
         return new Key(
                 src.label,
@@ -1828,6 +2005,8 @@ public class CustomKeyboardView extends LinearLayout {
         } else if (key.code == 0xE0 && isCtrlLeftLocked) {
             v.setBackgroundResource(R.drawable.press_button_background);
         } else if (key.code == 0xE2 && isAltLeftLocked) {
+            v.setBackgroundResource(R.drawable.press_button_background);
+        } else if (key.code == 0xE3 && isWinLeftLocked) {
             v.setBackgroundResource(R.drawable.press_button_background);
         } else if (key.code == 16) {
             v.setBackgroundResource(R.drawable.key_background);
@@ -1953,21 +2132,30 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                 }
 
-                boolean shouldUseIconButton = key.label.equals("Win")
-                        || key.label.equals("Cmd")
-                        || key.label.equals("Space")
-                        || key.label.equals("BackSpace")
-                        || key.label.equals("Shift")
-                        || key.label.equals("Enter")
+                // Win/Cmd/Super: use ImageButton only when an icon is present (Names mode clears
+                // icon on bottom-row 0xE3 so Cmd/Win/Super render as text).
+                boolean shouldUseIconButton = (key.label.equals("Win") && key.iconResId != 0)
+                        || (key.label.equals("Cmd") && key.iconResId != 0)
+                        || (key.code == 0x2C && key.iconResId != 0
+                                && !isProQwertySpaceAsTextInStripIconMode(key))
+                        || (key.code == 0x2A && key.iconResId != 0)
+                        || (key.code == 0xE1 && key.iconResId != 0)
+                        || (key.code == 0x28 && key.iconResId != 0)
                         || key.label.equals("Up_arrow")
                         || key.label.equals("Down_arrow")
                         || key.label.equals("Left_arrow")
                         || key.label.equals("Right_arrow")
-                        || (key.label.equals("Super") && key.iconResId != 0);
+                        || (key.label.equals("Super") && key.iconResId != 0)
+                        || (key.code == 0xE3 && key.iconResId != 0)
+                        || (key.code == 0x2B && key.iconResId != 0);
                 if (shouldUseIconButton) {
                     ImageButton imageButton = new ImageButton(getContext());
                     applyFlatKeyStyle(imageButton);
                     imageButton.setLayoutParams(params);
+                    if (key.code == 0x2B && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.key_display_name_tab));
+                    }
                     if ((key.code == 0xE3 && isWinLeftLocked) || (key.code == 0xE1 && isShiftLeftLocked)) {
                         imageButton.setBackgroundResource(R.drawable.press_button_background);
                     } else {
@@ -1987,8 +2175,10 @@ public class CustomKeyboardView extends LinearLayout {
                             imageButton.setScaleX(isFnLocked ? -1f : 1f);
                         }
                         if ("Win".equals(key.label) || "Cmd".equals(key.label) || "Super".equals(key.label)
-                                || "BackSpace".equals(key.label) || "Shift".equals(key.label)
-                                || "Enter".equals(key.label) || "Space".equals(key.label)
+                                || key.code == 0xE3
+                                || (key.code == 0x2B && key.iconResId != 0)
+                                || key.code == 0x2A || key.code == 0xE1 || key.code == 0x28
+                                || (key.code == 0x2C && key.iconResId != 0)
                                 || fnHintsOnMainShift) {
                             imageButton.setColorFilter(resolveThemeTextColor());
                         }
@@ -2030,9 +2220,7 @@ public class CustomKeyboardView extends LinearLayout {
                     applyFlatKeyStyle(textButton);
                     textButton.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                     textButton.setGravity(Gravity.CENTER);
-                    textButton.setTextSize(isLandscape(getContext())
-                            ? BASE_KEYCAP_TEXT_SP_LANDSCAPE
-                            : BASE_KEYCAP_TEXT_SP_PORTRAIT);
+                    textButton.setTextSize(baseKeycapTextSpForKey(key));
                     textButton.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
                     applyLetterRowKeyFaceBackground(textButton, key, isFunctionalKey);
 
@@ -2041,7 +2229,11 @@ public class CustomKeyboardView extends LinearLayout {
                         textButton.setSingleLine(true);
                         textButton.setMaxLines(1);
                         textButton.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                        textButton.setTextSize(getFnLabelTextSizeSp(fnDisplayLabel));
+                        float fnSp = getFnLabelTextSizeSp(fnDisplayLabel);
+                        if (isProBottomRowCompactTextKey(key, !showGuiHidKey) && key.code == 0x2B) {
+                            fnSp = Math.min(fnSp, baseKeycapTextSpForKey(key));
+                        }
+                        textButton.setTextSize(fnSp);
                         textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                         textButton.setTextColor(resolveThemeTextColor());
                     } else if (key.iconResId == 0 && !key.label.isEmpty()) {
@@ -2065,6 +2257,12 @@ public class CustomKeyboardView extends LinearLayout {
                             textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                             textButton.setTextColor(resolveThemeTextColor());
                         }
+                    }
+
+                    if (isProBottomRowCompactTextKey(key, !showGuiHidKey)) {
+                        textButton.setSingleLine(true);
+                        textButton.setMaxLines(1);
+                        textButton.setEllipsize(TextUtils.TruncateAt.END);
                     }
 
                     if (key.iconResId != 0) {
@@ -2358,13 +2556,14 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code >= 0xE0 && key.code <= 0xE7) {
             return null;
         }
-        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
+        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28) {
             return null;
         }
 
         // KM Pro lower keyboard (km_pro_keys_layout): Fn+Q–P → digits 1–0; Fn+A–L → F1–F9; Fn+Z,X,C → F10–F12;
         // Fn+Backspace → Del (see also sendHidKeyDataForKey forward-delete path).
         switch (key.code) {
+            case 0x2B: return new FnMapping("Esc", 0x29, 0); // Tab → Esc when Fn latched
             case 0x14: return new FnMapping("1", 0x1E, 0);  // q
             case 0x1A: return new FnMapping("2", 0x1F, 0);  // w
             case 0x08: return new FnMapping("3", 0x20, 0);  // e
