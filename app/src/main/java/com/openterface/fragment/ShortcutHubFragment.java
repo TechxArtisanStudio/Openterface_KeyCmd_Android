@@ -60,7 +60,7 @@ import java.util.Comparator;
 import java.util.List;
 /**
  * Shortcut Hub: shortcut profiles (Favorites, categories, import/export), Rows 2–3 strip layouts,
- * and page 3 hub keys. Keyboard and Mouse Pro setup (header gear) covers strip display mode and active profile.
+ * and the strip catalog. Keyboard and Mouse Pro setup (header gear) covers strip display mode and active profile.
  */
 public class ShortcutHubFragment extends Fragment implements ProfileChangeListener {
 

@@ -551,9 +551,6 @@ by TechxArtisan</string>
     <string name="shortcut_hub_export">Export</string>
     <string name="shortcut_hub_tab_app_profiles">Row 1 · Profiles</string>
     <string name="shortcut_hub_tab_fixed_strip">Rows 2–3 · Strip</string>
-    <string name="shortcut_hub_tab_page3_strip">Page 3 · Hub keys</string>
-    <string name="shortcut_hub_page3_info_title">Page 3 on the keyboard strip</string>
-    <string name="shortcut_hub_page3_info_body">In Keyboard &amp; Mouse mode, swipe the fixed rows to page 3.\n\n• Row 2: tap activates the Row 1 app profile for that slot. Long-press to pick which profile is bound (same flow as the profile slot picker).\n• Row 3: tap activates the Rows 2–3 strip profile. Long-press to pick which strip profile each slot shows.\n\nEditing strip key caps and slot overrides for pages 0–2 stays under Rows 2–3 · Strip.</string>
     <string name="shortcut_hub_strip_grid_layer_base">Base</string>
     <string name="shortcut_hub_strip_grid_layer_fn">Fn</string>
     <string name="shortcut_hub_strip_catalog_page0_title">Page 0 — F-keys</string>

@@ -8,7 +8,7 @@ Common questions about what KeyMod can type over USB, especially **Rows 2–3 st
 
 **Keyboard & Mouse** is the **Basic** tier: a dedicated full-screen flow with its own keyboard, numpad, touchpad, and Compose & Send screen, plus a **Setup** gear icon (next to the target OS control) for KM Basic preferences. The usual app **header** (title, mode shortcuts, global target OS, connection cluster) is **hidden** while you are in Basic; those actions live on the **keyboard’s top row** instead.
 
-**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with strip rows, split options, and richer IME behavior. In Pro, tap the **Setup** gear in the app header (**between** target OS and connection) to edit **strip layouts** and open the **General** tab (for more preferences over time). **Page 3** profile and strip slot picks are still done with **long-press** on the keyboard strip.
+**Keyboard & Mouse Pro** is the **advanced** composite mode: the familiar combined layout with strip rows, split options, and richer IME behavior. In Pro, tap the **Setup** gear in the app header (**between** target OS and connection) to edit **strip layouts** and open the **General** tab (for more preferences over time). The active Row 1 shortcut profile and the active Rows 2–3 strip profile are chosen from **Keyboard & Mouse Pro** setup and **Shortcut Hub**, not from a dedicated strip swipe page.
 
 ---
 
@@ -42,7 +42,7 @@ That is where results are most **consistent across different machines**.
 
 ## Rows 2–3 strip layouts in the app
 
-Built-in **Default** and **Mine** start from the **factory strip layout** (no overrides until you edit). From **Keyboard & Mouse Pro**, open **Setup** (gear icon). You can **create additional layouts**, **import/export** JSON, set the **active** layout, and **assign** layouts to the page 3 strip quick-toggle row.
+Built-in **Default** and **Mine** start from the **factory strip layout** (no overrides until you edit). From **Keyboard & Mouse Pro**, open **Setup** (gear icon). You can **create additional layouts**, **import/export** JSON, and set the **active** Rows 2–3 strip profile from there or from **Shortcut Hub**.
 
 ---
 

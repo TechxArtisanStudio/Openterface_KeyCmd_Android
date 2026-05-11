@@ -9,8 +9,9 @@ import com.openterface.keymod.preset.Rows23StripProfileConstants;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 
 /**
- * Persists which Rows 2–3 strip profile id is bound to each of six quick-toggle slots on
- * fixed strip page 3 (row 3). Independent of {@link TopShortcutProfileSlotPrefs} (Row 1 app profiles).
+ * Persists which Rows 2–3 strip profile id is bound to each of six quick-toggle slot indices (legacy
+ * hub UI; on-disk values are still read for migration and possible future UI). Independent of
+ * {@link TopShortcutProfileSlotPrefs} (Row 1 app profiles).
  */
 public final class TopRows23StripProfileSlotPrefs {
 
@@ -30,12 +31,12 @@ public final class TopRows23StripProfileSlotPrefs {
     }
 
     /**
-     * Pref value for a page-3 strip quick-toggle slot with no profile bound (blank cap, tap no-op).
+     * Pref value for a strip quick-toggle slot with no profile bound (legacy hub slots).
      */
     @NonNull
     public static final String STRIP_PROFILE_SLOT_UNASSIGNED = "";
 
-    /** Default strip profile id for slot 1..6 (left-to-right on page 3 row 3). */
+    /** Default strip profile id for slot 1..6 (left-to-right slot order in legacy hub prefs). */
     @NonNull
     public static String defaultStripProfileIdForSlot(int slotIndex1Based) {
         switch (slotIndex1Based) {

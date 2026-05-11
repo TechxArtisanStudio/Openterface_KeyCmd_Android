@@ -111,7 +111,8 @@ public class KeyboardStripPreset {
         if (p.strip != null && p.strip.topology != null) {
             Topology top = p.strip.topology;
             if (top.columns != KeyboardStripPresetConstants.TOP_PANEL_COLUMNS
-                    || top.fixedRowBuiltinPages != KeyboardStripPresetConstants.FIXED_ROW_BUILTIN_PAGES
+                    || (top.fixedRowBuiltinPages != KeyboardStripPresetConstants.FIXED_ROW_BUILTIN_PAGES
+                            && top.fixedRowBuiltinPages != 4)
                     || top.fixedRowsPerBuiltinPage != KeyboardStripPresetConstants.FIXED_ROWS_PER_BUILTIN_PAGE
                     || top.favoritesTrailingSystemSlots
                             != KeyboardStripPresetConstants.FAVORITES_TRAILING_SYSTEM_SLOTS) {
@@ -148,6 +149,9 @@ public class KeyboardStripPreset {
         }
         if (strip.topology == null) {
             strip.topology = defaultTopology();
+        } else if (strip.topology.fixedRowBuiltinPages == 4) {
+            // Legacy exports before fixed-strip page 3 (hub toggles) was removed.
+            strip.topology.fixedRowBuiltinPages = KeyboardStripPresetConstants.FIXED_ROW_BUILTIN_PAGES;
         }
         if (shortcuts != null && shortcuts.definitions == null) {
             shortcuts.definitions = new ArrayList<>();

@@ -1060,13 +1060,6 @@
     <string name="shortcut_hub_create_strip_profile">创建</string>
     <string name="shortcut_hub_empty_strip_profiles">暂无条带配置文件。</string>
     <string name="shortcut_hub_import_strip_profile">导入</string>
-    <string name="shortcut_hub_page3_info_body"><![CDATA[在键盘与鼠标模式下，向左滑动固定行可进入第 3 页。
-
-• 第 2 行：点按激活该行槽位对应的第 1 行应用配置文件。长按可选择绑定哪个配置文件（与配置文件槽位选择器相同流程）。
-• 第 3 行：点按激活第 2–3 行条带配置文件。长按可为每个槽位选择显示的条带配置文件。
-
-编辑第 0–2 页的条带键帽与槽位覆盖仍在「第 2–3 行 · 条带」标签下。]]></string>
-    <string name="shortcut_hub_page3_info_title">键盘条带第 3 页</string>
     <string name="shortcut_hub_reset_default">重置</string>
     <string name="shortcut_hub_reset_default_message">将恢复默认快捷方式目录（通用标签）与收藏为全新安装状态。其他配置文件不变。</string>
     <string name="shortcut_hub_reset_default_title">重置默认配置文件？</string>
@@ -1108,7 +1101,6 @@
     <string name="shortcut_hub_strip_slot_status_default">默认</string>
     <string name="shortcut_hub_tab_app_profiles">第 1 行 · 配置文件</string>
     <string name="shortcut_hub_tab_fixed_strip">第 2–3 行 · 条带</string>
-    <string name="shortcut_hub_tab_page3_strip">第 3 页 · Hub 键</string>
     <string name="strip_edition_dialog_message"><![CDATA[在快捷方式中心（第 2–3 行 · 条带标签）编辑第 2–3 行条带配置文件与槽位覆盖。
 
 活动条带上的槽位覆盖：%1$d]]></string>
