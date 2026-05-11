@@ -563,6 +563,12 @@ por TechxArtisan</string>
     <string name="touch_pad_help_overlay_one_finger_detail">Deslizar para mover el puntero.\nToque para hacer clic.\nToque dos veces para hacer doble clic.\nMantenga presionado para comenzar a arrastrar.\nToque para soltar el arrastre.</string>
     <string name="touch_pad_help_overlay_two_fingers">Dos dedos</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Toque para hacer clic con el botón derecho.\nDeslícese con dos dedos para desplazarse.</string>
+    <string name="touch_pad_help_km_gestures_only_title">Solo gestos</string>
+    <string name="touch_pad_help_km_gestures_only_body">Un dedo: mover, tocar, doble toque; mantener pulsado para arrastrar (otro toque para soltar).\nDos dedos: desplazamiento; levantar ambos sin deslizar: clic derecho.</string>
+    <string name="touch_pad_help_km_pad_keys_title">Panel + botones</string>
+    <string name="touch_pad_help_km_pad_keys_body">Panel: solo mover el puntero y desplazamiento con dos dedos.\nI, C, D: clics y arrastre. Mantenga un botón y deslice hacia arriba para bloquear.</string>
+    <string name="touch_pad_help_km_hybrid_title">Híbrido</string>
+    <string name="touch_pad_help_km_hybrid_body">Panel: todos los gestos y desplazamiento con dos dedos.\nFranja: I, C, D + bloqueo. Los toques en el panel hacen parpadear la tecla; al arrastrar desde el panel, I permanece resaltado.</string>
     <string name="touch_pad_compact_initial">TouchPad\nBotones: arriba (sin arrastrar)\nToque: inactivo</string>
     <string name="touch_pad_info_content_description">Mostrar ayuda con gestos del panel táctil</string>
 

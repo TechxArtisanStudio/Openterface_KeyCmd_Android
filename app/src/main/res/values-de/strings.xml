@@ -562,6 +562,12 @@ von TechxArtisan</string>
     <string name="touch_pad_help_overlay_one_finger_detail">Gleiten Sie, um den Zeiger zu bewegen.\nTippen Sie, um zu klicken.\nDoppeltippen, um doppelklicken.\nGedrückt halten, um das Ziehen zu starten.\nTippen, um das Ziehen loszulassen.</string>
     <string name="touch_pad_help_overlay_two_fingers">Zwei Finger</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Tippen Sie für einen Rechtsklick.\nGleiten Sie mit zwei Fingern, um zu scrollen.</string>
+    <string name="touch_pad_help_km_gestures_only_title">Nur Gesten</string>
+    <string name="touch_pad_help_km_gestures_only_body">Ein Finger: bewegen, tippen, doppeltippen; lange drücken zum Ziehen (erneut tippen zum Loslassen).\nZwei Finger: scrollen; beide ohne Gleiten anheben: Rechtsklick.</string>
+    <string name="touch_pad_help_km_pad_keys_title">Pad + Maustasten</string>
+    <string name="touch_pad_help_km_pad_keys_body">Pad: nur Zeiger bewegen und Zwei-Finger-Scrollen.\nL, M, R: Klicks und Ziehen. Taste halten, dann nach oben wischen zum Sperren.</string>
+    <string name="touch_pad_help_km_hybrid_title">Hybrid</string>
+    <string name="touch_pad_help_km_hybrid_body">Pad: alle Gesten und Zwei-Finger-Scrollen.\nLeiste: L, M, R + Sperre. Tippen auf dem Pad lässt die passende Taste kurz aufleuchten; Ziehen vom Pad hält L hervorgehoben.</string>
     <string name="touch_pad_compact_initial">TouchPad\nTasten: nach oben (kein Ziehen)\nTouch: inaktiv</string>
     <string name="touch_pad_info_content_description">Hilfe zu Touchpad-Gesten anzeigen</string>
 

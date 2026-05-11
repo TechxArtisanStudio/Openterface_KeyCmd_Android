@@ -598,6 +598,12 @@ TechxArtisan により</string>
     <string name="touch_pad_help_overlay_one_finger_detail">スライドしてポインタを移動します。\nタップしてクリックします。\nダブルタップしてダブルクリックします。\n長押ししてドラッグを開始します。\nタップしてドラッグを解除します。</string>
     <string name="touch_pad_help_overlay_two_fingers">2 本の指</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">タップして右クリックします。\n2 本の指でスライドしてスクロールします。</string>
+    <string name="touch_pad_help_km_gestures_only_title">ジェスチャのみ</string>
+    <string name="touch_pad_help_km_gestures_only_body">1 本指：移動・タップ・ダブルタップ。長押しでドラッグ開始（もう一度タップで解除）。\n2 本指：スクロール。ほぼ動かさずに離すと右クリック。</string>
+    <string name="touch_pad_help_km_pad_keys_title">パッド + マウスキー</string>
+    <string name="touch_pad_help_km_pad_keys_body">パッド：ポインタ移動と 2 本指スクロールのみ。\n左／中／右：クリックとドラッグ。キーを押したまま上にスワイプでロック。</string>
+    <string name="touch_pad_help_km_hybrid_title">ハイブリッド</string>
+    <string name="touch_pad_help_km_hybrid_body">パッド：すべてのジェスチャと 2 本指スクロール。\nストリップ：左中右 + ロック。パッドのタップで対応キーが点滅。パッドからのドラッグ中は左が強調表示。</string>
     <string name="touch_pad_compact_initial">タッチパッド\nボタン: 上 (ドラッグなし)\nタッチ: アイドル</string>
     <string name="touch_pad_info_content_description">タッチパッド ジェスチャ ヘルプを表示する</string>
 

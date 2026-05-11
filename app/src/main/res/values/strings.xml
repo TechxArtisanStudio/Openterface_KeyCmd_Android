@@ -1230,6 +1230,13 @@ by TechxArtisan</string>
     <string name="touch_pad_help_overlay_one_finger_detail">Glide to move the pointer.\nTap to click.\nDouble-tap to double-click.\nLong press to start drag.\nTap to release drag.</string>
     <string name="touch_pad_help_overlay_two_fingers">Two fingers</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Tap for right-click.\nGlide with two fingers to scroll.</string>
+    <!-- KM Pro composite touchpad: info icon (mode-specific, concise) -->
+    <string name="touch_pad_help_km_gestures_only_title">Gestures only</string>
+    <string name="touch_pad_help_km_gestures_only_body">One finger: move, tap, double-tap; long-press starts drag (tap again to release).\nTwo fingers: scroll; lift both without sliding for right-click.</string>
+    <string name="touch_pad_help_km_pad_keys_title">Pad + mouse keys</string>
+    <string name="touch_pad_help_km_pad_keys_body">Pad: move pointer and two-finger scroll only.\nL, M, R: clicks and drag. Hold a key, then swipe up to lock.</string>
+    <string name="touch_pad_help_km_hybrid_title">Hybrid</string>
+    <string name="touch_pad_help_km_hybrid_body">Pad: full gestures and two-finger scroll.\nStrip: L, M, R + lock. Pad taps flash the matching key; pad drag keeps L highlighted.</string>
     <string name="touch_pad_compact_initial">TouchPad\nButtons: up (no drag)\nTouch: idle</string>
     <string name="touch_pad_brand_content_description">Openterface</string>
     <string name="touch_pad_info_content_description">Show touchpad gesture help</string>

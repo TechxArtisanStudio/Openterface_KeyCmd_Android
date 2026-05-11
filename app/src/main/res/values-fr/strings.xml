@@ -562,6 +562,12 @@ par TechxArtisan</string>
     <string name="touch_pad_help_overlay_one_finger_detail">Faites glisser pour déplacer le pointeur.\nAppuyez pour cliquer.\nAppuyez deux fois pour double-cliquer.\nAppuyez longuement pour commencer le glisser.\nAppuyez pour relâcher le glisser.</string>
     <string name="touch_pad_help_overlay_two_fingers">Deux doigts</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Appuyez pour faire un clic droit.\nFaites glisser avec deux doigts pour faire défiler.</string>
+    <string name="touch_pad_help_km_gestures_only_title">Gestes uniquement</string>
+    <string name="touch_pad_help_km_gestures_only_body">Un doigt : déplacer, appuyer, double appui ; appui long pour glisser (appuyer à nouveau pour lâcher).\nDeux doigts : défilement ; lever les deux sans glisser : clic droit.</string>
+    <string name="touch_pad_help_km_pad_keys_title">Pavé + touches souris</string>
+    <string name="touch_pad_help_km_pad_keys_body">Pavé : déplacer le pointeur et défilement à deux doigts uniquement.\nG, M, D : clics et glisser. Maintenir une touche puis glisser vers le haut pour verrouiller.</string>
+    <string name="touch_pad_help_km_hybrid_title">Hybride</string>
+    <string name="touch_pad_help_km_hybrid_body">Pavé : tous les gestes et défilement à deux doigts.\nBande : G, M, D + verrou. Les appuis sur le pavé font clignoter la touche ; glisser depuis le pavé garde G mis en avant.</string>
     <string name="touch_pad_compact_initial">TouchPad\nBoutons : haut (pas de glissement)\nTouch : inactif</string>
     <string name="touch_pad_info_content_description">Afficher l\'aide sur les gestes du pavé tactile</string>
 

@@ -760,6 +760,12 @@
     <string name="touch_pad_help_overlay_one_finger_detail">滑動以移動指標。\n點按為單擊。\n雙擊為雙擊。\n長按開始拖動。\n再點按結束拖動。</string>
     <string name="touch_pad_help_overlay_two_fingers">雙指</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">點按為右鍵。\n雙指滑動為滾動。</string>
+    <string name="touch_pad_help_km_gestures_only_title">僅手勢</string>
+    <string name="touch_pad_help_km_gestures_only_body">單指：移動、點按、雙擊；長按開始拖動（再點按結束）。\n雙指：滾動；雙指輕抬、無明顯滑動為右鍵。</string>
+    <string name="touch_pad_help_km_pad_keys_title">觸控板 + 按鍵</string>
+    <string name="touch_pad_help_km_pad_keys_body">觸控板：僅移動指標與雙指滾動。\n左／中／右鍵：點擊與拖動。按住鍵再上滑可鎖定。</string>
+    <string name="touch_pad_help_km_hybrid_title">混合</string>
+    <string name="touch_pad_help_km_hybrid_body">觸控板：完整手勢與雙指滾動。\n側欄：左中右與鎖定。點按板面時對應鍵閃爍；板面拖動時左鍵保持高亮。</string>
     <string name="touch_pad_compact_initial">觸控板\n按鍵：抬起（未拖動）\n觸控：空閒</string>
     <string name="touch_pad_info_content_description">顯示觸控板手勢幫助</string>
 

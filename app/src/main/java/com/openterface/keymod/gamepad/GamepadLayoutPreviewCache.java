@@ -46,7 +46,8 @@ public final class GamepadLayoutPreviewCache {
 
     private File cacheFile(@NonNull String presetId, long contentSignature) {
         String safe = presetId.replaceAll("[^a-zA-Z0-9_.-]", "_");
-        return new File(cacheDir, safe + "_" + Long.toHexString(contentSignature) + ".png");
+        return new File(cacheDir, safe + "_" + Long.toHexString(contentSignature)
+                + "_v" + GamepadLayoutPreviewRenderer.CACHE_FORMAT_VERSION + ".png");
     }
 
     /**

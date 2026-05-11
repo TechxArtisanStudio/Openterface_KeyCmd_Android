@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat;
 
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 
 /**
  * Rich text for the on-pad status overlay and gesture help overlay.
@@ -152,6 +153,36 @@ public final class TouchPadTipsFormatter {
             ssb.setSpan(new ForegroundColorSpan(primary), twoStart, twoEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
+        return ssb;
+    }
+
+    /**
+     * Help text for the KM Pro composite touchpad info icon: copy depends on {@link
+     * KmProTouchpadPrefs#readMode}.
+     */
+    public static CharSequence buildKmProCompositeHelpOverlayText(Context context, boolean includeMainTitle) {
+        int mode = KmProTouchpadPrefs.readMode(context);
+        final String title;
+        final String body;
+        if (mode == KmProTouchpadPrefs.MODE_MOUSE_KEYS_BASIC) {
+            title = context.getString(R.string.touch_pad_help_km_pad_keys_title);
+            body = context.getString(R.string.touch_pad_help_km_pad_keys_body);
+        } else if (mode == KmProTouchpadPrefs.MODE_HYBRID) {
+            title = context.getString(R.string.touch_pad_help_km_hybrid_title);
+            body = context.getString(R.string.touch_pad_help_km_hybrid_body);
+        } else {
+            title = context.getString(R.string.touch_pad_help_km_gestures_only_title);
+            body = context.getString(R.string.touch_pad_help_km_gestures_only_body);
+        }
+
+        String full = includeMainTitle ? title + "\n\n" + body : body;
+        SpannableStringBuilder ssb = new SpannableStringBuilder(full);
+        int primary = ContextCompat.getColor(context, R.color.text_primary);
+        if (includeMainTitle) {
+            int titleEnd = title.length();
+            ssb.setSpan(new StyleSpan(Typeface.BOLD), 0, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            ssb.setSpan(new ForegroundColorSpan(primary), 0, titleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         return ssb;
     }
 }

@@ -1328,7 +1328,7 @@ public class CompositeFragment extends Fragment {
                                 requireContext())) {
                             return;
                         }
-                        TouchPadHelpOverlay.show(helpOverlayForPad(touchPad));
+                        TouchPadHelpOverlay.show(helpOverlayForPad(touchPad), true, true);
                     });
         }
 
@@ -1522,7 +1522,8 @@ public class CompositeFragment extends Fragment {
         pad.setPadClickDragGesturesEnabled(
                 !KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(pad.getContext()));
         if (infoButton != null) {
-            infoButton.setOnClickListener(v -> TouchPadHelpOverlay.onInfoPressed(helpOverlayForPad(pad)));
+            infoButton.setOnClickListener(
+                    v -> TouchPadHelpOverlay.onInfoPressed(helpOverlayForPad(pad), true, true));
         }
         pad.setOnTouchPadListener(new TouchPadView.OnTouchPadListener() {
             @Override

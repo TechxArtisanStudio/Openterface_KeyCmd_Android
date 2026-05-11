@@ -17,11 +17,31 @@ import com.openterface.keymod.R;
 
 /**
  * Renders a small bitmap of a preset's dynamic layout for card thumbnails (off-screen {@link GamepadView}).
+ *
+ * <p>Renders at a larger virtual canvas first so {@link GamepadLayoutPresetConstants#contentMinEdgeScaleFactor}
+ * matches typical landscape play (see {@link GamepadLayoutPresetConstants#DYNAMIC_LAYOUT_REFERENCE_MIN_EDGE_PX}),
+ * then scales down for PNG size. Aspect is {@value #OFFSCREEN_RENDER_WIDTH_PX}:{@value #OFFSCREEN_RENDER_HEIGHT_PX}
+ * (20:9), consistent with common full-bleed landscape phones; live {@link com.openterface.fragment.GamepadFragment}
+ * uses {@code gamepad_view} {@code match_parent} on that window.
  */
 public final class GamepadLayoutPreviewRenderer {
 
-    private static final int RENDER_WIDTH_PX = 480;
-    private static final int RENDER_HEIGHT_PX = 270;
+    /**
+     * Bump when preview pixels / semantics change so {@link GamepadLayoutPreviewCache} filenames invalidate
+     * stale PNGs without requiring a preset JSON edit.
+     */
+    public static final int CACHE_FORMAT_VERSION = 1;
+
+    /**
+     * Off-screen draw size: min-edge 720px → scale factor 0.9 vs 800px reference, avoiding the aggressive
+     * {@link GamepadLayoutPresetConstants#DYNAMIC_LAYOUT_SCALE_MIN} floor that dominates small 480×270 windows.
+     */
+    private static final int OFFSCREEN_RENDER_WIDTH_PX = 1600;
+    private static final int OFFSCREEN_RENDER_HEIGHT_PX = 720;
+
+    /** Max width of the returned bitmap (height follows 20:9). */
+    private static final int OUTPUT_MAX_WIDTH_PX = 480;
+
     private static final Gson GSON = new Gson();
 
     private GamepadLayoutPreviewRenderer() {}
@@ -32,6 +52,7 @@ public final class GamepadLayoutPreviewRenderer {
         if (drawDoc == null) {
             return null;
         }
+        Bitmap hiRes = null;
         try {
             GamepadView v = new GamepadView(themedContext);
             v.refreshThemeAccentForHeadless();
@@ -39,7 +60,7 @@ public final class GamepadLayoutPreviewRenderer {
             v.setGamepadContentInsets(0, 0, 0, 0);
             v.setEditMode(false);
             v.setLongPressEnabled(false);
-            v.setKeyMappingHintsVisible(true);
+            v.setKeyMappingHintsVisible(false);
             v.setLayoutDocument(drawDoc);
             float mouseScale = 1f;
             if (drawDoc.layout != null && drawDoc.layout.touchpadMouseButtonScale != null) {
@@ -50,19 +71,43 @@ public final class GamepadLayoutPreviewRenderer {
             }
             v.setTouchpadMouseButtonLayoutScale(mouseScale);
             v.setBackgroundBitmap(null);
-            v.setBackgroundFillArgb(null);
-            v.setBackgroundPatternId(null);
-            int wSpec = View.MeasureSpec.makeMeasureSpec(RENDER_WIDTH_PX, View.MeasureSpec.EXACTLY);
-            int hSpec = View.MeasureSpec.makeMeasureSpec(RENDER_HEIGHT_PX, View.MeasureSpec.EXACTLY);
+            applyLayoutBackground(v, drawDoc.layout);
+
+            int wSpec = View.MeasureSpec.makeMeasureSpec(OFFSCREEN_RENDER_WIDTH_PX, View.MeasureSpec.EXACTLY);
+            int hSpec = View.MeasureSpec.makeMeasureSpec(OFFSCREEN_RENDER_HEIGHT_PX, View.MeasureSpec.EXACTLY);
             v.measure(wSpec, hSpec);
-            v.layout(0, 0, RENDER_WIDTH_PX, RENDER_HEIGHT_PX);
-            Bitmap bmp = Bitmap.createBitmap(RENDER_WIDTH_PX, RENDER_HEIGHT_PX, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(bmp);
+            v.layout(0, 0, OFFSCREEN_RENDER_WIDTH_PX, OFFSCREEN_RENDER_HEIGHT_PX);
+            hiRes = Bitmap.createBitmap(OFFSCREEN_RENDER_WIDTH_PX, OFFSCREEN_RENDER_HEIGHT_PX, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(hiRes);
             v.draw(c);
-            return bmp;
+
+            int outW = OUTPUT_MAX_WIDTH_PX;
+            int outH = Math.max(
+                    1,
+                    Math.round((float) OUTPUT_MAX_WIDTH_PX * OFFSCREEN_RENDER_HEIGHT_PX / OFFSCREEN_RENDER_WIDTH_PX));
+            if (outW == OFFSCREEN_RENDER_WIDTH_PX && outH == OFFSCREEN_RENDER_HEIGHT_PX) {
+                return hiRes;
+            }
+            Bitmap scaled = Bitmap.createScaledBitmap(hiRes, outW, outH, true);
+            hiRes.recycle();
+            hiRes = null;
+            return scaled;
         } catch (RuntimeException e) {
+            if (hiRes != null) {
+                hiRes.recycle();
+            }
             return null;
         }
+    }
+
+    private static void applyLayoutBackground(@NonNull GamepadView v, @Nullable GamepadLayoutPresetDocument.LayoutGlobals layout) {
+        if (layout == null) {
+            v.setBackgroundFillArgb(null);
+            v.setBackgroundPatternId(null);
+            return;
+        }
+        v.setBackgroundFillArgb(layout.backgroundFillArgb);
+        v.setBackgroundPatternId(layout.backgroundPattern);
     }
 
     @Nullable

@@ -30,12 +30,21 @@ public final class TouchPadHelpOverlay {
      * @param includeMainHelpTitle same as {@link #show(TextView, boolean)} when opening the overlay.
      */
     public static void onInfoPressed(TextView overlay, boolean includeMainHelpTitle) {
+        onInfoPressed(overlay, includeMainHelpTitle, false);
+    }
+
+    /**
+     * @param kmProCompositeTouchpad when true, help text follows KM Pro touchpad mode (Gestures only /
+     *     Pad + keys / Hybrid); when false, standard full-gesture help (Mouse, pop-out, etc.).
+     */
+    public static void onInfoPressed(
+            TextView overlay, boolean includeMainHelpTitle, boolean kmProCompositeTouchpad) {
         if (overlay == null) return;
         if (overlay.getVisibility() == View.VISIBLE && overlay.getAlpha() > 0.05f) {
             cancelAnimation(overlay);
             fadeOutAndHide(overlay);
         } else {
-            show(overlay, includeMainHelpTitle);
+            show(overlay, includeMainHelpTitle, kmProCompositeTouchpad);
         }
     }
 
@@ -60,17 +69,29 @@ public final class TouchPadHelpOverlay {
     }
 
     public static void show(TextView overlay) {
-        show(overlay, true);
+        show(overlay, true, false);
     }
 
     /**
      * @param includeMainHelpTitle when false, omits the top “Touchpad gestures” line (compact dialog layout).
      */
     public static void show(TextView overlay, boolean includeMainHelpTitle) {
+        show(overlay, includeMainHelpTitle, false);
+    }
+
+    /**
+     * @param kmProCompositeTouchpad when true, uses {@link
+     *     TouchPadTipsFormatter#buildKmProCompositeHelpOverlayText}.
+     */
+    public static void show(TextView overlay, boolean includeMainHelpTitle, boolean kmProCompositeTouchpad) {
         if (overlay == null) return;
         cancelAnimation(overlay);
         overlay.setText(
-                TouchPadTipsFormatter.buildGestureHelpOverlayText(overlay.getContext(), includeMainHelpTitle));
+                kmProCompositeTouchpad
+                        ? TouchPadTipsFormatter.buildKmProCompositeHelpOverlayText(
+                                overlay.getContext(), includeMainHelpTitle)
+                        : TouchPadTipsFormatter.buildGestureHelpOverlayText(
+                                overlay.getContext(), includeMainHelpTitle));
         overlay.setVisibility(View.VISIBLE);
         overlay.setAlpha(0f);
         overlay.animate()
