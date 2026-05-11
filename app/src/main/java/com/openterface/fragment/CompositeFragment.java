@@ -472,8 +472,9 @@ public class CompositeFragment extends Fragment {
                 getResources()
                         .getDimensionPixelSize(R.dimen.pro_touchpad_section_compact_height_threshold);
         boolean numpadStripHorizontal = isPortraitNumpadTouchpadMode();
+        boolean imeComposeStripHorizontal = isPortraitImeComposeSendTouchpadMode();
         boolean compactByHeight = th > 0 && th <= threshold;
-        boolean useHorizontalChrome = numpadStripHorizontal || compactByHeight;
+        boolean useHorizontalChrome = numpadStripHorizontal || imeComposeStripHorizontal || compactByHeight;
         if (!useHorizontalChrome && th <= 0) {
             return;
         }
@@ -492,7 +493,7 @@ public class CompositeFragment extends Fragment {
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
         int bottomPad =
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
-        if (numpadStripHorizontal) {
+        if (numpadStripHorizontal || imeComposeStripHorizontal) {
             padLp.weight = 2f;
             mLp.width = 0;
             mLp.weight = 1f;
@@ -948,6 +949,28 @@ public class CompositeFragment extends Fragment {
             return false;
         }
         return displayMode == DisplayMode.KEYBOARD;
+    }
+
+    /**
+     * Portrait BOTH + IME capture collapsed in compose mode (not Direct HID), with L/M/R strip.
+     * Mirrors portrait numpad strip geometry (touchpad : mouse strip = 2 : 1).
+     */
+    private boolean isPortraitImeComposeSendTouchpadMode() {
+        if (splitRoot != null) {
+            return false;
+        }
+        if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_PORTRAIT) {
+            return false;
+        }
+        if (displayMode != DisplayMode.BOTH || keyboardView == null) {
+            return false;
+        }
+        if (!keyboardView.isSystemImeCaptureMode()
+                || keyboardView.isImeSubComposeExpanded()
+                || keyboardView.isImeSubComposeDirectHidMode()) {
+            return false;
+        }
+        return KmProTouchpadPrefs.showsMouseKeyStrip(requireContext());
     }
 
     private void applyPortraitNumpadTouchpadChrome() {
