@@ -288,7 +288,7 @@
                 android:layout_height="match_parent"
                 android:background="@color/background_light"/>
 
-            <FrameLayout
+            <androidx.fragment.app.FragmentContainerView
                 android:id="@+id/km_pro_settings_overlay"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

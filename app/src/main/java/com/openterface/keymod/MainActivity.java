@@ -678,10 +678,26 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             }
         }
         kmProSettingsOverlay.setVisibility(View.VISIBLE);
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment())
-                .commit();
+        FragmentManager fm = getSupportFragmentManager();
+        try {
+            fm.executePendingTransactions();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "executePendingTransactions before KM Pro settings show", e);
+        }
+        FragmentTransaction showTx =
+                fm.beginTransaction().replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment());
+        try {
+            if (!fm.isStateSaved()) {
+                showTx.commitNow();
+            } else {
+                showTx.commitAllowingStateLoss();
+            }
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "KM Pro settings show: commitNow failed, retrying with commitAllowingStateLoss", e);
+            fm.beginTransaction()
+                    .replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment())
+                    .commitAllowingStateLoss();
+        }
         updateKmProHeaderSetupChrome();
     }
 
@@ -690,9 +706,20 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (kmProSettingsOverlay == null) {
             return;
         }
-        Fragment existing = getSupportFragmentManager().findFragmentById(R.id.km_pro_settings_overlay);
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment existing = fm.findFragmentById(R.id.km_pro_settings_overlay);
         if (existing != null) {
-            getSupportFragmentManager().beginTransaction().remove(existing).commitAllowingStateLoss();
+            FragmentTransaction hideTx = fm.beginTransaction().remove(existing);
+            try {
+                if (!fm.isStateSaved()) {
+                    hideTx.commitNow();
+                } else {
+                    hideTx.commitAllowingStateLoss();
+                }
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "KM Pro settings hide: commitNow failed, retrying with commitAllowingStateLoss", e);
+                fm.beginTransaction().remove(existing).commitAllowingStateLoss();
+            }
         }
         kmProSettingsOverlay.setVisibility(View.GONE);
         refreshOpenKeyboardShortcutStripFromPrefs();

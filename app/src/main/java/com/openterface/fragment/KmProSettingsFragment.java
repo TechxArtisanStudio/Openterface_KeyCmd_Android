@@ -86,32 +86,40 @@ public class KmProSettingsFragment extends Fragment {
 
         profileAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
-        profileDropdown.setAdapter(profileAdapter);
+        if (profileDropdown != null) {
+            profileDropdown.setAdapter(profileAdapter);
+        }
 
-        closeButton.setOnClickListener(v -> dismissKmProSettings());
+        if (closeButton != null) {
+            closeButton.setOnClickListener(v -> dismissKmProSettings());
+        }
 
-        displayModeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked || suppressDisplayToggleCallback) {
-                return;
-            }
-            int mode = displayModeButtonIdToMode(checkedId);
-            TopShortcutDisplayModePrefs.writeMode(requireContext(), mode);
-            notifyKeyboardStripRefresh();
-        });
+        if (displayModeToggle != null) {
+            displayModeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked || suppressDisplayToggleCallback) {
+                    return;
+                }
+                int mode = displayModeButtonIdToMode(checkedId);
+                TopShortcutDisplayModePrefs.writeMode(requireContext(), mode);
+                notifyKeyboardStripRefresh();
+            });
+        }
 
-        alternateHintsToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked || suppressAlternateHintsToggleCallback) {
-                return;
-            }
-            boolean enabled = alternateHintsButtonIdToEnabled(checkedId);
-            KeyboardAlternatesHintsPrefs.write(requireContext(), enabled);
-            notifyKeyboardAlternatesHintsRefresh();
-            updateGamingKeyBehaviorSectionVisibility();
-            if (gamingKeyBehaviorSection != null
-                    && gamingKeyBehaviorSection.getVisibility() == View.VISIBLE) {
-                syncGamingKeyBehaviorToggleFromPrefs();
-            }
-        });
+        if (alternateHintsToggle != null) {
+            alternateHintsToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked || suppressAlternateHintsToggleCallback) {
+                    return;
+                }
+                boolean enabled = alternateHintsButtonIdToEnabled(checkedId);
+                KeyboardAlternatesHintsPrefs.write(requireContext(), enabled);
+                notifyKeyboardAlternatesHintsRefresh();
+                updateGamingKeyBehaviorSectionVisibility();
+                if (gamingKeyBehaviorSection != null
+                        && gamingKeyBehaviorSection.getVisibility() == View.VISIBLE) {
+                    syncGamingKeyBehaviorToggleFromPrefs();
+                }
+            });
+        }
 
         if (touchpadModeToggle != null) {
             touchpadModeToggle.addOnButtonCheckedListener(
@@ -124,48 +132,57 @@ public class KmProSettingsFragment extends Fragment {
                     });
         }
 
-        longPressBehaviorToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked || suppressGamingBehaviorToggleCallback) {
-                return;
-            }
-            String value =
-                    checkedId == R.id.km_pro_long_press_hold
-                            ? KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD
-                            : KmBasicKeyboardPrefs.VALUE_LONG_PRESS_REPEAT;
-            PreferenceManager.getDefaultSharedPreferences(requireContext())
-                    .edit()
-                    .putString(KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR, value)
-                    .apply();
-            notifyCompositeKeyboardLayoutFromKmProSetup();
-        });
+        if (longPressBehaviorToggle != null) {
+            longPressBehaviorToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked || suppressGamingBehaviorToggleCallback) {
+                    return;
+                }
+                String value =
+                        checkedId == R.id.km_pro_long_press_hold
+                                ? KmBasicKeyboardPrefs.VALUE_LONG_PRESS_HOLD
+                                : KmBasicKeyboardPrefs.VALUE_LONG_PRESS_REPEAT;
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+                        .edit()
+                        .putString(KmBasicKeyboardPrefs.PREF_LONG_PRESS_BEHAVIOR, value)
+                        .apply();
+                notifyCompositeKeyboardLayoutFromKmProSetup();
+            });
+        }
 
-        profileDropdown.setOnItemClickListener((AdapterView<?> parent, View v, int position, long id) -> {
-            if (position < 0 || position >= pickerProfiles.size()) {
-                return;
-            }
-            ShortcutProfileManager.ShortcutProfile p = pickerProfiles.get(position);
-            if (p != null && p.id != null) {
-                profileManager.setActiveProfile(p.id);
-                notifyKeyboardStripRefresh();
-            }
-        });
+        if (profileDropdown != null) {
+            profileDropdown.setOnItemClickListener((AdapterView<?> parent, View v, int position, long id) -> {
+                if (position < 0 || position >= pickerProfiles.size()) {
+                    return;
+                }
+                ShortcutProfileManager.ShortcutProfile p = pickerProfiles.get(position);
+                if (p != null && p.id != null) {
+                    profileManager.setActiveProfile(p.id);
+                    notifyKeyboardStripRefresh();
+                }
+            });
 
-        profileDropdown.setOnClickListener(v -> profileDropdown.showDropDown());
+            profileDropdown.setOnClickListener(v -> profileDropdown.showDropDown());
+        }
 
         loadingModifierPrefs = true;
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         RadioButton sticky = view.findViewById(R.id.km_pro_modifier_sticky);
         RadioButton chord = view.findViewById(R.id.km_pro_modifier_chord);
-        if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
-                prefs.getString(KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.PREF_DEFAULT_VALUE))) {
-            chord.setChecked(true);
+        if (sticky != null && chord != null) {
+            if (KmBasicKeyboardPrefs.VALUE_MOMENTARY_CHORD.equals(
+                    prefs.getString(
+                            KmBasicKeyboardPrefs.PREF_KEY, KmBasicKeyboardPrefs.PREF_DEFAULT_VALUE))) {
+                chord.setChecked(true);
+            } else {
+                sticky.setChecked(true);
+            }
+            updateChordSustainCardVisibility(chord.isChecked());
         } else {
-            sticky.setChecked(true);
+            updateChordSustainCardVisibility(false);
         }
         if (chordSustainSwitch != null) {
             chordSustainSwitch.setChecked(KmBasicKeyboardPrefs.isChordSustainHidEnabled(requireContext()));
         }
-        updateChordSustainCardVisibility(chord != null && chord.isChecked());
         loadingModifierPrefs = false;
 
         if (modifierBehaviorGroup != null) {
