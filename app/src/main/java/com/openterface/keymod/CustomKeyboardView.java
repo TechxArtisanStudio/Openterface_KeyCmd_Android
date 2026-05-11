@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -244,6 +245,8 @@ public class CustomKeyboardView extends LinearLayout {
     private GridLayout extraNumpadGrid;
     private ImageButton extraNumpadFnButton;
     private boolean showExtraPortraitKeys = false;
+    /** When false, main keyboard and fixed strip page 1 omit the left GUI (Win/Cmd/Super) key. */
+    private boolean showGuiHidKey = true;
     /** When true, only the top shortcut strip(s) are shown (Compose mode). */
     private boolean shortcutsStripOnly = false;
     /** Top strip display mode for favorites and eligible fixed-row keys; see {@link #DISPLAY_MODE_NAME}. */
@@ -634,6 +637,16 @@ public class CustomKeyboardView extends LinearLayout {
 
     public CustomKeyboardView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        if (attrs != null) {
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CustomKeyboardView);
+            try {
+                showGuiHidKey = a.getBoolean(R.styleable.CustomKeyboardView_showGuiHidKey, true);
+            } finally {
+                a.recycle();
+            }
+        } else {
+            showGuiHidKey = true;
+        }
         init(context);
     }
     
@@ -678,9 +691,16 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void loadKeyboardForCurrentState(Context context) {
-        int keyboardResId = isLandscape(context)
-                ? R.xml.keyboard_lower_landscape
-                : R.xml.keyboard_lower_portrait;
+        int keyboardResId;
+        if (showGuiHidKey) {
+            keyboardResId = isLandscape(context)
+                    ? R.xml.keyboard_lower_landscape
+                    : R.xml.keyboard_lower_portrait;
+        } else {
+            keyboardResId = isLandscape(context)
+                    ? R.xml.keyboard_lower_landscape_no_gui
+                    : R.xml.keyboard_lower_portrait_no_gui;
+        }
         lowerKeys = parseKeyboard(context, keyboardResId);
         applyTargetOsLabels(context);
     }
@@ -3645,7 +3665,11 @@ public class CustomKeyboardView extends LinearLayout {
         // Row 2: CTRL, ALT, WIN/Command (target-OS aware), TAB(icon), Up, Enter(icon), keyboard (IME) toggle
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE0), 1, 2, 0));
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE2), 1, 2, 1));
-        keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE3), 1, 2, 2));
+        if (showGuiHidKey) {
+            keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE3), 1, 2, 2));
+        } else {
+            keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 1, 2, 2));
+        }
         keys.add(fixedStripSlotKey(new Key("TAB", "", 0x2B, "2B", 1f, R.drawable.keyboard_tab_24, 0f, false, false, -1, true), 1, 2, 3));
         keys.add(fixedStripSlotKey(new Key("UP", "", 0x52, "52", 1f, R.drawable.keyboard_arrow_up_24, 0f, false, false, -1, true), 1, 2, 4));
         keys.add(fixedStripSlotKey(new Key("ENTER", "", 0x28, "28", 1f, R.drawable.keyboard_return_24px, 0f, false, false, -1, true), 1, 2, 5));

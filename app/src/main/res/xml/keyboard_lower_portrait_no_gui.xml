@@ -47,8 +47,7 @@
     <Row>
         <Key android:codes="F005" android:keyLabel="Fn" android:keyWidth="15%p"/>
         <Key android:codes="36" android:keyLabel="," custom:keySymbolLabel=";" android:keyWidth="10%p"/>
-        <Key android:codes="E3" android:keyLabel="@string/Win" android:keyWidth="10%p"/>
-        <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:keyWidth="40%p"/>
+        <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:keyWidth="50%p"/>
         <Key android:codes="37" android:keyLabel="." custom:keySymbolLabel="'" android:keyWidth="10%p"/>
         <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="15%p"/>
     </Row>
