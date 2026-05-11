@@ -1,13 +1,15 @@
 package com.openterface.keymod.gamepad;
 
+import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,6 +19,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 
 import com.openterface.keymod.R;
@@ -26,28 +29,21 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Rows for the gamepad preset picker bottom sheet (activate + overflow per preset).
- * Uses {@link DiffUtil} so rename / activate updates animate minimally instead of full refresh.
- * <p>
- * Reorder uses a manual drag on the handle only (no {@code ItemTouchHelper.attachToRecyclerView}):
- * that helper registers a RecyclerView touch listener that commonly blocks vertical list scrolling.
+ * Card grid for the gamepad Layouts picker: preview image, metadata, overflow, optional reorder handles.
  */
-public final class GamepadPresetListAdapter extends RecyclerView.Adapter<GamepadPresetListAdapter.VH> {
+public final class GamepadPresetCardGridAdapter extends RecyclerView.Adapter<GamepadPresetCardGridAdapter.VH> {
 
     public interface Listener {
         void onActivatePreset(@NonNull String id);
 
-        /** Save preset JSON to a user-chosen path (Storage Access Framework). */
         void onSavePreset(@NonNull String id);
 
         void onSharePreset(@NonNull String id);
 
-        /** User tapped row delete; only invoked for presets that are not deletion-protected. */
         void onDeletePreset(@NonNull String id);
 
         void onOverflow(@NonNull String id, @NonNull View anchor);
 
-        /** After a handle drag reorder; host should call {@link #consumePendingReorderIds()} and persist. */
         void onPresetReorderFinished();
     }
 
@@ -56,12 +52,14 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         @NonNull final String title;
         final boolean selected;
         final boolean deletable;
+        final boolean builtin;
 
-        Row(@NonNull String id, @NonNull String title, boolean selected, boolean deletable) {
+        Row(@NonNull String id, @NonNull String title, boolean selected, boolean deletable, boolean builtin) {
             this.id = id;
             this.title = title;
             this.selected = selected;
             this.deletable = deletable;
+            this.builtin = builtin;
         }
 
         @Override
@@ -75,37 +73,50 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             Row row = (Row) o;
             return selected == row.selected
                     && deletable == row.deletable
+                    && builtin == row.builtin
                     && id.equals(row.id)
                     && title.equals(row.title);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, title, selected, deletable);
+            return Objects.hash(id, title, selected, deletable, builtin);
         }
     }
 
     private final List<Row> rows = new ArrayList<>();
     @Nullable
     private final Listener listener;
-    private boolean reorderHandlesEnabled = true;
+    @NonNull
+    private final GamepadLayoutPresetRepository repository;
+    @NonNull
+    private final GamepadLayoutPreviewCache previewCache;
+    private boolean reorderMode;
     private boolean reorderPending;
-    /** Active adapter index while dragging by handle; {@link RecyclerView#NO_POSITION} when idle. */
     private int manualDragAnchorPos = RecyclerView.NO_POSITION;
 
-    public GamepadPresetListAdapter(@Nullable Listener listener) {
+    public GamepadPresetCardGridAdapter(
+            @Nullable Listener listener,
+            @NonNull GamepadLayoutPresetRepository repository,
+            @NonNull GamepadLayoutPreviewCache previewCache) {
         this.listener = listener;
+        this.repository = repository;
+        this.previewCache = previewCache;
+        setHasStableIds(true);
     }
 
-    /** When false, drag handles are hidden (e.g. single-row list). Default true for the Layouts sheet. */
-    public void setReorderHandlesEnabled(boolean enabled) {
-        reorderHandlesEnabled = enabled;
+    public void setReorderMode(boolean enabled) {
+        if (reorderMode == enabled) {
+            return;
+        }
+        reorderMode = enabled;
+        notifyDataSetChanged();
     }
 
-    /**
-     * Reorders the in-memory row list during a drag. Call {@link #consumePendingReorderIds()} after the
-     * gesture ends to persist via {@link GamepadLayoutPresetRepository#reorderPresets}.
-     */
+    public boolean isReorderMode() {
+        return reorderMode;
+    }
+
     public void moveItem(int fromPosition, int toPosition) {
         if (fromPosition < 0 || toPosition < 0 || fromPosition >= rows.size() || toPosition >= rows.size()) {
             return;
@@ -119,9 +130,6 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         reorderPending = true;
     }
 
-    /**
-     * @return ordered preset ids if the list changed during the last drag; otherwise {@code null}.
-     */
     @Nullable
     public List<String> consumePendingReorderIds() {
         if (!reorderPending) {
@@ -147,7 +155,9 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             String title = r.displayName != null && !r.displayName.isEmpty() ? r.displayName : r.id;
             boolean selected = activeId != null && activeId.equals(r.id);
             boolean deletable = !GamepadLayoutPresetConstants.isPresetDeletionProtected(r.id);
-            newRows.add(new Row(r.id, title, selected, deletable));
+            boolean builtin = GamepadLayoutPresetConstants.isPresetDeletionProtected(r.id)
+                    || GamepadLayoutPresetConstants.isBundledPackPresetId(r.id);
+            newRows.add(new Row(r.id, title, selected, deletable, builtin));
         }
         if (rows.isEmpty()) {
             rows.clear();
@@ -182,17 +192,23 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         result.dispatchUpdatesTo(this);
     }
 
+    @Override
+    public long getItemId(int position) {
+        return rows.get(position).id.hashCode();
+    }
+
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_gamepad_preset_row, parent, false);
+                .inflate(R.layout.item_gamepad_preset_card, parent, false);
         return new VH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         Row row = rows.get(position);
+        Context ctx = h.itemView.getContext();
         h.title.setText(row.title);
 
         int primary = MaterialColors.getColor(h.title, com.google.android.material.R.attr.colorPrimary);
@@ -205,10 +221,24 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             h.title.setTextColor(onSurface);
         }
 
-        h.check.setVisibility(row.selected ? View.VISIBLE : View.INVISIBLE);
+        h.activeBadge.setVisibility(row.selected ? View.VISIBLE : View.GONE);
+        h.builtinBadge.setVisibility(row.builtin ? View.VISIBLE : View.GONE);
+
+        float density = ctx.getResources().getDisplayMetrics().density;
+        int strokePx = row.selected ? Math.round(2f * density) : 0;
+        h.card.setStrokeWidth(strokePx);
+        if (row.selected) {
+            h.card.setStrokeColor(ColorStateList.valueOf(primary));
+        } else {
+            h.card.setStrokeColor(ColorStateList.valueOf(Color.TRANSPARENT));
+        }
+
         h.overflow.setIconTint(ColorStateList.valueOf(onSurface));
 
-        h.row.setOnClickListener(v -> {
+        h.card.setOnClickListener(v -> {
+            if (reorderMode) {
+                return;
+            }
             if (listener != null) {
                 listener.onActivatePreset(row.id);
             }
@@ -219,9 +249,9 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
             }
         });
 
-        boolean showReorder = reorderHandlesEnabled && rows.size() > 1;
-        h.dragHandle.setVisibility(showReorder ? View.VISIBLE : View.GONE);
-        if (showReorder) {
+        boolean showReorderHandle = reorderMode && rows.size() > 1;
+        h.dragHandle.setVisibility(showReorderHandle ? View.VISIBLE : View.GONE);
+        if (showReorderHandle) {
             h.dragHandle.setOnTouchListener((v, event) -> {
                 ViewParentRv parentRv = ViewParentRv.from(h.itemView);
                 if (parentRv == null) {
@@ -273,6 +303,41 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         } else {
             h.dragHandle.setOnTouchListener(null);
         }
+
+        h.preview.setImageDrawable(null);
+        long sig = repository.presetFileContentSignature(row.id);
+        final int boundPosition = position;
+        previewCache.loadPreview(row.id, sig, bmp -> {
+            if (h.getBindingAdapterPosition() != boundPosition) {
+                return;
+            }
+            if (bmp != null) {
+                h.preview.setImageBitmap(bmp);
+            } else {
+                h.preview.setImageBitmap(null);
+            }
+        });
+
+        StringBuilder a11y = new StringBuilder(row.title);
+        if (row.builtin) {
+            a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_builtin_badge));
+        }
+        if (row.selected) {
+            a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_active_badge));
+        }
+        if (reorderMode) {
+            a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_card_a11y_reorder_suffix));
+        } else {
+            a11y.append(". ").append(ctx.getString(R.string.gamepad_presets_card_a11y_activate));
+        }
+        h.card.setContentDescription(a11y.toString());
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull VH holder) {
+        super.onViewRecycled(holder);
+        holder.preview.setImageBitmap(null);
+        holder.dragHandle.setOnTouchListener(null);
     }
 
     @Override
@@ -280,7 +345,6 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
         return rows.size();
     }
 
-    /** Pair holder for local class without extra file. */
     private static final class ViewParentRv {
         final RecyclerView recyclerView;
 
@@ -299,19 +363,23 @@ public final class GamepadPresetListAdapter extends RecyclerView.Adapter<Gamepad
     }
 
     static final class VH extends RecyclerView.ViewHolder {
-        final LinearLayout row;
+        final MaterialCardView card;
+        final ImageView preview;
         final TextView title;
-        final View check;
+        final TextView activeBadge;
+        final TextView builtinBadge;
         final AppCompatImageView dragHandle;
         final MaterialButton overflow;
 
         VH(@NonNull View itemView) {
             super(itemView);
-            row = itemView.findViewById(R.id.preset_row_root);
-            check = itemView.findViewById(R.id.preset_row_check);
-            title = itemView.findViewById(R.id.preset_row_title);
-            dragHandle = itemView.findViewById(R.id.preset_row_drag_handle);
-            overflow = itemView.findViewById(R.id.preset_row_overflow);
+            card = itemView.findViewById(R.id.preset_card_root);
+            preview = itemView.findViewById(R.id.preset_card_preview);
+            title = itemView.findViewById(R.id.preset_card_title);
+            activeBadge = itemView.findViewById(R.id.preset_card_active_badge);
+            builtinBadge = itemView.findViewById(R.id.preset_card_builtin_chip);
+            dragHandle = itemView.findViewById(R.id.preset_card_drag_handle);
+            overflow = itemView.findViewById(R.id.preset_card_overflow);
         }
     }
 }

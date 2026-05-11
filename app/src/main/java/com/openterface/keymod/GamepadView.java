@@ -669,6 +669,14 @@ public class GamepadView extends View {
         if (!isAttachedToWindow()) {
             return;
         }
+        refreshThemeAccentForHeadless();
+    }
+
+    /**
+     * Resolves {@link #themeAccentPrimary} from the view context when the view is not attached
+     * (e.g. off-screen layout thumbnails). Safe to call before {@link #measure(int, int)}.
+     */
+    public void refreshThemeAccentForHeadless() {
         themeAccentPrimary = MaterialColors.getColor(this,
                 com.google.android.material.R.attr.colorPrimary,
                 Color.parseColor("#F57C00"));

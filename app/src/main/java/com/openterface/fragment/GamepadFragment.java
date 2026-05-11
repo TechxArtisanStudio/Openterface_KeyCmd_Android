@@ -65,10 +65,12 @@ import android.app.Dialog;
 
 import androidx.appcompat.app.AppCompatDialog;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
@@ -123,7 +125,8 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetExportCreator;
-import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
+import com.openterface.keymod.gamepad.GamepadLayoutPreviewCache;
+import com.openterface.keymod.gamepad.GamepadPresetCardGridAdapter;
 import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
 import com.openterface.keymod.GamepadView.DpadStateListener;
@@ -333,6 +336,8 @@ public class GamepadFragment extends Fragment {
     private float stickPointerMouseSensitivity = 1.0f;
 
     private GamepadLayoutPresetRepository presetRepository;
+    @Nullable
+    private GamepadLayoutPreviewCache gamepadLayoutPreviewCache;
     private ActivityResultLauncher<String[]> importPresetLauncher;
     /** Preset id whose JSON is written when {@link #savePresetCreateDocumentLauncher} completes. */
     @Nullable
@@ -379,6 +384,9 @@ public class GamepadFragment extends Fragment {
                     String err = presetRepository.importFromUri(uri, true);
                     if (err == null) {
                         reloadFromPrefsAndApplyView();
+                        if (isAdded()) {
+                            previewCache().invalidateAll();
+                        }
                         Toast.makeText(requireContext(), R.string.gamepad_presets_import_ok, Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(requireContext(),
@@ -2114,13 +2122,21 @@ public class GamepadFragment extends Fragment {
         updateGamepadToolbarScrimForBackground();
     }
 
+    @NonNull
+    private GamepadLayoutPreviewCache previewCache() {
+        if (gamepadLayoutPreviewCache == null) {
+            gamepadLayoutPreviewCache = new GamepadLayoutPreviewCache(requireContext(), presetRepository);
+        }
+        return gamepadLayoutPreviewCache;
+    }
+
     private void showGamepadPresetsBottomSheet() {
         // AppCompatDialog (not BottomSheetDialog): avoids CoordinatorLayout/BottomSheetBehavior
         // stealing vertical gestures so the preset RecyclerView scrolls reliably; no second settle pass.
         Context dlgCtx = new ContextThemeWrapper(
                 gamepadUiContext(), R.style.Theme_KeyMod_GamepadPresetPickerDialog);
         AppCompatDialog dialog = new AppCompatDialog(dlgCtx);
-        View sheet = LayoutInflater.from(dlgCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
+        View sheet = LayoutInflater.from(dlgCtx).inflate(R.layout.dialog_gamepad_presets_grid, null, false);
         dialog.setContentView(sheet);
         Window dw = dialog.getWindow();
         if (dw != null) {
@@ -2144,9 +2160,17 @@ public class GamepadFragment extends Fragment {
         MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
         MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
         MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
+        MaterialCheckBox reorderCb = sheet.findViewById(R.id.gamepad_presets_reorder);
 
-        final GamepadPresetListAdapter[] presetListAdapterRef = new GamepadPresetListAdapter[1];
-        presetListAdapterRef[0] = new GamepadPresetListAdapter(new GamepadPresetListAdapter.Listener() {
+        DisplayMetrics dm = dlgCtx.getResources().getDisplayMetrics();
+        float density = dm.density;
+        int screenWdp = (int) (dm.widthPixels / Math.max(1f, density));
+        int span = Math.max(2, Math.min(4, Math.round(screenWdp / 190f)));
+        recycler.setLayoutManager(new GridLayoutManager(dlgCtx, span));
+
+        final GamepadPresetCardGridAdapter[] presetListAdapterRef = new GamepadPresetCardGridAdapter[1];
+        presetListAdapterRef[0] = new GamepadPresetCardGridAdapter(
+                new GamepadPresetCardGridAdapter.Listener() {
             @Override
             public void onPresetReorderFinished() {
                 List<String> ids = presetListAdapterRef[0].consumePendingReorderIds();
@@ -2200,12 +2224,15 @@ public class GamepadFragment extends Fragment {
             public void onOverflow(@NonNull String id, @NonNull View anchor) {
                 showPresetOverflowMenu(id, anchor, dialog, presetListAdapterRef[0]);
             }
-        });
-        GamepadPresetListAdapter adapter = presetListAdapterRef[0];
-        recycler.setLayoutManager(new LinearLayoutManager(dlgCtx));
+        }, presetRepository, previewCache());
+        GamepadPresetCardGridAdapter adapter = presetListAdapterRef[0];
         recycler.setAdapter(adapter);
-        adapter.setReorderHandlesEnabled(true);
         refreshPresetSheetAdapter(adapter);
+        if (reorderCb != null) {
+            reorderCb.setChecked(false);
+            reorderCb.setOnCheckedChangeListener((buttonView, isChecked) ->
+                    presetListAdapterRef[0].setReorderMode(isChecked));
+        }
 
         if (newLayoutBtn != null) {
             newLayoutBtn.setOnClickListener(v -> {
@@ -2222,6 +2249,7 @@ public class GamepadFragment extends Fragment {
                         if (err != null) {
                             Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
                         } else {
+                            previewCache().invalidateAll();
                             Toast.makeText(dlgCtx, R.string.gamepad_presets_reset_shipped_done,
                                             Toast.LENGTH_SHORT)
                                     .show();
@@ -2249,7 +2277,7 @@ public class GamepadFragment extends Fragment {
         });
     }
 
-    private void refreshPresetSheetAdapter(@NonNull GamepadPresetListAdapter adapter) {
+    private void refreshPresetSheetAdapter(@NonNull GamepadPresetCardGridAdapter adapter) {
         adapter.setData(presetRepository.listPresets(), presetRepository.getActivePresetId());
     }
 
@@ -2260,7 +2288,7 @@ public class GamepadFragment extends Fragment {
     private void refreshPresetSheetAdapterAndResetListPresentation(
             @NonNull RecyclerView recycler,
             @NonNull View sheetRoot,
-            @NonNull GamepadPresetListAdapter adapter,
+            @NonNull GamepadPresetCardGridAdapter adapter,
             @NonNull Dialog presetSheetDialog) {
         refreshPresetSheetAdapter(adapter);
         // Two posts: first runs after the current frame; second runs after DiffUtil + child layout
@@ -2268,7 +2296,9 @@ public class GamepadFragment extends Fragment {
         recycler.post(() -> recycler.post(() -> {
             recycler.stopScroll();
             RecyclerView.LayoutManager lm = recycler.getLayoutManager();
-            if (lm instanceof LinearLayoutManager) {
+            if (lm instanceof GridLayoutManager) {
+                ((GridLayoutManager) lm).scrollToPositionWithOffset(0, 0);
+            } else if (lm instanceof LinearLayoutManager) {
                 ((LinearLayoutManager) lm).scrollToPositionWithOffset(0, 0);
             } else {
                 recycler.scrollToPosition(0);
@@ -2285,7 +2315,7 @@ public class GamepadFragment extends Fragment {
     private void confirmDeletePreset(
             @NonNull String presetId,
             @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
+            @NonNull GamepadPresetCardGridAdapter adapter) {
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
             return;
         }
@@ -2299,6 +2329,7 @@ public class GamepadFragment extends Fragment {
                         Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
                         refreshPresetSheetAdapter(adapter);
                     } else {
+                        previewCache().invalidatePreset(presetId);
                         hostDialog.dismiss();
                         reloadFromPrefsAndApplyView();
                         updateActivePresetNameUi();
@@ -2310,7 +2341,7 @@ public class GamepadFragment extends Fragment {
 
     private void confirmResetDefaultPreset(
             @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
+            @NonNull GamepadPresetCardGridAdapter adapter) {
         Context ctx = hostDialog.getContext();
         new AlertDialog.Builder(ctx)
                 .setTitle(R.string.gamepad_preset_reset_title)
@@ -2320,6 +2351,7 @@ public class GamepadFragment extends Fragment {
                     if (err != null) {
                         Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
                     } else {
+                        previewCache().invalidatePreset(GamepadLayoutPresetConstants.DEFAULT_PRESET_ID);
                         Toast.makeText(ctx, R.string.gamepad_preset_reset_done, Toast.LENGTH_SHORT).show();
                         refreshPresetSheetAdapter(adapter);
                         if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(
@@ -2337,7 +2369,7 @@ public class GamepadFragment extends Fragment {
             @NonNull String presetId,
             @NonNull View anchor,
             @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
+            @NonNull GamepadPresetCardGridAdapter adapter) {
         PopupMenu pm = new PopupMenu(anchor.getContext(), anchor);
         pm.getMenuInflater().inflate(R.menu.menu_gamepad_preset_row, pm.getMenu());
         if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
@@ -2358,6 +2390,10 @@ public class GamepadFragment extends Fragment {
             if (id == R.id.gamepad_preset_duplicate) {
                 GamepadLayoutPresetRepository.DuplicateResult dup = presetRepository.duplicatePreset(presetId);
                 if (dup.isSuccess()) {
+                    previewCache().invalidatePreset(presetId);
+                    if (dup.newId != null) {
+                        previewCache().invalidatePreset(dup.newId);
+                    }
                     Toast.makeText(requireContext(), R.string.gamepad_preset_duplicated, Toast.LENGTH_SHORT).show();
                     refreshPresetSheetAdapter(adapter);
                 } else {
@@ -7621,8 +7657,7 @@ public class GamepadFragment extends Fragment {
     }
 
     /**
-     * Positions the Layouts picker like the old bottom sheet: bottom-centered; landscape uses the
-     * same width band as {@code gamepad_presets_bottom_sheet_* } dimens.
+     * Positions the Layouts picker: bottom-centered, wide dialog for the card grid (full width minus margin).
      */
     private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, @NonNull Context ctx) {
         if (window == null) {
@@ -7632,15 +7667,9 @@ public class GamepadFragment extends Fragment {
         lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
         int screenW = dm.widthPixels;
-        if (ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            int maxW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_max_width);
-            int minW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_min_width);
-            int targetW = Math.min(Math.max(Math.round(screenW * 0.38f), minW), maxW);
-            targetW = Math.min(targetW, screenW);
-            lp.width = targetW > 0 ? targetW : WindowManager.LayoutParams.MATCH_PARENT;
-        } else {
-            lp.width = WindowManager.LayoutParams.MATCH_PARENT;
-        }
+        int margin = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_dialog_horizontal_margin);
+        int inner = screenW - 2 * margin;
+        lp.width = inner > 0 ? inner : WindowManager.LayoutParams.MATCH_PARENT;
         lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
         window.setAttributes(lp);
     }

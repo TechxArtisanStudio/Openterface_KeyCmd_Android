@@ -588,6 +588,13 @@
     <string name="gamepad_presets_reset_shipped_message">將「預設」以及此應用程式版本內含的所有版面還原為安裝時的原始內容。您建立或匯入的自訂版面不會被刪除，也不會被變更。</string>
     <string name="gamepad_presets_reset_shipped_confirm">重設內建</string>
     <string name="gamepad_presets_reset_shipped_done">已重設內建版面</string>
+    <string name="gamepad_presets_reset_shipped_short">重設內建</string>
+    <string name="gamepad_presets_reorder">排序</string>
+    <string name="gamepad_presets_reorder_cd">顯示拖曳控點以變更版面順序</string>
+    <string name="gamepad_presets_builtin_badge">內建</string>
+    <string name="gamepad_presets_active_badge">使用中</string>
+    <string name="gamepad_presets_card_a11y_activate">點兩下以啟用此版面。</string>
+    <string name="gamepad_presets_card_a11y_reorder_suffix">排序模式：拖曳卡片上的控點，再移到新位置。</string>
     <string name="gamepad_preset_row_menu_cd">版面選項</string>
     <string name="gamepad_preset_row_drag_handle_cd">拖曳以調整版面順序</string>
     <string name="gamepad_preset_row_share_cd">分享版面</string>

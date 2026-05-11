@@ -81,6 +81,17 @@ public class GamepadLayoutPresetRepository {
         return new File(dir, id + ".json");
     }
 
+    /**
+     * Changes when the on-disk JSON for this preset is rewritten. Used for layout preview thumbnail cache keys.
+     */
+    public long presetFileContentSignature(@NonNull String id) {
+        File f = presetFile(id);
+        if (!f.isFile()) {
+            return 0L;
+        }
+        return f.length() ^ (f.lastModified() * 31L);
+    }
+
     public void ensureMigratedFromLegacy() {
         int version = storePrefs.getInt(KEY_STORE_VERSION, 0);
         if (version >= STORE_VERSION) {

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="@dimen/spacing_small"
+    android:background="@drawable/bg_presentation_touchpad_dialog"
+    android:clipToOutline="true"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/spacing_medium"
+    android:paddingEnd="@dimen/spacing_medium"
+    android:paddingTop="@dimen/spacing_medium"
+    android:paddingBottom="@dimen/spacing_medium">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/gamepad_presets_sheet_title"
+        android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Title"
+        android:textColor="?attr/colorOnSurface"
+        tools:text="Layouts" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/gamepad_presets_new_layout"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/gamepad_presets_new_layout_short"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/gamepad_presets_import_btn"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_tiny"
+                android:minHeight="48dp"
+                android:text="@string/gamepad_presets_import_short"
+                android:textSize="13sp"
+                app:strokeColor="?attr/colorOutline" />
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/gamepad_presets_reorder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:contentDescription="@string/gamepad_presets_reorder_cd"
+                android:minHeight="48dp"
+                android:text="@string/gamepad_presets_reorder"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/gamepad_presets_reset_shipped_btn"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:minHeight="48dp"
+                android:text="@string/gamepad_presets_reset_shipped_short"
+                android:textColor="?attr/colorError"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/gamepad_presets_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/gamepad_presets_grid_recycler_height"
+        android:layout_marginTop="@dimen/spacing_medium"
+        android:clipToPadding="false"
+        android:minHeight="120dp"
+        android:nestedScrollingEnabled="true"
+        android:overScrollMode="ifContentScrolls"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
+        android:scrollbars="vertical" />
+</LinearLayout>
