@@ -516,6 +516,13 @@ by TechxArtisan</string>
     <string name="compose_empty">No text to send.</string>
     <string name="compose_sent">Sent %1$d characters.</string>
     <string name="compose_cancelled">Send stopped.</string>
+    <string name="compose_send_warning_title">Send with warning?</string>
+    <string name="compose_send_warning_count">Total: %1$d characters.</string>
+    <string name="compose_send_warning_non_ascii">Some characters are not ASCII and may not be received correctly by the target device.</string>
+    <string name="compose_send_warning_length">Long text may lose characters on some target devices due to HID transmission limits.</string>
+    <string name="compose_send_warning_send_anyway">Send anyway</string>
+    <string name="compose_send_warning_check">Check</string>
+    <string name="compose_send_warning_no_non_ascii_found">No non-ASCII characters found to highlight.</string>
 
     <!-- Top strip PH1–PH3: long-press mode picker -->
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>

@@ -69,6 +69,7 @@ import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
+import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -353,6 +354,7 @@ public class CustomKeyboardView extends LinearLayout {
     });
     private final AtomicBoolean imeSubComposeCancelSend = new AtomicBoolean(false);
     private volatile boolean imeSubComposeSending;
+    private boolean imeComposeHighlightNonAsciiChars;
     private final Handler imeSubComposeMainHandler = new Handler(Looper.getMainLooper());
     private static final long SHOW_LOCAL_IME_RETRY_DELAY_MS = 160L;
     private final Runnable showLocalImeSoftKeyboardMainRunnable = this::runShowLocalImeSoftKeyboardMain;
@@ -7899,11 +7901,11 @@ public class CustomKeyboardView extends LinearLayout {
         return splitLandscapeComposeExternalEdit != null ? splitLandscapeComposeExternalEdit : imeCaptureEdit;
     }
 
-    @Nullable
-    private Integer resolveImeCaptureSendBlockedReason(
+    @NonNull
+    private ImeComposeSendGate.SendAssessment assessImeCaptureSend(
             @Nullable ConnectionManager connectionManager,
             String text) {
-        return ImeComposeSendGate.resolveSendBlockedReasonResId(connectionManager, text);
+        return ImeComposeSendGate.assess(connectionManager, text);
     }
 
     private void updateImeCaptureToolbarState() {
@@ -7949,7 +7951,9 @@ public class CustomKeyboardView extends LinearLayout {
         }
         String t = edit.getText() != null ? edit.getText().toString() : "";
         ConnectionManager cm = peekConnectionManager();
-        Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, t);
+        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, t);
+        boolean canSend = assessment.canSend();
+        boolean showWarning = canSend && assessment.warningInfo != null;
 
         if (imeCaptureTouchpadButton != null && shouldShowImeToolbarPopOutTouchpadButton()) {
             boolean connected = cm != null && cm.isConnected();
@@ -7996,17 +8000,25 @@ public class CustomKeyboardView extends LinearLayout {
         } else {
             if (imeCaptureSendButton != null) {
                 imeCaptureSendButton.setImageResource(R.drawable.ic_compose_send_24);
-                imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
+                int warningColor =
+                        MaterialColors.getColor(
+                                imeCaptureSendButton,
+                                com.google.android.material.R.attr.colorTertiary);
+                imeCaptureSendButton.setColorFilter(
+                        showWarning ? warningColor : resolveThemeTextColor());
                 imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
-                boolean canSend = blockedReasonResId == null;
                 imeCaptureSendButton.setEnabled(true);
                 imeCaptureSendButton.setAlpha(canSend ? 1f : 0.45f);
             }
             if (splitLandscapeRailSend != null) {
                 splitLandscapeRailSend.setImageResource(R.drawable.ic_compose_send_24);
-                splitLandscapeRailSend.setColorFilter(resolveThemeTextColor());
+                int warningColor =
+                        MaterialColors.getColor(
+                                splitLandscapeRailSend,
+                                com.google.android.material.R.attr.colorTertiary);
+                splitLandscapeRailSend.setColorFilter(
+                        showWarning ? warningColor : resolveThemeTextColor());
                 splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_send));
-                boolean canSend = blockedReasonResId == null;
                 splitLandscapeRailSend.setEnabled(true);
                 splitLandscapeRailSend.setAlpha(canSend ? 1f : 0.45f);
             }
@@ -8052,15 +8064,88 @@ public class CustomKeyboardView extends LinearLayout {
         MainActivity ma = (MainActivity) act;
         ConnectionManager cm = ma.getConnectionManager();
         String text = edit.getText() != null ? edit.getText().toString() : "";
-        Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, text);
-        if (blockedReasonResId != null) {
-            int duration = blockedReasonResId == R.string.compose_ascii_warning
-                    ? Toast.LENGTH_LONG
-                    : Toast.LENGTH_SHORT;
-            Toast.makeText(getContext(), blockedReasonResId, duration).show();
+        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, text);
+        if (assessment.hardBlockReasonResId != null) {
+            Toast.makeText(getContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
             return;
         }
+        if (assessment.warningInfo != null) {
+            showImeComposeSendWarningDialog(cm, assessment.warningInfo);
+            return;
+        }
+        startImeComposeSend(ma, cm, edit, text);
+    }
 
+    private void showImeComposeSendWarningDialog(
+            @Nullable ConnectionManager cm,
+            @NonNull ImeComposeSendGate.WarningInfo warningInfo) {
+        if (getContext() == null) {
+            return;
+        }
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || imeSubComposeSending) {
+            return;
+        }
+        StringBuilder message =
+                new StringBuilder(
+                        getContext().getString(R.string.compose_send_warning_count, warningInfo.charCount));
+        if (warningInfo.hasNonAscii) {
+            message.append('\n').append(getContext().getString(R.string.compose_send_warning_non_ascii));
+        }
+        if (warningInfo.hasLengthRisk) {
+            message.append('\n').append(getContext().getString(R.string.compose_send_warning_length));
+        }
+        new AlertDialog.Builder(getContext())
+                .setTitle(R.string.compose_send_warning_title)
+                .setMessage(message.toString())
+                .setPositiveButton(
+                        R.string.compose_send_warning_send_anyway,
+                        (dialog, which) -> {
+                            if (imeSubComposeSending) {
+                                return;
+                            }
+                            AppCompatActivity act = unwrapAppCompatActivity(getContext());
+                            EditText currentEdit = effectiveImeCaptureEdit();
+                            if (!(act instanceof MainActivity) || currentEdit == null) {
+                                return;
+                            }
+                            MainActivity ma = (MainActivity) act;
+                            String now =
+                                    currentEdit.getText() != null
+                                            ? currentEdit.getText().toString()
+                                            : "";
+                            ImeComposeSendGate.SendAssessment reassess =
+                                    assessImeCaptureSend(cm, now);
+                            if (reassess.hardBlockReasonResId != null) {
+                                Toast.makeText(
+                                                getContext(),
+                                                reassess.hardBlockReasonResId,
+                                                Toast.LENGTH_SHORT)
+                                        .show();
+                                updateImeCaptureToolbarState();
+                                return;
+                            }
+                            startImeComposeSend(ma, cm, currentEdit, now);
+                        })
+                .setNeutralButton(
+                        R.string.compose_send_warning_check,
+                        (dialog, which) -> {
+                            imeComposeHighlightNonAsciiChars = true;
+                            refreshImeComposeNonAsciiHighlights(true);
+                            EditText currentEdit = effectiveImeCaptureEdit();
+                            if (currentEdit != null) {
+                                currentEdit.requestFocus();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void startImeComposeSend(
+            @NonNull MainActivity ma,
+            @Nullable ConnectionManager cm,
+            @NonNull EditText edit,
+            @NonNull String text) {
         imeSubComposeCancelSend.set(false);
         imeSubComposeSending = true;
         edit.setEnabled(false);
@@ -8094,11 +8179,41 @@ public class CustomKeyboardView extends LinearLayout {
                     Toast.makeText(getContext(), R.string.compose_cancelled, Toast.LENGTH_SHORT).show();
                 } else {
                     imeCaptureUndoSnapshot = null;
+                    imeComposeHighlightNonAsciiChars = false;
+                    refreshImeComposeNonAsciiHighlights(false);
                     String msg = getContext().getString(R.string.compose_sent, sentLen);
                     Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
                 }
             });
         });
+    }
+
+    private void refreshImeComposeNonAsciiHighlights(boolean showNoneFoundToast) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || edit.getText() == null) {
+            return;
+        }
+        Editable editable = edit.getText();
+        if (!imeComposeHighlightNonAsciiChars) {
+            NonAsciiTextHighlighter.clear(editable);
+            return;
+        }
+        int color =
+                MaterialColors.getColor(
+                        edit,
+                        com.google.android.material.R.attr.colorTertiaryContainer);
+        int highlighted = NonAsciiTextHighlighter.apply(editable, color);
+        if (highlighted == 0) {
+            imeComposeHighlightNonAsciiChars = false;
+            NonAsciiTextHighlighter.clear(editable);
+            if (showNoneFoundToast && getContext() != null) {
+                Toast.makeText(
+                                getContext(),
+                                R.string.compose_send_warning_no_non_ascii_found,
+                                Toast.LENGTH_SHORT)
+                        .show();
+            }
+        }
     }
 
     private void setImeCaptureToolbarEnabledWhileSending(boolean enabled) {
@@ -8168,6 +8283,7 @@ public class CustomKeyboardView extends LinearLayout {
                     @Override
                     public void afterTextChanged(Editable s) {
                         updateImeCaptureToolbarState();
+                        refreshImeComposeNonAsciiHighlights(false);
                     }
                 };
         externalEdit.addTextChangedListener(splitLandscapeRailTextWatcher);
@@ -8364,6 +8480,7 @@ public class CustomKeyboardView extends LinearLayout {
                 @Override
                 public void afterTextChanged(Editable s) {
                     updateImeCaptureToolbarState();
+                    refreshImeComposeNonAsciiHighlights(false);
                 }
             });
 

@@ -22,12 +22,14 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeComposeSendGate;
+import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,6 +56,7 @@ public class BasicComposeFragment extends Fragment {
     private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
+    private boolean highlightNonAsciiChars;
 
     /** Match {@link android.Manifest} {@code windowSoftInputMode} for {@link MainActivity}. */
     private static final int ACTIVITY_SOFT_INPUT_MODE =
@@ -93,6 +96,7 @@ public class BasicComposeFragment extends Fragment {
                     @Override
                     public void afterTextChanged(Editable s) {
                         refreshToolbarState();
+                        refreshEditorNonAsciiHighlights(false);
                     }
                 });
         refreshToolbarState();
@@ -193,14 +197,71 @@ public class BasicComposeFragment extends Fragment {
         }
         ConnectionManager cm = ma.getConnectionManager();
         String text = editor.getText() != null ? editor.getText().toString() : "";
-        Integer blocked = ImeComposeSendGate.resolveSendBlockedReasonResId(cm, text);
-        if (blocked != null) {
-            int duration =
-                    blocked == R.string.compose_ascii_warning ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT;
-            Toast.makeText(requireContext(), blocked, duration).show();
+        ImeComposeSendGate.SendAssessment assessment = ImeComposeSendGate.assess(cm, text);
+        if (assessment.hardBlockReasonResId != null) {
+            Toast.makeText(requireContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
             return;
         }
+        if (assessment.warningInfo != null) {
+            showComposeSendWarningDialog(cm, assessment.warningInfo);
+            return;
+        }
+        startSend(ma, cm, text);
+    }
 
+    private void showComposeSendWarningDialog(
+            @Nullable ConnectionManager cm, @NonNull ImeComposeSendGate.WarningInfo warningInfo) {
+        if (editor == null || sending) {
+            return;
+        }
+        StringBuilder message =
+                new StringBuilder(
+                        getString(R.string.compose_send_warning_count, warningInfo.charCount));
+        if (warningInfo.hasNonAscii) {
+            message.append('\n').append(getString(R.string.compose_send_warning_non_ascii));
+        }
+        if (warningInfo.hasLengthRisk) {
+            message.append('\n').append(getString(R.string.compose_send_warning_length));
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.compose_send_warning_title)
+                .setMessage(message.toString())
+                .setPositiveButton(
+                        R.string.compose_send_warning_send_anyway,
+                        (dialog, which) -> {
+                            MainActivity ma = mainActivity();
+                            if (ma == null || editor == null || sending) {
+                                return;
+                            }
+                            String now = editor.getText() != null ? editor.getText().toString() : "";
+                            ImeComposeSendGate.SendAssessment reassess =
+                                    ImeComposeSendGate.assess(cm, now);
+                            if (reassess.hardBlockReasonResId != null) {
+                                Toast.makeText(
+                                                requireContext(),
+                                                reassess.hardBlockReasonResId,
+                                                Toast.LENGTH_SHORT)
+                                        .show();
+                                refreshToolbarState();
+                                return;
+                            }
+                            startSend(ma, cm, now);
+                        })
+                .setNeutralButton(
+                        R.string.compose_send_warning_check,
+                        (dialog, which) -> {
+                            highlightNonAsciiChars = true;
+                            refreshEditorNonAsciiHighlights(true);
+                            if (editor != null) {
+                                editor.requestFocus();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void startSend(
+            @NonNull MainActivity ma, @Nullable ConnectionManager cm, @NonNull String text) {
         cancelSend.set(false);
         sending = true;
         editor.setEnabled(false);
@@ -244,6 +305,8 @@ public class BasicComposeFragment extends Fragment {
                                                     .show();
                                         } else {
                                             undoSnapshot = null;
+                                            highlightNonAsciiChars = false;
+                                            refreshEditorNonAsciiHighlights(false);
                                             Toast.makeText(
                                                             requireContext(),
                                                             getString(R.string.compose_sent, sentLen),
@@ -260,6 +323,32 @@ public class BasicComposeFragment extends Fragment {
                 .start();
     }
 
+    private void refreshEditorNonAsciiHighlights(boolean showNoneFoundToast) {
+        if (editor == null || editor.getText() == null) {
+            return;
+        }
+        Editable editable = editor.getText();
+        if (!highlightNonAsciiChars) {
+            NonAsciiTextHighlighter.clear(editable);
+            return;
+        }
+        int color =
+                MaterialColors.getColor(
+                        editor, com.google.android.material.R.attr.colorTertiaryContainer);
+        int highlighted = NonAsciiTextHighlighter.apply(editable, color);
+        if (highlighted == 0) {
+            highlightNonAsciiChars = false;
+            NonAsciiTextHighlighter.clear(editable);
+            if (showNoneFoundToast) {
+                Toast.makeText(
+                                requireContext(),
+                                R.string.compose_send_warning_no_non_ascii_found,
+                                Toast.LENGTH_SHORT)
+                        .show();
+            }
+        }
+    }
+
     private void postSendFinished(Runnable r) {
         if (getActivity() != null) {
             getActivity().runOnUiThread(r);
@@ -273,8 +362,9 @@ public class BasicComposeFragment extends Fragment {
         MainActivity ma = mainActivity();
         ConnectionManager cm = ma != null ? ma.getConnectionManager() : null;
         String t = editor != null && editor.getText() != null ? editor.getText().toString() : "";
-        Integer blocked = ImeComposeSendGate.resolveSendBlockedReasonResId(cm, t);
-        boolean canSend = blocked == null;
+        ImeComposeSendGate.SendAssessment assessment = ImeComposeSendGate.assess(cm, t);
+        boolean canSend = assessment.canSend();
+        boolean showWarning = canSend && assessment.warningInfo != null;
 
         int primary =
                 MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorPrimary);
@@ -282,13 +372,17 @@ public class BasicComposeFragment extends Fragment {
                 MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOutline);
         int onSurface =
                 MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOnSurface);
+        int warning =
+                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorTertiary);
         ColorStateList primaryStroke = ColorStateList.valueOf(primary);
         ColorStateList outlineStroke = ColorStateList.valueOf(outline);
+        ColorStateList warningStroke = ColorStateList.valueOf(warning);
         ColorStateList primaryIcon = ColorStateList.valueOf(primary);
+        ColorStateList warningIcon = ColorStateList.valueOf(warning);
         ColorStateList mutedIcon = ColorStateList.valueOf(onSurface);
 
         if (editor != null) {
-            editor.setActivated(canSend && !sending);
+            editor.setActivated(canSend && !sending && !showWarning);
         }
 
         if (sending) {
@@ -316,8 +410,16 @@ public class BasicComposeFragment extends Fragment {
             redoBtn.setEnabled(canRedo);
             redoBtn.setAlpha(canRedo ? 1f : 0.45f);
 
-            sendBtn.setStrokeColor(canSend ? primaryStroke : outlineStroke);
-            sendBtn.setIconTint(canSend ? primaryIcon : mutedIcon);
+            if (!canSend) {
+                sendBtn.setStrokeColor(outlineStroke);
+                sendBtn.setIconTint(mutedIcon);
+            } else if (showWarning) {
+                sendBtn.setStrokeColor(warningStroke);
+                sendBtn.setIconTint(warningIcon);
+            } else {
+                sendBtn.setStrokeColor(primaryStroke);
+                sendBtn.setIconTint(primaryIcon);
+            }
         }
     }
 
