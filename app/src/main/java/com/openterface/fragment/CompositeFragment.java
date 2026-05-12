@@ -1167,6 +1167,7 @@ public class CompositeFragment extends Fragment {
                             }
                             refreshSplitLandscapeImeComposeRailBinding();
                             applyOrientationLayout();
+                            notifyKmProHeaderInputModeChanged();
                         }
 
                         @Override
@@ -1241,6 +1242,44 @@ public class CompositeFragment extends Fragment {
         applyOrientationLayout();
         requestCompositeImeInsetsAfterImeChange();
         applyKmProImeCaptureRequestedOrientation();
+        notifyKmProHeaderInputModeChanged();
+    }
+
+    private void notifyKmProHeaderInputModeChanged() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshHeaderModeSlotButtonsForCurrentHost();
+        }
+    }
+
+    /** Primary keyboard for host-driven KM Pro input mode (split uses left half as originator). */
+    @Nullable
+    private CustomKeyboardView primaryCustomKeyboardViewForHostActions() {
+        if (splitRoot != null) {
+            return keyboardViewLeft != null ? keyboardViewLeft : keyboardViewRight;
+        }
+        return keyboardView;
+    }
+
+    @NonNull
+    public CustomKeyboardView.KmProKeyboardInputMode getKmProKeyboardInputMode() {
+        CustomKeyboardView k = primaryCustomKeyboardViewForHostActions();
+        return k != null
+                ? k.getKmProKeyboardInputMode()
+                : CustomKeyboardView.KmProKeyboardInputMode.BUILT_IN_QWERTY;
+    }
+
+    public void setKmProKeyboardInputModeFromHostHeader(@NonNull CustomKeyboardView.KmProKeyboardInputMode mode) {
+        CustomKeyboardView k = primaryCustomKeyboardViewForHostActions();
+        if (k != null) {
+            k.setKmProKeyboardInputModeFromHost(mode);
+        }
+    }
+
+    /** Direct send / compose are portrait-only for KM Pro; landscape forces built-in. */
+    public boolean isKmProPortraitImeDirectComposeAllowed() {
+        return isAdded()
+                && getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
     }
 
     /**
@@ -1584,7 +1623,9 @@ public class CompositeFragment extends Fragment {
     }
 
     private void addRailButtonsSingleColumn() {
-        addRailButtonSingleColumn(splitImeRailToggle, false);
+        if (splitImeRailToggle != null && splitImeRailToggle.getVisibility() != View.GONE) {
+            addRailButtonSingleColumn(splitImeRailToggle, false);
+        }
         addRailButtonSingleColumn(splitImeRailUndo, true);
         addRailButtonSingleColumn(splitImeRailClear, true);
         addRailButtonSingleColumn(splitImeRailSaved, true);
@@ -1592,7 +1633,11 @@ public class CompositeFragment extends Fragment {
     }
 
     private void addRailButtonsTwoColumn() {
-        addRailButtonsPairRow(splitImeRailToggle, splitImeRailUndo, false);
+        if (splitImeRailToggle != null && splitImeRailToggle.getVisibility() != View.GONE) {
+            addRailButtonsPairRow(splitImeRailToggle, splitImeRailUndo, false);
+        } else {
+            addRailButtonSingleColumn(splitImeRailUndo, false);
+        }
         addRailButtonsPairRow(splitImeRailClear, splitImeRailSaved, true);
         addRailButtonsSendRow(splitImeRailSend, true);
     }
@@ -2185,8 +2230,10 @@ public class CompositeFragment extends Fragment {
         if (splitImeChromeSource != null) {
             registerImeSubComposeChromeListener(splitImeChromeSource);
         }
-        if (splitImeRailToggle != null && splitImeChromeSource != null) {
-            splitImeRailToggle.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailModeToggleClicked());
+        if (splitImeRailToggle != null) {
+            splitImeRailToggle.setVisibility(View.GONE);
+            splitImeRailToggle.setOnClickListener(null);
+            splitImeRailToggle.setClickable(false);
         }
         if (splitImeRailUndo != null && splitImeChromeSource != null) {
             splitImeRailUndo.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailUndoClicked());
@@ -2573,9 +2620,25 @@ public class CompositeFragment extends Fragment {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
+    /**
+     * IME direct/compose (B/C) are portrait-only for this phase; entering landscape forces built-in (A).
+     */
+    private void applyKmProLandscapeImePortraitOnlyGuard() {
+        if (displayMode == DisplayMode.SPLIT) {
+            if (keyboardViewLeft != null) {
+                keyboardViewLeft.forceKmProBuiltInKeyboardModeForLandscapeGuard();
+            }
+        } else if (keyboardView != null) {
+            keyboardView.forceKmProBuiltInKeyboardModeForLandscapeGuard();
+        }
+    }
+
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            applyKmProLandscapeImePortraitOnlyGuard();
+        }
         boolean isPortrait = newConfig.orientation == Configuration.ORIENTATION_PORTRAIT;
 
         if (displayMode == DisplayMode.SPLIT && isPortrait) {

@@ -105,6 +105,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CustomKeyboardView extends LinearLayout {
+
+    /**
+     * KM Pro merged PH1 keyboard input: tap cycles portrait {@code A → B → C → A}.
+     * IME modes are portrait-only for this phase; landscape forces {@link #BUILT_IN_QWERTY}.
+     */
+    public enum KmProKeyboardInputMode {
+        /** Built-in QWER (HID) keyboard. */
+        BUILT_IN_QWERTY,
+        /** System IME with per-keystroke HID send (direct). */
+        IME_DIRECT_SEND,
+        /** System IME compose buffer, then Send. */
+        IME_COMPOSE_SEND
+    }
+
     private static final String TAG = "CustomKeyboardView";
     private static final int TOP_PANEL_COLUMNS = 7;
     private static final int TOP_PANEL_ROWS = 3;
@@ -358,6 +372,12 @@ public class CustomKeyboardView extends LinearLayout {
     @Nullable
     private View imeCaptureAccentDivider;
     private boolean imeSubComposeDirectHidMode;
+    /**
+     * When applying KM Pro input mode from the activity header, {@link #updateKeyboard()} is posted so
+     * the ripple and header chrome can finish before {@code removeAllViews()} blocks the UI thread.
+     */
+    @Nullable
+    private Runnable deferredKmProLayoutFinishRunnable;
     private final ExecutorService imeSubComposeSendExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ImeCaptureSend");
         t.setDaemon(true);
@@ -721,9 +741,13 @@ public class CustomKeyboardView extends LinearLayout {
         setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         shortcutProfileManager = new ShortcutProfileManager(context.getApplicationContext());
         loadTopShortcutDisplayModeFromPrefs(context);
-        systemImeCaptureMode = context
-                .getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(KEY_SYSTEM_IME_CAPTURE, false);
+        SharedPreferences appPrefs = context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
+        systemImeCaptureMode = appPrefs.getBoolean(KEY_SYSTEM_IME_CAPTURE, false);
+        imeSubComposeDirectHidMode =
+                systemImeCaptureMode && appPrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
+        if (!systemImeCaptureMode) {
+            imeSubComposeDirectHidMode = false;
+        }
         keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(context);
 
         // Load keyboard layout based on orientation (matching iOS behavior)
@@ -948,11 +972,13 @@ public class CustomKeyboardView extends LinearLayout {
         if (shortcutsStripOnly == enabled) return;
         if (enabled && systemImeCaptureMode) {
             systemImeCaptureMode = false;
+            imeSubComposeDirectHidMode = false;
             Context ctx = getContext();
             if (ctx != null) {
                 ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
                         .edit()
                         .putBoolean(KEY_SYSTEM_IME_CAPTURE, false)
+                        .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
                         .apply();
             }
             if (splitPartner != null) {
@@ -1288,6 +1314,205 @@ public class CustomKeyboardView extends LinearLayout {
         return systemImeCaptureMode;
     }
 
+    /** Current KM Pro merged PH1 input mode (derived from {@link #systemImeCaptureMode} and direct flag). */
+    public KmProKeyboardInputMode getKmProKeyboardInputMode() {
+        if (!systemImeCaptureMode) {
+            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
+        }
+        return imeSubComposeDirectHidMode
+                ? KmProKeyboardInputMode.IME_DIRECT_SEND
+                : KmProKeyboardInputMode.IME_COMPOSE_SEND;
+    }
+
+    private static KmProKeyboardInputMode readKmProKeyboardInputModeFromPrefs(@Nullable Context ctx) {
+        if (ctx == null) {
+            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
+        }
+        SharedPreferences p = ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
+        if (!p.getBoolean(KEY_SYSTEM_IME_CAPTURE, false)) {
+            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
+        }
+        return p.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
+                ? KmProKeyboardInputMode.IME_DIRECT_SEND
+                : KmProKeyboardInputMode.IME_COMPOSE_SEND;
+    }
+
+    private void applyKmProKeyboardInputStateApplyFieldsOnly(KmProKeyboardInputMode target) {
+        switch (target) {
+            case BUILT_IN_QWERTY:
+                systemImeCaptureMode = false;
+                imeSubComposeDirectHidMode = false;
+                break;
+            case IME_DIRECT_SEND:
+                systemImeCaptureMode = true;
+                imeSubComposeDirectHidMode = true;
+                break;
+            case IME_COMPOSE_SEND:
+                systemImeCaptureMode = true;
+                imeSubComposeDirectHidMode = false;
+                break;
+            default:
+                systemImeCaptureMode = false;
+                imeSubComposeDirectHidMode = false;
+                break;
+        }
+    }
+
+    private void persistKmProKeyboardInputModePrefs(@Nullable Context ctx) {
+        if (ctx == null) {
+            return;
+        }
+        ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_SYSTEM_IME_CAPTURE, systemImeCaptureMode)
+                .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, imeSubComposeDirectHidMode)
+                .apply();
+    }
+
+    private int ph1DrawableResForKmProInputMode() {
+        switch (getKmProKeyboardInputMode()) {
+            case IME_DIRECT_SEND:
+                return R.drawable.ic_keyboard_ime_24;
+            case IME_COMPOSE_SEND:
+                return R.drawable.ic_ime_compose_mode_note_24;
+            case BUILT_IN_QWERTY:
+            default:
+                return R.drawable.ic_keyboard_keymod_24;
+        }
+    }
+
+    private int ph1ContentDescriptionStringResForKmProInputMode() {
+        switch (getKmProKeyboardInputMode()) {
+            case IME_DIRECT_SEND:
+                return R.string.top_shortcut_km_pro_input_ime_direct_cd;
+            case IME_COMPOSE_SEND:
+                return R.string.top_shortcut_km_pro_input_ime_compose_cd;
+            case BUILT_IN_QWERTY:
+            default:
+                return R.string.top_shortcut_km_pro_input_built_in_cd;
+        }
+    }
+
+    private void cancelDeferredKmProLayoutFinish() {
+        if (deferredKmProLayoutFinishRunnable != null) {
+            removeCallbacks(deferredKmProLayoutFinishRunnable);
+            deferredKmProLayoutFinishRunnable = null;
+        }
+    }
+
+    /**
+     * Split partner: mirror {@link KmProKeyboardInputMode} without prefs writes or host listeners
+     * (originator already persisted and notified).
+     *
+     * @param deferLayout when true, only {@link #updateKeyboard()} is posted (must match originator
+     *     header path so both halves do not block the tap frame).
+     */
+    private void applyKmProKeyboardInputStateFromPartner(KmProKeyboardInputMode target, boolean deferLayout) {
+        cancelDeferredKmProLayoutFinish();
+        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
+            collapseImeSubComposePersistedForChrome();
+        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
+            collapseImeSubComposePersistedForChrome();
+        }
+        applyKmProKeyboardInputStateApplyFieldsOnly(target);
+        rebuildTopShortcutPanels();
+        syncTopPanelViewportContent();
+        deferredKmProLayoutFinishRunnable =
+                () -> {
+                    try {
+                        updateKeyboard();
+                    } finally {
+                        deferredKmProLayoutFinishRunnable = null;
+                    }
+                };
+        if (deferLayout) {
+            post(deferredKmProLayoutFinishRunnable);
+        } else {
+            deferredKmProLayoutFinishRunnable.run();
+        }
+    }
+
+    private void applyKmProKeyboardInputStateFromUser(KmProKeyboardInputMode target, boolean deferFullKeyboardLayout) {
+        cancelDeferredKmProLayoutFinish();
+        if (splitPartner != null) {
+            splitPartner.cancelDeferredKmProLayoutFinish();
+        }
+        final boolean prevCapture = systemImeCaptureMode;
+        final boolean prevDirect = imeSubComposeDirectHidMode;
+        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
+            collapseImeSubComposePersistedForChrome();
+        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
+            collapseImeSubComposePersistedForChrome();
+        }
+        applyKmProKeyboardInputStateApplyFieldsOnly(target);
+        Context ctx = getContext();
+        persistKmProKeyboardInputModePrefs(ctx);
+        if (splitPartner != null) {
+            splitPartner.applyKmProKeyboardInputStateFromPartner(target, deferFullKeyboardLayout);
+        }
+        rebuildTopShortcutPanels();
+        syncTopPanelViewportContent();
+        deferredKmProLayoutFinishRunnable =
+                () -> {
+                    try {
+                        updateKeyboard();
+                        boolean newCapture = systemImeCaptureMode;
+                        boolean newDirect = imeSubComposeDirectHidMode;
+                        if (onImeCaptureModeChangedListener != null && prevCapture != newCapture) {
+                            onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, newCapture);
+                        }
+                        if (prevDirect != newDirect) {
+                            notifyImeSubComposeDirectHidModeChanged();
+                        }
+                    } finally {
+                        deferredKmProLayoutFinishRunnable = null;
+                    }
+                };
+        if (deferFullKeyboardLayout) {
+            post(deferredKmProLayoutFinishRunnable);
+        } else {
+            deferredKmProLayoutFinishRunnable.run();
+        }
+    }
+
+    private void cycleKmProKeyboardInputModeFromUser() {
+        KmProKeyboardInputMode next;
+        switch (getKmProKeyboardInputMode()) {
+            case BUILT_IN_QWERTY:
+                next = KmProKeyboardInputMode.IME_DIRECT_SEND;
+                break;
+            case IME_DIRECT_SEND:
+                next = KmProKeyboardInputMode.IME_COMPOSE_SEND;
+                break;
+            case IME_COMPOSE_SEND:
+            default:
+                next = KmProKeyboardInputMode.BUILT_IN_QWERTY;
+                break;
+        }
+        applyKmProKeyboardInputStateFromUser(next, false);
+    }
+
+    /**
+     * When entering landscape, KM Pro IME B/C are invalid; force built-in (State A) and persist.
+     */
+    public void forceKmProBuiltInKeyboardModeForLandscapeGuard() {
+        if (getKmProKeyboardInputMode() == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
+            return;
+        }
+        applyKmProKeyboardInputStateFromUser(KmProKeyboardInputMode.BUILT_IN_QWERTY, false);
+    }
+
+    /**
+     * Host (e.g. {@link com.openterface.fragment.CompositeFragment} / {@link MainActivity} header) sets
+     * KM Pro input mode without cycling PH1 on the shortcut strip.
+     */
+    public void setKmProKeyboardInputModeFromHost(@NonNull KmProKeyboardInputMode target) {
+        if (getKmProKeyboardInputMode() == target) {
+            return;
+        }
+        applyKmProKeyboardInputStateFromUser(target, true);
+    }
+
     /**
      * Single-pane portrait host reports whether Android soft IME is currently visible.
      * Used to collapse the top shortcut strip in portrait IME sub-compose for cleaner layout.
@@ -1302,27 +1527,27 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Split partner sync: apply the same IME capture flag without firing
+     * Split partner sync: mirror prefs-driven {@link KmProKeyboardInputMode} without firing
      * {@link OnImeCaptureModeChangedListener} (the originating view already notified).
      */
     public void applyImeCaptureFromPartner(boolean enabled) {
-        if (systemImeCaptureMode == enabled) {
-            // Still rebind: partner may have updated shared prefs / strip assets before we mirrored.
+        KmProKeyboardInputMode target =
+                enabled ? readKmProKeyboardInputModeFromPrefs(getContext()) : KmProKeyboardInputMode.BUILT_IN_QWERTY;
+        if (getKmProKeyboardInputMode() == target) {
             rebuildTopShortcutPanels();
             syncTopPanelViewportContent();
             updateKeyboard();
             return;
         }
-        if (!enabled) {
+        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
+            collapseImeSubComposePersistedForChrome();
+        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
             collapseImeSubComposePersistedForChrome();
         }
-        systemImeCaptureMode = enabled;
+        applyKmProKeyboardInputStateApplyFieldsOnly(target);
         Context ctx = getContext();
         if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, enabled)
-                    .apply();
+            persistKmProKeyboardInputModePrefs(ctx);
         }
         rebuildTopShortcutPanels();
         syncTopPanelViewportContent();
@@ -1528,9 +1753,15 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code == KEY_IME_TOGGLE) {
             Context ctx = getContext();
             if (ctx != null) {
-                return ctx.getString(systemImeCaptureMode
-                        ? R.string.top_shortcut_ime_toggle_system_short
-                        : R.string.top_shortcut_ime_toggle_keymod_short);
+                switch (getKmProKeyboardInputMode()) {
+                    case IME_DIRECT_SEND:
+                        return ctx.getString(R.string.top_shortcut_km_pro_input_ime_direct_short);
+                    case IME_COMPOSE_SEND:
+                        return ctx.getString(R.string.top_shortcut_km_pro_input_ime_compose_short);
+                    case BUILT_IN_QWERTY:
+                    default:
+                        return ctx.getString(R.string.top_shortcut_km_pro_input_built_in_short);
+                }
             }
             return "IME";
         }
@@ -4190,9 +4421,12 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("TAB", "", 0x2B, "2B", 1f, R.drawable.keyboard_tab_24, 0f, false, false, -1, true), 1, 2, 3));
         keys.add(fixedStripSlotKey(new Key("UP", "", 0x52, "52", 1f, R.drawable.keyboard_arrow_up_24, 0f, false, false, -1, true), 1, 2, 4));
         keys.add(fixedStripSlotKey(new Key("ENTER", "", 0x28, "28", 1f, R.drawable.keyboard_return_24px, 0f, false, false, -1, true), 1, 2, 5));
-        keys.add(markFixedRowKey(new Key("PH1", "", KEY_IME_TOGGLE, "", 1f,
-                systemImeCaptureMode ? R.drawable.ic_keyboard_ime_24 : R.drawable.ic_keyboard_keymod_24,
-                0f, false, false, -1, true)));
+        // Row 2 col 7: empty slot (KM Pro input mode is header-only; was PH1 / KEY_IME_TOGGLE).
+        keys.add(fixedStripSlotKey(
+                new Key("", "", KEY_NOOP_PLACEHOLDER, "", 1f, 0, 0f, false, false, -1, true),
+                1,
+                2,
+                6));
         // Row 3: ESC, SHIFT, DEL, Left(icon), Down(icon), Right(icon), local Fn toggle
         keys.add(fixedStripSlotKey(new Key("ESC", "", 0x29, "29", 1f, 0, 0f, false, false, -1, true), 1, 3, 0));
         keys.add(fixedStripSlotKey(new Key("SHIFT", "", 0xE1, "E1", 1f, R.drawable.shift_24px, 0f, false, false, -1, true), 1, 3, 1));
@@ -4803,9 +5037,7 @@ public class CustomKeyboardView extends LinearLayout {
                     } else if (isTopImeToggleKey(k)) {
                         Context ctx = getContext();
                         if (ctx != null) {
-                            ib.setContentDescription(ctx.getString(systemImeCaptureMode
-                                    ? R.string.top_shortcut_ime_toggle_system
-                                    : R.string.top_shortcut_ime_toggle_keymod));
+                            ib.setContentDescription(ctx.getString(ph1ContentDescriptionStringResForKmProInputMode()));
                         }
                     } else if (isTopShortcutToggleKey(k)) {
                         Context ctx = getContext();
@@ -7228,7 +7460,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
 
         if (isTopImeToggleKey(key)) {
-            toggleSystemImeCaptureFromUser();
+            cycleKmProKeyboardInputModeFromUser();
             return;
         }
 
@@ -7633,34 +7865,6 @@ public class CustomKeyboardView extends LinearLayout {
         return ContextCompat.getColor(ctx, R.color.text_primary);
     }
 
-    private void toggleSystemImeCaptureFromUser() {
-        boolean next = !systemImeCaptureMode;
-        if (!next) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        systemImeCaptureMode = next;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, next)
-                    .apply();
-        }
-        // Landscape split: the visible top strip is bound from the partner (left) view.
-        if (splitPartner != null) {
-            splitPartner.applyImeCaptureFromPartner(next);
-        }
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        updateKeyboard();
-        if (onImeCaptureModeChangedListener != null) {
-            onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, next);
-        }
-        if (splitPart == SPLIT_NONE && next) {
-            postShowLocalImeSoftKeyboard();
-        }
-    }
-
     private void postShowLocalImeSoftKeyboard() {
         removeCallbacks(showLocalImeSoftKeyboardMainRunnable);
         removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
@@ -7860,6 +8064,17 @@ public class CustomKeyboardView extends LinearLayout {
         if (imeCaptureToolbar == null) {
             return;
         }
+        if (isImeSubComposePortraitContext() && imeSubComposeDirectHidMode) {
+            imeCaptureToolbar.setVisibility(GONE);
+            LayoutParams lpGone = (LayoutParams) imeCaptureToolbar.getLayoutParams();
+            lpGone.height = 0;
+            lpGone.weight = 0f;
+            imeCaptureToolbar.setLayoutParams(lpGone);
+            return;
+        }
+        if (imeCaptureToolbar.getVisibility() != VISIBLE) {
+            imeCaptureToolbar.setVisibility(VISIBLE);
+        }
         if (isImeSubComposePortraitContext()) {
             LayoutParams lp = (LayoutParams) imeCaptureToolbar.getLayoutParams();
             lp.height = dpToPx(IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP);
@@ -7891,17 +8106,6 @@ public class CustomKeyboardView extends LinearLayout {
         imeSubComposeExpandButton.setColorFilter(resolveThemeTextColor());
     }
 
-    private void persistImeSubComposeDirectHid(boolean direct) {
-        imeSubComposeDirectHidMode = direct;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, direct)
-                    .apply();
-        }
-    }
-
     private void notifyImeSubComposeDirectHidModeChanged() {
         if (onImeSubComposeChromeListener == null) {
             return;
@@ -7913,60 +8117,23 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void onImeSubComposeModeToggleClicked() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || imeSubComposeSending) {
+        if (imeSubComposeSending) {
             return;
         }
-        boolean next = !imeSubComposeDirectHidMode;
-        if (next) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        persistImeSubComposeDirectHid(next);
-        ImeTextForwarder.detach(edit);
-        edit.setText("");
-        if (next) {
-            ImeTextForwarder.attach(
-                    edit,
-                    this::peekConnectionManager,
-                    this::getTargetOs,
-                    imeTextExecutor);
-        }
-        applyImeSubComposeDirectHidUi();
-        updateImeCaptureToolbarState();
-        post(this::notifyImeSubComposeDirectHidModeChanged);
-        if (next) {
-            post(this::postShowLocalImeSoftKeyboard);
-        }
+        cycleKmProKeyboardInputModeFromUser();
     }
 
+    /** Portrait IME toolbar: same 3-state cycle as PH1 (built-in → IME direct → IME compose). */
     private void refreshImeSubComposeModeToggleIcon() {
-        if (getContext() == null) {
+        if (getContext() == null || imeSubComposeModeToggle == null) {
             return;
         }
-        if (imeSubComposeModeToggle != null) {
-            if (imeSubComposeDirectHidMode) {
-                imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
-                imeSubComposeModeToggle.setContentDescription(
-                        getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
-            } else {
-                imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
-                imeSubComposeModeToggle.setContentDescription(
-                        getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
-            }
-            imeSubComposeModeToggle.setColorFilter(resolveThemeTextColor());
-        }
-        if (splitLandscapeRailToggle != null) {
-            if (imeSubComposeDirectHidMode) {
-                splitLandscapeRailToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
-                splitLandscapeRailToggle.setContentDescription(
-                        getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
-            } else {
-                splitLandscapeRailToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
-                splitLandscapeRailToggle.setContentDescription(
-                        getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
-            }
-            splitLandscapeRailToggle.setColorFilter(resolveThemeTextColor());
-        }
+        imeSubComposeModeToggle.setImageResource(ph1DrawableResForKmProInputMode());
+        imeSubComposeModeToggle.setContentDescription(
+                getContext().getString(ph1ContentDescriptionStringResForKmProInputMode()));
+        applyTopPanelImeToggleKeyCapBackground(imeSubComposeModeToggle);
+        imeSubComposeModeToggle.setActivated(systemImeCaptureMode);
+        applyTopImeToggleIconTint(imeSubComposeModeToggle);
     }
 
     private void setImeToolbarCellWeight(View v, int keyMargin, float weight) {
@@ -7982,11 +8149,12 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Inline composite touchpad is visible when portrait IME sub-compose is collapsed; the toolbar
-     * pop-out duplicates it. Show pop-out only when expanded chrome hides the inline touchpad.
+     * Previously shown when portrait IME sub-compose was expanded (inline touchpad hidden). That
+     * duplicate touchpad entry is removed for KM Pro UX; users collapse the editor or use other
+     * navigation to reach the touchpad.
      */
     private boolean shouldShowImeToolbarPopOutTouchpadButton() {
-        return imeSubComposeExpanded && !imeSubComposeDirectHidMode;
+        return false;
     }
 
     private void applyImeSubComposeDirectHidUi() {
@@ -7999,7 +8167,7 @@ public class CustomKeyboardView extends LinearLayout {
             applyImeTopStripVisibilityForSubCompose();
 
             // Stay VISIBLE so InputMethodManager can show the soft keyboard (INVISIBLE often blocks IME).
-            // The editor row is ~1dp tall in Direct HID; toolbar hint carries user-facing copy.
+            // The editor row is ~1dp tall in Direct HID; mode + hint live in the activity header.
             imeCaptureEdit.setHint("");
             imeCaptureEdit.setVisibility(VISIBLE);
             if (imeSubComposeExpandButton != null) {
@@ -8009,20 +8177,24 @@ public class CustomKeyboardView extends LinearLayout {
                 imeCaptureAccentDivider.setVisibility(GONE);
             }
 
+            imeCaptureToolbar.setVisibility(GONE);
             imeCaptureClearButton.setVisibility(GONE);
             imeCaptureUndoButton.setVisibility(GONE);
             if (imeCaptureSavedTextsButton != null) {
                 imeCaptureSavedTextsButton.setVisibility(GONE);
             }
             imeCaptureSendButton.setVisibility(GONE);
-            imeCaptureDirectModeHint.setVisibility(VISIBLE);
+            imeCaptureDirectModeHint.setVisibility(GONE);
 
             if (imeCaptureTouchpadButton != null) {
                 imeCaptureTouchpadButton.setVisibility(GONE);
                 setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 0f);
             }
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 6f);
+            if (imeSubComposeModeToggle != null) {
+                imeSubComposeModeToggle.setVisibility(GONE);
+            }
+            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 0f);
+            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 0f);
             setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
             if (imeCaptureSavedTextsButton != null) {
@@ -8040,6 +8212,7 @@ public class CustomKeyboardView extends LinearLayout {
                 imeCaptureAccentDivider.setVisibility(VISIBLE);
             }
 
+            imeCaptureToolbar.setVisibility(VISIBLE);
             imeCaptureClearButton.setVisibility(VISIBLE);
             imeCaptureUndoButton.setVisibility(VISIBLE);
             if (imeCaptureSavedTextsButton != null) {
@@ -8053,7 +8226,10 @@ public class CustomKeyboardView extends LinearLayout {
                 imeCaptureTouchpadButton.setVisibility(showPopOutTouchpad ? VISIBLE : GONE);
                 setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, showPopOutTouchpad ? 1f : 0f);
             }
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
+            if (imeSubComposeModeToggle != null) {
+                imeSubComposeModeToggle.setVisibility(GONE);
+            }
+            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 0f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 1f);
             setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
             if (imeCaptureSavedTextsButton != null) {
@@ -8542,6 +8718,11 @@ public class CustomKeyboardView extends LinearLayout {
         clearSplitLandscapeImeComposeRail();
         splitLandscapeComposeExternalEdit = externalEdit;
         splitLandscapeRailToggle = railToggle;
+        if (splitLandscapeRailToggle != null) {
+            splitLandscapeRailToggle.setVisibility(GONE);
+            splitLandscapeRailToggle.setOnClickListener(null);
+            splitLandscapeRailToggle.setClickable(false);
+        }
         splitLandscapeRailUndo = railUndo;
         splitLandscapeRailClear = railClear;
         splitLandscapeRailSaved = railSaved;
@@ -8585,16 +8766,21 @@ public class CustomKeyboardView extends LinearLayout {
         if (ctx == null) {
             return;
         }
-        imeSubComposeDirectHidMode =
-                ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                        .getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
-        refreshImeSubComposeModeToggleIcon();
+        SharedPreferences p = ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
+        imeSubComposeDirectHidMode = p.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
+        if (!systemImeCaptureMode) {
+            imeSubComposeDirectHidMode = false;
+        }
+        rebuildFixedTopRowsPanels();
+        rebuildTopShortcutPanels();
+        syncTopPanelViewportContent();
+        refreshVisibleTopPanelButtonStates();
         updateImeCaptureToolbarState();
+        refreshImeSubComposeModeToggleIcon();
     }
 
-    /** Rail actions for KM Pro split-landscape compose (delegates to portrait IME handlers). */
+    /** Split-landscape rail mode button hidden; portrait IME toolbar cycles A/B/C instead. */
     public void onSplitLandscapeImeRailModeToggleClicked() {
-        onImeSubComposeModeToggleClicked();
     }
 
     public void onSplitLandscapeImeRailUndoClicked() {
@@ -8673,6 +8859,7 @@ public class CustomKeyboardView extends LinearLayout {
 
             imeCaptureToolbar = new LinearLayout(getContext());
             imeCaptureToolbar.setOrientation(HORIZONTAL);
+            imeCaptureToolbar.setBaselineAligned(false);
             imeCaptureToolbar.setLayoutParams(
                     new LayoutParams(LayoutParams.MATCH_PARENT, 0, IME_COMPOSE_TOOLBAR_ROW_WEIGHT));
             imeCaptureToolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -8696,6 +8883,8 @@ public class CustomKeyboardView extends LinearLayout {
                     imeSubComposeModeToggle,
                     R.drawable.ic_ime_compose_mode_note_24,
                     R.string.ime_sub_compose_mode_toggle_direct);
+            imeSubComposeModeToggle.setVisibility(VISIBLE);
+            imeSubComposeModeToggle.setClickable(true);
             imeSubComposeModeToggle.setOnClickListener(v -> onImeSubComposeModeToggleClicked());
             LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
             modeLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
@@ -8820,7 +9009,8 @@ public class CustomKeyboardView extends LinearLayout {
         applyFlatKeyStyle(ib);
         ib.setBackgroundResource(R.drawable.function_button_background);
         ib.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
-        ib.setPadding(0, 0, 0, 0);
+        int pv = dpToPx(1);
+        ib.setPadding(0, pv, 0, pv);
         ib.setImageResource(imageRes);
         ib.setColorFilter(resolveThemeTextColor());
         ib.setContentDescription(getContext().getString(labelRes));
@@ -8847,6 +9037,7 @@ public class CustomKeyboardView extends LinearLayout {
 
     @Override
     protected void onDetachedFromWindow() {
+        cancelDeferredKmProLayoutFinish();
         Context ctx = getContext();
         if (ctx != null) {
             PreferenceManager.getDefaultSharedPreferences(ctx)

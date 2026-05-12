@@ -254,7 +254,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:background="@drawable/function_button_background"
+                    android:background="@drawable/top_strip_ime_toggle_background"
                     android:contentDescription="@string/ime_sub_compose_mode_toggle_direct"
                     android:padding="@dimen/button_icon_padding"
                     android:scaleType="centerInside"
