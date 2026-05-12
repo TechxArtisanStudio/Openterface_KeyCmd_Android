@@ -139,10 +139,10 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
     private final MainActivity.OnTargetOsChangeListener osChangeListener = os -> {
         if (browsePickAdapter != null) {
-            browsePickAdapter.notifyDataSetChanged();
+            browsePickAdapter.setTargetOs(os);
         }
         if (myShortcutsReorderAdapter != null) {
-            myShortcutsReorderAdapter.notifyDataSetChanged();
+            myShortcutsReorderAdapter.setTargetOs(os);
         }
     };
 

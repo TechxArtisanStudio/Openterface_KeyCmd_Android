@@ -45,7 +45,8 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
                 @NonNull View anchor);
     }
 
-    private final String targetOs;
+    @NonNull
+    private String targetOs;
     private final List<ShortcutProfileManager.Shortcut> items;
     private ItemTouchHelper dragHelper;
     private RowInteraction rowInteraction;
@@ -68,6 +69,19 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             List<ShortcutProfileManager.Shortcut> items) {
         this.targetOs = targetOs != null ? targetOs : "macos";
         this.items = items;
+    }
+
+    /**
+     * Updates host OS used for modifier/chord labels in row binding. Call when {@code AppPrefs}
+     * {@code target_os} changes without recreating the adapter.
+     */
+    public void setTargetOs(@Nullable String os) {
+        String next = os != null ? os : "macos";
+        if (next.equals(targetOs)) {
+            return;
+        }
+        this.targetOs = next;
+        notifyDataSetChanged();
     }
 
     public void setHubCardOverflowMenuRequestListener(

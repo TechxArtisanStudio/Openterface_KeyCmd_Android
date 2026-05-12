@@ -57,7 +57,8 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
                 @NonNull View anchor);
     }
 
-    private final String targetOs;
+    @NonNull
+    private String targetOs;
     private final List<ShortcutProfileManager.Shortcut> items;
     @Nullable
     private FavoriteMembershipChecker favoriteChecker;
@@ -81,6 +82,19 @@ public class ShortcutSectionPickAdapter extends RecyclerView.Adapter<ShortcutSec
             List<ShortcutProfileManager.Shortcut> items) {
         this.targetOs = targetOs != null ? targetOs : "macos";
         this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
+    }
+
+    /**
+     * Updates host OS used for modifier/chord labels in row binding. Call when {@code AppPrefs}
+     * {@code target_os} changes without recreating the adapter.
+     */
+    public void setTargetOs(@Nullable String os) {
+        String next = os != null ? os : "macos";
+        if (next.equals(targetOs)) {
+            return;
+        }
+        this.targetOs = next;
+        notifyDataSetChanged();
     }
 
     public void setHubCardOverflowMenuRequestListener(
