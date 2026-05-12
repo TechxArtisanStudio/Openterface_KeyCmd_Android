@@ -142,6 +142,9 @@ public class CompositeFragment extends Fragment {
     private static final float SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT = 1f;
     private static final float SPLIT_COMPOSE_FOLDED_OUTER_UPPER_WEIGHT = 3f;
     private static final float SPLIT_COMPOSE_FOLDED_OUTER_LOWER_WEIGHT = 2f;
+    private static final int SPLIT_COMPOSE_FOLDED_RAIL_MIN_DP = 108;
+    private static final int SPLIT_COMPOSE_FOLDED_RAIL_MAX_DP = 176;
+    private static final int SPLIT_COMPOSE_FOLDED_BUTTON_GAP_DP = 4;
     private View splitTouchPadInfoButton;
     /** Latest landscape split IME visibility from insets (true when software keyboard is visible). */
     private boolean splitLandscapeImeVisible;
@@ -1420,6 +1423,7 @@ public class CompositeFragment extends Fragment {
         splitImeHost.setLayoutParams(imeLp);
         outer.requestLayout();
         applySplitImeComposeRailAdaptiveWidth();
+        applySplitImeActionRailArrangement();
         updateSplitImeRailChromeVisibility();
         refreshSplitImeExpandToggleChrome();
     }
@@ -1486,9 +1490,18 @@ public class CompositeFragment extends Fragment {
         if (w <= 0) {
             return;
         }
-        int minRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_min_width);
-        int maxRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_max_width);
-        float target = w / 10f;
+        int minRail;
+        int maxRail;
+        float target;
+        if (splitLandscapeComposeExpanded) {
+            minRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_min_width);
+            maxRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_max_width);
+            target = w / 10f;
+        } else {
+            minRail = dpToPx(SPLIT_COMPOSE_FOLDED_RAIL_MIN_DP);
+            maxRail = dpToPx(SPLIT_COMPOSE_FOLDED_RAIL_MAX_DP);
+            target = w / 4.5f;
+        }
         int railPx = Math.max(minRail, Math.min(maxRail, Math.round(target)));
 
         LinearLayout.LayoutParams railLp =
@@ -1496,11 +1509,129 @@ public class CompositeFragment extends Fragment {
         railLp.width = railPx;
         railLp.weight = 0f;
         splitImeActionRail.setLayoutParams(railLp);
+        syncFoldedComposeMouseStripWidthWithRail(railPx);
 
         LinearLayout.LayoutParams editLp = (LinearLayout.LayoutParams) textAreaHost.getLayoutParams();
         editLp.width = 0;
         editLp.weight = 1f;
         textAreaHost.setLayoutParams(editLp);
+    }
+
+    /**
+     * Folded landscape compose: keep touchpad mouse-key strip width aligned with the compose action rail
+     * so the right-side chrome reads as one consistent column.
+     */
+    private void syncFoldedComposeMouseStripWidthWithRail(int railPx) {
+        if (splitLandscapeComposeExpanded || proTouchpadMouseKeys == null || touchpadPadHost == null) {
+            return;
+        }
+        LinearLayout.LayoutParams mouseLp =
+                (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        mouseLp.width = railPx;
+        mouseLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        mouseLp.weight = 0f;
+        proTouchpadMouseKeys.setLayoutParams(mouseLp);
+
+        LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
+        padLp.width = 0;
+        padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+        padLp.weight = 1f;
+        touchpadPadHost.setLayoutParams(padLp);
+    }
+
+    private void applySplitImeActionRailArrangement() {
+        if (splitImeActionRail == null) {
+            return;
+        }
+        splitImeActionRail.removeAllViews();
+        if (splitLandscapeComposeExpanded) {
+            addRailButtonsSingleColumn();
+        } else {
+            addRailButtonsTwoColumn();
+        }
+    }
+
+    private void addRailButtonsSingleColumn() {
+        addRailButtonSingleColumn(splitImeRailToggle, false);
+        addRailButtonSingleColumn(splitImeRailUndo, true);
+        addRailButtonSingleColumn(splitImeRailClear, true);
+        addRailButtonSingleColumn(splitImeRailSaved, true);
+        addRailButtonSingleColumn(splitImeRailSend, true);
+    }
+
+    private void addRailButtonsTwoColumn() {
+        addRailButtonsPairRow(splitImeRailToggle, splitImeRailUndo, false);
+        addRailButtonsPairRow(splitImeRailClear, splitImeRailSaved, true);
+        addRailButtonsSendRow(splitImeRailSend, true);
+    }
+
+    private void addRailButtonsPairRow(@Nullable View left, @Nullable View right, boolean addTopGap) {
+        if (splitImeActionRail == null || (left == null && right == null)) {
+            return;
+        }
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBaselineAligned(false);
+        LinearLayout.LayoutParams rowLp =
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        if (addTopGap) {
+            rowLp.topMargin = dpToPx(SPLIT_COMPOSE_FOLDED_BUTTON_GAP_DP);
+        }
+        row.setLayoutParams(rowLp);
+        if (left != null) {
+            detachFromParent(left);
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+            lp.setMarginEnd(dpToPx(SPLIT_COMPOSE_FOLDED_BUTTON_GAP_DP));
+            row.addView(left, lp);
+        }
+        if (right != null) {
+            detachFromParent(right);
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+            lp.setMarginStart(dpToPx(SPLIT_COMPOSE_FOLDED_BUTTON_GAP_DP));
+            row.addView(right, lp);
+        }
+        splitImeActionRail.addView(row);
+    }
+
+    private void addRailButtonsSendRow(@Nullable View send, boolean addTopGap) {
+        if (splitImeActionRail == null || send == null) {
+            return;
+        }
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBaselineAligned(false);
+        LinearLayout.LayoutParams rowLp =
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.15f);
+        if (addTopGap) {
+            rowLp.topMargin = dpToPx(SPLIT_COMPOSE_FOLDED_BUTTON_GAP_DP);
+        }
+        row.setLayoutParams(rowLp);
+        detachFromParent(send);
+        row.addView(send, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        splitImeActionRail.addView(row);
+    }
+
+    private void addRailButtonSingleColumn(@Nullable View button, boolean addTopGap) {
+        if (splitImeActionRail == null || button == null) {
+            return;
+        }
+        detachFromParent(button);
+        LinearLayout.LayoutParams lp =
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        if (addTopGap) {
+            lp.topMargin = dpToPx(4);
+        }
+        splitImeActionRail.addView(button, lp);
+    }
+
+    private void detachFromParent(@NonNull View child) {
+        ViewParent parent = child.getParent();
+        if (parent instanceof ViewGroup) {
+            ((ViewGroup) parent).removeView(child);
+        }
     }
 
     @Nullable
