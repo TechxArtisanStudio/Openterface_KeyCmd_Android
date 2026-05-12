@@ -19,7 +19,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -82,9 +81,8 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
     private LinearLayout panelProfilesList;
     private RecyclerView profilesRecyclerView;
     private TextView emptyTextView;
-    private TextView activeProfileText;
-    private Button createProfileButton;
-    private Button importButton;
+    private ImageButton createProfileButton;
+    private ImageButton importButton;
 
     // UI Components - Shortcuts detail panel
     private LinearLayout panelShortcutsDetail;
@@ -174,7 +172,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         panelProfilesList = view.findViewById(R.id.panel_profiles_list);
         profilesRecyclerView = view.findViewById(R.id.profiles_recycler);
         emptyTextView = view.findViewById(R.id.empty_textview);
-        activeProfileText = view.findViewById(R.id.active_profile_text);
         createProfileButton = view.findViewById(R.id.create_profile_button);
         importButton = view.findViewById(R.id.import_button);
 
@@ -351,7 +348,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         activeProfile = profileManager.getActiveProfile();
         profilesRecyclerAdapter.setActiveProfileId(activeProfile != null ? activeProfile.id : null);
         profilesRecyclerAdapter.notifyDataSetChanged();
-        updateActiveProfileDisplay();
         updateEmptyState();
         if (selectedProfile != null && panelShortcutsDetail != null
                 && panelShortcutsDetail.getVisibility() == View.VISIBLE) {
@@ -1448,15 +1444,6 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             })
             .setNegativeButton("Cancel", null)
             .show();
-    }
-
-    private void updateActiveProfileDisplay() {
-        if (activeProfile != null) {
-            activeProfileText.setText(getString(R.string.shortcut_hub_active_profile,
-                    ProfileUiStrings.displayName(requireContext(), activeProfile)));
-        } else {
-            activeProfileText.setText("");
-        }
     }
 
     private void updateEmptyState() {

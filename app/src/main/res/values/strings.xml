@@ -570,7 +570,9 @@ by TechxArtisan</string>
     <string name="shortcut_hub_active_profile">Active: %1$s</string>
     <string name="shortcut_hub_empty_profiles">No profiles yet.\nTap Create to add one.</string>
     <string name="shortcut_hub_create_profile">Create</string>
+    <string name="shortcut_hub_cd_create_profile">Create profile</string>
     <string name="shortcut_hub_import">Import</string>
+    <string name="shortcut_hub_cd_import_profile">Import profile</string>
     <string name="shortcut_hub_export">Export</string>
     <string name="shortcut_hub_tab_app_profiles">Row 1 · Profiles</string>
     <string name="shortcut_hub_tab_fixed_strip">Rows 2–3 · Strip</string>
