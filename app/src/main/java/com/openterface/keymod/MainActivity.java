@@ -33,7 +33,6 @@ import android.widget.ImageView;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -75,7 +74,6 @@ import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329HostLockQuery;
 import com.openterface.keymod.hid.Ch9329InboundParser;
 import com.openterface.keymod.hid.HostKeyboardLockLeds;
-import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -171,7 +169,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navVoice;
     private LinearLayout navPresentation;
     private ImageButton targetOsHeaderButton;
-    private HorizontalScrollView headerEndScroll;
     @Nullable
     private View headerRightCluster;
     @Nullable
@@ -182,10 +179,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private ImeSavedTextFragment.Host imeSavedTextHost;
     @Nullable
     private ImageButton kmProSetupHeaderButton;
-    private final ImageButton[] headerModeSlotButtons = new ImageButton[3];
-    /** Coalesces KM Pro header redraws (IME callbacks can fire more than once per change). */
-    private final Handler headerSlotsHandler = new Handler(Looper.getMainLooper());
-    private final Runnable deferredRefreshHeaderModeSlots = this::refreshHeaderModeSlotButtons;
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
                 @Override
@@ -466,7 +459,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         // Don't auto-setup USB here, ConnectionManager handles it
         
         applyAppChromeForHostFragment();
-        refreshHeaderModeSlotButtons();
     }
     
     @Override
@@ -534,7 +526,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     @Override
     protected void onDestroy() {
-        headerSlotsHandler.removeCallbacks(deferredRefreshHeaderModeSlots);
         getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(chromeFragmentCallbacks);
         stopHostLockPolling();
         if (connectionManager != null) {
@@ -583,7 +574,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         setupDrawerImeBehavior();
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
-        headerEndScroll = findViewById(R.id.header_end_scroll);
         headerRightCluster = findViewById(R.id.header_right_cluster);
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
@@ -593,8 +583,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
         kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
         applyHeaderRightClusterNavInsets();
-        applyHeaderEndScrollLayoutForOrientation();
-        setupHeaderModeSlotButtons();
 
         // Display app version in sidebar footer
         TextView versionText = findViewById(R.id.version_text);
@@ -668,13 +656,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 && imeSavedTextOverlay.getVisibility() == View.VISIBLE) {
             hideImeSavedTextOverlay();
         }
-        refreshHeaderModeSlotButtons();
-    }
-
-    /** Refresh header PH1–PH3 strip for current host (KM Pro input modes vs global launch shortcuts). */
-    public void refreshHeaderModeSlotButtonsForCurrentHost() {
-        headerSlotsHandler.removeCallbacks(deferredRefreshHeaderModeSlots);
-        headerSlotsHandler.post(deferredRefreshHeaderModeSlots);
     }
 
     private void toggleKmProSettingsOverlay() {
@@ -1078,24 +1059,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
-    private void applyHeaderEndScrollLayoutForOrientation() {
-        if (headerEndScroll == null) {
-            return;
-        }
-        ViewGroup.LayoutParams lp = headerEndScroll.getLayoutParams();
-        if (lp != null && lp.width != ViewGroup.LayoutParams.WRAP_CONTENT) {
-            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            headerEndScroll.setLayoutParams(lp);
-        }
-        headerEndScroll.post(() -> {
-            boolean isLandscape =
-                    getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-            // Landscape target: show all header buttons by default.
-            // Portrait target: keep right-side actions visible first.
-            headerEndScroll.fullScroll(isLandscape ? View.FOCUS_LEFT : View.FOCUS_RIGHT);
-        });
-    }
-
     /**
      * In landscape, 3-button nav can sit on the physical end; pad the Target OS + connection cluster
      * so it stays clear of system bars (same max merge as {@link com.openterface.fragment.BasicComposeFragment}).
@@ -1131,83 +1094,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        applyHeaderEndScrollLayoutForOrientation();
         if (headerRightCluster != null) {
             ViewCompat.requestApplyInsets(headerRightCluster);
         }
         applyAppChromeForHostFragment();
-    }
-
-    private void setupHeaderModeSlotButtons() {
-        headerModeSlotButtons[0] = findViewById(R.id.header_mode_slot_1);
-        headerModeSlotButtons[1] = findViewById(R.id.header_mode_slot_2);
-        headerModeSlotButtons[2] = findViewById(R.id.header_mode_slot_3);
-        for (int i = 0; i < headerModeSlotButtons.length; i++) {
-            ImageButton button = headerModeSlotButtons[i];
-            if (button == null) {
-                continue;
-            }
-            final int slotIndex = i + 1;
-            button.setOnClickListener(v -> onHeaderModeSlotClicked(slotIndex));
-            button.setOnLongClickListener(v -> onHeaderModeSlotLongClicked(slotIndex));
-        }
-        refreshHeaderModeSlotButtons();
-    }
-
-    private void onHeaderModeSlotClicked(int slotIndex1Based) {
-        String mode = TopModeShortcutPrefs.getModeForSlot(MainActivity.this, slotIndex1Based);
-        switchToLaunchMode(mode);
-    }
-
-    private boolean onHeaderModeSlotLongClicked(int slotIndex1Based) {
-        showHeaderModeSlotPicker(slotIndex1Based);
-        return true;
-    }
-
-    private void showHeaderModeSlotPicker(int slotIndex1Based) {
-        String[] modes = TopModeShortcutPrefs.getSelectableModes();
-        CharSequence[] labels = TopModeShortcutPrefs.getModeLabels(this);
-        String current = TopModeShortcutPrefs.getModeForSlot(this, slotIndex1Based);
-        int checked = 0;
-        for (int i = 0; i < modes.length; i++) {
-            if (modes[i].equals(current)) {
-                checked = i;
-                break;
-            }
-        }
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.top_mode_slot_picker_title)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    TopModeShortcutPrefs.setModeForSlot(getApplicationContext(), slotIndex1Based, modes[which]);
-                    refreshHeaderModeSlotButtons();
-                    dialog.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void refreshHeaderModeSlotButtons() {
-        refreshHeaderModeSlotButtonsStandard();
-    }
-
-    private void refreshHeaderModeSlotButtonsStandard() {
-        int tint = headerNeutralActionTint();
-        for (int i = 0; i < headerModeSlotButtons.length; i++) {
-            ImageButton button = headerModeSlotButtons[i];
-            if (button == null) {
-                continue;
-            }
-            button.setEnabled(true);
-            button.setAlpha(1f);
-            int slotIndex = i + 1;
-            String mode = TopModeShortcutPrefs.getModeForSlot(this, slotIndex);
-            int iconRes = TopModeShortcutPrefs.iconResForMode(mode);
-            button.setImageResource(iconRes);
-            button.setContentDescription(getString(TopModeShortcutPrefs.labelResForMode(mode)));
-            button.setColorFilter(tint, PorterDuff.Mode.SRC_IN);
-            button.setTag(R.id.tag_header_km_pro_slot_icon, null);
-            button.setTag(R.id.tag_header_km_pro_slot_tint, null);
-        }
     }
 
     private void setupConnectionStateListener() {
@@ -1360,7 +1250,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setColorFilter(neutralTint, PorterDuff.Mode.SRC_IN);
         }
-        refreshHeaderModeSlotButtons();
 
         switch (state) {
             case CONNECTED:
