@@ -73,7 +73,7 @@
     <!-- KM Basic touchpad: comfort gap under L/M/R; combined with nav insets in code (see fragment). -->
     <dimen name="basic_touchpad_content_inset_bottom">10dp</dimen>
     <!-- KM Pro composite touchpad: mouse row min height; compact layout uses same row with vertical orientation in code. -->
-    <dimen name="pro_touchpad_mouse_row_min_height">54dp</dimen>
+    <dimen name="pro_touchpad_mouse_row_min_height">70dp</dimen>
     <!-- When touchpad_section height is at or below this, use compact (pad | vertical L/M/R) layout. -->
     <dimen name="pro_touchpad_section_compact_height_threshold">232dp</dimen>
     <!-- KM Pro mouse-keys row: vertical padding (also used after resetting programmatic strip insets). -->

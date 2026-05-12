@@ -31,6 +31,7 @@ import android.text.SpannableString;
 import android.text.Layout;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
@@ -238,14 +239,12 @@ public class CustomKeyboardView extends LinearLayout {
     private float holdLockGestureRawY;
     private int holdLockPendingModMask;
     private final Runnable proHoldLockPopupRunnable = this::onProHoldLockPopupTimeout;
-    private int proChordHeldModMask;
-    private boolean proChordLongPressActivated;
-    private boolean proChordSustainFingerDown;
+    /** Per modifier key view: boot bits for each finger in chord sustain (multi-touch). */
+    private final ArrayMap<View, Integer> proChordSustainBootByView = new ArrayMap<>();
     private boolean proChordHostHoldSent;
     private int proChordActiveExtKey;
     private int proChordLongPressPendingMask;
     @Nullable private View proChordLongPressAnchorView;
-    @Nullable private View proChordHeldView;
     private final Runnable proChordLongPressRunnable = this::onProChordLongPressThreshold;
     private final SharedPreferences.OnSharedPreferenceChangeListener kmProModifierPrefListener =
             this::onKmProModifierPreferenceChanged;
@@ -1011,14 +1010,9 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void clearProChordUiPreserveHostForLock() {
         longPressHandler.removeCallbacks(proChordLongPressRunnable);
-        proChordSustainFingerDown = false;
-        proChordLongPressActivated = false;
-        proChordHeldModMask = 0;
+        proChordSustainBootByView.clear();
         proChordHostHoldSent = false;
-        if (proChordHeldView != null) {
-            proChordHeldView.setSelected(false);
-            proChordHeldView = null;
-        }
+        proChordActiveExtKey = 0;
         proChordLongPressAnchorView = null;
     }
 
@@ -1026,20 +1020,17 @@ public class CustomKeyboardView extends LinearLayout {
         longPressHandler.removeCallbacks(proChordLongPressRunnable);
         longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
         dismissProHoldLockPopup();
-        if (proChordHostHoldSent) {
+        if (proChordHostHoldSent || !proChordSustainBootByView.isEmpty()) {
             sendKeyboardAllKeysReleasedSync();
-            reassertKeyboardAfterHidRelease();
         }
+        proChordSustainBootByView.clear();
         proChordHostHoldSent = false;
-        proChordSustainFingerDown = false;
-        proChordLongPressActivated = false;
-        proChordHeldModMask = 0;
         proChordActiveExtKey = 0;
-        if (proChordHeldView != null) {
-            proChordHeldView.setSelected(false);
-            proChordHeldView = null;
-        }
         proChordLongPressAnchorView = null;
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(
+                    port, bluetoothService, isServiceBound);
+        }
     }
 
     /** Split primary: clear partner ephemeral chord UI (does not clear this side’s host hold-locks). */
@@ -1052,20 +1043,17 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void clearPartnerChordStateFromRemote() {
         longPressHandler.removeCallbacks(proChordLongPressRunnable);
-        if (proChordHostHoldSent) {
+        if (proChordHostHoldSent || !proChordSustainBootByView.isEmpty()) {
             sendKeyboardAllKeysReleasedSync();
-            reassertKeyboardAfterHidRelease();
         }
+        proChordSustainBootByView.clear();
         proChordHostHoldSent = false;
-        proChordSustainFingerDown = false;
-        proChordLongPressActivated = false;
-        proChordHeldModMask = 0;
         proChordActiveExtKey = 0;
-        if (proChordHeldView != null) {
-            proChordHeldView.setSelected(false);
-            proChordHeldView = null;
-        }
         proChordLongPressAnchorView = null;
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(
+                    port, bluetoothService, isServiceBound);
+        }
         refreshVisibleTopPanelButtonStates();
         post(this::refreshBuiltInModifierKeyCapsFromTree);
     }
@@ -1098,19 +1086,24 @@ public class CustomKeyboardView extends LinearLayout {
         if (proChordLongPressAnchorView == null) {
             return;
         }
-        proChordLongPressActivated = true;
-        proChordHeldModMask = proChordLongPressPendingMask;
-        proChordHeldView = proChordLongPressAnchorView;
-        proChordHeldView.setSelected(true);
-        proChordSustainFingerDown = true;
+        View anchor = proChordLongPressAnchorView;
+        int boot = proChordLongPressPendingMask;
+        if (boot == 0) {
+            boot = bootModifierMaskForBuiltInExtendedKey(proChordActiveExtKey);
+        }
+        if (boot == 0) {
+            return;
+        }
+        proChordSustainBootByView.put(anchor, boot);
         Context ctx = getContext();
         if (ctx != null && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)) {
-            if (proChordHeldModMask != 0) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
                 KeyboardHidTransport.sendKeyReport(
                         port,
                         bluetoothService,
                         isServiceBound,
-                        mergeHoldLockedBootMask(proChordHeldModMask),
+                        mergeHoldLockedBootMask(agg),
                         0);
             } else if (proChordActiveExtKey != 0) {
                 KeyboardHidTransport.sendKeyReport(
@@ -1136,14 +1129,14 @@ public class CustomKeyboardView extends LinearLayout {
         if (ctx != null
                 && KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)
                 && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)
-                && proChordSustainFingerDown
-                && proChordLongPressActivated) {
-            if (proChordHeldModMask != 0) {
+                && !proChordSustainBootByView.isEmpty()) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
                 KeyboardHidTransport.sendKeyReport(
                         port,
                         bluetoothService,
                         isServiceBound,
-                        mergeHoldLockedBootMask(proChordHeldModMask),
+                        mergeHoldLockedBootMask(agg),
                         0);
             } else if (proChordActiveExtKey != 0) {
                 KeyboardHidTransport.sendKeyReport(
@@ -1167,9 +1160,61 @@ public class CustomKeyboardView extends LinearLayout {
                 return parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt"));
             case 0xE3:
                 return parseHex(CH9329MSKBMap.KBShortCutKey().get("Win"));
+            case 0xE4:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR"));
+            case 0xE5:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("ShiftR"));
+            case 0xE6:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR"));
+            case 0xE7:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR"));
             default:
                 return 0;
         }
+    }
+
+    private int proChordSustainAggregateBootMaskOr0() {
+        int agg = 0;
+        for (int i = 0; i < proChordSustainBootByView.size(); i++) {
+            agg |= proChordSustainBootByView.valueAt(i);
+        }
+        return agg;
+    }
+
+    private void releaseProChordSustainFingerForView(@Nullable View v) {
+        if (v == null || !proChordSustainBootByView.containsKey(v)) {
+            return;
+        }
+        proChordSustainBootByView.remove(v);
+        if (!proChordHostHoldSent) {
+            refreshVisibleTopPanelButtonStates();
+            post(this::refreshBuiltInModifierKeyCapsFromTree);
+            return;
+        }
+        sendKeyboardAllKeysReleasedSync();
+        if (!proChordSustainBootByView.isEmpty()) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(agg),
+                        0);
+            } else if (holdLockController != null) {
+                holdLockController.reassertKeyboardModifiersIfNeeded(
+                        port, bluetoothService, isServiceBound);
+            }
+            proChordHostHoldSent = true;
+        } else {
+            if (holdLockController != null) {
+                holdLockController.reassertKeyboardModifiersIfNeeded(
+                        port, bluetoothService, isServiceBound);
+            }
+            proChordHostHoldSent = false;
+        }
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
     }
 
     private int getHoldLockedBootModMaskOr0() {
@@ -1183,15 +1228,13 @@ public class CustomKeyboardView extends LinearLayout {
         return modifiers | getHoldLockedBootModMaskOr0();
     }
 
-    /** ORs chord-held boot modifier bits into HID sends while a chord long-press is active (KM Basic parity). */
+    /** ORs chord-held boot modifier bits into HID sends while chord fingers are down (KM Basic parity). */
     private int mergeChordHeldBootMask(int modifiers) {
         Context ctx = getContext();
-        if (ctx == null
-                || !KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)
-                || !proChordLongPressActivated) {
+        if (ctx == null || !KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)) {
             return modifiers;
         }
-        return modifiers | proChordHeldModMask;
+        return modifiers | proChordSustainAggregateBootMaskOr0();
     }
 
     private boolean isProBuiltInModifierTouchKey(Key key) {
@@ -2315,11 +2358,10 @@ public class CustomKeyboardView extends LinearLayout {
         boolean latched = isModifierLockedStateForKey(key);
         boolean held =
                 holdLockController != null && boot != 0 && holdLockController.isModifierLocked(boot);
+        int aggregate = proChordSustainAggregateBootMaskOr0();
         boolean chordHighlight =
-                proChordLongPressActivated
-                        && proChordSustainFingerDown
-                        && ((proChordHeldModMask != 0 && boot != 0 && (proChordHeldModMask & boot) != 0)
-                                || proChordActiveExtKey == ext);
+                (boot != 0 && (aggregate & boot) != 0)
+                        || (boot == 0 && proChordActiveExtKey == ext);
         return latched || held || chordHighlight;
     }
 
@@ -4964,7 +5006,6 @@ public class CustomKeyboardView extends LinearLayout {
                         clearPartnerChordStateFromPrimary();
                         dismissProHoldLockPopup();
                         performKeyHapticFeedback(v);
-                        proChordLongPressActivated = false;
                         proChordActiveExtKey = key.code;
                         proChordLongPressAnchorView = v;
                         proChordLongPressPendingMask = bootModifierMaskForBuiltInExtendedKey(key.code);
@@ -5097,20 +5138,8 @@ public class CustomKeyboardView extends LinearLayout {
                             return true;
                         }
                         if (isProMomentaryChordMode()) {
-                            if (proChordLongPressActivated) {
-                                if (proChordHostHoldSent) {
-                                    sendKeyboardAllKeysReleasedSync();
-                                    reassertLockedKeyboardAfterAllKeysReleased();
-                                    proChordHostHoldSent = false;
-                                }
-                                proChordSustainFingerDown = false;
-                                proChordHeldModMask = 0;
-                                if (proChordHeldView != null) {
-                                    proChordHeldView.setSelected(false);
-                                    proChordHeldView = null;
-                                }
-                                proChordLongPressActivated = false;
-                                proChordLongPressAnchorView = null;
+                            if (proChordSustainBootByView.containsKey(v)) {
+                                releaseProChordSustainFingerForView(v);
                             } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
                                 int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
                                 if (holdLockController != null
@@ -5149,19 +5178,8 @@ public class CustomKeyboardView extends LinearLayout {
                         repeatHandler.postDelayed(this::sendReleaseData, 30);
                     } else {
                         dismissProHoldLockPopup();
-                        if (isProMomentaryChordMode() && proChordLongPressActivated) {
-                            if (proChordHostHoldSent) {
-                                sendKeyboardAllKeysReleasedSync();
-                                reassertLockedKeyboardAfterAllKeysReleased();
-                                proChordHostHoldSent = false;
-                            }
-                            proChordSustainFingerDown = false;
-                            proChordHeldModMask = 0;
-                            if (proChordHeldView != null) {
-                                proChordHeldView.setSelected(false);
-                                proChordHeldView = null;
-                            }
-                            proChordLongPressActivated = false;
+                        if (isProMomentaryChordMode() && proChordSustainBootByView.containsKey(v)) {
+                            releaseProChordSustainFingerForView(v);
                         }
                         proChordLongPressAnchorView = null;
                         holdLockPopupAnchorView = null;
@@ -5193,7 +5211,6 @@ public class CustomKeyboardView extends LinearLayout {
                     v.setPressed(true);
                     performKeyHapticFeedback(v);
                     if (isProMomentaryChordMode()) {
-                        proChordLongPressActivated = false;
                         proChordActiveExtKey = ext;
                         proChordLongPressAnchorView = v;
                         proChordLongPressPendingMask = boot;
@@ -5283,20 +5300,8 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     dismissProHoldLockPopup();
                     if (isProMomentaryChordMode()) {
-                        if (proChordLongPressActivated) {
-                            if (proChordHostHoldSent) {
-                                sendKeyboardAllKeysReleasedSync();
-                                reassertLockedKeyboardAfterAllKeysReleased();
-                                proChordHostHoldSent = false;
-                            }
-                            proChordSustainFingerDown = false;
-                            proChordHeldModMask = 0;
-                            if (proChordHeldView != null) {
-                                proChordHeldView.setSelected(false);
-                                proChordHeldView = null;
-                            }
-                            proChordLongPressActivated = false;
-                            proChordLongPressAnchorView = null;
+                        if (proChordSustainBootByView.containsKey(v)) {
+                            releaseProChordSustainFingerForView(v);
                         } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
                             if (holdLockController != null
                                     && ma != null
@@ -5336,19 +5341,8 @@ public class CustomKeyboardView extends LinearLayout {
                     longPressHandler.removeCallbacks(proChordLongPressRunnable);
                     longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
                     dismissProHoldLockPopup();
-                    if (isProMomentaryChordMode() && proChordLongPressActivated) {
-                        if (proChordHostHoldSent) {
-                            sendKeyboardAllKeysReleasedSync();
-                            reassertLockedKeyboardAfterAllKeysReleased();
-                            proChordHostHoldSent = false;
-                        }
-                        proChordSustainFingerDown = false;
-                        proChordHeldModMask = 0;
-                        if (proChordHeldView != null) {
-                            proChordHeldView.setSelected(false);
-                            proChordHeldView = null;
-                        }
-                        proChordLongPressActivated = false;
+                    if (isProMomentaryChordMode() && proChordSustainBootByView.containsKey(v)) {
+                        releaseProChordSustainFingerForView(v);
                     }
                     proChordLongPressAnchorView = null;
                     holdLockPopupAnchorView = null;

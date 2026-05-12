@@ -6,6 +6,7 @@ import android.content.res.ColorStateList;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -83,16 +84,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     private static final int HID_EXT_RALT = 0xE6;
     private static final int HID_EXT_RGUI = 0xE7;
 
-    private int chordHeldModMask;
-    @Nullable
-    private View chordHeldView;
+    /**
+     * Per–modifier-key view: boot modifier byte bits for each finger that completed chord long-press
+     * and has not released (multi-touch chord). OR of all values is the effective chord mask.
+     */
+    private final ArrayMap<View, Integer> chordSustainBootByView = new ArrayMap<>();
     private View chordLongPressAnchor;
     private int chordLongPressPendingMask;
     /** Extended HID code for the modifier key being chord-held (for fallback send). */
     private int chordActiveExtKey;
-    private boolean chordLongPressActivated;
-    /** True while finger is on modifier after long-press engaged (until UP/CANCEL). */
-    private boolean chordSustainFingerDown;
     /** True after we sent a sustained modifier-down to the host (needs release on UP / clear). */
     private boolean chordHostHoldSent;
     private final Runnable chordLongPressRunnable = this::onChordLongPressThreshold;
@@ -232,38 +232,34 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         handler.removeCallbacks(chordLongPressRunnable);
         handler.removeCallbacks(holdLockPopupRunnable);
         dismissHoldLockPopup();
-        if (chordHostHoldSent) {
+        if (chordHostHoldSent || !chordSustainBootByView.isEmpty()) {
             MainActivity ma = mainActivity;
             if (ma != null) {
                 KeyboardHidTransport.sendAllKeysReleased(
                         port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
                 reassertLockedKeyboardAfterAllKeysReleased();
             }
-            chordHostHoldSent = false;
         }
-        chordSustainFingerDown = false;
+        chordHostHoldSent = false;
+        chordSustainBootByView.clear();
         chordLongPressAnchor = null;
-        chordLongPressActivated = false;
-        chordHeldModMask = 0;
-        if (chordHeldView != null) {
-            chordHeldView.setSelected(false);
-            chordHeldView = null;
-        }
     }
 
     private void onChordLongPressThreshold() {
         if (chordLongPressAnchor == null) {
             return;
         }
-        chordLongPressActivated = true;
-        chordHeldModMask = chordLongPressPendingMask;
-        chordHeldView = chordLongPressAnchor;
-        chordHeldView.setSelected(true);
-        chordSustainFingerDown = true;
+        View anchor = chordLongPressAnchor;
+        int contrib = bootMaskForChordFinger(chordLongPressPendingMask, chordActiveExtKey);
+        if (contrib == 0) {
+            return;
+        }
+        chordSustainBootByView.put(anchor, contrib);
         if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())) {
             MainActivity ma = mainActivity;
             if (ma != null) {
-                if (chordHeldModMask != 0) {
+                int agg = chordSustainAggregateBootMaskOr0();
+                if (agg != 0) {
                     KeyboardHidTransport.sendKeyReport(
                             port,
                             ma.getBluetoothService(),
@@ -286,6 +282,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             chordHostHoldSent = false;
         }
         keyPreview.dismiss();
+        refreshModifierVisuals();
     }
 
     private int shiftMaskBoth() {
@@ -300,7 +297,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     /** Sticky latched shift, lock, or chord mode with Shift long-held. */
     private boolean shiftLayerActive() {
         if (isMomentaryChordMode()) {
-            return ((chordHeldModMask | lockedModsOr0()) & shiftMaskBoth()) != 0;
+            return ((chordSustainAggregateBootMaskOr0() | lockedModsOr0()) & shiftMaskBoth()) != 0;
         }
         return stickyShiftLayer();
     }
@@ -314,7 +311,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 port,
                 ma.getBluetoothService(),
                 ma.isBluetoothServiceBound(),
-                lockedModsOr0(),
+                lockedModsOr0() | chordSustainAggregateBootMaskOr0(),
                 extendedKeyCode);
         handler.postDelayed(
                 () -> {
@@ -358,14 +355,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         handler.removeCallbacks(chordLongPressRunnable);
         handler.removeCallbacks(holdLockPopupRunnable);
         dismissHoldLockPopup();
-        chordSustainFingerDown = false;
-        chordLongPressActivated = false;
-        chordHeldModMask = 0;
+        chordSustainBootByView.clear();
         chordHostHoldSent = false;
-        if (chordHeldView != null) {
-            chordHeldView.setSelected(false);
-            chordHeldView = null;
-        }
         chordLongPressAnchor = null;
     }
 
@@ -389,7 +380,6 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     dismissHoldLockPopup();
                     v.setPressed(true);
                     BasicKeyFeedback.performKeyHaptic(v);
-                    chordLongPressActivated = false;
                     chordActiveExtKey = extendedKeyCode;
                     chordLongPressAnchor = v;
                     chordLongPressPendingMask = holdModMask;
@@ -455,26 +445,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         holdLockPopupAnchorView = null;
                         return true;
                     }
-                    if (chordLongPressActivated) {
-                        if (chordHostHoldSent) {
-                            MainActivity maUp = mainActivity;
-                            if (maUp != null) {
-                                KeyboardHidTransport.sendAllKeysReleased(
-                                        port,
-                                        maUp.getBluetoothService(),
-                                        maUp.isBluetoothServiceBound());
-                                reassertLockedKeyboardAfterAllKeysReleased();
-                            }
-                            chordHostHoldSent = false;
-                        }
-                        chordSustainFingerDown = false;
-                        chordHeldModMask = 0;
-                        if (chordHeldView != null) {
-                            chordHeldView.setSelected(false);
-                            chordHeldView = null;
-                        }
-                        chordLongPressActivated = false;
-                        chordLongPressAnchor = null;
+                    if (chordSustainBootByView.containsKey(v)) {
+                        releaseChordSustainFingerForView(v);
                     } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
                         MainActivity maTap = mainActivity;
                         if (kmBasicHoldLockController != null
@@ -500,25 +472,8 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                     dismissHoldLockPopup();
                     v.setPressed(false);
                     keyPreview.dismiss();
-                    if (chordLongPressActivated) {
-                        if (chordHostHoldSent) {
-                            MainActivity maCancel = mainActivity;
-                            if (maCancel != null) {
-                                KeyboardHidTransport.sendAllKeysReleased(
-                                        port,
-                                        maCancel.getBluetoothService(),
-                                        maCancel.isBluetoothServiceBound());
-                                reassertLockedKeyboardAfterAllKeysReleased();
-                            }
-                            chordHostHoldSent = false;
-                        }
-                        chordSustainFingerDown = false;
-                        chordHeldModMask = 0;
-                        if (chordHeldView != null) {
-                            chordHeldView.setSelected(false);
-                            chordHeldView = null;
-                        }
-                        chordLongPressActivated = false;
+                    if (chordSustainBootByView.containsKey(v)) {
+                        releaseChordSustainFingerForView(v);
                     }
                     chordLongPressAnchor = null;
                     holdLockPopupAnchorView = null;
@@ -577,12 +532,12 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         int locked = lockedModsOr0();
         if (shiftKeyLeft != null) {
             shiftKeyLeft.setSelected(
-                    (chordLongPressActivated && chordHeldView == shiftKeyLeft)
+                    chordSustainBootByView.containsKey(shiftKeyLeft)
                             || (locked & parseMod("Shift")) != 0);
         }
         if (shiftKeyRight != null) {
             shiftKeyRight.setSelected(
-                    (chordLongPressActivated && chordHeldView == shiftKeyRight)
+                    chordSustainBootByView.containsKey(shiftKeyRight)
                             || (locked & parseMod("ShiftR")) != 0);
         }
         applyChordOrLockVisualSide(ctrlModifierKeys, parseMod("Ctrl"), parseMod("CtrlR"), locked);
@@ -597,13 +552,11 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             List<View> keys, int leftBit, int rightBit, int lockedMask) {
         if (keys.size() > 0) {
             View v = keys.get(0);
-            v.setSelected((chordLongPressActivated && chordHeldView == v)
-                    || (lockedMask & leftBit) != 0);
+            v.setSelected(chordSustainBootByView.containsKey(v) || (lockedMask & leftBit) != 0);
         }
         if (keys.size() > 1) {
             View v = keys.get(1);
-            v.setSelected((chordLongPressActivated && chordHeldView == v)
-                    || (lockedMask & rightBit) != 0);
+            v.setSelected(chordSustainBootByView.containsKey(v) || (lockedMask & rightBit) != 0);
         }
     }
 
@@ -621,17 +574,98 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 : 0;
     }
 
+    private int chordSustainAggregateBootMaskOr0() {
+        int agg = 0;
+        for (int i = 0; i < chordSustainBootByView.size(); i++) {
+            agg |= chordSustainBootByView.valueAt(i);
+        }
+        return agg;
+    }
+
+    private int bootModifierMaskFromExtendedKey(int extKey) {
+        switch (extKey) {
+            case HID_EXT_LCTRL:
+                return parseMod("Ctrl");
+            case HID_EXT_LSHIFT:
+                return parseMod("Shift");
+            case HID_EXT_LALT:
+                return parseMod("Alt");
+            case HID_EXT_LGUI:
+                return parseMod("Win");
+            case HID_EXT_RCTRL:
+                return parseMod("CtrlR");
+            case HID_EXT_RSHIFT:
+                return parseMod("ShiftR");
+            case HID_EXT_RALT:
+                return parseMod("AltR");
+            case HID_EXT_RGUI:
+                return parseMod("WinR");
+            default:
+                return 0;
+        }
+    }
+
+    private int bootMaskForChordFinger(int holdModMask, int extKey) {
+        return holdModMask != 0 ? holdModMask : bootModifierMaskFromExtendedKey(extKey);
+    }
+
+    /**
+     * One finger released from chord sustain: refresh host modifiers for any remaining chord fingers
+     * or locks only.
+     */
+    private void releaseChordSustainFingerForView(View v) {
+        if (!chordSustainBootByView.containsKey(v)) {
+            return;
+        }
+        chordSustainBootByView.remove(v);
+        if (!chordHostHoldSent) {
+            refreshModifierVisuals();
+            return;
+        }
+        MainActivity ma = mainActivity;
+        if (ma == null) {
+            chordHostHoldSent = false;
+            refreshModifierVisuals();
+            return;
+        }
+        KeyboardHidTransport.sendAllKeysReleased(
+                port, ma.getBluetoothService(), ma.isBluetoothServiceBound());
+        if (!chordSustainBootByView.isEmpty()) {
+            int agg = chordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound(),
+                        mergedChordSustainModifierBootMask(),
+                        0);
+            } else {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        ma.getBluetoothService(),
+                        ma.isBluetoothServiceBound(),
+                        lockedModsOr0(),
+                        chordActiveExtKey);
+            }
+            chordHostHoldSent = true;
+        } else {
+            reassertLockedKeyboardAfterAllKeysReleased();
+            chordHostHoldSent = false;
+        }
+        refreshModifierVisuals();
+    }
+
     /**
      * Boot keyboard modifier byte for chord sustain / reassert HID sends: combine swipe-up locks with
-     * the chord-held mask so a second send does not drop locked bits (host would otherwise see only
-     * one of two active modifiers).
+     * the OR of all chord-held fingers so a second send does not drop locked bits or other chord
+     * fingers.
      */
     private int mergedChordSustainModifierBootMask() {
-        return lockedModsOr0() | chordHeldModMask;
+        return lockedModsOr0() | chordSustainAggregateBootMaskOr0();
     }
 
     private int effectiveModifiersMask() {
-        int base = isMomentaryChordMode() ? chordHeldModMask : stickyModifiersMask();
+        int base = isMomentaryChordMode() ? chordSustainAggregateBootMaskOr0() : stickyModifiersMask();
         return base | lockedModsOr0();
     }
 
@@ -693,9 +727,9 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 ma.isBluetoothServiceBound());
         reassertLockedKeyboardAfterAllKeysReleased();
         if (KmBasicKeyboardPrefs.isChordSustainHidEnabled(getContext())
-                && chordSustainFingerDown
-                && chordLongPressActivated) {
-            if (chordHeldModMask != 0) {
+                && !chordSustainBootByView.isEmpty()) {
+            int agg = chordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
                 KeyboardHidTransport.sendKeyReport(
                         port,
                         ma.getBluetoothService(),
