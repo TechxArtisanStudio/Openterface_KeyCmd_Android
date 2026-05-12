@@ -1,97 +1,170 @@
-package com.openterface.keymod.compose;
+package com.openterface.fragment;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Build;
+import android.os.Bundle;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.openterface.fragment.ImeSavedTextFragment;
+import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.compose.SavedTextItem;
+import com.openterface.keymod.compose.SavedTextRepository;
 import com.openterface.keymod.util.ComposeSendPreviewDialog;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Bottom sheet fallback for browsing / managing saved compose texts when not hosted by
- * {@link com.openterface.keymod.MainActivity}.
+ * Full-screen overlay for browsing and managing saved IME compose texts (Keyboard &amp; Mouse Pro).
  */
-public final class ImeSavedTextBottomSheet {
+public class ImeSavedTextFragment extends Fragment {
 
-    private ImeSavedTextBottomSheet() {}
+    public interface Host {
+        @NonNull
+        String readCurrentEditorText();
 
-    public static void show(@NonNull FragmentActivity activity, @NonNull ImeSavedTextFragment.Host host) {
-        BottomSheetDialog dialog = new BottomSheetDialog(activity);
-        View root = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_ime_saved_text, null);
-        dialog.setContentView(root);
+        void onLoadIntoEditor(@NonNull String content);
 
-        SavedTextRepository repo = new SavedTextRepository(activity);
-        RecyclerView rv = root.findViewById(R.id.ime_saved_text_list);
-        TextView empty = root.findViewById(R.id.ime_saved_text_empty);
-        MaterialButton saveBtn = root.findViewById(R.id.ime_saved_text_save_current);
-        MaterialButton previewBtn = root.findViewById(R.id.ime_saved_text_action_preview);
-        MaterialButton loadBtn = root.findViewById(R.id.ime_saved_text_action_load);
-        MaterialButton sendBtn = root.findViewById(R.id.ime_saved_text_action_send);
+        void onSendSavedText(@NonNull String content);
+    }
+
+    @Nullable
+    private OnBackPressedCallback rootBackCallback;
+    @Nullable
+    private ImageButton closeButton;
+    @Nullable
+    private Host host;
+
+    @Nullable
+    @Override
+    public View onCreateView(
+            @NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_ime_saved_text, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        Activity act = getActivity();
+        if (!(act instanceof MainActivity)) {
+            return;
+        }
+        MainActivity mainActivity = (MainActivity) act;
+        host = mainActivity.getImeSavedTextHost();
+        if (host == null) {
+            mainActivity.hideImeSavedTextOverlay();
+            return;
+        }
+
+        Context ctx = requireContext();
+        closeButton = view.findViewById(R.id.ime_saved_text_close);
+        if (closeButton != null) {
+            closeButton.setOnClickListener(v -> dismissImeSavedText());
+        }
+
+        rootBackCallback =
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        dismissImeSavedText();
+                    }
+                };
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), rootBackCallback);
+
+        SavedTextRepository repo = new SavedTextRepository(ctx);
+        RecyclerView rv = view.findViewById(R.id.ime_saved_text_list);
+        TextView empty = view.findViewById(R.id.ime_saved_text_empty);
+        MaterialButton saveBtn = view.findViewById(R.id.ime_saved_text_save_current);
+        MaterialButton previewBtn = view.findViewById(R.id.ime_saved_text_action_preview);
+        MaterialButton loadBtn = view.findViewById(R.id.ime_saved_text_action_load);
+        MaterialButton sendBtn = view.findViewById(R.id.ime_saved_text_action_send);
 
         List<SavedTextItem> items = new ArrayList<>(repo.loadSorted());
+        Runnable dismissOverlay = this::dismissImeSavedText;
         Adapter adapter =
                 new Adapter(
-                        activity,
+                        ctx,
                         items,
                         repo,
                         host,
-                        dialog,
+                        view,
+                        dismissOverlay,
                         hasSelection -> {
                             int visibility = hasSelection ? View.VISIBLE : View.GONE;
-                            previewBtn.setVisibility(visibility);
-                            loadBtn.setVisibility(visibility);
-                            sendBtn.setVisibility(visibility);
+                            if (previewBtn != null) {
+                                previewBtn.setVisibility(visibility);
+                            }
+                            if (loadBtn != null) {
+                                loadBtn.setVisibility(visibility);
+                            }
+                            if (sendBtn != null) {
+                                sendBtn.setVisibility(visibility);
+                            }
                         });
-        rv.setLayoutManager(new LinearLayoutManager(activity));
+        rv.setLayoutManager(new LinearLayoutManager(ctx));
         rv.setAdapter(adapter);
         refreshEmpty(empty, items);
-        previewBtn.setOnClickListener(v -> adapter.showPreviewForSelected());
-        loadBtn.setOnClickListener(v -> adapter.loadSelectedIntoEditor());
-        sendBtn.setOnClickListener(v -> adapter.sendSelected());
+        if (previewBtn != null) {
+            previewBtn.setOnClickListener(v -> adapter.showPreviewForSelected());
+        }
+        if (loadBtn != null) {
+            loadBtn.setOnClickListener(v -> adapter.loadSelectedIntoEditor());
+        }
+        if (sendBtn != null) {
+            sendBtn.setOnClickListener(v -> adapter.sendSelected());
+        }
 
-        saveBtn.setOnClickListener(
-                v -> {
-                    SavedTextItem added = repo.addFromPlainText(host.readCurrentEditorText());
-                    if (added == null) {
-                        Toast.makeText(activity, R.string.ime_saved_text_save_empty, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    Toast.makeText(activity, R.string.ime_saved_text_saved, Toast.LENGTH_SHORT).show();
-                    items.clear();
-                    items.addAll(repo.loadSorted());
-                    adapter.notifyDataSetChanged();
-                    adapter.setSelectedItemId(added.id);
-                    refreshEmpty(empty, items);
-                    rv.scrollToPosition(0);
-                });
-
-        dialog.show();
+        if (saveBtn != null) {
+            saveBtn.setOnClickListener(
+                    v -> {
+                        SavedTextItem added = repo.addFromPlainText(host.readCurrentEditorText());
+                        if (added == null) {
+                            Toast.makeText(ctx, R.string.ime_saved_text_save_empty, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Toast.makeText(ctx, R.string.ime_saved_text_saved, Toast.LENGTH_SHORT).show();
+                        items.clear();
+                        items.addAll(repo.loadSorted());
+                        adapter.notifyDataSetChanged();
+                        adapter.setSelectedItemId(added.id);
+                        refreshEmpty(empty, items);
+                        rv.scrollToPosition(0);
+                    });
+        }
     }
 
-    private static void refreshEmpty(@NonNull TextView emptyView, @NonNull List<SavedTextItem> items) {
+    private void dismissImeSavedText() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).hideImeSavedTextOverlay();
+        }
+    }
+
+    private static void refreshEmpty(@Nullable TextView emptyView, @NonNull List<SavedTextItem> items) {
+        if (emptyView == null) {
+            return;
+        }
         emptyView.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
@@ -100,8 +173,9 @@ public final class ImeSavedTextBottomSheet {
         private final Context ctx;
         private final List<SavedTextItem> items;
         private final SavedTextRepository repo;
-        private final ImeSavedTextFragment.Host host;
-        private final BottomSheetDialog dialog;
+        private final Host host;
+        private final View contentRoot;
+        private final Runnable dismissOverlay;
         private final SelectionListener selectionListener;
         private long selectedItemId = -1L;
 
@@ -113,14 +187,16 @@ public final class ImeSavedTextBottomSheet {
                 @NonNull Context ctx,
                 @NonNull List<SavedTextItem> items,
                 @NonNull SavedTextRepository repo,
-                @NonNull ImeSavedTextFragment.Host host,
-                @NonNull BottomSheetDialog dialog,
+                @NonNull Host host,
+                @NonNull View contentRoot,
+                @NonNull Runnable dismissOverlay,
                 @NonNull SelectionListener selectionListener) {
             this.ctx = ctx;
             this.items = items;
             this.repo = repo;
             this.host = host;
-            this.dialog = dialog;
+            this.contentRoot = contentRoot;
+            this.dismissOverlay = dismissOverlay;
             this.selectionListener = selectionListener;
         }
 
@@ -252,10 +328,8 @@ public final class ImeSavedTextBottomSheet {
             }
             notifyDataSetChanged();
             notifySelectionChanged();
-            TextView empty = dialog.findViewById(R.id.ime_saved_text_empty);
-            if (empty != null) {
-                ImeSavedTextBottomSheet.refreshEmpty(empty, items);
-            }
+            TextView empty = contentRoot.findViewById(R.id.ime_saved_text_empty);
+            ImeSavedTextFragment.refreshEmpty(empty, items);
         }
 
         void setSelectedItemId(long itemId) {
@@ -278,7 +352,7 @@ public final class ImeSavedTextBottomSheet {
                 return;
             }
             host.onLoadIntoEditor(it.content != null ? it.content : "");
-            dialog.dismiss();
+            dismissOverlay.run();
         }
 
         void sendSelected() {

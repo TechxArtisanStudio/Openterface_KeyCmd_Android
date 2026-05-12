@@ -73,6 +73,7 @@ import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
+import com.openterface.fragment.ImeSavedTextFragment;
 import com.openterface.keymod.compose.ImeSavedTextBottomSheet;
 import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
@@ -8311,7 +8312,7 @@ public class CustomKeyboardView extends LinearLayout {
         openImeSavedTextLibrary();
     }
 
-    /** Split-landscape rail: open saved-text bottom sheet. */
+    /** Split-landscape rail: open saved-text library. */
     public void onSplitLandscapeImeRailSavedClicked() {
         openImeSavedTextLibrary();
     }
@@ -8325,9 +8326,8 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         FragmentActivity fa = (FragmentActivity) act;
-        ImeSavedTextBottomSheet.show(
-                fa,
-                new ImeSavedTextBottomSheet.Host() {
+        ImeSavedTextFragment.Host host =
+                new ImeSavedTextFragment.Host() {
                     @NonNull
                     @Override
                     public String readCurrentEditorText() {
@@ -8357,7 +8357,12 @@ public class CustomKeyboardView extends LinearLayout {
                     public void onSendSavedText(@NonNull String content) {
                         attemptImeComposeSendForString(content);
                     }
-                });
+                };
+        if (act instanceof MainActivity) {
+            ((MainActivity) act).showImeSavedTextOverlay(host);
+        } else {
+            ImeSavedTextBottomSheet.show(fa, host);
+        }
     }
 
     private void attemptImeComposeSendForString(@NonNull String text) {
@@ -8732,9 +8737,9 @@ public class CustomKeyboardView extends LinearLayout {
             imeCaptureToolbar.addView(imeCaptureTouchpadButton);
             imeCaptureToolbar.addView(imeSubComposeModeToggle);
             imeCaptureToolbar.addView(imeCaptureDirectModeHint);
+            imeCaptureToolbar.addView(imeCaptureSavedTextsButton);
             imeCaptureToolbar.addView(imeCaptureClearButton);
             imeCaptureToolbar.addView(imeCaptureUndoButton);
-            imeCaptureToolbar.addView(imeCaptureSavedTextsButton);
             imeCaptureToolbar.addView(imeCaptureSendButton);
             addView(imeCaptureToolbar);
 

@@ -261,16 +261,16 @@
                     android:src="@drawable/ic_ime_compose_mode_note_24" />
 
                 <ImageButton
-                    android:id="@+id/composite_split_ime_rail_undo"
+                    android:id="@+id/composite_split_ime_rail_saved"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:layout_marginTop="4dp"
                     android:background="@drawable/function_button_background"
-                    android:contentDescription="@string/compose_undo"
+                    android:contentDescription="@string/ime_saved_text_cd_open_library"
                     android:padding="@dimen/button_icon_padding"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_compose_undo_24" />
+                    android:src="@drawable/ic_ime_saved_text_24" />
 
                 <ImageButton
                     android:id="@+id/composite_split_ime_rail_clear"
@@ -285,16 +285,16 @@
                     android:src="@drawable/ic_compose_clear_24" />
 
                 <ImageButton
-                    android:id="@+id/composite_split_ime_rail_saved"
+                    android:id="@+id/composite_split_ime_rail_undo"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:layout_marginTop="4dp"
                     android:background="@drawable/function_button_background"
-                    android:contentDescription="@string/ime_saved_text_cd_open_library"
+                    android:contentDescription="@string/compose_undo"
                     android:padding="@dimen/button_icon_padding"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_ime_saved_text_24" />
+                    android:src="@drawable/ic_compose_undo_24" />
 
                 <ImageButton
                     android:id="@+id/composite_split_ime_rail_send"

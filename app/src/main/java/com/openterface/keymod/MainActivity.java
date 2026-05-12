@@ -59,6 +59,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.openterface.fragment.CompositeFragment;
 import com.openterface.fragment.GamepadFragment;
+import com.openterface.fragment.ImeSavedTextFragment;
 import com.openterface.fragment.KeyboardFragment;
 import com.openterface.fragment.KeyboardMouseFragment;
 import com.openterface.fragment.KmProSettingsFragment;
@@ -170,6 +171,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private View headerRightCluster;
     @Nullable
     private View kmProSettingsOverlay;
+    @Nullable
+    private View imeSavedTextOverlay;
+    @Nullable
+    private ImeSavedTextFragment.Host imeSavedTextHost;
     @Nullable
     private ImageButton kmProSetupHeaderButton;
     private final ImageButton[] headerModeSlotButtons = new ImageButton[3];
@@ -576,6 +581,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             updateTargetOsHeaderIcon();
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
+        imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
         kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
         applyHeaderRightClusterNavInsets();
         applyHeaderEndScrollLayoutForOrientation();
@@ -647,6 +653,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             hideKmProSettingsOverlay();
         } else {
             updateKmProHeaderSetupChrome();
+        }
+        if (!(f instanceof CompositeFragment)
+                && imeSavedTextOverlay != null
+                && imeSavedTextOverlay.getVisibility() == View.VISIBLE) {
+            hideImeSavedTextOverlay();
         }
     }
 
@@ -721,6 +732,71 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         kmProSettingsOverlay.setVisibility(View.GONE);
         refreshOpenKeyboardShortcutStripFromPrefs();
         updateKmProHeaderSetupChrome();
+    }
+
+    /** Full-screen overlay for IME saved compose texts library. */
+    public void showImeSavedTextOverlay(@NonNull ImeSavedTextFragment.Host host) {
+        if (imeSavedTextOverlay == null) {
+            return;
+        }
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+            }
+        }
+        imeSavedTextHost = host;
+        imeSavedTextOverlay.setVisibility(View.VISIBLE);
+        FragmentManager fm = getSupportFragmentManager();
+        try {
+            fm.executePendingTransactions();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "executePendingTransactions before IME saved texts show", e);
+        }
+        FragmentTransaction showTx =
+                fm.beginTransaction().replace(R.id.ime_saved_text_overlay, new ImeSavedTextFragment());
+        try {
+            if (!fm.isStateSaved()) {
+                showTx.commitNow();
+            } else {
+                showTx.commitAllowingStateLoss();
+            }
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "IME saved texts show: commitNow failed, retrying with commitAllowingStateLoss", e);
+            fm.beginTransaction()
+                    .replace(R.id.ime_saved_text_overlay, new ImeSavedTextFragment())
+                    .commitAllowingStateLoss();
+        }
+    }
+
+    @Nullable
+    public ImeSavedTextFragment.Host getImeSavedTextHost() {
+        return imeSavedTextHost;
+    }
+
+    public void hideImeSavedTextOverlay() {
+        if (imeSavedTextOverlay == null) {
+            return;
+        }
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment existing = fm.findFragmentById(R.id.ime_saved_text_overlay);
+        if (existing != null) {
+            FragmentTransaction hideTx = fm.beginTransaction().remove(existing);
+            try {
+                if (!fm.isStateSaved()) {
+                    hideTx.commitNow();
+                } else {
+                    hideTx.commitAllowingStateLoss();
+                }
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "IME saved texts hide: commitNow failed, retrying with commitAllowingStateLoss", e);
+                fm.beginTransaction().remove(existing).commitAllowingStateLoss();
+            }
+        }
+        imeSavedTextOverlay.setVisibility(View.GONE);
+        imeSavedTextHost = null;
     }
 
     /**

@@ -296,6 +296,15 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:visibility="gone"/>
+
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/ime_saved_text_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/background_light"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
         </FrameLayout>
 
     </LinearLayout>
