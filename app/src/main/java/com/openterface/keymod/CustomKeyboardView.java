@@ -4611,7 +4611,7 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         Context ctx = ib.getContext();
-        int onPrimaryContainerFallback = ThemeManager.getColorPrimaryContainer(ctx);
+        int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
         int primaryFallback = ThemeManager.getColorPrimary(ctx);
         int tint = systemImeCaptureMode
                 ? MaterialColors.getColor(
@@ -4631,7 +4631,7 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         Context ctx = tv.getContext();
-        int onPrimaryContainerFallback = ThemeManager.getColorPrimaryContainer(ctx);
+        int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
         int primaryFallback = ThemeManager.getColorPrimary(ctx);
         int color = systemImeCaptureMode
                 ? MaterialColors.getColor(

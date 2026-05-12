@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Landscape: same structure as portrait — editor uses full width; Undo clear / Clear / Send sit in one row
-  directly above the IME inset zone (keyboard), like Pro IME compose toolbar placement.
+  Landscape KM Basic: full-height compose editor; Undo / Clear / Send toolbar is hidden (use portrait
+  or another tab for those actions). Insets still pad the editor above IME / system bars.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -15,15 +15,6 @@
     android:paddingEnd="12dp"
     android:paddingBottom="4dp">
 
-    <TextView
-        android:id="@+id/basic_compose_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="6dp"
-        android:text="@string/kb_basic_compose_hint"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -36,7 +27,8 @@
             android:id="@+id/basic_compose_editor"
             style="@style/Widget.KeyMod.BasicComposeEditor"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:hint="@string/kb_basic_compose_editor_hint"
             android:minHeight="@dimen/basic_compose_editor_min_height"
             android:imeOptions="flagNoExtractUi"
             android:inputType="textMultiLine|textCapSentences"
@@ -51,7 +43,8 @@
         android:layout_marginTop="8dp"
         android:baselineAligned="false"
         android:orientation="horizontal"
-        android:paddingBottom="8dp">
+        android:paddingBottom="8dp"
+        android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_redo"

@@ -948,7 +948,7 @@
     <string name="gamepad_stick_pointer_hub_mouse_left">左</string>
     <string name="gamepad_stick_pointer_hub_mouse_middle">中</string>
     <string name="gamepad_stick_pointer_hub_mouse_right">右</string>
-    <string name="kb_basic_compose_hint">输入文字后点按发送（HID 建议仅 ASCII）。</string>
+    <string name="kb_basic_compose_editor_hint">在此输入或粘贴文字，按需编辑后点按发送。</string>
     <string name="kb_basic_numpad_00">00</string>
     <string name="kb_basic_numpad_del">Del</string>
     <string name="kb_basic_numpad_end">End</string>

@@ -811,7 +811,7 @@ by TechxArtisan</string>
     <string name="kb_basic_touchpad_mouse_left_a11y">Left mouse button</string>
     <string name="kb_basic_touchpad_mouse_middle_a11y">Middle mouse button</string>
     <string name="kb_basic_touchpad_mouse_right_a11y">Right mouse button</string>
-    <string name="kb_basic_compose_hint">Type text, then Send (ASCII-friendly for HID).</string>
+    <string name="kb_basic_compose_editor_hint">Type or paste your text here, edit as needed, then tap Send.</string>
     <string name="kb_basic_numpad_prt_sc">Prt Sc</string>
     <string name="kb_basic_numpad_scr_lk">Scr Lk</string>
     <string name="kb_basic_numpad_pause">Pause</string>

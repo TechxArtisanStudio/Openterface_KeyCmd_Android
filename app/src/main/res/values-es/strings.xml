@@ -1027,8 +1027,7 @@ por TechxArtisan</string>
     <string name="gamepad_stick_pointer_hub_mouse_middle">Central</string>
     <string name="gamepad_stick_pointer_hub_mouse_right">Derecho</string>
     <string name="gamepad_module_remove_confirm_message">¿Quitar este control del diseño?</string>
-    <string name="kb_basic_compose_hint"><![CDATA[Type text, then Send (ASCII-friendly for HID).
-    ]]></string>
+    <string name="kb_basic_compose_editor_hint">Escriba o pegue el texto aquí, edítelo si es necesario y pulse Enviar.</string>
     <string name="kb_basic_numpad_00"><![CDATA[00
     ]]></string>
     <string name="kb_basic_numpad_del"><![CDATA[Del

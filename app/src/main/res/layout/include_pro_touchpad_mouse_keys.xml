@@ -9,6 +9,8 @@
     android:orientation="horizontal"
     android:paddingTop="@dimen/pro_touchpad_mouse_keys_padding_top"
     android:paddingBottom="@dimen/pro_touchpad_mouse_keys_padding_bottom"
+    android:paddingStart="@dimen/basic_touchpad_mouse_column_horizontal_padding"
+    android:paddingEnd="@dimen/basic_touchpad_mouse_column_horizontal_padding"
     android:visibility="gone">
 
     <TextView

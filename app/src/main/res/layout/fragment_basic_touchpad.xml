@@ -38,6 +38,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
                 android:background="@color/touchpad_background"
                 android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
         </LinearLayout>
@@ -51,7 +52,9 @@
         android:baselineAligned="false"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingTop="8dp">
+        android:paddingTop="8dp"
+        android:paddingStart="@dimen/basic_touchpad_mouse_column_horizontal_padding"
+        android:paddingEnd="@dimen/basic_touchpad_mouse_column_horizontal_padding">
 
         <TextView
             android:id="@+id/basic_touchpad_btn_left"

@@ -485,7 +485,10 @@ public class CompositeFragment extends Fragment {
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
         int bottom =
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
-        proTouchpadMouseKeys.setPaddingRelative(0, top, 0, bottom);
+        int hPad =
+                getResources()
+                        .getDimensionPixelSize(R.dimen.basic_touchpad_mouse_column_horizontal_padding);
+        proTouchpadMouseKeys.setPaddingRelative(hPad, top, hPad, bottom);
     }
 
     private void wireProTouchpadScrollStrip() {
@@ -580,13 +583,16 @@ public class CompositeFragment extends Fragment {
             mLp.weight = PORTRAIT_STRIP_MOUSE_KEYS_WEIGHT;
             int hPad =
                     getResources()
-                            .getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_strip_padding_horizontal);
+                            .getDimensionPixelSize(R.dimen.basic_touchpad_mouse_column_horizontal_padding);
             proTouchpadMouseKeys.setPaddingRelative(hPad, topPad, hPad, bottomPad);
         } else {
             padLp.weight = 1f;
             mLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
             mLp.weight = 0f;
-            proTouchpadMouseKeys.setPaddingRelative(0, topPad, 0, bottomPad);
+            int hPad =
+                    getResources()
+                            .getDimensionPixelSize(R.dimen.basic_touchpad_mouse_column_horizontal_padding);
+            proTouchpadMouseKeys.setPaddingRelative(hPad, topPad, hPad, bottomPad);
         }
         touchpadPadHost.setLayoutParams(padLp);
         proTouchpadMouseKeys.setLayoutParams(mLp);
@@ -1370,7 +1376,7 @@ public class CompositeFragment extends Fragment {
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
         int sidePad =
                 getResources()
-                        .getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_strip_padding_horizontal);
+                        .getDimensionPixelSize(R.dimen.basic_touchpad_mouse_column_horizontal_padding);
         proTouchpadMouseKeys.setPaddingRelative(sidePad, topPad, sidePad, bottomPad);
         configureProMouseKeysRow(true);
         applyProTouchpadScrollStripLayout();
