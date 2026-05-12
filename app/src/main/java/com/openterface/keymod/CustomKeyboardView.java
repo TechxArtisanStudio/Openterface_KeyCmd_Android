@@ -1107,10 +1107,18 @@ public class CustomKeyboardView extends LinearLayout {
         if (ctx != null && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)) {
             if (proChordHeldModMask != 0) {
                 KeyboardHidTransport.sendKeyReport(
-                        port, bluetoothService, isServiceBound, proChordHeldModMask, 0);
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(proChordHeldModMask),
+                        0);
             } else if (proChordActiveExtKey != 0) {
                 KeyboardHidTransport.sendKeyReport(
-                        port, bluetoothService, isServiceBound, 0, proChordActiveExtKey);
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(0),
+                        proChordActiveExtKey);
             }
             proChordHostHoldSent = true;
         } else {
@@ -1132,10 +1140,18 @@ public class CustomKeyboardView extends LinearLayout {
                 && proChordLongPressActivated) {
             if (proChordHeldModMask != 0) {
                 KeyboardHidTransport.sendKeyReport(
-                        port, bluetoothService, isServiceBound, proChordHeldModMask, 0);
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(proChordHeldModMask),
+                        0);
             } else if (proChordActiveExtKey != 0) {
                 KeyboardHidTransport.sendKeyReport(
-                        port, bluetoothService, isServiceBound, 0, proChordActiveExtKey);
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(0),
+                        proChordActiveExtKey);
             }
             proChordHostHoldSent = true;
         }

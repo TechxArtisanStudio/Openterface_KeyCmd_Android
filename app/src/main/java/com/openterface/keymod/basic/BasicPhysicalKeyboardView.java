@@ -268,14 +268,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                             port,
                             ma.getBluetoothService(),
                             ma.isBluetoothServiceBound(),
-                            chordHeldModMask,
+                            mergedChordSustainModifierBootMask(),
                             0);
                 } else {
                     KeyboardHidTransport.sendKeyReport(
                             port,
                             ma.getBluetoothService(),
                             ma.isBluetoothServiceBound(),
-                            0,
+                            lockedModsOr0(),
                             chordActiveExtKey);
                 }
                 chordHostHoldSent = true;
@@ -314,7 +314,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 port,
                 ma.getBluetoothService(),
                 ma.isBluetoothServiceBound(),
-                0,
+                lockedModsOr0(),
                 extendedKeyCode);
         handler.postDelayed(
                 () -> {
@@ -621,6 +621,15 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                 : 0;
     }
 
+    /**
+     * Boot keyboard modifier byte for chord sustain / reassert HID sends: combine swipe-up locks with
+     * the chord-held mask so a second send does not drop locked bits (host would otherwise see only
+     * one of two active modifiers).
+     */
+    private int mergedChordSustainModifierBootMask() {
+        return lockedModsOr0() | chordHeldModMask;
+    }
+
     private int effectiveModifiersMask() {
         int base = isMomentaryChordMode() ? chordHeldModMask : stickyModifiersMask();
         return base | lockedModsOr0();
@@ -691,14 +700,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
                         port,
                         ma.getBluetoothService(),
                         ma.isBluetoothServiceBound(),
-                        chordHeldModMask,
+                        mergedChordSustainModifierBootMask(),
                         0);
             } else if (chordActiveExtKey != 0) {
                 KeyboardHidTransport.sendKeyReport(
                         port,
                         ma.getBluetoothService(),
                         ma.isBluetoothServiceBound(),
-                        0,
+                        lockedModsOr0(),
                         chordActiveExtKey);
             }
             chordHostHoldSent = true;
