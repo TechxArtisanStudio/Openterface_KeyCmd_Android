@@ -1398,6 +1398,45 @@ public class CompositeFragment extends Fragment {
         updateSplitImeRailChromeVisibility();
     }
 
+    /**
+     * With the software keyboard hidden (IME inset 0), move the vertical compose rail to the
+     * physical end edge (right in LTR) so it clears the text area start. When the keyboard is
+     * visible, keep the rail on the physical start edge (left in LTR). Order respects RTL.
+     */
+    private void applySplitImeComposeRailHorizontalOrder() {
+        if (splitImeEditorRow == null || splitImeActionRail == null || splitImeEdit == null) {
+            return;
+        }
+        if (!isSplitLandscapeComposeSendMode()) {
+            return;
+        }
+        boolean railOnPhysicalRight = !splitLandscapeImeVisible;
+        boolean rtl = splitImeEditorRow.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+        boolean wantRailFirst = railOnPhysicalRight == rtl;
+        int railIndex = splitImeEditorRow.indexOfChild(splitImeActionRail);
+        int editIndex = splitImeEditorRow.indexOfChild(splitImeEdit);
+        if (railIndex < 0 || editIndex < 0) {
+            return;
+        }
+        boolean railIsFirst = railIndex < editIndex;
+        if (railIsFirst == wantRailFirst) {
+            return;
+        }
+        LinearLayout.LayoutParams railLp =
+                (LinearLayout.LayoutParams) splitImeActionRail.getLayoutParams();
+        LinearLayout.LayoutParams editLp =
+                (LinearLayout.LayoutParams) splitImeEdit.getLayoutParams();
+        splitImeEditorRow.removeView(splitImeActionRail);
+        splitImeEditorRow.removeView(splitImeEdit);
+        if (wantRailFirst) {
+            splitImeEditorRow.addView(splitImeActionRail, railLp);
+            splitImeEditorRow.addView(splitImeEdit, editLp);
+        } else {
+            splitImeEditorRow.addView(splitImeEdit, editLp);
+            splitImeEditorRow.addView(splitImeActionRail, railLp);
+        }
+    }
+
     private void applySplitImeComposeRailAdaptiveWidth() {
         if (splitImeEditorRow == null || splitImeActionRail == null || splitImeEdit == null) {
             return;
@@ -1405,6 +1444,8 @@ public class CompositeFragment extends Fragment {
         if (!isSplitLandscapeComposeSendMode()) {
             return;
         }
+        applySplitImeComposeRailHorizontalOrder();
+
         int w = splitImeEditorRow.getWidth();
         if (w <= 0) {
             return;
