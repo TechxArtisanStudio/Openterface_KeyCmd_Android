@@ -152,6 +152,14 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         if (requireActivity() instanceof MainActivity) {
             ((MainActivity) requireActivity()).addOsChangeListener(osChangeListener);
         }
+        // Listener is unregistered in onPause; re-sync row labels if target_os changed while away.
+        String currentOs = getTargetOs();
+        if (browsePickAdapter != null) {
+            browsePickAdapter.setTargetOs(currentOs);
+        }
+        if (myShortcutsReorderAdapter != null) {
+            myShortcutsReorderAdapter.setTargetOs(currentOs);
+        }
         if (selectedProfile != null && panelShortcutsDetail.getVisibility() == View.VISIBLE) {
             profileManager.reloadProfilesFromPreferences();
             loadProfiles();
@@ -800,6 +808,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             });
         } else {
             myShortcutsReorderAdapter.replaceItems(ordered);
+            myShortcutsReorderAdapter.setTargetOs(targetOs);
         }
 
         ensureHubDetailLayoutManagersAndAdapterModes();
