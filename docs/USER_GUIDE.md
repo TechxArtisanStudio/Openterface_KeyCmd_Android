@@ -199,14 +199,17 @@ flowchart TB
 
 ### Preset vocabulary (schema)
 
-Shareable layouts use JSON with a **`schemaVersion`** field (bundled repo presets are **v10** as of the current app). Per-module **`zIndex`** is draw order (lower = behind); the editor can **Bring to front** / **Send to back**, and exports normalize **`zIndex`** to contiguous **0…n−1** for stable diffs. Useful terms:
+Shareable layouts use JSON with a **`schemaVersion`** field (bundled repo presets are **v10** as of the current app). The string **`format`** is always **`openterface.gamepad.layout.v1`** (document family); **`schemaVersion`** is the evolving revision. Per-module **`zIndex`** is draw order (lower = behind); **`validateOrThrow`** normalizes **`zIndex`** to contiguous **0…n−1** (stable draw order), and the editor does the same on save/export. A partial machine-readable overview lives in **[`docs/gamepad_layout_preset.schema.json`](gamepad_layout_preset.schema.json)** (JSON Schema); the **canonical** contract is still **`GamepadLayoutPresetDocument.validateOrThrow`** in the app plus unit tests on bundled JSON.
+
+Useful terms:
 
 | Everyday term | In presets / code |
 |---------------|---------------------|
 | D-pad, directional pad | Module type **DPAD** on the left slot; **`dpadVariant`** selects cross, split segments, disc, pivot, floating look, or clicky haptics |
 | Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer) on **`stick_left`** or **`stick_right`**; optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
 | Face / ABXY / symbol buttons | **BUTTON** modules; optional **`layout.faceButtonTemplate`** (`nintendo_diamond`, `xbox_abxy`, `playstation_symbols`) sets anchors and labels |
-| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents analog vs digital vs hair vs adaptive (adaptive is UI copy only here) |
+| HID usage codes (keyboard) | Integers **1–255** for **`hidKey`**, STICK_KEY/DPAD **direction keys** (`stickUpKey` …), optional **`stickCenterKey`**, STICK_MOUSE **`stickPointerCenterKey`**, and gesture-lock **`key_hold` / `key_turbo`** slots — invalid values are rejected on load |
+| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents digital vs hair vs adaptive (adaptive is UI copy only here); **`triggerAnalog`** is reserved / not used by runtime yet |
 | Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
 | Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
 | Canvas background (portable JSON) | **`layout.backgroundImageEncoding`** (`base64`), **`layout.backgroundImageMediaType`** (`image/png` / `image/jpeg` / `image/webp`), and **`layout.backgroundImageData`** (raw base64, no `data:` URL). Used when **sharing** a preset so the image travels in one file; after **import**, bytes are saved under app files dir as **`layout.backgroundImageFile`** and embed fields are cleared. Max decoded size about **6 MiB** |

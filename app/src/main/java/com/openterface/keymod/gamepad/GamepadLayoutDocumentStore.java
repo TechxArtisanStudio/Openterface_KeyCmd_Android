@@ -22,6 +22,8 @@ import java.util.Set;
 
 /**
  * Loads/saves the active {@link GamepadLayoutPresetDocument} in default SharedPreferences.
+ * <p>Module {@code anchorX}/{@code anchorY} in the JSON document are authoritative for the dynamic layout;
+ * {@link GamepadConfigManager} SIMPLE positions are updated on {@link #save} so legacy paths stay aligned.
  */
 public final class GamepadLayoutDocumentStore {
 
@@ -41,7 +43,6 @@ public final class GamepadLayoutDocumentStore {
             if (d != null) {
                 try {
                     GamepadLayoutPresetDocument.validateOrThrow(d);
-                    mergeAnchorsFromDisk(context, d);
                     if (!d.modules.isEmpty()) {
                         return d;
                     }
@@ -77,18 +78,6 @@ public final class GamepadLayoutDocumentStore {
             pos.put(m.id, new GamepadConfigManager.ComponentPosition(m.anchorX, m.anchorY));
         }
         new GamepadConfigManager(context).saveLayoutPositions(GamepadLayout.SIMPLE, pos);
-    }
-
-    private static void mergeAnchorsFromDisk(Context context, GamepadLayoutPresetDocument doc) {
-        Map<String, GamepadConfigManager.ComponentPosition> disk =
-                new GamepadConfigManager(context).loadLayoutPositions(GamepadLayout.SIMPLE);
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            GamepadConfigManager.ComponentPosition p = disk.get(m.id);
-            if (p != null) {
-                m.anchorX = p.x;
-                m.anchorY = p.y;
-            }
-        }
     }
 
     /**

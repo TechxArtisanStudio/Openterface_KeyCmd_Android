@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openterface.github.io/schemas/gamepad_layout_preset.schema.json",
+  "title": "Openterface gamepad layout preset (partial)",
+  "description": "Subset JSON Schema for authoring / tooling. Canonical validation is GamepadLayoutPresetDocument.validateOrThrow in the Android app; unknown keys are ignored by Gson on parse.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["format", "schemaVersion", "layout"],
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "openterface.gamepad.layout.v1",
+      "description": "Document family; integer schemaVersion tracks revisions within this format."
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Bundled presets use 10. Older values are upgraded on load."
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "description": { "type": "string" },
+        "exportedAt": { "type": "string" },
+        "sourceAppVersion": { "type": "string" },
+        "creator": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "mouseSensitivity": { "type": "number" },
+        "rightStickMouseGain": { "type": ["number", "null"] },
+        "touchpadMouseButtonScale": { "type": ["number", "null"] },
+        "showTwoButtons": { "type": "boolean" },
+        "backgroundImageFile": { "type": ["string", "null"] },
+        "backgroundScale": { "type": "number" },
+        "backgroundOffsetX": { "type": "number" },
+        "backgroundOffsetY": { "type": "number" },
+        "backgroundImageEncoding": {
+          "type": ["string", "null"],
+          "description": "Interchange only: cleared after import when written to backgroundImageFile."
+        },
+        "backgroundImageMediaType": { "type": ["string", "null"] },
+        "backgroundImageData": { "type": ["string", "null"] },
+        "stickLayoutTemplate": {
+          "type": ["string", "null"],
+          "description": "Metadata hint (symmetrical | offset | parallel); not auto-applied to module positions at runtime."
+        },
+        "faceButtonTemplate": {
+          "type": ["string", "null"],
+          "description": "Template id; actual face layout is in modules."
+        },
+        "gyroEnabled": { "type": ["boolean", "null"] },
+        "gestureLockMinPressMs": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000 },
+        "gestureLockDiagonalRadiusScale": { "type": ["number", "null"], "minimum": 0.5, "maximum": 3 },
+        "turboPulsePeriodMs": { "type": ["integer", "null"], "minimum": 25, "maximum": 300 },
+        "backgroundFillArgb": { "type": ["integer", "null"] },
+        "backgroundPattern": { "type": ["string", "null"] }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "type", "zIndex", "anchorX", "anchorY", "scale"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "STICK_KEY",
+              "STICK_MOUSE",
+              "DPAD",
+              "BUTTON",
+              "TOUCHPAD",
+              "SCROLL_STRIP",
+              "MOUSE_BUTTON",
+              "SHOULDER",
+              "TRIGGER"
+            ]
+          },
+          "zIndex": { "type": "integer", "minimum": 0 },
+          "anchorX": { "type": "number", "minimum": 0, "maximum": 1 },
+          "anchorY": { "type": "number", "minimum": 0, "maximum": 1 },
+          "scale": { "type": "number", "exclusiveMinimum": 0, "maximum": 4 },
+          "hidKey": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 255,
+            "description": "Required for BUTTON, SHOULDER, TRIGGER when those modules are present."
+          },
+          "stickUpKey": { "type": ["integer", "null"], "minimum": 1, "maximum": 255 },
+          "stickLeftKey": { "type": ["integer", "null"], "minimum": 1, "maximum": 255 },
+          "stickDownKey": { "type": ["integer", "null"], "minimum": 1, "maximum": 255 },
+          "stickRightKey": { "type": ["integer", "null"], "minimum": 1, "maximum": 255 },
+          "stickCenterKey": { "type": ["integer", "null"], "minimum": 1, "maximum": 255 },
+          "triggerAnalog": {
+            "type": ["boolean", "null"],
+            "description": "Reserved; not read by current app runtime."
+          }
+        }
+      }
+    }
+  }
+}

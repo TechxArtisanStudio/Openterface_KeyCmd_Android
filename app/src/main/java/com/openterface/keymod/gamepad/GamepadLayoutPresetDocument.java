@@ -1,24 +1,27 @@
 package com.openterface.keymod.gamepad;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.openterface.keymod.BuildConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * Gson document for gamepad layout presets (shareable JSON).
+ * <p><b>Field intent:</b> Most {@link LayoutGlobals} and {@link GamepadModule} fields are
+ * <em>runtime-effective</em> (loaded into prefs / {@link com.openterface.keymod.GamepadView}).
+ * Exceptions called out in {@link LayoutGlobals} / {@link GamepadModule} JavaDoc:
+ * {@code layout.stickLayoutTemplate} (geometry hint only; not applied automatically at runtime),
+ * {@code layout.faceButtonTemplate} (hint; positions live in {@code modules}),
+ * and {@code layout.backgroundImageEncoding} / {@code backgroundImageMediaType} /
+ * {@code backgroundImageData} (portable interchange; cleared after import — see
+ * {@link GamepadLayoutPresetBackgroundCodec#prepareForPersistence}).
  */
 @SuppressWarnings("unused")
 public class GamepadLayoutPresetDocument {
@@ -100,23 +103,29 @@ public class GamepadLayoutPresetDocument {
         public float backgroundOffsetX;
         public float backgroundOffsetY;
         /**
-         * Portable interchange only: encoding for {@link #backgroundImageData}
+         * <b>Interchange only</b> (share/import): encoding for {@link #backgroundImageData}
          * (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_EMBED_ENCODING_BASE64}).
          * Cleared after the image is written to {@link #backgroundImageFile} so layout JSON in prefs stays small.
          */
         @Nullable public String backgroundImageEncoding;
-        /** Declared media type; must match decoded bytes (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_MEDIA_TYPE_PNG}). */
+        /**
+         * <b>Interchange only</b> — declared media type; must match decoded bytes (e.g.
+         * {@link GamepadLayoutPresetConstants#BACKGROUND_MEDIA_TYPE_PNG}). Cleared with other embed fields after import.
+         */
         @Nullable public String backgroundImageMediaType;
-        /** Raw base64 body (no {@code data:} URL prefix). */
+        /** <b>Interchange only</b> — raw base64 body (no {@code data:} URL prefix). Cleared after import. */
         @Nullable public String backgroundImageData;
         /**
          * Optional preset geometry hint: {@link GamepadLayoutPresetConstants#STICK_LAYOUT_SYMMETRICAL},
          * {@link GamepadLayoutPresetConstants#STICK_LAYOUT_OFFSET}, or {@link GamepadLayoutPresetConstants#STICK_LAYOUT_PARALLEL}.
+         * <p><b>Metadata only</b> — validated but not consumed to reposition modules at runtime; authors
+         * and UIs may use it for labels or future layout assist.
          */
         @Nullable public String stickLayoutTemplate;
         /**
          * Optional face cluster hint (Nintendo / Xbox / PlayStation anchors); see
-         * {@link GamepadFaceButtonTemplates}.
+         * {@link GamepadFaceButtonTemplates}. <b>Metadata / template driver</b> — actual cap positions and
+         * keys are defined by {@code modules}; this string is kept for export and tooling.
          */
         @Nullable public String faceButtonTemplate;
         /** When true, device tilt can drive relative pointer movement (see gamepad screen + USER_GUIDE). */
@@ -288,7 +297,7 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Float buttonRotationDeg;
         /** MOUSE_BUTTON: 1 = left, 2 = middle, 3 = right (same convention as {@code sendMouseClick}). */
         @Nullable public Integer mouseButton;
-        /** TRIGGER: reserved for future analog simulation; false = digital edge on {@code hidKey}. */
+        /** TRIGGER: reserved for future analog simulation; <b>not read</b> by current rendering/input — metadata only. */
         @Nullable public Boolean triggerAnalog;
         /** TRIGGER: {@link GamepadLayoutPresetConstants#TRIGGER_VARIANT_DIGITAL} and siblings (UI / future use). */
         @Nullable public String triggerVariant;
@@ -347,25 +356,24 @@ public class GamepadLayoutPresetDocument {
         return new GsonBuilder().setPrettyPrinting().create().toJson(doc);
     }
 
-    /**
-     * Dev-only: logs when two or more modules share the same {@link GamepadModule#zIndex} (stable draw order is
-     * ambiguous until normalized on save/export).
-     */
-    private static void warnDuplicateZIndicesInDebug(GamepadLayoutPresetDocument d) {
-        if (!BuildConfig.DEBUG || d.modules == null || d.modules.size() < 2) {
-            return;
-        }
-        HashMap<Integer, List<String>> idsByZ = new HashMap<>();
-        for (GamepadModule m : d.modules) {
-            if (m == null || m.id == null) {
-                continue;
-            }
-            idsByZ.computeIfAbsent(m.zIndex, z -> new ArrayList<>()).add(m.id);
-        }
-        for (Map.Entry<Integer, List<String>> e : idsByZ.entrySet()) {
-            if (e.getValue().size() > 1) {
-                Log.w("GamepadLayoutPreset", "Duplicate zIndex " + e.getKey() + " for modules: " + e.getValue());
-            }
+    private static void requireValidHidUsageKey(
+            @NonNull String moduleId, @NonNull Integer hidKey, @NonNull String fieldLabel) {
+        requireValidHidUsageKey(moduleId, hidKey.intValue(), fieldLabel);
+    }
+
+    private static void requireValidHidUsageKey(
+            @NonNull String moduleId, int code, @NonNull String fieldLabel) {
+        if (!GamepadLayoutPresetConstants.isValidHidUsageKey(code)) {
+            throw new IllegalArgumentException(
+                    "Module "
+                            + moduleId
+                            + ": "
+                            + fieldLabel
+                            + " must be in ["
+                            + GamepadLayoutPresetConstants.HID_USAGE_KEYCODE_MIN
+                            + ", "
+                            + GamepadLayoutPresetConstants.HID_USAGE_KEYCODE_MAX
+                            + "]");
         }
     }
 
@@ -427,7 +435,7 @@ public class GamepadLayoutPresetDocument {
         }
         GamepadLayoutPresetUpgrader.upgradeToLatest(d);
         GamepadLayoutPresetUpgrader.normalizeBundledMouseButtonModuleScales(d);
-        warnDuplicateZIndicesInDebug(d);
+        GamepadLayoutDocEditor.normalizeModuleZOrder(d);
         if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported schemaVersion after upgrade: " + d.schemaVersion);
         }
@@ -457,6 +465,7 @@ public class GamepadLayoutPresetDocument {
             if (btnA.hidKey == null) {
                 throw new IllegalArgumentException("button_a missing hidKey");
             }
+            requireValidHidUsageKey(btnA.id, btnA.hidKey, "hidKey");
         }
         if (d.layout.showTwoButtons) {
             if (btnA == null) {
@@ -467,6 +476,7 @@ public class GamepadLayoutPresetDocument {
                     || btnB.hidKey == null) {
                 throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_b with hidKey");
             }
+            requireValidHidUsageKey(btnB.id, btnB.hidKey, "hidKey");
         }
         int mouseButtonCount = 0;
         int scrollStripCount = 0;
@@ -612,24 +622,25 @@ public class GamepadLayoutPresetDocument {
                         || m.stickDownKey == null || m.stickRightKey == null)) {
                     throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY/DPAD needs four direction keys");
                 }
+                if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                        || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+                    requireValidHidUsageKey(m.id, m.stickUpKey, "stickUpKey");
+                    requireValidHidUsageKey(m.id, m.stickLeftKey, "stickLeftKey");
+                    requireValidHidUsageKey(m.id, m.stickDownKey, "stickDownKey");
+                    requireValidHidUsageKey(m.id, m.stickRightKey, "stickRightKey");
+                }
                 if (m.stickCenterKey != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                             && !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey only on STICK_KEY/DPAD");
                     }
-                    int c = m.stickCenterKey;
-                    if (c < 1 || c > 255) {
-                        throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey out of range");
-                    }
+                    requireValidHidUsageKey(m.id, m.stickCenterKey, "stickCenterKey");
                 }
                 if (m.stickPointerCenterKey != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey only on STICK_MOUSE");
                     }
-                    int pk = m.stickPointerCenterKey;
-                    if (pk < 1 || pk > 255) {
-                        throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey out of range");
-                    }
+                    requireValidHidUsageKey(m.id, m.stickPointerCenterKey, "stickPointerCenterKey");
                 }
                 if (m.stickPointerCenterMouseMask != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
@@ -646,6 +657,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": BUTTON needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!m.id.matches("button_[a-z0-9]+")) {
                     throw new IllegalArgumentException("Invalid button id: " + m.id);
                 }
@@ -730,6 +742,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": SHOULDER needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!GamepadLayoutPresetConstants.SHOULDER_L_ID.equals(m.id)
                         && !GamepadLayoutPresetConstants.SHOULDER_R_ID.equals(m.id)) {
                     throw new IllegalArgumentException("SHOULDER id must be shoulder_l or shoulder_r");
@@ -739,6 +752,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": TRIGGER needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!GamepadLayoutPresetConstants.TRIGGER_L_ID.equals(m.id)
                         && !GamepadLayoutPresetConstants.TRIGGER_R_ID.equals(m.id)) {
                     throw new IllegalArgumentException("TRIGGER id must be trigger_l or trigger_r");

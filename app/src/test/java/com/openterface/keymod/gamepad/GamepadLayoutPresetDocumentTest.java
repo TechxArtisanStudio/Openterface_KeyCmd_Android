@@ -6,8 +6,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +18,9 @@ public class GamepadLayoutPresetDocumentTest {
 
     private static final String TINY_PNG_BASE64 =
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+    @Rule
+    public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
     @Test
     public void validateAcceptsMinimalSimpleLayout() {
@@ -1173,6 +1179,65 @@ public class GamepadLayoutPresetDocumentTest {
         GamepadFaceButtonTemplates.applyTemplate(doc, GamepadLayoutPresetConstants.FACE_TEMPLATE_NINTENDO_DIAMOND);
         GamepadLayoutPresetDocument.validateOrThrow(doc);
         assertTrue(findModule(doc, "button_y") != null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsButtonHidKeyZero() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        findModule(doc, "button_a").hidKey = 0;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void validateRejectsStickDirectionKeyOutOfRange() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).stickUpKey = 300;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+    }
+
+    @Test
+    public void validateNormalizesDuplicateZIndexAtCurrentSchema() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).zIndex = 10;
+        doc.modules.get(1).zIndex = 10;
+        GamepadLayoutPresetDocument.validateOrThrow(doc);
+        assertEquals(0, doc.modules.get(0).zIndex);
+        assertEquals(1, doc.modules.get(1).zIndex);
+    }
+
+    @Test
+    public void anchorPositionsRoundTripInJson() {
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.modules.get(0).anchorX = 0.31f;
+        doc.modules.get(0).anchorY = 0.62f;
+        doc.modules.get(1).anchorX = 0.77f;
+        doc.modules.get(1).anchorY = 0.41f;
+        String json = GamepadLayoutPresetDocument.toJsonPretty(doc);
+        GamepadLayoutPresetDocument parsed = GamepadLayoutPresetDocument.parseOrNull(json);
+        assertNotNull(parsed);
+        GamepadLayoutPresetDocument.validateOrThrow(parsed);
+        assertEquals(0.31f, parsed.modules.get(0).anchorX, 0.0001f);
+        assertEquals(0.62f, parsed.modules.get(0).anchorY, 0.0001f);
+        assertEquals(0.77f, parsed.modules.get(1).anchorX, 0.0001f);
+        assertEquals(0.41f, parsed.modules.get(1).anchorY, 0.0001f);
+    }
+
+    @Test
+    public void prepareForPersistenceWritesFileAndClearsEmbedFields() throws Exception {
+        File dir = tmpFolder.newFolder();
+        GamepadLayoutPresetDocument doc = minimalValidDocument();
+        doc.meta.id = "unit_test_bg";
+        doc.layout.backgroundImageEncoding = GamepadLayoutPresetConstants.BACKGROUND_EMBED_ENCODING_BASE64;
+        doc.layout.backgroundImageMediaType = GamepadLayoutPresetConstants.BACKGROUND_MEDIA_TYPE_PNG;
+        doc.layout.backgroundImageData = TINY_PNG_BASE64;
+        GamepadLayoutPresetBackgroundCodec.prepareForPersistence(dir, doc);
+        assertNull(doc.layout.backgroundImageEncoding);
+        assertNull(doc.layout.backgroundImageMediaType);
+        assertNull(doc.layout.backgroundImageData);
+        assertNotNull(doc.layout.backgroundImageFile);
+        File written = new File(dir, doc.layout.backgroundImageFile);
+        assertTrue(written.isFile());
+        assertTrue(written.length() > 0);
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule findModule(

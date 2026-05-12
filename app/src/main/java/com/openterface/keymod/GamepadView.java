@@ -1243,6 +1243,22 @@ public class GamepadView extends View {
         }
     }
 
+    /**
+     * Copies {@link GamepadLayoutPresetDocument.GamepadModule#anchorX}/{@code anchorY} into
+     * {@link #componentPositions} so legacy edit exit / {@link #getPositions()} cannot overwrite JSON anchors
+     * with stale SIMPLE prefs after {@link #setLayout(GamepadLayout)} reloads disk.
+     */
+    private void syncComponentPositionsFromLayoutDocument() {
+        if (layoutDocument == null || layoutDocument.modules == null) {
+            return;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDocument.modules) {
+            if (m != null && m.id != null) {
+                componentPositions.put(m.id, new ComponentPosition(m.anchorX, m.anchorY));
+            }
+        }
+    }
+
     public void setLayoutDocument(@androidx.annotation.Nullable GamepadLayoutPresetDocument doc) {
         this.layoutDocument = doc;
         dynamicHitTestOrder.clear();
@@ -1253,6 +1269,7 @@ public class GamepadView extends View {
         scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
         scrollStripHighlightModuleId = null;
         scrollStripHighlightDir = 0;
+        syncComponentPositionsFromLayoutDocument();
         invalidate();
     }
 
@@ -2739,8 +2756,9 @@ public class GamepadView extends View {
 
     /**
      * Updates normalized position for the module being dragged. Dynamic layouts read anchors from
-     * {@link #layoutDocument}; legacy SIMPLE reads {@link #componentPositions}. Keep both in sync
-     * so the canvas repaints immediately and exit/save still merges positions.
+     * {@link #layoutDocument}; legacy SIMPLE keeps a parallel {@link #componentPositions} map for save /
+     * edit-exit. {@link #setLayoutDocument} and {@link #setLayout} refresh that map from document anchors so
+     * disk prefs cannot overwrite JSON positions on load.
      */
     private void applyDraggedComponentAnchors(float normX, float normY) {
         if (draggedComponentId == null) {
@@ -3235,6 +3253,7 @@ public class GamepadView extends View {
     public void setLayout(GamepadLayout layout) {
         this.currentLayout = layout;
         this.componentPositions = configManager.loadLayoutPositions(layout);
+        syncComponentPositionsFromLayoutDocument();
         invalidate();
     }
 

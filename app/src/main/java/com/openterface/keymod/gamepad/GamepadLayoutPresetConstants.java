@@ -7,6 +7,10 @@ public final class GamepadLayoutPresetConstants {
 
     private GamepadLayoutPresetConstants() {}
 
+    /**
+     * Gson {@code format} string for all preset versions. The integer {@link #SCHEMA_VERSION} (and per-file
+     * {@code schemaVersion} in JSON) tracks document evolution within this format family.
+     */
     public static final String DOCUMENT_FORMAT = "openterface.gamepad.layout.v1";
     public static final int SCHEMA_VERSION_V1 = 1;
     public static final int SCHEMA_VERSION_V2 = 2;
@@ -74,6 +78,19 @@ public final class GamepadLayoutPresetConstants {
 
     /** Max length for {@link GamepadLayoutPresetDocument.Meta#creator} after trim. */
     public static final int META_CREATOR_MAX_CHARS = 64;
+
+    /**
+     * Inclusive range for HID keyboard usage codes stored on modules (direction keys, {@code hidKey},
+     * gesture-lock {@code key_hold}/{@code key_turbo}, etc.). Matches validation in
+     * {@link GamepadLayoutPresetDocument#validateOrThrow}.
+     */
+    public static final int HID_USAGE_KEYCODE_MIN = 1;
+    public static final int HID_USAGE_KEYCODE_MAX = 255;
+
+    /** @return true if {@code code} is a valid HID usage key for preset JSON. */
+    public static boolean isValidHidUsageKey(int code) {
+        return code >= HID_USAGE_KEYCODE_MIN && code <= HID_USAGE_KEYCODE_MAX;
+    }
 
     /** JSON / Gson field names on {@link GamepadLayoutPresetDocument.GestureLockConfig}. */
     public static final String GESTURE_LOCK_SLOT_UP_LEFT = "upLeft";
