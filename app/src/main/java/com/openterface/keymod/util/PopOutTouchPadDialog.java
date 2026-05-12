@@ -33,7 +33,7 @@ import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.TouchPadView;
 
 /**
- * Pop-out touchpad using {@link R.layout#dialog_touchpad}: same wash, tips, help overlay,
+ * Pop-out touchpad using {@link R.layout#dialog_touchpad}: same wash, tips,
  * scroll vs move, and drag behavior as {@link com.openterface.fragment.PresentationFragment}.
  * Optional presentation pointer HID {@code 'C'} toggle on show/dismiss.
  *
@@ -53,9 +53,6 @@ public class PopOutTouchPadDialog {
     private static final long TOUCHPAD_WASH_CLICK_FADE_OUT_MS = 460L;
     private static final long TOUCHPAD_WASH_DRAG_OFF_FADE_OUT_MS = 340L;
     private static final long POINTER_IDLE_AFTER_MS = 400L;
-
-    private static boolean sHelpAutoShownPresentation;
-    private static boolean sHelpAutoShownCompose;
 
     private final Fragment host;
     private final boolean sendPresentationPointerKeys;
@@ -97,7 +94,6 @@ public class PopOutTouchPadDialog {
         touchpadView = LayoutInflater.from(host.requireContext()).inflate(R.layout.dialog_touchpad, null);
         TouchPadView touchSurface = touchpadView.findViewById(R.id.touch_surface);
         TextView tips = touchpadView.findViewById(R.id.presentation_touchpad_tips);
-        TextView helpOverlay = touchpadView.findViewById(R.id.presentation_touchpad_help_overlay);
         ImageButton infoBtn = touchpadView.findViewById(R.id.presentation_touchpad_info);
 
         touchpadInitWashStyle();
@@ -105,16 +101,8 @@ public class PopOutTouchPadDialog {
         touchpadUpdateTips();
 
         if (infoBtn != null) {
-            infoBtn.setOnClickListener(v -> TouchPadHelpOverlay.onInfoPressed(helpOverlay, false));
-        }
-        boolean helpShownFlag = sendPresentationPointerKeys ? sHelpAutoShownPresentation : sHelpAutoShownCompose;
-        if (!helpShownFlag && helpOverlay != null) {
-            touchSurface.post(() -> TouchPadHelpOverlay.show(helpOverlay, false));
-            if (sendPresentationPointerKeys) {
-                sHelpAutoShownPresentation = true;
-            } else {
-                sHelpAutoShownCompose = true;
-            }
+            infoBtn.setOnClickListener(
+                    v -> TouchPadHelpDialog.show(host.requireContext(), true, false));
         }
 
         touchSurface.setOnTouchPadListener(new TouchPadView.OnTouchPadListener() {
@@ -209,8 +197,6 @@ public class PopOutTouchPadDialog {
                 }
             }
         });
-        TouchPadHelpOverlay.wireDismissTouchTargets(touchSurface, tips, helpOverlay);
-
         Dialog d = new Dialog(host.requireContext());
         d.setContentView(touchpadView);
         d.setCanceledOnTouchOutside(true);
@@ -447,10 +433,6 @@ public class PopOutTouchPadDialog {
     private void touchpadTeardownUi() {
         tipHandler.removeCallbacks(touchpadPointerIdleRunnable);
         touchpadCancelWashAnimation();
-        if (touchpadView != null) {
-            TextView help = touchpadView.findViewById(R.id.presentation_touchpad_help_overlay);
-            TouchPadHelpOverlay.clear(help);
-        }
         if (touchpadDialogWashOverlay != null) {
             ViewParent p = touchpadDialogWashOverlay.getParent();
             if (p instanceof ViewGroup) {

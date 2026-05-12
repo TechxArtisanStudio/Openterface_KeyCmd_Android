@@ -20,7 +20,6 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -55,7 +54,7 @@ import com.openterface.keymod.TouchPadView;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.PopOutTouchPadDialog;
 import com.openterface.keymod.util.TouchPadHaptics;
-import com.openterface.keymod.util.TouchPadHelpOverlay;
+import com.openterface.keymod.util.TouchPadHelpDialog;
 import com.openterface.keymod.util.TouchPadPointerPhase;
 import com.openterface.keymod.util.TouchPadTipsFormatter;
 import com.openterface.target.CH9329MSKBMap;
@@ -86,7 +85,6 @@ public class CompositeFragment extends Fragment {
     private LinearLayout toggleHandle;
     private View toggleHandlePill;
     private TextView touchPadTips;
-    private TextView touchPadHelpOverlay;
     /** Normal layout only; null while split layout is shown. */
     private View touchPadInfoButton;
     /** Split mode views */
@@ -96,7 +94,6 @@ public class CompositeFragment extends Fragment {
     private ViewGroup splitTouchpadSection;
     private TouchPadView splitTouchPad;
     private TextView splitTouchPadTips;
-    private TextView splitTouchPadHelpOverlay;
     /** Container to swap between normal and split layouts */
     private FrameLayout contentContainer;
     /** Landscape split: full-width system IME host (below {@link #splitRoot}). */
@@ -1072,9 +1069,6 @@ public class CompositeFragment extends Fragment {
 
     private void applyPortraitNumpadTouchpadChrome() {
         applyTouchpadInfoVisibility();
-        if (isPortraitNumpadTouchpadMode() && touchPadHelpOverlay != null) {
-            TouchPadHelpOverlay.hideImmediately(touchPadHelpOverlay);
-        }
     }
 
     private void applyTouchpadInfoVisibility() {
@@ -1088,9 +1082,6 @@ public class CompositeFragment extends Fragment {
             splitTouchPadInfoButton.setVisibility(hide ? View.GONE : View.VISIBLE);
         }
         if (splitRoot == null) {
-            if (isPortraitImeCaptureSubComposeNormal() && touchPadHelpOverlay != null) {
-                TouchPadHelpOverlay.hideImmediately(touchPadHelpOverlay);
-            }
             updateTouchPadTips();
         }
     }
@@ -1998,20 +1989,6 @@ public class CompositeFragment extends Fragment {
         }
         bindProHoldLockControllerToKeyboardViews();
 
-        if (savedInstanceState == null && touchPad != null) {
-            touchPad.post(
-                    () -> {
-                        if (isPortraitNumpadTouchpadMode()) {
-                            return;
-                        }
-                        if (KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(
-                                requireContext())) {
-                            return;
-                        }
-                        TouchPadHelpOverlay.show(helpOverlayForPad(touchPad), true, true);
-                    });
-        }
-
         return contentContainer;
     }
 
@@ -2054,21 +2031,27 @@ public class CompositeFragment extends Fragment {
             splitTouchPadBottomWashOverlay = null;
         }
         super.onDestroyView();
-        if (requireActivity() instanceof MainActivity) {
-            for (MainActivity.OnTargetOsChangeListener listener : osChangeListeners) {
-                ((MainActivity) requireActivity()).removeOsChangeListener(listener);
-            }
-            osChangeListeners.clear();
-        }
+        clearKeyboardOsListeners();
         setDragMode(false);
-        TouchPadHelpOverlay.clear(touchPadHelpOverlay);
-        TouchPadHelpOverlay.clear(splitTouchPadHelpOverlay);
         if (isServiceBound) {
             requireContext().unbindService(serviceConnection);
             isServiceBound = false;
             Log.d(TAG, "Unbound from BluetoothService");
         }
     }
+
+    /** Remove all Target OS listeners registered for this fragment's keyboard views. */
+    private void clearKeyboardOsListeners() {
+        Activity activity = getActivity();
+        if (activity instanceof MainActivity) {
+            MainActivity main = (MainActivity) activity;
+            for (MainActivity.OnTargetOsChangeListener listener : osChangeListeners) {
+                main.removeOsChangeListener(listener);
+            }
+        }
+        osChangeListeners.clear();
+    }
+
     private void registerKeyboardOsListener(CustomKeyboardView kbdView) {
         if (kbdView == null || !(requireActivity() instanceof MainActivity)) return;
         MainActivity.OnTargetOsChangeListener listener = os -> {
@@ -2101,7 +2084,6 @@ public class CompositeFragment extends Fragment {
         toggleHandle = view.findViewById(R.id.toggle_handle);
         toggleHandlePill = view.findViewById(R.id.toggle_handle_pill);
         touchPadTips = view.findViewById(R.id.touchPadTips);
-        touchPadHelpOverlay = view.findViewById(R.id.touchPadHelpOverlay);
         touchPadInfoButton = view.findViewById(R.id.touchPadInfo);
         setupBottomWashOverlays();
         updateTouchPadTips();
@@ -2126,7 +2108,6 @@ public class CompositeFragment extends Fragment {
         splitTouchpadSection = touchpadSection;
         splitTouchPad = view.findViewById(R.id.touchPad);
         splitTouchPadTips = view.findViewById(R.id.touchPadTips);
-        splitTouchPadHelpOverlay = view.findViewById(R.id.touchPadHelpOverlay);
         View splitToggleHandle = view.findViewById(R.id.toggle_handle);
         splitToggleHandleView = splitToggleHandle;
         setupBottomWashOverlays();
@@ -2235,20 +2216,13 @@ public class CompositeFragment extends Fragment {
         refreshSplitLandscapeImeComposeRailBinding();
     }
 
-    private TextView helpOverlayForPad(TouchPadView pad) {
-        if (pad != null && pad == splitTouchPad) {
-            return splitTouchPadHelpOverlay;
-        }
-        return touchPadHelpOverlay;
-    }
-
     private void setupTouchPad(TouchPadView pad, TextView tips, View infoButton) {
         if (pad == null) return;
         pad.setPadClickDragGesturesEnabled(
                 !KmProTouchpadPrefs.isPadPlusMouseKeysNoTouchClickGestures(pad.getContext()));
         if (infoButton != null) {
             infoButton.setOnClickListener(
-                    v -> TouchPadHelpOverlay.onInfoPressed(helpOverlayForPad(pad), true, true));
+                    v -> TouchPadHelpDialog.show(requireContext(), true, true));
         }
         pad.setOnTouchPadListener(new TouchPadView.OnTouchPadListener() {
             @Override
@@ -2342,21 +2316,6 @@ public class CompositeFragment extends Fragment {
                 }
             }
         });
-        TextView helpOverlay = helpOverlayForPad(pad);
-        TouchPadHelpOverlay.wireDismissTouchTargets(pad, tips, helpOverlay, proTouchpadScrollStrip);
-        View padParent = (View) pad.getParent();
-        if (padParent != null) {
-            View brand = padParent.findViewById(R.id.touchPadBrandLogo);
-            if (brand != null) {
-                brand.setOnTouchListener(
-                        (v, e) -> {
-                            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                                TouchPadHelpOverlay.dismissIfVisible(helpOverlay);
-                            }
-                            return false;
-                        });
-            }
-        }
     }
 
     private void cycleDisplayMode() {
@@ -2439,8 +2398,7 @@ public class CompositeFragment extends Fragment {
 
     private void ensureSplitLayout() {
         if (splitRoot == null) {
-            TouchPadHelpOverlay.clear(touchPadHelpOverlay);
-            touchPadHelpOverlay = null;
+            clearKeyboardOsListeners();
             View normal = contentContainer.getChildAt(0);
             if (normal != null) {
                 contentContainer.removeView(normal);
@@ -2462,6 +2420,7 @@ public class CompositeFragment extends Fragment {
 
     private void ensureNormalLayout() {
         if (splitRoot != null) {
+            clearKeyboardOsListeners();
             imeSubComposeChromeSnapshotValid = false;
             undockSplitShortcutsFromIme();
             removeSplitImeComposeRailLayoutListener();
@@ -2473,8 +2432,6 @@ public class CompositeFragment extends Fragment {
             if (touchpadSection != null) {
                 touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
             }
-            TouchPadHelpOverlay.clear(splitTouchPadHelpOverlay);
-            splitTouchPadHelpOverlay = null;
             View split = contentContainer.getChildAt(0);
             if (split != null) {
                 contentContainer.removeView(split);
@@ -2517,6 +2474,7 @@ public class CompositeFragment extends Fragment {
             registerTopModeShortcutListener(keyboardView);
             registerImeCaptureListener(keyboardView);
             registerImeSubComposeChromeListener(keyboardView);
+            registerKeyboardOsListener(keyboardView);
             setupTouchPad(touchPad, touchPadTips, touchPadInfoButton);
             if (keyboardView != null) {
                 keyboardView.post(this::syncNormalImeChromeFromPrefs);
