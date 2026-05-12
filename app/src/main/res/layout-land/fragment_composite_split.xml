@@ -230,21 +230,89 @@
             android:orientation="horizontal"
             android:visibility="gone" />
 
-        <EditText
-            android:id="@+id/composite_split_ime_edit"
+        <LinearLayout
+            android:id="@+id/composite_split_ime_editor_row"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:clickable="true"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:gravity="top|start"
-            android:hint="@string/ime_capture_hint"
-            android:importantForAutofill="no"
-            android:inputType="text|textCapSentences|textMultiLine"
-            android:padding="8dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
-            android:textSize="14sp" />
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+
+            <LinearLayout
+                android:id="@+id/composite_split_ime_action_rail"
+                android:layout_width="@dimen/split_compose_ime_rail_min_width"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <ImageButton
+                    android:id="@+id/composite_split_ime_rail_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/function_button_background"
+                    android:contentDescription="@string/ime_sub_compose_mode_toggle_direct"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_ime_compose_mode_note_24" />
+
+                <ImageButton
+                    android:id="@+id/composite_split_ime_rail_undo"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/function_button_background"
+                    android:contentDescription="@string/compose_undo"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_compose_undo_24" />
+
+                <ImageButton
+                    android:id="@+id/composite_split_ime_rail_clear"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/function_button_background"
+                    android:contentDescription="@string/compose_clear"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_compose_clear_24" />
+
+                <ImageButton
+                    android:id="@+id/composite_split_ime_rail_send"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/function_button_background"
+                    android:contentDescription="@string/compose_send"
+                    android:padding="@dimen/button_icon_padding"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_compose_send_24" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/composite_split_ime_edit"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="top|start"
+                android:hint="@string/ime_capture_hint"
+                android:importantForAutofill="no"
+                android:inputType="text|textCapSentences|textMultiLine"
+                android:padding="8dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

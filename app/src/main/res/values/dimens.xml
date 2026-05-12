@@ -117,6 +117,10 @@
     <!-- Toggle handle between touchpad and keyboard (portrait = height, landscape = narrow axis) -->
     <dimen name="toggle_handle_height">28dp</dimen>
     <dimen name="toggle_handle_width_landscape">24dp</dimen>
+
+    <!-- KM Pro split landscape IME compose: vertical action rail width clamps (~9:1 target vs parent). -->
+    <dimen name="split_compose_ime_rail_min_width">52dp</dimen>
+    <dimen name="split_compose_ime_rail_max_width">96dp</dimen>
     
     <!-- Card -->
     <dimen name="card_corner_radius">12dp</dimen>

@@ -325,6 +325,22 @@ public class CustomKeyboardView extends LinearLayout {
     private ImageButton imeCaptureTouchpadButton;
     private ImageButton imeSubComposeModeToggle;
     private ImageButton imeCaptureSendButton;
+    /**
+     * KM Pro split landscape: compose rail uses the fragment split IME {@code EditText} while portrait
+     * uses {@link #imeCaptureEdit} on this view.
+     */
+    @Nullable
+    private EditText splitLandscapeComposeExternalEdit;
+    @Nullable
+    private ImageButton splitLandscapeRailToggle;
+    @Nullable
+    private ImageButton splitLandscapeRailUndo;
+    @Nullable
+    private ImageButton splitLandscapeRailClear;
+    @Nullable
+    private ImageButton splitLandscapeRailSend;
+    @Nullable
+    private TextWatcher splitLandscapeRailTextWatcher;
     @Nullable
     private TextView imeCaptureDirectModeHint;
     @Nullable
@@ -7515,27 +7531,29 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void runShowLocalImeSoftKeyboardMain() {
-        if (imeCaptureEdit == null || getContext() == null) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || getContext() == null) {
             return;
         }
-        imeCaptureEdit.requestFocus();
+        edit.requestFocus();
         InputMethodManager imm =
                 (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
-            imm.showSoftInput(imeCaptureEdit, InputMethodManager.SHOW_IMPLICIT);
+            imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT);
         }
         removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
         postDelayed(showLocalImeSoftKeyboardRetryRunnable, SHOW_LOCAL_IME_RETRY_DELAY_MS);
     }
 
     private void runShowLocalImeSoftKeyboardRetry() {
-        if (imeCaptureEdit == null || getContext() == null) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || getContext() == null) {
             return;
         }
         InputMethodManager imm =
                 (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
-            imm.showSoftInput(imeCaptureEdit, InputMethodManager.SHOW_IMPLICIT);
+            imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT);
         }
     }
 
@@ -7724,14 +7742,18 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void notifyImeSubComposeDirectHidModeChanged() {
-        if (onImeSubComposeChromeListener == null || !isImeSubComposePortraitContext()) {
+        if (onImeSubComposeChromeListener == null) {
+            return;
+        }
+        if (!isImeSubComposePortraitContext() && splitPart == SPLIT_NONE) {
             return;
         }
         onImeSubComposeChromeListener.onImeSubComposeDirectHidModeChanged(this, imeSubComposeDirectHidMode);
     }
 
     private void onImeSubComposeModeToggleClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || imeSubComposeSending) {
             return;
         }
         boolean next = !imeSubComposeDirectHidMode;
@@ -7739,11 +7761,11 @@ public class CustomKeyboardView extends LinearLayout {
             collapseImeSubComposePersistedForChrome();
         }
         persistImeSubComposeDirectHid(next);
-        ImeTextForwarder.detach(imeCaptureEdit);
-        imeCaptureEdit.setText("");
+        ImeTextForwarder.detach(edit);
+        edit.setText("");
         if (next) {
             ImeTextForwarder.attach(
-                    imeCaptureEdit,
+                    edit,
                     this::peekConnectionManager,
                     this::getTargetOs,
                     imeTextExecutor);
@@ -7757,19 +7779,33 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void refreshImeSubComposeModeToggleIcon() {
-        if (imeSubComposeModeToggle == null || getContext() == null) {
+        if (getContext() == null) {
             return;
         }
-        if (imeSubComposeDirectHidMode) {
-            imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
-            imeSubComposeModeToggle.setContentDescription(
-                    getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
-        } else {
-            imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
-            imeSubComposeModeToggle.setContentDescription(
-                    getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
+        if (imeSubComposeModeToggle != null) {
+            if (imeSubComposeDirectHidMode) {
+                imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
+                imeSubComposeModeToggle.setContentDescription(
+                        getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
+            } else {
+                imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
+                imeSubComposeModeToggle.setContentDescription(
+                        getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
+            }
+            imeSubComposeModeToggle.setColorFilter(resolveThemeTextColor());
         }
-        imeSubComposeModeToggle.setColorFilter(resolveThemeTextColor());
+        if (splitLandscapeRailToggle != null) {
+            if (imeSubComposeDirectHidMode) {
+                splitLandscapeRailToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
+                splitLandscapeRailToggle.setContentDescription(
+                        getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
+            } else {
+                splitLandscapeRailToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
+                splitLandscapeRailToggle.setContentDescription(
+                        getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
+            }
+            splitLandscapeRailToggle.setColorFilter(resolveThemeTextColor());
+        }
     }
 
     private void setImeToolbarCellWeight(View v, int keyMargin, float weight) {
@@ -7859,6 +7895,11 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     @Nullable
+    private EditText effectiveImeCaptureEdit() {
+        return splitLandscapeComposeExternalEdit != null ? splitLandscapeComposeExternalEdit : imeCaptureEdit;
+    }
+
+    @Nullable
     private Integer resolveImeCaptureSendBlockedReason(
             @Nullable ConnectionManager connectionManager,
             String text) {
@@ -7866,7 +7907,15 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void updateImeCaptureToolbarState() {
-        if (imeCaptureEdit == null || imeCaptureClearButton == null || imeCaptureSendButton == null) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null) {
+            return;
+        }
+        boolean hasPortraitToolbar =
+                imeCaptureClearButton != null && imeCaptureSendButton != null;
+        boolean hasSplitRail =
+                splitLandscapeRailClear != null && splitLandscapeRailSend != null;
+        if (!hasPortraitToolbar && !hasSplitRail) {
             return;
         }
         if (imeSubComposeDirectHidMode) {
@@ -7874,9 +7923,31 @@ public class CustomKeyboardView extends LinearLayout {
                 imeSubComposeModeToggle.setEnabled(!imeSubComposeSending);
                 imeSubComposeModeToggle.setAlpha(imeSubComposeModeToggle.isEnabled() ? 1f : 0.45f);
             }
+            if (splitLandscapeRailToggle != null) {
+                splitLandscapeRailToggle.setEnabled(!imeSubComposeSending);
+                splitLandscapeRailToggle.setAlpha(splitLandscapeRailToggle.isEnabled() ? 1f : 0.45f);
+            }
+            if (splitLandscapeRailUndo != null) {
+                splitLandscapeRailUndo.setVisibility(GONE);
+            }
+            if (splitLandscapeRailClear != null) {
+                splitLandscapeRailClear.setVisibility(GONE);
+            }
+            if (splitLandscapeRailSend != null) {
+                splitLandscapeRailSend.setVisibility(GONE);
+            }
             return;
         }
-        String t = imeCaptureEdit.getText() != null ? imeCaptureEdit.getText().toString() : "";
+        if (splitLandscapeRailUndo != null) {
+            splitLandscapeRailUndo.setVisibility(VISIBLE);
+        }
+        if (splitLandscapeRailClear != null) {
+            splitLandscapeRailClear.setVisibility(VISIBLE);
+        }
+        if (splitLandscapeRailSend != null) {
+            splitLandscapeRailSend.setVisibility(VISIBLE);
+        }
+        String t = edit.getText() != null ? edit.getText().toString() : "";
         ConnectionManager cm = peekConnectionManager();
         Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, t);
 
@@ -7887,56 +7958,87 @@ public class CustomKeyboardView extends LinearLayout {
         }
 
         boolean canClear = !imeSubComposeSending && !t.isEmpty();
-        imeCaptureClearButton.setEnabled(canClear);
-        imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
+        if (imeCaptureClearButton != null) {
+            imeCaptureClearButton.setEnabled(canClear);
+            imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
+        }
+        if (splitLandscapeRailClear != null) {
+            splitLandscapeRailClear.setEnabled(canClear);
+            splitLandscapeRailClear.setAlpha(canClear ? 1f : 0.45f);
+        }
 
+        boolean canUndo =
+                !imeSubComposeSending && imeCaptureUndoSnapshot != null && !imeCaptureUndoSnapshot.isEmpty();
         if (imeCaptureUndoButton != null) {
-            boolean canUndo =
-                    !imeSubComposeSending && imeCaptureUndoSnapshot != null && !imeCaptureUndoSnapshot.isEmpty();
             imeCaptureUndoButton.setEnabled(canUndo);
             imeCaptureUndoButton.setAlpha(canUndo ? 1f : 0.45f);
         }
+        if (splitLandscapeRailUndo != null) {
+            splitLandscapeRailUndo.setEnabled(canUndo);
+            splitLandscapeRailUndo.setAlpha(canUndo ? 1f : 0.45f);
+        }
 
         if (imeSubComposeSending) {
-            imeCaptureSendButton.setImageResource(R.drawable.ic_compose_stop_24);
-            imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
-            imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_stop));
-            imeCaptureSendButton.setEnabled(true);
-            imeCaptureSendButton.setAlpha(1f);
+            if (imeCaptureSendButton != null) {
+                imeCaptureSendButton.setImageResource(R.drawable.ic_compose_stop_24);
+                imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
+                imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_stop));
+                imeCaptureSendButton.setEnabled(true);
+                imeCaptureSendButton.setAlpha(1f);
+            }
+            if (splitLandscapeRailSend != null) {
+                splitLandscapeRailSend.setImageResource(R.drawable.ic_compose_stop_24);
+                splitLandscapeRailSend.setColorFilter(resolveThemeTextColor());
+                splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_stop));
+                splitLandscapeRailSend.setEnabled(true);
+                splitLandscapeRailSend.setAlpha(1f);
+            }
         } else {
-            imeCaptureSendButton.setImageResource(R.drawable.ic_compose_send_24);
-            imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
-            imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
-            boolean canSend = blockedReasonResId == null;
-            // Keep Send tappable even when blocked so we can explain why sending is not allowed.
-            imeCaptureSendButton.setEnabled(true);
-            imeCaptureSendButton.setAlpha(canSend ? 1f : 0.45f);
+            if (imeCaptureSendButton != null) {
+                imeCaptureSendButton.setImageResource(R.drawable.ic_compose_send_24);
+                imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
+                imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
+                boolean canSend = blockedReasonResId == null;
+                imeCaptureSendButton.setEnabled(true);
+                imeCaptureSendButton.setAlpha(canSend ? 1f : 0.45f);
+            }
+            if (splitLandscapeRailSend != null) {
+                splitLandscapeRailSend.setImageResource(R.drawable.ic_compose_send_24);
+                splitLandscapeRailSend.setColorFilter(resolveThemeTextColor());
+                splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_send));
+                boolean canSend = blockedReasonResId == null;
+                splitLandscapeRailSend.setEnabled(true);
+                splitLandscapeRailSend.setAlpha(canSend ? 1f : 0.45f);
+            }
         }
     }
 
     private void onImeCaptureClearClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || imeSubComposeSending) {
             return;
         }
-        CharSequence cur = imeCaptureEdit.getText();
+        CharSequence cur = edit.getText();
         if (cur != null && cur.length() > 0) {
             imeCaptureUndoSnapshot = cur.toString();
         }
-        imeCaptureEdit.setText("");
+        edit.setText("");
         updateImeCaptureToolbarState();
     }
 
     private void onImeCaptureUndoClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending || imeCaptureUndoSnapshot == null) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null || imeSubComposeSending || imeCaptureUndoSnapshot == null) {
             return;
         }
-        imeCaptureEdit.setText(imeCaptureUndoSnapshot);
+        edit.setText(imeCaptureUndoSnapshot);
         imeCaptureUndoSnapshot = null;
         updateImeCaptureToolbarState();
     }
 
     private void onImeCaptureSendClicked() {
-        if (imeCaptureEdit == null) {
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null) {
             return;
         }
         if (imeSubComposeSending) {
@@ -7949,7 +8051,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
         MainActivity ma = (MainActivity) act;
         ConnectionManager cm = ma.getConnectionManager();
-        String text = imeCaptureEdit.getText() != null ? imeCaptureEdit.getText().toString() : "";
+        String text = edit.getText() != null ? edit.getText().toString() : "";
         Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, text);
         if (blockedReasonResId != null) {
             int duration = blockedReasonResId == R.string.compose_ascii_warning
@@ -7961,7 +8063,7 @@ public class CustomKeyboardView extends LinearLayout {
 
         imeSubComposeCancelSend.set(false);
         imeSubComposeSending = true;
-        imeCaptureEdit.setEnabled(false);
+        edit.setEnabled(false);
         setImeCaptureToolbarEnabledWhileSending(false);
         updateImeCaptureToolbarState();
 
@@ -7979,8 +8081,9 @@ public class CustomKeyboardView extends LinearLayout {
             HidTextKeystrokeSender.Result finalResult = result;
             imeSubComposeMainHandler.post(() -> {
                 imeSubComposeSending = false;
-                if (imeCaptureEdit != null) {
-                    imeCaptureEdit.setEnabled(true);
+                EditText ed = effectiveImeCaptureEdit();
+                if (ed != null) {
+                    ed.setEnabled(true);
                 }
                 setImeCaptureToolbarEnabledWhileSending(true);
                 updateImeCaptureToolbarState();
@@ -7999,10 +8102,16 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void setImeCaptureToolbarEnabledWhileSending(boolean enabled) {
+        EditText edit = effectiveImeCaptureEdit();
         if (imeCaptureClearButton != null) {
-            imeCaptureClearButton.setEnabled(enabled && imeCaptureEdit != null
-                    && imeCaptureEdit.getText() != null
-                    && imeCaptureEdit.getText().length() > 0);
+            imeCaptureClearButton.setEnabled(enabled && edit != null
+                    && edit.getText() != null
+                    && edit.getText().length() > 0);
+        }
+        if (splitLandscapeRailClear != null) {
+            splitLandscapeRailClear.setEnabled(enabled && edit != null
+                    && edit.getText() != null
+                    && edit.getText().length() > 0);
         }
         if (imeCaptureUndoButton != null) {
             imeCaptureUndoButton.setEnabled(
@@ -8010,6 +8119,13 @@ public class CustomKeyboardView extends LinearLayout {
                             && imeCaptureUndoSnapshot != null
                             && !imeCaptureUndoSnapshot.isEmpty());
             imeCaptureUndoButton.setAlpha(imeCaptureUndoButton.isEnabled() ? 1f : 0.45f);
+        }
+        if (splitLandscapeRailUndo != null) {
+            splitLandscapeRailUndo.setEnabled(
+                    enabled
+                            && imeCaptureUndoSnapshot != null
+                            && !imeCaptureUndoSnapshot.isEmpty());
+            splitLandscapeRailUndo.setAlpha(splitLandscapeRailUndo.isEnabled() ? 1f : 0.45f);
         }
         if (imeCaptureTouchpadButton != null
                 && imeCaptureTouchpadButton.getVisibility() == VISIBLE) {
@@ -8020,6 +8136,86 @@ public class CustomKeyboardView extends LinearLayout {
             imeSubComposeModeToggle.setEnabled(enabled);
             imeSubComposeModeToggle.setAlpha(enabled ? 1f : 0.45f);
         }
+        if (splitLandscapeRailToggle != null) {
+            splitLandscapeRailToggle.setEnabled(enabled);
+            splitLandscapeRailToggle.setAlpha(enabled ? 1f : 0.45f);
+        }
+    }
+
+    /**
+     * Binds KM Pro split-landscape compose rail controls to this keyboard's IME compose state machine.
+     */
+    public void bindSplitLandscapeImeComposeRail(
+            @NonNull EditText externalEdit,
+            @Nullable ImageButton railToggle,
+            @Nullable ImageButton railUndo,
+            @Nullable ImageButton railClear,
+            @Nullable ImageButton railSend) {
+        clearSplitLandscapeImeComposeRail();
+        splitLandscapeComposeExternalEdit = externalEdit;
+        splitLandscapeRailToggle = railToggle;
+        splitLandscapeRailUndo = railUndo;
+        splitLandscapeRailClear = railClear;
+        splitLandscapeRailSend = railSend;
+        splitLandscapeRailTextWatcher =
+                new TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                    @Override
+                    public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                        updateImeCaptureToolbarState();
+                    }
+                };
+        externalEdit.addTextChangedListener(splitLandscapeRailTextWatcher);
+        refreshImeSubComposeModeToggleIcon();
+        updateImeCaptureToolbarState();
+    }
+
+    /** Clears split-landscape rail binding (fragment-owned {@code EditText} must outlive this view). */
+    public void clearSplitLandscapeImeComposeRail() {
+        if (splitLandscapeComposeExternalEdit != null && splitLandscapeRailTextWatcher != null) {
+            splitLandscapeComposeExternalEdit.removeTextChangedListener(splitLandscapeRailTextWatcher);
+        }
+        splitLandscapeRailTextWatcher = null;
+        splitLandscapeComposeExternalEdit = null;
+        splitLandscapeRailToggle = null;
+        splitLandscapeRailUndo = null;
+        splitLandscapeRailClear = null;
+        splitLandscapeRailSend = null;
+    }
+
+    /** Reloads Direct HID vs compose from prefs (keeps split halves in sync after rail toggle). */
+    public void resyncImeSubComposeDirectHidFromPrefs() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        imeSubComposeDirectHidMode =
+                ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
+                        .getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
+        refreshImeSubComposeModeToggleIcon();
+        updateImeCaptureToolbarState();
+    }
+
+    /** Rail actions for KM Pro split-landscape compose (delegates to portrait IME handlers). */
+    public void onSplitLandscapeImeRailModeToggleClicked() {
+        onImeSubComposeModeToggleClicked();
+    }
+
+    public void onSplitLandscapeImeRailUndoClicked() {
+        onImeCaptureUndoClicked();
+    }
+
+    public void onSplitLandscapeImeRailClearClicked() {
+        onImeCaptureClearClicked();
+    }
+
+    public void onSplitLandscapeImeRailSendClicked() {
+        onImeCaptureSendClicked();
     }
 
     private void addImeCaptureEditorBelowTopStrip() {
@@ -8254,6 +8450,7 @@ public class CustomKeyboardView extends LinearLayout {
                     .unregisterOnSharedPreferenceChangeListener(kmProModifierPrefListener);
         }
         super.onDetachedFromWindow();
+        clearSplitLandscapeImeComposeRail();
         imeSubComposeSendExecutor.shutdownNow();
         detachLocalImeFieldQuiet();
         longPressHandler.removeCallbacksAndMessages(null);

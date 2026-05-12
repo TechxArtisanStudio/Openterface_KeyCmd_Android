@@ -24,6 +24,7 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
@@ -99,6 +100,20 @@ public class CompositeFragment extends Fragment {
     /** Landscape split: full-width system IME host (below {@link #splitRoot}). */
     private View splitImeHost;
     private EditText splitImeEdit;
+    @Nullable
+    private LinearLayout splitImeEditorRow;
+    @Nullable
+    private LinearLayout splitImeActionRail;
+    @Nullable
+    private ImageButton splitImeRailToggle;
+    @Nullable
+    private ImageButton splitImeRailUndo;
+    @Nullable
+    private ImageButton splitImeRailClear;
+    @Nullable
+    private ImageButton splitImeRailSend;
+    private final View.OnLayoutChangeListener splitImeComposeRailWidthListener =
+            (v, l, t, r, b, ol, ot, or, ob) -> applySplitImeComposeRailAdaptiveWidth();
     private LinearLayout splitLeftColumn;
     private LinearLayout splitRightColumn;
     private View splitToggleHandleView;
@@ -116,8 +131,6 @@ public class CompositeFragment extends Fragment {
     private static final float SPLIT_IME_INNER_TEXT_WEIGHT = 1.0f;
     private static final float SPLIT_TOUCHPAD_SECTION_WEIGHT_NORMAL = 1.2f;
     private static final float SPLIT_TOUCHPAD_SECTION_WEIGHT_IME_FULL_WIDTH = 1f;
-    private static final float SPLIT_COMPOSE_TOP_ROW_WEIGHT = 1f;
-    private static final float SPLIT_COMPOSE_TEXT_ROW_WEIGHT = 1f;
     private static final float SPLIT_COMPOSE_SHORTCUTS_TOTAL_WEIGHT = 2f;
     private static final float SPLIT_COMPOSE_TOUCHPAD_WEIGHT = 2f;
     private static final float SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT = 1f;
@@ -156,6 +169,8 @@ public class CompositeFragment extends Fragment {
         t.setDaemon(true);
         return t;
     });
+    @Nullable
+    private CustomKeyboardView.OnImeSubComposeChromeListener imeSubComposeChromeListener;
     /** Track registered keyboard views for OS change listener cleanup */
     private final List<MainActivity.OnTargetOsChangeListener> osChangeListeners = new ArrayList<>();
     public UsbSerialPort port;
@@ -515,8 +530,6 @@ public class CompositeFragment extends Fragment {
             return;
         }
         if (isSplitLandscapeComposeSendMode()) {
-            proTouchpadMouseLayoutCompact = true;
-            applySplitComposeTouchpadStripRatios();
             return;
         }
         int th = touchpadSection.getHeight();
@@ -1076,35 +1089,54 @@ public class CompositeFragment extends Fragment {
         if (kbd == null) {
             return;
         }
-        kbd.setOnImeSubComposeChromeListener(new CustomKeyboardView.OnImeSubComposeChromeListener() {
-            @Override
-            public void onImeSubComposeExpandedChanged(CustomKeyboardView source, boolean expanded) {
-                if (!isAdded()) {
-                    return;
-                }
-                applyImeSubComposeFragmentChrome(expanded);
-                applyOrientationLayout();
-            }
+        if (imeSubComposeChromeListener == null) {
+            imeSubComposeChromeListener =
+                    new CustomKeyboardView.OnImeSubComposeChromeListener() {
+                        @Override
+                        public void onImeSubComposeExpandedChanged(
+                                CustomKeyboardView source, boolean expanded) {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            applyImeSubComposeFragmentChrome(expanded);
+                            applyOrientationLayout();
+                        }
 
-            @Override
-            public void onImeSubComposeDirectHidModeChanged(CustomKeyboardView source, boolean direct) {
-                if (!isAdded()) {
-                    return;
-                }
-                applyOrientationLayout();
-            }
+                        @Override
+                        public void onImeSubComposeDirectHidModeChanged(
+                                CustomKeyboardView source, boolean direct) {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            if (splitRoot != null
+                                    && splitImeHost != null
+                                    && splitImeHost.getVisibility() == View.VISIBLE
+                                    && source.isSystemImeCaptureMode()) {
+                                applySplitImeLayout(true);
+                            }
+                            if (keyboardViewLeft != null) {
+                                keyboardViewLeft.resyncImeSubComposeDirectHidFromPrefs();
+                            }
+                            if (keyboardViewRight != null) {
+                                keyboardViewRight.resyncImeSubComposeDirectHidFromPrefs();
+                            }
+                            refreshSplitLandscapeImeComposeRailBinding();
+                            applyOrientationLayout();
+                        }
 
-            @Override
-            public void onImeToolbarPopOutTouchpadRequested(CustomKeyboardView source) {
-                if (!isAdded()) {
-                    return;
-                }
-                if (imePopOutTouchPad == null) {
-                    imePopOutTouchPad = new PopOutTouchPadDialog(CompositeFragment.this, false);
-                }
-                imePopOutTouchPad.show();
-            }
-        });
+                        @Override
+                        public void onImeToolbarPopOutTouchpadRequested(CustomKeyboardView source) {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            if (imePopOutTouchPad == null) {
+                                imePopOutTouchPad = new PopOutTouchPadDialog(CompositeFragment.this, false);
+                            }
+                            imePopOutTouchPad.show();
+                        }
+                    };
+        }
+        kbd.setOnImeSubComposeChromeListener(imeSubComposeChromeListener);
     }
 
     private void applyImeSubComposeFragmentChrome(boolean expanded) {
@@ -1153,9 +1185,13 @@ public class CompositeFragment extends Fragment {
         applyTouchpadInfoVisibility();
         if (!enabled) {
             applyImeSubComposeFragmentChrome(false);
+            clearSplitImeComposeRailBindingAll();
         }
         if (splitImeHost != null) {
             applySplitImeLayout(enabled);
+        }
+        if (enabled) {
+            refreshSplitLandscapeImeComposeRailBinding();
         }
         applyOrientationLayout();
         requestCompositeImeInsetsAfterImeChange();
@@ -1175,7 +1211,7 @@ public class CompositeFragment extends Fragment {
                 if (splitLandscapeImeVisible != imeVisible) {
                     splitLandscapeImeVisible = imeVisible;
                     if (isSplitLandscapeComposeSendMode()) {
-                        v.post(this::applySplitLandscapeComposeRows);
+                        v.post(this::applySplitImeComposeRailAdaptiveWidth);
                     }
                 }
             }
@@ -1205,16 +1241,17 @@ public class CompositeFragment extends Fragment {
         if (splitImeShortcutsRow == null || splitImeEdit == null) {
             return;
         }
+        View weightedEditor = splitImeEditorRow != null ? splitImeEditorRow : splitImeEdit;
         LinearLayout.LayoutParams rowLp =
                 (LinearLayout.LayoutParams) splitImeShortcutsRow.getLayoutParams();
         rowLp.height = 0;
         rowLp.weight = SPLIT_IME_INNER_SHORTCUTS_WEIGHT;
         splitImeShortcutsRow.setLayoutParams(rowLp);
         LinearLayout.LayoutParams editLp =
-                (LinearLayout.LayoutParams) splitImeEdit.getLayoutParams();
+                (LinearLayout.LayoutParams) weightedEditor.getLayoutParams();
         editLp.height = 0;
         editLp.weight = SPLIT_IME_INNER_TEXT_WEIGHT;
-        splitImeEdit.setLayoutParams(editLp);
+        weightedEditor.setLayoutParams(editLp);
     }
 
     private void dockSplitShortcutsForIme() {
@@ -1322,12 +1359,14 @@ public class CompositeFragment extends Fragment {
         applyProTouchpadScrollStripLayout();
     }
 
-    /** Landscape split compose mode: IME hidden -> 1:1 top/text rows; IME shown -> top row hidden. */
+    /**
+     * Landscape split compose mode: hide shortcut panels, touchpad, and mouse keys; full width for
+     * IME editor + vertical action rail.
+     */
     private void applySplitLandscapeComposeRows() {
         if (!isSplitLandscapeComposeSendMode()
                 || splitImeHost == null
                 || splitImeEdit == null
-                || splitTouchpadSection == null
                 || splitRoot == null) {
             return;
         }
@@ -1338,36 +1377,105 @@ public class CompositeFragment extends Fragment {
         LinearLayout outer = (LinearLayout) parent;
         LinearLayout.LayoutParams rootLp = (LinearLayout.LayoutParams) splitRoot.getLayoutParams();
         LinearLayout.LayoutParams imeLp = (LinearLayout.LayoutParams) splitImeHost.getLayoutParams();
-        LinearLayout.LayoutParams touchLp = (LinearLayout.LayoutParams) splitTouchpadSection.getLayoutParams();
-        boolean imeVisible = splitLandscapeImeVisible;
-        if (imeVisible) {
-            splitRoot.setVisibility(View.GONE);
-            rootLp.weight = 0f;
-            imeLp.weight = 1f;
-        } else {
-            splitRoot.setVisibility(View.VISIBLE);
-            rootLp.weight = SPLIT_COMPOSE_TOP_ROW_WEIGHT;
-            imeLp.weight = SPLIT_COMPOSE_TEXT_ROW_WEIGHT;
-        }
+        splitRoot.setVisibility(View.GONE);
+        rootLp.weight = 0f;
+        imeLp.weight = 1f;
         splitImeHost.setVisibility(View.VISIBLE);
         if (splitImeShortcutsRow != null) {
             splitImeShortcutsRow.setVisibility(View.GONE);
         }
-        LinearLayout.LayoutParams editLp = (LinearLayout.LayoutParams) splitImeEdit.getLayoutParams();
+        View textAreaHost = splitImeEditorRow != null ? splitImeEditorRow : splitImeEdit;
+        LinearLayout.LayoutParams editLp = (LinearLayout.LayoutParams) textAreaHost.getLayoutParams();
         editLp.height = 0;
         editLp.weight = 1f;
-        splitImeEdit.setLayoutParams(editLp);
-
-        touchLp.weight =
-                SPLIT_COMPOSE_SHORTCUTS_TOTAL_WEIGHT
-                        + SPLIT_COMPOSE_TOUCHPAD_WEIGHT
-                        + SPLIT_COMPOSE_MOUSE_KEYS_WEIGHT;
-        splitTouchpadSection.setLayoutParams(touchLp);
-        setSplitKeyboardColumnWeight(0f);
-        applySplitComposeTouchpadStripRatios();
+        textAreaHost.setLayoutParams(editLp);
         splitRoot.setLayoutParams(rootLp);
         splitImeHost.setLayoutParams(imeLp);
         outer.requestLayout();
+        applySplitImeComposeRailAdaptiveWidth();
+        updateSplitImeRailChromeVisibility();
+    }
+
+    private void applySplitImeComposeRailAdaptiveWidth() {
+        if (splitImeEditorRow == null || splitImeActionRail == null || splitImeEdit == null) {
+            return;
+        }
+        if (!isSplitLandscapeComposeSendMode()) {
+            return;
+        }
+        int w = splitImeEditorRow.getWidth();
+        if (w <= 0) {
+            return;
+        }
+        int minRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_min_width);
+        int maxRail = getResources().getDimensionPixelSize(R.dimen.split_compose_ime_rail_max_width);
+        float target = w / 10f;
+        int railPx = Math.max(minRail, Math.min(maxRail, Math.round(target)));
+
+        LinearLayout.LayoutParams railLp =
+                (LinearLayout.LayoutParams) splitImeActionRail.getLayoutParams();
+        railLp.width = railPx;
+        railLp.weight = 0f;
+        splitImeActionRail.setLayoutParams(railLp);
+
+        LinearLayout.LayoutParams editLp = (LinearLayout.LayoutParams) splitImeEdit.getLayoutParams();
+        editLp.width = 0;
+        editLp.weight = 1f;
+        splitImeEdit.setLayoutParams(editLp);
+    }
+
+    @Nullable
+    private CustomKeyboardView splitImeKeyboardSource() {
+        return keyboardViewRight != null ? keyboardViewRight : keyboardViewLeft;
+    }
+
+    private void clearSplitImeComposeRailBindingAll() {
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.clearSplitLandscapeImeComposeRail();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.clearSplitLandscapeImeComposeRail();
+        }
+    }
+
+    private void refreshSplitLandscapeImeComposeRailBinding() {
+        clearSplitImeComposeRailBindingAll();
+        boolean canBind =
+                isAdded()
+                        && splitImeEdit != null
+                        && splitImeRailToggle != null
+                        && splitRoot != null
+                        && getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        CustomKeyboardView source = splitImeKeyboardSource();
+        if (canBind
+                && source != null
+                && source.isSystemImeCaptureMode()
+                && !source.isImeSubComposeDirectHidMode()) {
+            source.bindSplitLandscapeImeComposeRail(
+                    splitImeEdit,
+                    splitImeRailToggle,
+                    splitImeRailUndo,
+                    splitImeRailClear,
+                    splitImeRailSend);
+        }
+        updateSplitImeRailChromeVisibility();
+    }
+
+    private void updateSplitImeRailChromeVisibility() {
+        if (splitImeActionRail == null) {
+            return;
+        }
+        boolean show =
+                splitImeHost != null
+                        && splitImeHost.getVisibility() == View.VISIBLE
+                        && isSplitLandscapeComposeSendMode();
+        splitImeActionRail.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void removeSplitImeComposeRailLayoutListener() {
+        if (splitImeEditorRow != null) {
+            splitImeEditorRow.removeOnLayoutChangeListener(splitImeComposeRailWidthListener);
+        }
     }
 
     private void applySplitImeLayout(boolean imeMode) {
@@ -1388,7 +1496,6 @@ public class CompositeFragment extends Fragment {
         if (imeMode) {
             if (isSplitLandscapeComposeSendMode()) {
                 undockSplitShortcutsFromIme();
-                splitLandscapeImeVisible = false;
                 applySplitLandscapeComposeRows();
                 handledByComposeRows = true;
             } else {
@@ -1427,6 +1534,9 @@ public class CompositeFragment extends Fragment {
                 });
             });
             requestCompositeImeInsetsAfterImeChange();
+            if (isSplitLandscapeComposeSendMode()) {
+                refreshSplitLandscapeImeComposeRailBinding();
+            }
         } else {
             undockSplitShortcutsFromIme();
             if (splitToggleHandleView != null) {
@@ -1451,6 +1561,7 @@ public class CompositeFragment extends Fragment {
             setSplitKeyboardColumnWeight(imeMode ? 0f : 22f);
             outer.requestLayout();
         }
+        updateSplitImeRailChromeVisibility();
     }
 
     private void setSplitKeyboardColumnWeight(float keyboardWeight) {
@@ -1489,6 +1600,7 @@ public class CompositeFragment extends Fragment {
             applySplitImeLayout(true);
         }
         applyTouchpadInfoVisibility();
+        refreshSplitLandscapeImeComposeRailBinding();
     }
 
     private void syncNormalImeChromeFromPrefs() {
@@ -1635,6 +1747,8 @@ public class CompositeFragment extends Fragment {
         if (touchpadSection != null) {
             touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
         }
+        removeSplitImeComposeRailLayoutListener();
+        clearSplitImeComposeRailBindingAll();
         detachProMouseStripBinder();
         detachProHoldLockControllerFromKeyboardViews();
         proHoldLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
@@ -1787,7 +1901,32 @@ public class CompositeFragment extends Fragment {
         bindProHoldLockControllerToKeyboardViews();
 
         splitImeHost = view.findViewById(R.id.composite_split_ime_host);
+        splitImeEditorRow = view.findViewById(R.id.composite_split_ime_editor_row);
+        splitImeActionRail = view.findViewById(R.id.composite_split_ime_action_rail);
         splitImeEdit = view.findViewById(R.id.composite_split_ime_edit);
+        splitImeRailToggle = view.findViewById(R.id.composite_split_ime_rail_toggle);
+        splitImeRailUndo = view.findViewById(R.id.composite_split_ime_rail_undo);
+        splitImeRailClear = view.findViewById(R.id.composite_split_ime_rail_clear);
+        splitImeRailSend = view.findViewById(R.id.composite_split_ime_rail_send);
+        if (splitImeEditorRow != null) {
+            splitImeEditorRow.addOnLayoutChangeListener(splitImeComposeRailWidthListener);
+        }
+        CustomKeyboardView splitImeChromeSource = splitImeKeyboardSource();
+        if (splitImeChromeSource != null) {
+            registerImeSubComposeChromeListener(splitImeChromeSource);
+        }
+        if (splitImeRailToggle != null && splitImeChromeSource != null) {
+            splitImeRailToggle.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailModeToggleClicked());
+        }
+        if (splitImeRailUndo != null && splitImeChromeSource != null) {
+            splitImeRailUndo.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailUndoClicked());
+        }
+        if (splitImeRailClear != null && splitImeChromeSource != null) {
+            splitImeRailClear.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailClearClicked());
+        }
+        if (splitImeRailSend != null && splitImeChromeSource != null) {
+            splitImeRailSend.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailSendClicked());
+        }
         splitTouchPadInfoButton = view.findViewById(R.id.touchPadInfo);
         proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
         proTouchpadMouseKeys = view.findViewById(R.id.pro_touchpad_mouse_keys);
@@ -1806,6 +1945,7 @@ public class CompositeFragment extends Fragment {
         if (touchpadSection != null) {
             touchpadSection.post(CompositeFragment.this::refreshProTouchpadChromeFromKmProSetup);
         }
+        refreshSplitLandscapeImeComposeRailBinding();
     }
 
     private TextView helpOverlayForPad(TouchPadView pad) {
@@ -2037,6 +2177,8 @@ public class CompositeFragment extends Fragment {
         if (splitRoot != null) {
             imeSubComposeChromeSnapshotValid = false;
             undockSplitShortcutsFromIme();
+            removeSplitImeComposeRailLayoutListener();
+            clearSplitImeComposeRailBindingAll();
             if (splitImeEdit != null) {
                 ImeTextForwarder.detach(splitImeEdit);
             }
@@ -2055,6 +2197,12 @@ public class CompositeFragment extends Fragment {
             keyboardViewRight = null;
             splitImeHost = null;
             splitImeEdit = null;
+            splitImeEditorRow = null;
+            splitImeActionRail = null;
+            splitImeRailToggle = null;
+            splitImeRailUndo = null;
+            splitImeRailClear = null;
+            splitImeRailSend = null;
             splitLeftColumn = null;
             splitRightColumn = null;
             splitTopLeftFrame = null;
