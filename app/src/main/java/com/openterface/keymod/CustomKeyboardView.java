@@ -4504,19 +4504,20 @@ public class CustomKeyboardView extends LinearLayout {
             }
         } else if ("linux".equals(targetOs)) {
             if (code == 0xE0) {
-                label = ctx != null ? ctx.getString(R.string.modifier_ctrl) : "CTRL";
+                label = ctx != null ? ctx.getString(R.string.modifier_control) : "Ctrl";
             } else if (code == 0xE2) {
-                label = ctx != null ? ctx.getString(R.string.modifier_alt) : "ALT";
+                label = ctx != null ? ctx.getString(R.string.Alt) : "Alt";
             } else {
-                label = ctx != null ? ctx.getString(R.string.modifier_sup) : "SUP";
+                label = ctx != null ? ctx.getString(R.string.Super) : "Super";
+                iconResId = R.drawable.ic_os_linux;
             }
         } else {
             if (code == 0xE0) {
-                label = ctx != null ? ctx.getString(R.string.modifier_ctrl) : "CTRL";
+                label = ctx != null ? ctx.getString(R.string.modifier_control) : "Ctrl";
             } else if (code == 0xE2) {
-                label = ctx != null ? ctx.getString(R.string.modifier_alt) : "ALT";
+                label = ctx != null ? ctx.getString(R.string.Alt) : "Alt";
             } else {
-                label = ctx != null ? ctx.getString(R.string.modifier_win) : "WIN";
+                label = ctx != null ? ctx.getString(R.string.Win) : "Win";
                 iconResId = R.drawable.windows;
             }
         }
