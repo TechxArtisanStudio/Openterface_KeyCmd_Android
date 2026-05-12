@@ -1,5 +1,7 @@
 package com.openterface.keymod;
 
+import com.openterface.keymod.ConnectionManager;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -67,15 +69,8 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.hid.Ch9329PacketUtil;
 import com.openterface.keymod.hid.KeyboardHidTransport;
-import com.openterface.keymod.util.ComposeSendPreviewDialog;
-import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
-import com.openterface.keymod.util.ImeComposeSendGate;
-import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
-import com.openterface.fragment.ImeSavedTextFragment;
-import com.openterface.keymod.compose.ImeSavedTextBottomSheet;
-import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -102,21 +97,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CustomKeyboardView extends LinearLayout {
 
-    /**
-     * KM Pro merged PH1 keyboard input: tap cycles portrait {@code A → B → C → A}.
-     * IME modes are portrait-only for this phase; landscape forces {@link #BUILT_IN_QWERTY}.
-     */
+    /** KM Pro keyboard input: built-in HID QWERTY only (legacy IME modes removed). */
     public enum KmProKeyboardInputMode {
-        /** Built-in QWER (HID) keyboard. */
-        BUILT_IN_QWERTY,
-        /** System IME with per-keystroke HID send (direct). */
-        IME_DIRECT_SEND,
-        /** System IME compose buffer, then Send. */
-        IME_COMPOSE_SEND
+        BUILT_IN_QWERTY
     }
 
     private static final String TAG = "CustomKeyboardView";
@@ -154,54 +140,6 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float TOP_FIXED_ROWS_FN_HINT_SP = 7f;
     private static final float TOP_FIXED_ROWS_FN_HINT_ALPHA = 0.36f;
     private static final int TOP_FIXED_ROWS_FN_HINT_MAX_CHARS = 8;
-    /** Single-pane IME: shortcut strip vs text vs space for soft keyboard (sum ~5.15). */
-    private static final float IME_SINGLE_TOP_STRIP_WEIGHT = 1.35f;
-    private static final float IME_SINGLE_TEXT_WEIGHT = 0.95f;
-    private static final String KEY_IME_SUB_COMPOSE_EXPANDED = "ime_sub_compose_expanded";
-    private static final String KEY_IME_SUB_COMPOSE_DIRECT_HID = "ime_sub_compose_direct_hid";
-    /** Portrait IME sub-compose: max field length (same order of magnitude as Compose). */
-    public static final int IME_CAPTURE_MAX_TEXT_LEN = 10_000;
-    /**
-     * Vertical weight for the IME compose toolbar row on the outer {@link CustomKeyboardView} column.
-     * Must be {@code IME_SINGLE_TOP_STRIP_WEIGHT / TOP_PANEL_ROWS} so this row's pixel height matches
-     * one shortcut row inside the viewport (three inner rows each use {@link #TOP_PANEL_ROW_WEIGHT}).
-     */
-    private static final float IME_COMPOSE_TOOLBAR_ROW_WEIGHT =
-            IME_SINGLE_TOP_STRIP_WEIGHT / (float) TOP_PANEL_ROWS;
-    /** Deterministic compose-toolbar row height in portrait sub-compose (expanded + minimized). */
-    private static final int IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP = 44;
-    private static final float IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED = 12f;
-    /**
-     * Portrait BOTH + IME capture (sub-compose collapsed): touchpad vs keyboard column in
-     * {@link com.openterface.fragment.CompositeFragment#applyOrientationLayout}. Must match
-     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} /
-     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_WEIGHT} there.
-     */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 0.9f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.7f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE =
-            IME_SUB_COMPOSE_COLLAPSED_KB / (IME_SUB_COMPOSE_COLLAPSED_TP + IME_SUB_COMPOSE_COLLAPSED_KB);
-    /** Collapsed portrait compose: editor row weight below the shortcut strip (strip uses {@link #IME_SINGLE_TOP_STRIP_WEIGHT}). */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_EDITOR_WEIGHT = 1.4f;
-    /**
-     * Collapsed portrait stack has a fixed-height toggle ({@code R.dimen.toggle_handle_height}) between
-     * touchpad and keyboard; expanded chrome hides it and that band is folded into the keyboard
-     * column. The weight-based share above only accounts for weighted touchpad vs keyboard, so trim
-     * slightly so the compose toolbar row matches the collapsed visual height.
-     */
-    private static final float IME_COMPOSE_TOOLBAR_EXPANDED_FINE_HEIGHT_TRIM = 0.93f;
-    /**
-     * Expanded sub-compose: top strip is hidden (weight 0), so only editor + toolbar share vertical
-     * weight inside the keyboard. Scale the toolbar fraction to match the collapsed three-way split
-     * (top strip + slim editor + toolbar), then multiply by {@link #IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE}
-     * because {@code CompositeFragment} gives the keyboard the full portrait slice when expanded,
-     * so without this factor the toolbar row grows taller than before expand.
-     */
-    private static final float IME_COMPOSE_TOOLBAR_ROW_WEIGHT_EXPANDED =
-            IME_COMPOSE_TOOLBAR_ROW_WEIGHT * IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED
-                    / (IME_SINGLE_TOP_STRIP_WEIGHT + IME_SINGLE_TEXT_WEIGHT)
-                    * IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE
-                    * IME_COMPOSE_TOOLBAR_EXPANDED_FINE_HEIGHT_TRIM;
     /** Extra numpad Fn-arrow overlay (dp); larger than top strip 24dp icons for the taller grid cells. */
     private static final int EXTRA_NUMPAD_FN_ARROW_ICON_DP = 36;
     /** Fn-layer Save / Undo / Tab icons — match top shortcut row visual weight (24dp assets, modest cell size). */
@@ -228,6 +166,7 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_NOOP_PLACEHOLDER = -1;
     private static final String APP_PREFS_NAME = "AppPrefs";
     private static final String KEY_SYSTEM_IME_CAPTURE = "system_ime_capture_mode";
+    private static final String KEY_IME_SUB_COMPOSE_DIRECT_HID = "ime_sub_compose_direct_hid";
     /** 0 = shortcut name, 1 = icon-first, 2 = chord (e.g. Alt+X). */
     private static final int DISPLAY_MODE_NAME = TopShortcutDisplayModePrefs.MODE_NAME;
     private static final int DISPLAY_MODE_ICON = TopShortcutDisplayModePrefs.MODE_ICON;
@@ -303,28 +242,22 @@ public class CustomKeyboardView extends LinearLayout {
     /** The paired keyboard view in split mode, for syncing modifier states */
     private CustomKeyboardView splitPartner;
 
-    private boolean systemImeCaptureMode;
-    /** Fragment-provided IME inset visibility for portrait single-pane KM Pro layout. */
-    private boolean portraitSystemImeVisible;
-    private EditText imeCaptureEdit;
     private final ExecutorService imeTextExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ImeTextForward");
+        Thread t = new Thread(r, "UnicodeStripSend");
         t.setDaemon(true);
         return t;
     });
-    private OnImeCaptureModeChangedListener onImeCaptureModeChangedListener;
 
     public interface OnImeCaptureModeChangedListener {
         void onImeCaptureModeChanged(CustomKeyboardView source, boolean enabled);
     }
 
-    /** Portrait IME capture: expand/collapse chrome and pop-out touchpad from the edit toolbar. */
+    /** @deprecated KM Pro IME sub-compose removed; interface retained for compatibility. */
     public interface OnImeSubComposeChromeListener {
         void onImeSubComposeExpandedChanged(CustomKeyboardView source, boolean expanded);
 
         void onImeToolbarPopOutTouchpadRequested(CustomKeyboardView source);
 
-        /** Called when Direct HID vs Compose sub-mode changes (portrait IME only). */
         default void onImeSubComposeDirectHidModeChanged(CustomKeyboardView source, boolean direct) {
         }
     }
@@ -334,62 +267,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTopModeShortcutListener onTopModeShortcutListener;
-    @Nullable
-    private OnImeSubComposeChromeListener onImeSubComposeChromeListener;
-    private boolean imeSubComposeExpanded;
-    private LinearLayout imeCaptureEditorRow;
-    private ImageButton imeSubComposeExpandButton;
-    private LinearLayout imeCaptureToolbar;
-    private ImageButton imeCaptureUndoButton;
-    private ImageButton imeCaptureClearButton;
-    @Nullable
-    private String imeCaptureUndoSnapshot;
-    private ImageButton imeCaptureTouchpadButton;
-    private ImageButton imeSubComposeModeToggle;
-    /** Opens saved-text library (compose mode only). */
-    private ImageButton imeCaptureSavedTextsButton;
-    private ImageButton imeCaptureSendButton;
-    /**
-     * KM Pro split landscape: compose rail uses the fragment split IME {@code EditText} while portrait
-     * uses {@link #imeCaptureEdit} on this view.
-     */
-    @Nullable
-    private EditText splitLandscapeComposeExternalEdit;
-    @Nullable
-    private ImageButton splitLandscapeRailToggle;
-    @Nullable
-    private ImageButton splitLandscapeRailUndo;
-    @Nullable
-    private ImageButton splitLandscapeRailClear;
-    @Nullable
-    private ImageButton splitLandscapeRailSend;
-    @Nullable
-    private ImageButton splitLandscapeRailSaved;
-    @Nullable
-    private TextWatcher splitLandscapeRailTextWatcher;
-    @Nullable
-    private TextView imeCaptureDirectModeHint;
-    @Nullable
-    private View imeCaptureAccentDivider;
-    private boolean imeSubComposeDirectHidMode;
-    /**
-     * When applying KM Pro input mode from the activity header, {@link #updateKeyboard()} is posted so
-     * the ripple and header chrome can finish before {@code removeAllViews()} blocks the UI thread.
-     */
-    @Nullable
-    private Runnable deferredKmProLayoutFinishRunnable;
-    private final ExecutorService imeSubComposeSendExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ImeCaptureSend");
-        t.setDaemon(true);
-        return t;
-    });
-    private final AtomicBoolean imeSubComposeCancelSend = new AtomicBoolean(false);
-    private volatile boolean imeSubComposeSending;
-    private boolean imeComposeHighlightNonAsciiChars;
-    private final Handler imeSubComposeMainHandler = new Handler(Looper.getMainLooper());
-    private static final long SHOW_LOCAL_IME_RETRY_DELAY_MS = 160L;
-    private final Runnable showLocalImeSoftKeyboardMainRunnable = this::runShowLocalImeSoftKeyboardMain;
-    private final Runnable showLocalImeSoftKeyboardRetryRunnable = this::runShowLocalImeSoftKeyboardRetry;
+
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
     private Handler repeatHandler = new Handler();
@@ -726,7 +604,6 @@ public class CustomKeyboardView extends LinearLayout {
     @Override
     protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        collapseImeSubComposePersistedForChrome();
 
         // Reload keyboard layout when orientation changes
         boolean isLandscape = newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
@@ -742,11 +619,12 @@ public class CustomKeyboardView extends LinearLayout {
         shortcutProfileManager = new ShortcutProfileManager(context.getApplicationContext());
         loadTopShortcutDisplayModeFromPrefs(context);
         SharedPreferences appPrefs = context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-        systemImeCaptureMode = appPrefs.getBoolean(KEY_SYSTEM_IME_CAPTURE, false);
-        imeSubComposeDirectHidMode =
-                systemImeCaptureMode && appPrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
-        if (!systemImeCaptureMode) {
-            imeSubComposeDirectHidMode = false;
+        if (appPrefs.getBoolean(KEY_SYSTEM_IME_CAPTURE, false)
+                || appPrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)) {
+            appPrefs.edit()
+                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, false)
+                    .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
+                    .apply();
         }
         keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(context);
 
@@ -957,12 +835,6 @@ public class CustomKeyboardView extends LinearLayout {
         showExtraPortraitKeys = enabled;
         removeAllViews();
         updateKeyboard();
-        if (enabled && systemImeCaptureMode) {
-            hideSoftInputUsingKeyboardWindowToken();
-            if (getWindowToken() == null) {
-                post(this::hideSoftInputUsingKeyboardWindowToken);
-            }
-        }
     }
 
     /**
@@ -970,26 +842,6 @@ public class CustomKeyboardView extends LinearLayout {
      */
     public void setShortcutsStripOnly(boolean enabled) {
         if (shortcutsStripOnly == enabled) return;
-        if (enabled && systemImeCaptureMode) {
-            systemImeCaptureMode = false;
-            imeSubComposeDirectHidMode = false;
-            Context ctx = getContext();
-            if (ctx != null) {
-                ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                        .edit()
-                        .putBoolean(KEY_SYSTEM_IME_CAPTURE, false)
-                        .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
-                        .apply();
-            }
-            if (splitPartner != null) {
-                splitPartner.applyImeCaptureFromPartner(false);
-            }
-            rebuildTopShortcutPanels();
-            syncTopPanelViewportContent();
-            if (onImeCaptureModeChangedListener != null) {
-                onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, false);
-            }
-        }
         shortcutsStripOnly = enabled;
         removeAllViews();
         updateKeyboard();
@@ -1294,264 +1146,71 @@ public class CustomKeyboardView extends LinearLayout {
         onTopModeShortcutListener = listener;
     }
 
-    public void setOnImeCaptureModeChangedListener(OnImeCaptureModeChangedListener listener) {
-        onImeCaptureModeChangedListener = listener;
+    public void setOnImeCaptureModeChangedListener(@Nullable OnImeCaptureModeChangedListener listener) {
     }
 
     public void setOnImeSubComposeChromeListener(@Nullable OnImeSubComposeChromeListener listener) {
-        onImeSubComposeChromeListener = listener;
     }
 
     public boolean isImeSubComposeExpanded() {
-        return imeSubComposeExpanded;
+        return false;
     }
 
     public boolean isImeSubComposeDirectHidMode() {
-        return imeSubComposeDirectHidMode;
+        return false;
     }
 
     public boolean isSystemImeCaptureMode() {
-        return systemImeCaptureMode;
+        return false;
     }
 
-    /** Current KM Pro merged PH1 input mode (derived from {@link #systemImeCaptureMode} and direct flag). */
     public KmProKeyboardInputMode getKmProKeyboardInputMode() {
-        if (!systemImeCaptureMode) {
-            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
-        }
-        return imeSubComposeDirectHidMode
-                ? KmProKeyboardInputMode.IME_DIRECT_SEND
-                : KmProKeyboardInputMode.IME_COMPOSE_SEND;
+        return KmProKeyboardInputMode.BUILT_IN_QWERTY;
     }
 
-    private static KmProKeyboardInputMode readKmProKeyboardInputModeFromPrefs(@Nullable Context ctx) {
-        if (ctx == null) {
-            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
-        }
-        SharedPreferences p = ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-        if (!p.getBoolean(KEY_SYSTEM_IME_CAPTURE, false)) {
-            return KmProKeyboardInputMode.BUILT_IN_QWERTY;
-        }
-        return p.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
-                ? KmProKeyboardInputMode.IME_DIRECT_SEND
-                : KmProKeyboardInputMode.IME_COMPOSE_SEND;
-    }
-
-    private void applyKmProKeyboardInputStateApplyFieldsOnly(KmProKeyboardInputMode target) {
-        switch (target) {
-            case BUILT_IN_QWERTY:
-                systemImeCaptureMode = false;
-                imeSubComposeDirectHidMode = false;
-                break;
-            case IME_DIRECT_SEND:
-                systemImeCaptureMode = true;
-                imeSubComposeDirectHidMode = true;
-                break;
-            case IME_COMPOSE_SEND:
-                systemImeCaptureMode = true;
-                imeSubComposeDirectHidMode = false;
-                break;
-            default:
-                systemImeCaptureMode = false;
-                imeSubComposeDirectHidMode = false;
-                break;
-        }
-    }
-
-    private void persistKmProKeyboardInputModePrefs(@Nullable Context ctx) {
-        if (ctx == null) {
-            return;
-        }
-        ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(KEY_SYSTEM_IME_CAPTURE, systemImeCaptureMode)
-                .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, imeSubComposeDirectHidMode)
-                .apply();
-    }
-
-    private int ph1DrawableResForKmProInputMode() {
-        switch (getKmProKeyboardInputMode()) {
-            case IME_DIRECT_SEND:
-                return R.drawable.ic_keyboard_ime_24;
-            case IME_COMPOSE_SEND:
-                return R.drawable.ic_ime_compose_mode_note_24;
-            case BUILT_IN_QWERTY:
-            default:
-                return R.drawable.ic_keyboard_keymod_24;
-        }
-    }
-
-    private int ph1ContentDescriptionStringResForKmProInputMode() {
-        switch (getKmProKeyboardInputMode()) {
-            case IME_DIRECT_SEND:
-                return R.string.top_shortcut_km_pro_input_ime_direct_cd;
-            case IME_COMPOSE_SEND:
-                return R.string.top_shortcut_km_pro_input_ime_compose_cd;
-            case BUILT_IN_QWERTY:
-            default:
-                return R.string.top_shortcut_km_pro_input_built_in_cd;
-        }
-    }
-
-    private void cancelDeferredKmProLayoutFinish() {
-        if (deferredKmProLayoutFinishRunnable != null) {
-            removeCallbacks(deferredKmProLayoutFinishRunnable);
-            deferredKmProLayoutFinishRunnable = null;
-        }
-    }
-
-    /**
-     * Split partner: mirror {@link KmProKeyboardInputMode} without prefs writes or host listeners
-     * (originator already persisted and notified).
-     *
-     * @param deferLayout when true, only {@link #updateKeyboard()} is posted (must match originator
-     *     header path so both halves do not block the tap frame).
-     */
-    private void applyKmProKeyboardInputStateFromPartner(KmProKeyboardInputMode target, boolean deferLayout) {
-        cancelDeferredKmProLayoutFinish();
-        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
-            collapseImeSubComposePersistedForChrome();
-        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        applyKmProKeyboardInputStateApplyFieldsOnly(target);
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        deferredKmProLayoutFinishRunnable =
-                () -> {
-                    try {
-                        updateKeyboard();
-                    } finally {
-                        deferredKmProLayoutFinishRunnable = null;
-                    }
-                };
-        if (deferLayout) {
-            post(deferredKmProLayoutFinishRunnable);
-        } else {
-            deferredKmProLayoutFinishRunnable.run();
-        }
-    }
-
-    private void applyKmProKeyboardInputStateFromUser(KmProKeyboardInputMode target, boolean deferFullKeyboardLayout) {
-        cancelDeferredKmProLayoutFinish();
-        if (splitPartner != null) {
-            splitPartner.cancelDeferredKmProLayoutFinish();
-        }
-        final boolean prevCapture = systemImeCaptureMode;
-        final boolean prevDirect = imeSubComposeDirectHidMode;
-        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
-            collapseImeSubComposePersistedForChrome();
-        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        applyKmProKeyboardInputStateApplyFieldsOnly(target);
-        Context ctx = getContext();
-        persistKmProKeyboardInputModePrefs(ctx);
-        if (splitPartner != null) {
-            splitPartner.applyKmProKeyboardInputStateFromPartner(target, deferFullKeyboardLayout);
-        }
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        deferredKmProLayoutFinishRunnable =
-                () -> {
-                    try {
-                        updateKeyboard();
-                        boolean newCapture = systemImeCaptureMode;
-                        boolean newDirect = imeSubComposeDirectHidMode;
-                        if (onImeCaptureModeChangedListener != null && prevCapture != newCapture) {
-                            onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, newCapture);
-                        }
-                        if (prevDirect != newDirect) {
-                            notifyImeSubComposeDirectHidModeChanged();
-                        }
-                    } finally {
-                        deferredKmProLayoutFinishRunnable = null;
-                    }
-                };
-        if (deferFullKeyboardLayout) {
-            post(deferredKmProLayoutFinishRunnable);
-        } else {
-            deferredKmProLayoutFinishRunnable.run();
-        }
-    }
-
-    private void cycleKmProKeyboardInputModeFromUser() {
-        KmProKeyboardInputMode next;
-        switch (getKmProKeyboardInputMode()) {
-            case BUILT_IN_QWERTY:
-                next = KmProKeyboardInputMode.IME_DIRECT_SEND;
-                break;
-            case IME_DIRECT_SEND:
-                next = KmProKeyboardInputMode.IME_COMPOSE_SEND;
-                break;
-            case IME_COMPOSE_SEND:
-            default:
-                next = KmProKeyboardInputMode.BUILT_IN_QWERTY;
-                break;
-        }
-        applyKmProKeyboardInputStateFromUser(next, false);
-    }
-
-    /**
-     * When entering landscape, KM Pro IME B/C are invalid; force built-in (State A) and persist.
-     */
-    public void forceKmProBuiltInKeyboardModeForLandscapeGuard() {
-        if (getKmProKeyboardInputMode() == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
-            return;
-        }
-        applyKmProKeyboardInputStateFromUser(KmProKeyboardInputMode.BUILT_IN_QWERTY, false);
-    }
-
-    /**
-     * Host (e.g. {@link com.openterface.fragment.CompositeFragment} / {@link MainActivity} header) sets
-     * KM Pro input mode without cycling PH1 on the shortcut strip.
-     */
-    public void setKmProKeyboardInputModeFromHost(@NonNull KmProKeyboardInputMode target) {
-        if (getKmProKeyboardInputMode() == target) {
-            return;
-        }
-        applyKmProKeyboardInputStateFromUser(target, true);
-    }
-
-    /**
-     * Single-pane portrait host reports whether Android soft IME is currently visible.
-     * Used to collapse the top shortcut strip in portrait IME sub-compose for cleaner layout.
-     */
     public void setPortraitSystemImeVisible(boolean visible) {
-        if (portraitSystemImeVisible == visible) {
-            return;
-        }
-        portraitSystemImeVisible = visible;
-        applyImeTopStripVisibilityForSubCompose();
-        requestLayout();
     }
 
-    /**
-     * Split partner sync: mirror prefs-driven {@link KmProKeyboardInputMode} without firing
-     * {@link OnImeCaptureModeChangedListener} (the originating view already notified).
-     */
+    public void setKmProKeyboardInputModeFromHost(@NonNull KmProKeyboardInputMode target) {
+    }
+
     public void applyImeCaptureFromPartner(boolean enabled) {
-        KmProKeyboardInputMode target =
-                enabled ? readKmProKeyboardInputModeFromPrefs(getContext()) : KmProKeyboardInputMode.BUILT_IN_QWERTY;
-        if (getKmProKeyboardInputMode() == target) {
-            rebuildTopShortcutPanels();
-            syncTopPanelViewportContent();
-            updateKeyboard();
-            return;
-        }
-        if (target == KmProKeyboardInputMode.BUILT_IN_QWERTY) {
-            collapseImeSubComposePersistedForChrome();
-        } else if (target == KmProKeyboardInputMode.IME_DIRECT_SEND) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        applyKmProKeyboardInputStateApplyFieldsOnly(target);
-        Context ctx = getContext();
-        if (ctx != null) {
-            persistKmProKeyboardInputModePrefs(ctx);
-        }
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        updateKeyboard();
+    }
+
+    public void forceKmProBuiltInKeyboardModeForLandscapeGuard() {
+    }
+
+    public void resyncImeSubComposeDirectHidFromPrefs() {
+    }
+
+    public void cancelDeferredKmProLayoutFinish() {
+    }
+
+    public void bindSplitLandscapeImeComposeRail(
+            @NonNull EditText externalEdit,
+            @Nullable ImageButton railToggle,
+            @Nullable ImageButton railUndo,
+            @Nullable ImageButton railClear,
+            @Nullable ImageButton railSaved,
+            @Nullable ImageButton railSend) {
+    }
+
+    public void clearSplitLandscapeImeComposeRail() {
+    }
+
+    public void onSplitLandscapeImeRailSavedClicked() {
+    }
+
+    public void onSplitLandscapeImeRailModeToggleClicked() {
+    }
+
+    public void onSplitLandscapeImeRailUndoClicked() {
+    }
+
+    public void onSplitLandscapeImeRailClearClicked() {
+    }
+
+    public void onSplitLandscapeImeRailSendClicked() {
     }
 
     /** Rebuild top shortcut panels after PH slot mode prefs change (no full keyboard reload). */
@@ -1753,17 +1412,9 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code == KEY_IME_TOGGLE) {
             Context ctx = getContext();
             if (ctx != null) {
-                switch (getKmProKeyboardInputMode()) {
-                    case IME_DIRECT_SEND:
-                        return ctx.getString(R.string.top_shortcut_km_pro_input_ime_direct_short);
-                    case IME_COMPOSE_SEND:
-                        return ctx.getString(R.string.top_shortcut_km_pro_input_ime_compose_short);
-                    case BUILT_IN_QWERTY:
-                    default:
-                        return ctx.getString(R.string.top_shortcut_km_pro_input_built_in_short);
-                }
+                return ctx.getString(R.string.top_shortcut_km_pro_input_built_in_short);
             }
-            return "IME";
+            return "";
         }
         if (key.symbolLabel != null) {
             String chord = key.symbolLabel.trim();
@@ -2714,13 +2365,6 @@ public class CustomKeyboardView extends LinearLayout {
         // In landscape fullscreen mode, always show the top scrolling panel
         if (showExtraPortraitKeys && isLandscape(getContext()) && splitPart == SPLIT_NONE) {
             addTopFunctionRows();
-        }
-
-        if (systemImeCaptureMode && !shortcutsStripOnly) {
-            if (splitPart == SPLIT_NONE) {
-                addImeCaptureEditorBelowTopStrip();
-            }
-            return;
         }
 
         String[] functionalKeyCodes = {"46", "47", "48", "49", "4A", "4B", "4C", "4D", "4E", "3B", "3C", "3D", "3E", "3F", "29", "3A", "40", "41", "42", "43", "44", "45", "3D", "3F"};
@@ -3971,9 +3615,6 @@ public class CustomKeyboardView extends LinearLayout {
         }
 
         float topStripWeight = TOP_PANEL_TOTAL_WEIGHT;
-        if (systemImeCaptureMode && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
-            topStripWeight = IME_SINGLE_TOP_STRIP_WEIGHT;
-        }
         LinearLayout topStripContainer = new LinearLayout(getContext());
         int portraitShortcutStripHeight =
                 getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
@@ -3987,7 +3628,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
         // Full built-in keyboard: many letter rows compete for height; floor strip for safety on
         // compact devices where parent constraints can squeeze below the target portrait size.
-        if (!systemImeCaptureMode && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
+        if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
             topStripContainer.setMinimumHeight(portraitShortcutStripHeight);
         }
         topStripContainer.setOrientation(VERTICAL);
@@ -4847,8 +4488,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * PH1 IME vs KeyMod toggle: accent ring / fill states use {@code android:state_activated}
-     * ({@link #systemImeCaptureMode}); pressed states are defined in the drawable selector.
+     * Legacy PH1 strip slot (IME toggle removed): accent ring uses {@code android:state_activated}.
      */
     private void applyTopPanelImeToggleKeyCapBackground(View view) {
         view.setClipToOutline(false);
@@ -4863,12 +4503,7 @@ public class CustomKeyboardView extends LinearLayout {
         Context ctx = ib.getContext();
         int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
         int primaryFallback = ThemeManager.getColorPrimary(ctx);
-        int tint = systemImeCaptureMode
-                ? MaterialColors.getColor(
-                        ib,
-                        com.google.android.material.R.attr.colorOnPrimaryContainer,
-                        onPrimaryContainerFallback)
-                : MaterialColors.getColor(
+        int tint = MaterialColors.getColor(
                         ib,
                         com.google.android.material.R.attr.colorPrimary,
                         primaryFallback);
@@ -4883,12 +4518,7 @@ public class CustomKeyboardView extends LinearLayout {
         Context ctx = tv.getContext();
         int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
         int primaryFallback = ThemeManager.getColorPrimary(ctx);
-        int color = systemImeCaptureMode
-                ? MaterialColors.getColor(
-                        tv,
-                        com.google.android.material.R.attr.colorOnPrimaryContainer,
-                        onPrimaryContainerFallback)
-                : MaterialColors.getColor(
+        int color = MaterialColors.getColor(
                         tv,
                         com.google.android.material.R.attr.colorPrimary,
                         primaryFallback);
@@ -5008,7 +4638,7 @@ public class CustomKeyboardView extends LinearLayout {
                     ib.setLayoutParams(p);
                     if (isTopImeToggleKey(k)) {
                         applyTopPanelImeToggleKeyCapBackground(ib);
-                        ib.setActivated(systemImeCaptureMode);
+                        ib.setActivated(false);
                         ib.setSelected(false);
                     } else {
                         applyTopPanelKeyCapBackground(ib, k, keyLockedVisualState);
@@ -5037,7 +4667,7 @@ public class CustomKeyboardView extends LinearLayout {
                     } else if (isTopImeToggleKey(k)) {
                         Context ctx = getContext();
                         if (ctx != null) {
-                            ib.setContentDescription(ctx.getString(ph1ContentDescriptionStringResForKmProInputMode()));
+                            ib.setContentDescription(ctx.getString(R.string.top_shortcut_km_pro_input_built_in_cd));
                         }
                     } else if (isTopShortcutToggleKey(k)) {
                         Context ctx = getContext();
@@ -5112,7 +4742,7 @@ public class CustomKeyboardView extends LinearLayout {
                             : p);
                     if (isTopImeToggleKey(k)) {
                         applyTopPanelImeToggleKeyCapBackground(b);
-                        b.setActivated(systemImeCaptureMode);
+                        b.setActivated(false);
                         b.setSelected(false);
                     } else {
                         applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
@@ -6495,7 +6125,7 @@ public class CustomKeyboardView extends LinearLayout {
                                         : modifierLocked);
                 if (isTopImeToggleKey(key)) {
                     applyTopPanelImeToggleKeyCapBackground(view);
-                    view.setActivated(systemImeCaptureMode);
+                    view.setActivated(false);
                     view.setSelected(false);
                     if (view instanceof ImageButton) {
                         applyTopImeToggleIconTint((ImageButton) view);
@@ -7459,11 +7089,6 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
 
-        if (isTopImeToggleKey(key)) {
-            cycleKmProKeyboardInputModeFromUser();
-            return;
-        }
-
         if (isTopShortcutToggleKey(key)) {
             cycleTopShortcutDisplayMode();
             return;
@@ -7865,1156 +7490,7 @@ public class CustomKeyboardView extends LinearLayout {
         return ContextCompat.getColor(ctx, R.color.text_primary);
     }
 
-    private void postShowLocalImeSoftKeyboard() {
-        removeCallbacks(showLocalImeSoftKeyboardMainRunnable);
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        post(showLocalImeSoftKeyboardMainRunnable);
-    }
 
-    private void runShowLocalImeSoftKeyboardMain() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || getContext() == null) {
-            return;
-        }
-        edit.requestFocus();
-        InputMethodManager imm =
-                (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT);
-        }
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        postDelayed(showLocalImeSoftKeyboardRetryRunnable, SHOW_LOCAL_IME_RETRY_DELAY_MS);
-    }
-
-    private void runShowLocalImeSoftKeyboardRetry() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || getContext() == null) {
-            return;
-        }
-        InputMethodManager imm =
-                (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT);
-        }
-    }
-
-    /** Dismiss system IME using this view's window token (compose field may already be detached). */
-    private void hideSoftInputUsingKeyboardWindowToken() {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
-        }
-        android.os.IBinder token = getWindowToken();
-        if (token == null) {
-            return;
-        }
-        InputMethodManager imm =
-                (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.hideSoftInputFromWindow(token, 0);
-        }
-    }
-
-    private void detachLocalImeFieldQuiet() {
-        removeCallbacks(showLocalImeSoftKeyboardMainRunnable);
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        boolean wasExpanded = imeSubComposeExpanded;
-        imeSubComposeCancelSend.set(true);
-        if (imeCaptureEdit != null && getContext() != null) {
-            InputMethodManager imm =
-                    (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(imeCaptureEdit.getWindowToken(), 0);
-            }
-            ImeTextForwarder.detach(imeCaptureEdit);
-            imeCaptureEdit = null;
-        }
-        imeCaptureEditorRow = null;
-        imeSubComposeExpandButton = null;
-        imeCaptureToolbar = null;
-        imeCaptureUndoButton = null;
-        imeCaptureClearButton = null;
-        imeCaptureUndoSnapshot = null;
-        imeCaptureTouchpadButton = null;
-        imeSubComposeModeToggle = null;
-        imeCaptureSavedTextsButton = null;
-        imeCaptureSendButton = null;
-        imeCaptureDirectModeHint = null;
-        imeCaptureAccentDivider = null;
-        imeSubComposeExpanded = false;
-        if (wasExpanded && onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, false);
-        }
-    }
-
-    private boolean isImeSubComposePortraitContext() {
-        Context ctx = getContext();
-        return ctx != null
-                && splitPart == SPLIT_NONE
-                && ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
-    }
-
-    private void collapseImeSubComposePersistedForChrome() {
-        if (!imeSubComposeExpanded) {
-            return;
-        }
-        imeSubComposeExpanded = false;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false)
-                    .apply();
-        }
-        if (onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, false);
-        }
-    }
-
-    private void applyImeTopStripVisibilityForSubCompose() {
-        if (topPanelRootContainer == null && topPanelViewport == null) {
-            return;
-        }
-        View target = topPanelRootContainer != null ? topPanelRootContainer : topPanelViewport;
-        if (!(target.getLayoutParams() instanceof LayoutParams)) {
-            return;
-        }
-        LayoutParams lp = (LayoutParams) target.getLayoutParams();
-        if (imeSubComposeExpanded) {
-            target.setVisibility(GONE);
-            lp.height = 0;
-            lp.weight = 0f;
-        } else {
-            boolean hideForPortraitImeKeyboard =
-                    isImeSubComposePortraitContext()
-                            && systemImeCaptureMode
-                            && !imeSubComposeDirectHidMode
-                            && portraitSystemImeVisible;
-            if (hideForPortraitImeKeyboard) {
-                target.setVisibility(GONE);
-                lp.height = 0;
-                lp.weight = 0f;
-                target.setLayoutParams(lp);
-                return;
-            }
-            target.setVisibility(VISIBLE);
-            if (isImeSubComposePortraitContext()) {
-                lp.height = getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
-                lp.weight = 0f;
-            } else {
-                lp.height = 0;
-                // Same vertical weight as single-pane IME / Direct HID so built-in vs IME toggle does not
-                // shrink the shortcut strip in portrait collapsed compose.
-                lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
-            }
-        }
-        target.setLayoutParams(lp);
-    }
-
-    private void persistImeSubComposeExpanded(boolean expanded) {
-        imeSubComposeExpanded = expanded;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, expanded)
-                    .apply();
-        }
-    }
-
-    private void onImeSubComposeExpandToggleClicked() {
-        if (!isImeSubComposePortraitContext()) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            return;
-        }
-        boolean next = !imeSubComposeExpanded;
-        persistImeSubComposeExpanded(next);
-        applyImeTopStripVisibilityForSubCompose();
-        refreshImeSubComposeExpandIcon();
-        applyImeSubComposeDirectHidUi();
-        updateImeCaptureToolbarState();
-        if (onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, next);
-        }
-    }
-
-    private void refreshImeSubComposeEditorRowWeight() {
-        if (imeCaptureEditorRow == null) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            imeCaptureEditorRow.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(1), 0f));
-            refreshImeSubComposeToolbarRowWeight();
-            return;
-        }
-        LayoutParams lp = (LayoutParams) imeCaptureEditorRow.getLayoutParams();
-        lp.height = 0;
-        if (!imeSubComposeExpanded && isImeSubComposePortraitContext()) {
-            lp.weight = IME_SUB_COMPOSE_COLLAPSED_EDITOR_WEIGHT;
-        } else {
-            lp.weight = imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
-        }
-        imeCaptureEditorRow.setLayoutParams(lp);
-        refreshImeSubComposeToolbarRowWeight();
-    }
-
-    private void refreshImeSubComposeToolbarRowWeight() {
-        if (imeCaptureToolbar == null) {
-            return;
-        }
-        if (isImeSubComposePortraitContext() && imeSubComposeDirectHidMode) {
-            imeCaptureToolbar.setVisibility(GONE);
-            LayoutParams lpGone = (LayoutParams) imeCaptureToolbar.getLayoutParams();
-            lpGone.height = 0;
-            lpGone.weight = 0f;
-            imeCaptureToolbar.setLayoutParams(lpGone);
-            return;
-        }
-        if (imeCaptureToolbar.getVisibility() != VISIBLE) {
-            imeCaptureToolbar.setVisibility(VISIBLE);
-        }
-        if (isImeSubComposePortraitContext()) {
-            LayoutParams lp = (LayoutParams) imeCaptureToolbar.getLayoutParams();
-            lp.height = dpToPx(IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP);
-            lp.weight = 0f;
-            imeCaptureToolbar.setLayoutParams(lp);
-            return;
-        }
-        float w = IME_COMPOSE_TOOLBAR_ROW_WEIGHT;
-        if (!imeSubComposeDirectHidMode && imeSubComposeExpanded) {
-            w = IME_COMPOSE_TOOLBAR_ROW_WEIGHT_EXPANDED;
-        }
-        LayoutParams lp = (LayoutParams) imeCaptureToolbar.getLayoutParams();
-        lp.height = 0;
-        lp.weight = w;
-        imeCaptureToolbar.setLayoutParams(lp);
-    }
-
-    private void refreshImeSubComposeExpandIcon() {
-        if (imeSubComposeExpandButton == null || getContext() == null) {
-            return;
-        }
-        if (imeSubComposeExpanded) {
-            imeSubComposeExpandButton.setImageResource(R.drawable.ic_ime_sub_compose_collapse_24);
-            imeSubComposeExpandButton.setContentDescription(getContext().getString(R.string.ime_sub_compose_collapse));
-        } else {
-            imeSubComposeExpandButton.setImageResource(R.drawable.ic_ime_sub_compose_expand_24);
-            imeSubComposeExpandButton.setContentDescription(getContext().getString(R.string.ime_sub_compose_expand));
-        }
-        imeSubComposeExpandButton.setColorFilter(resolveThemeTextColor());
-    }
-
-    private void notifyImeSubComposeDirectHidModeChanged() {
-        if (onImeSubComposeChromeListener == null) {
-            return;
-        }
-        if (!isImeSubComposePortraitContext() && splitPart == SPLIT_NONE) {
-            return;
-        }
-        onImeSubComposeChromeListener.onImeSubComposeDirectHidModeChanged(this, imeSubComposeDirectHidMode);
-    }
-
-    private void onImeSubComposeModeToggleClicked() {
-        if (imeSubComposeSending) {
-            return;
-        }
-        cycleKmProKeyboardInputModeFromUser();
-    }
-
-    /** Portrait IME toolbar: same 3-state cycle as PH1 (built-in → IME direct → IME compose). */
-    private void refreshImeSubComposeModeToggleIcon() {
-        if (getContext() == null || imeSubComposeModeToggle == null) {
-            return;
-        }
-        imeSubComposeModeToggle.setImageResource(ph1DrawableResForKmProInputMode());
-        imeSubComposeModeToggle.setContentDescription(
-                getContext().getString(ph1ContentDescriptionStringResForKmProInputMode()));
-        applyTopPanelImeToggleKeyCapBackground(imeSubComposeModeToggle);
-        imeSubComposeModeToggle.setActivated(systemImeCaptureMode);
-        applyTopImeToggleIconTint(imeSubComposeModeToggle);
-    }
-
-    private void setImeToolbarCellWeight(View v, int keyMargin, float weight) {
-        if (v == null) {
-            return;
-        }
-        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
-        lp.width = 0;
-        lp.height = LayoutParams.MATCH_PARENT;
-        lp.weight = weight;
-        lp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-        v.setLayoutParams(lp);
-    }
-
-    /**
-     * Previously shown when portrait IME sub-compose was expanded (inline touchpad hidden). That
-     * duplicate touchpad entry is removed for KM Pro UX; users collapse the editor or use other
-     * navigation to reach the touchpad.
-     */
-    private boolean shouldShowImeToolbarPopOutTouchpadButton() {
-        return false;
-    }
-
-    private void applyImeSubComposeDirectHidUi() {
-        if (!isImeSubComposePortraitContext() || imeCaptureToolbar == null || imeCaptureEdit == null) {
-            return;
-        }
-        int keyMargin = dpToPx(KEY_OUTER_MARGIN_DP);
-        if (imeSubComposeDirectHidMode) {
-            collapseImeSubComposePersistedForChrome();
-            applyImeTopStripVisibilityForSubCompose();
-
-            // Stay VISIBLE so InputMethodManager can show the soft keyboard (INVISIBLE often blocks IME).
-            // The editor row is ~1dp tall in Direct HID; mode + hint live in the activity header.
-            imeCaptureEdit.setHint("");
-            imeCaptureEdit.setVisibility(VISIBLE);
-            if (imeSubComposeExpandButton != null) {
-                imeSubComposeExpandButton.setVisibility(GONE);
-            }
-            if (imeCaptureAccentDivider != null) {
-                imeCaptureAccentDivider.setVisibility(GONE);
-            }
-
-            imeCaptureToolbar.setVisibility(GONE);
-            imeCaptureClearButton.setVisibility(GONE);
-            imeCaptureUndoButton.setVisibility(GONE);
-            if (imeCaptureSavedTextsButton != null) {
-                imeCaptureSavedTextsButton.setVisibility(GONE);
-            }
-            imeCaptureSendButton.setVisibility(GONE);
-            imeCaptureDirectModeHint.setVisibility(GONE);
-
-            if (imeCaptureTouchpadButton != null) {
-                imeCaptureTouchpadButton.setVisibility(GONE);
-                setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 0f);
-            }
-            if (imeSubComposeModeToggle != null) {
-                imeSubComposeModeToggle.setVisibility(GONE);
-            }
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
-            if (imeCaptureSavedTextsButton != null) {
-                setImeToolbarCellWeight(imeCaptureSavedTextsButton, keyMargin, 0f);
-            }
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 0f);
-        } else {
-            applyImeTopStripVisibilityForSubCompose();
-            imeCaptureEdit.setHint(R.string.ime_capture_hint);
-            imeCaptureEdit.setVisibility(VISIBLE);
-            if (imeSubComposeExpandButton != null) {
-                imeSubComposeExpandButton.setVisibility(VISIBLE);
-            }
-            if (imeCaptureAccentDivider != null) {
-                imeCaptureAccentDivider.setVisibility(VISIBLE);
-            }
-
-            imeCaptureToolbar.setVisibility(VISIBLE);
-            imeCaptureClearButton.setVisibility(VISIBLE);
-            imeCaptureUndoButton.setVisibility(VISIBLE);
-            if (imeCaptureSavedTextsButton != null) {
-                imeCaptureSavedTextsButton.setVisibility(VISIBLE);
-            }
-            imeCaptureSendButton.setVisibility(VISIBLE);
-            imeCaptureDirectModeHint.setVisibility(GONE);
-
-            boolean showPopOutTouchpad = shouldShowImeToolbarPopOutTouchpadButton();
-            if (imeCaptureTouchpadButton != null) {
-                imeCaptureTouchpadButton.setVisibility(showPopOutTouchpad ? VISIBLE : GONE);
-                setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, showPopOutTouchpad ? 1f : 0f);
-            }
-            if (imeSubComposeModeToggle != null) {
-                imeSubComposeModeToggle.setVisibility(GONE);
-            }
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
-            if (imeCaptureSavedTextsButton != null) {
-                setImeToolbarCellWeight(imeCaptureSavedTextsButton, keyMargin, 1f);
-            }
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, showPopOutTouchpad ? 2f : 3f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
-        }
-        refreshImeSubComposeEditorRowWeight();
-        refreshImeSubComposeModeToggleIcon();
-        imeCaptureToolbar.requestLayout();
-    }
-
-    @Nullable
-    private EditText effectiveImeCaptureEdit() {
-        return splitLandscapeComposeExternalEdit != null ? splitLandscapeComposeExternalEdit : imeCaptureEdit;
-    }
-
-    @NonNull
-    private ImeComposeSendGate.SendAssessment assessImeCaptureSend(
-            @Nullable ConnectionManager connectionManager,
-            String text) {
-        return ImeComposeSendGate.assess(connectionManager, text);
-    }
-
-    private void updateImeCaptureToolbarState() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null) {
-            return;
-        }
-        boolean hasPortraitToolbar =
-                imeCaptureClearButton != null && imeCaptureSendButton != null;
-        boolean hasSplitRail =
-                splitLandscapeRailClear != null && splitLandscapeRailSend != null;
-        if (!hasPortraitToolbar && !hasSplitRail) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            if (imeSubComposeModeToggle != null) {
-                imeSubComposeModeToggle.setEnabled(!imeSubComposeSending);
-                imeSubComposeModeToggle.setAlpha(imeSubComposeModeToggle.isEnabled() ? 1f : 0.45f);
-            }
-            if (splitLandscapeRailToggle != null) {
-                splitLandscapeRailToggle.setEnabled(!imeSubComposeSending);
-                splitLandscapeRailToggle.setAlpha(splitLandscapeRailToggle.isEnabled() ? 1f : 0.45f);
-            }
-            if (splitLandscapeRailUndo != null) {
-                splitLandscapeRailUndo.setVisibility(GONE);
-            }
-            if (splitLandscapeRailClear != null) {
-                splitLandscapeRailClear.setVisibility(GONE);
-            }
-            if (splitLandscapeRailSend != null) {
-                splitLandscapeRailSend.setVisibility(GONE);
-            }
-            if (splitLandscapeRailSaved != null) {
-                splitLandscapeRailSaved.setVisibility(GONE);
-            }
-            return;
-        }
-        if (splitLandscapeRailUndo != null) {
-            splitLandscapeRailUndo.setVisibility(VISIBLE);
-        }
-        if (splitLandscapeRailClear != null) {
-            splitLandscapeRailClear.setVisibility(VISIBLE);
-        }
-        if (splitLandscapeRailSend != null) {
-            splitLandscapeRailSend.setVisibility(VISIBLE);
-        }
-        if (splitLandscapeRailSaved != null) {
-            splitLandscapeRailSaved.setVisibility(VISIBLE);
-        }
-        String t = edit.getText() != null ? edit.getText().toString() : "";
-        ConnectionManager cm = peekConnectionManager();
-        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, t);
-        boolean canSend = assessment.canSend();
-        boolean showWarning = canSend && assessment.warningInfo != null;
-
-        if (imeCaptureTouchpadButton != null && shouldShowImeToolbarPopOutTouchpadButton()) {
-            boolean connected = cm != null && cm.isConnected();
-            imeCaptureTouchpadButton.setEnabled(!imeSubComposeSending && connected);
-            imeCaptureTouchpadButton.setAlpha(imeCaptureTouchpadButton.isEnabled() ? 1f : 0.45f);
-        }
-
-        boolean canClear = !imeSubComposeSending && !t.isEmpty();
-        if (imeCaptureClearButton != null) {
-            imeCaptureClearButton.setEnabled(canClear);
-            imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailClear != null) {
-            splitLandscapeRailClear.setEnabled(canClear);
-            splitLandscapeRailClear.setAlpha(canClear ? 1f : 0.45f);
-        }
-
-        boolean canUndo =
-                !imeSubComposeSending && imeCaptureUndoSnapshot != null && !imeCaptureUndoSnapshot.isEmpty();
-        if (imeCaptureUndoButton != null) {
-            imeCaptureUndoButton.setEnabled(canUndo);
-            imeCaptureUndoButton.setAlpha(canUndo ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailUndo != null) {
-            splitLandscapeRailUndo.setEnabled(canUndo);
-            splitLandscapeRailUndo.setAlpha(canUndo ? 1f : 0.45f);
-        }
-
-        boolean canOpenSavedSheet = !imeSubComposeSending;
-        if (imeCaptureSavedTextsButton != null) {
-            imeCaptureSavedTextsButton.setEnabled(canOpenSavedSheet);
-            imeCaptureSavedTextsButton.setAlpha(canOpenSavedSheet ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailSaved != null) {
-            splitLandscapeRailSaved.setEnabled(canOpenSavedSheet);
-            splitLandscapeRailSaved.setAlpha(canOpenSavedSheet ? 1f : 0.45f);
-        }
-
-        if (imeSubComposeSending) {
-            if (imeCaptureSendButton != null) {
-                imeCaptureSendButton.setImageResource(R.drawable.ic_compose_stop_24);
-                imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
-                imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_stop));
-                imeCaptureSendButton.setEnabled(true);
-                imeCaptureSendButton.setAlpha(1f);
-            }
-            if (splitLandscapeRailSend != null) {
-                splitLandscapeRailSend.setImageResource(R.drawable.ic_compose_stop_24);
-                splitLandscapeRailSend.setColorFilter(resolveThemeTextColor());
-                splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_stop));
-                splitLandscapeRailSend.setEnabled(true);
-                splitLandscapeRailSend.setAlpha(1f);
-            }
-        } else {
-            if (imeCaptureSendButton != null) {
-                imeCaptureSendButton.setImageResource(R.drawable.ic_compose_send_24);
-                int warningColor =
-                        MaterialColors.getColor(
-                                imeCaptureSendButton,
-                                com.google.android.material.R.attr.colorTertiary,
-                                ThemeManager.getColorPrimary(imeCaptureSendButton.getContext()));
-                imeCaptureSendButton.setColorFilter(
-                        showWarning ? warningColor : resolveThemeTextColor());
-                imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
-                imeCaptureSendButton.setEnabled(true);
-                imeCaptureSendButton.setAlpha(canSend ? 1f : 0.45f);
-            }
-            if (splitLandscapeRailSend != null) {
-                splitLandscapeRailSend.setImageResource(R.drawable.ic_compose_send_24);
-                int warningColor =
-                        MaterialColors.getColor(
-                                splitLandscapeRailSend,
-                                com.google.android.material.R.attr.colorTertiary,
-                                ThemeManager.getColorPrimary(splitLandscapeRailSend.getContext()));
-                splitLandscapeRailSend.setColorFilter(
-                        showWarning ? warningColor : resolveThemeTextColor());
-                splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_send));
-                splitLandscapeRailSend.setEnabled(true);
-                splitLandscapeRailSend.setAlpha(canSend ? 1f : 0.45f);
-            }
-        }
-    }
-
-    private void onImeCaptureClearClicked() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || imeSubComposeSending) {
-            return;
-        }
-        CharSequence cur = edit.getText();
-        if (cur != null && cur.length() > 0) {
-            imeCaptureUndoSnapshot = cur.toString();
-        }
-        edit.setText("");
-        updateImeCaptureToolbarState();
-    }
-
-    private void onImeCaptureUndoClicked() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || imeSubComposeSending || imeCaptureUndoSnapshot == null) {
-            return;
-        }
-        edit.setText(imeCaptureUndoSnapshot);
-        imeCaptureUndoSnapshot = null;
-        updateImeCaptureToolbarState();
-    }
-
-    private void onImeCaptureSendClicked() {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null) {
-            return;
-        }
-        if (imeSubComposeSending) {
-            imeSubComposeCancelSend.set(true);
-            return;
-        }
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (!(act instanceof MainActivity)) {
-            return;
-        }
-        MainActivity ma = (MainActivity) act;
-        ConnectionManager cm = ma.getConnectionManager();
-        String text = edit.getText() != null ? edit.getText().toString() : "";
-        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, text);
-        if (assessment.hardBlockReasonResId != null) {
-            Toast.makeText(getContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (assessment.warningInfo != null) {
-            showImeComposeSendWarningDialog(cm, assessment.warningInfo, text);
-            return;
-        }
-        startImeComposeSend(ma, cm, edit, text);
-    }
-
-    private void showImeComposeSendWarningDialog(
-            @Nullable ConnectionManager cm,
-            @NonNull ImeComposeSendGate.WarningInfo warningInfo,
-            @NonNull final String textToSend) {
-        if (getContext() == null) {
-            return;
-        }
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || imeSubComposeSending) {
-            return;
-        }
-        ComposeSendWarningDialog.show(
-                getContext(),
-                warningInfo,
-                () -> {
-                    if (imeSubComposeSending) {
-                        return;
-                    }
-                    AppCompatActivity act = unwrapAppCompatActivity(getContext());
-                    EditText currentEdit = effectiveImeCaptureEdit();
-                    if (!(act instanceof MainActivity) || currentEdit == null) {
-                        return;
-                    }
-                    MainActivity ma = (MainActivity) act;
-                    ImeComposeSendGate.SendAssessment reassess = assessImeCaptureSend(cm, textToSend);
-                    if (reassess.hardBlockReasonResId != null) {
-                        Toast.makeText(getContext(), reassess.hardBlockReasonResId, Toast.LENGTH_SHORT)
-                                .show();
-                        updateImeCaptureToolbarState();
-                        return;
-                    }
-                    startImeComposeSend(ma, cm, currentEdit, textToSend);
-                },
-                () -> {
-                    EditText currentEdit = effectiveImeCaptureEdit();
-                    if (currentEdit != null) {
-                        CharSequence cur = currentEdit.getText();
-                        String curStr = cur != null ? cur.toString() : "";
-                        if (!curStr.equals(textToSend)) {
-                            currentEdit.setText(textToSend);
-                        }
-                    }
-                    imeComposeHighlightNonAsciiChars = true;
-                    refreshImeComposeNonAsciiHighlights(true);
-                    if (currentEdit != null) {
-                        currentEdit.requestFocus();
-                    }
-                },
-                () -> {
-                    if (getContext() == null) {
-                        return;
-                    }
-                    ComposeSendPreviewDialog.show(getContext(), textToSend);
-                });
-    }
-
-    private void onImeCaptureSavedTextsClicked() {
-        openImeSavedTextLibrary();
-    }
-
-    /** Split-landscape rail: open saved-text library. */
-    public void onSplitLandscapeImeRailSavedClicked() {
-        openImeSavedTextLibrary();
-    }
-
-    private void openImeSavedTextLibrary() {
-        if (imeSubComposeSending || imeSubComposeDirectHidMode) {
-            return;
-        }
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (!(act instanceof FragmentActivity)) {
-            return;
-        }
-        FragmentActivity fa = (FragmentActivity) act;
-        ImeSavedTextFragment.Host host =
-                new ImeSavedTextFragment.Host() {
-                    @NonNull
-                    @Override
-                    public String readCurrentEditorText() {
-                        EditText e = effectiveImeCaptureEdit();
-                        return e != null && e.getText() != null ? e.getText().toString() : "";
-                    }
-
-                    @Override
-                    public void onLoadIntoEditor(@NonNull String content) {
-                        EditText e = effectiveImeCaptureEdit();
-                        if (e == null) {
-                            return;
-                        }
-                        e.setText(content);
-                        Editable ed = e.getText();
-                        if (ed != null) {
-                            int len = ed.length();
-                            e.setSelection(len);
-                        }
-                        imeCaptureUndoSnapshot = null;
-                        imeComposeHighlightNonAsciiChars = false;
-                        refreshImeComposeNonAsciiHighlights(false);
-                        updateImeCaptureToolbarState();
-                    }
-
-                    @Override
-                    public void onSendSavedText(@NonNull String content) {
-                        attemptImeComposeSendForString(content);
-                    }
-                };
-        if (act instanceof MainActivity) {
-            ((MainActivity) act).showImeSavedTextOverlay(host);
-        } else {
-            ImeSavedTextBottomSheet.show(fa, host);
-        }
-    }
-
-    private void attemptImeComposeSendForString(@NonNull String text) {
-        if (imeSubComposeSending) {
-            return;
-        }
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null) {
-            return;
-        }
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (!(act instanceof MainActivity)) {
-            return;
-        }
-        MainActivity ma = (MainActivity) act;
-        ConnectionManager cm = ma.getConnectionManager();
-        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, text);
-        if (assessment.hardBlockReasonResId != null) {
-            Toast.makeText(getContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (assessment.warningInfo != null) {
-            showImeComposeSendWarningDialog(cm, assessment.warningInfo, text);
-            return;
-        }
-        startImeComposeSend(ma, cm, edit, text);
-    }
-
-    private void startImeComposeSend(
-            @NonNull MainActivity ma,
-            @Nullable ConnectionManager cm,
-            @NonNull EditText edit,
-            @NonNull String text) {
-        imeSubComposeCancelSend.set(false);
-        imeSubComposeSending = true;
-        edit.setEnabled(false);
-        setImeCaptureToolbarEnabledWhileSending(false);
-        updateImeCaptureToolbarState();
-
-        final String targetOs = ma.getTargetOs();
-        final int sentLen = text.length();
-
-        imeSubComposeSendExecutor.execute(() -> {
-            HidTextKeystrokeSender.Result result;
-            try {
-                result = HidTextKeystrokeSender.send(text, cm, targetOs, false, imeSubComposeCancelSend);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                result = HidTextKeystrokeSender.Result.CANCELLED;
-            }
-            HidTextKeystrokeSender.Result finalResult = result;
-            imeSubComposeMainHandler.post(() -> {
-                imeSubComposeSending = false;
-                EditText ed = effectiveImeCaptureEdit();
-                if (ed != null) {
-                    ed.setEnabled(true);
-                }
-                setImeCaptureToolbarEnabledWhileSending(true);
-                updateImeCaptureToolbarState();
-                if (getContext() == null) {
-                    return;
-                }
-                if (finalResult == HidTextKeystrokeSender.Result.CANCELLED) {
-                    Toast.makeText(getContext(), R.string.compose_cancelled, Toast.LENGTH_SHORT).show();
-                } else {
-                    imeCaptureUndoSnapshot = null;
-                    imeComposeHighlightNonAsciiChars = false;
-                    refreshImeComposeNonAsciiHighlights(false);
-                    String msg = getContext().getString(R.string.compose_sent, sentLen);
-                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-    }
-
-    private void refreshImeComposeNonAsciiHighlights(boolean showNoneFoundToast) {
-        EditText edit = effectiveImeCaptureEdit();
-        if (edit == null || edit.getText() == null) {
-            return;
-        }
-        Editable editable = edit.getText();
-        if (!imeComposeHighlightNonAsciiChars) {
-            NonAsciiTextHighlighter.clear(editable);
-            return;
-        }
-        int color =
-                MaterialColors.getColor(
-                        edit,
-                        com.google.android.material.R.attr.colorTertiaryContainer,
-                        ThemeManager.getColorPrimaryContainer(edit.getContext()));
-        int highlighted = NonAsciiTextHighlighter.apply(editable, color);
-        if (highlighted == 0) {
-            imeComposeHighlightNonAsciiChars = false;
-            NonAsciiTextHighlighter.clear(editable);
-            if (showNoneFoundToast && getContext() != null) {
-                Toast.makeText(
-                                getContext(),
-                                R.string.compose_send_warning_no_non_ascii_found,
-                                Toast.LENGTH_SHORT)
-                        .show();
-            }
-        }
-    }
-
-    private void setImeCaptureToolbarEnabledWhileSending(boolean enabled) {
-        EditText edit = effectiveImeCaptureEdit();
-        if (imeCaptureClearButton != null) {
-            imeCaptureClearButton.setEnabled(enabled && edit != null
-                    && edit.getText() != null
-                    && edit.getText().length() > 0);
-        }
-        if (splitLandscapeRailClear != null) {
-            splitLandscapeRailClear.setEnabled(enabled && edit != null
-                    && edit.getText() != null
-                    && edit.getText().length() > 0);
-        }
-        if (imeCaptureUndoButton != null) {
-            imeCaptureUndoButton.setEnabled(
-                    enabled
-                            && imeCaptureUndoSnapshot != null
-                            && !imeCaptureUndoSnapshot.isEmpty());
-            imeCaptureUndoButton.setAlpha(imeCaptureUndoButton.isEnabled() ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailUndo != null) {
-            splitLandscapeRailUndo.setEnabled(
-                    enabled
-                            && imeCaptureUndoSnapshot != null
-                            && !imeCaptureUndoSnapshot.isEmpty());
-            splitLandscapeRailUndo.setAlpha(splitLandscapeRailUndo.isEnabled() ? 1f : 0.45f);
-        }
-        if (imeCaptureTouchpadButton != null
-                && imeCaptureTouchpadButton.getVisibility() == VISIBLE) {
-            imeCaptureTouchpadButton.setEnabled(enabled);
-            imeCaptureTouchpadButton.setAlpha(enabled ? 1f : 0.45f);
-        }
-        if (imeSubComposeModeToggle != null) {
-            imeSubComposeModeToggle.setEnabled(enabled);
-            imeSubComposeModeToggle.setAlpha(enabled ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailToggle != null) {
-            splitLandscapeRailToggle.setEnabled(enabled);
-            splitLandscapeRailToggle.setAlpha(enabled ? 1f : 0.45f);
-        }
-        if (imeCaptureSavedTextsButton != null) {
-            imeCaptureSavedTextsButton.setEnabled(enabled);
-            imeCaptureSavedTextsButton.setAlpha(enabled ? 1f : 0.45f);
-        }
-        if (splitLandscapeRailSaved != null) {
-            splitLandscapeRailSaved.setEnabled(enabled);
-            splitLandscapeRailSaved.setAlpha(enabled ? 1f : 0.45f);
-        }
-    }
-
-    /**
-     * Binds KM Pro split-landscape compose rail controls to this keyboard's IME compose state machine.
-     */
-    public void bindSplitLandscapeImeComposeRail(
-            @NonNull EditText externalEdit,
-            @Nullable ImageButton railToggle,
-            @Nullable ImageButton railUndo,
-            @Nullable ImageButton railClear,
-            @Nullable ImageButton railSaved,
-            @Nullable ImageButton railSend) {
-        clearSplitLandscapeImeComposeRail();
-        splitLandscapeComposeExternalEdit = externalEdit;
-        splitLandscapeRailToggle = railToggle;
-        if (splitLandscapeRailToggle != null) {
-            splitLandscapeRailToggle.setVisibility(GONE);
-            splitLandscapeRailToggle.setOnClickListener(null);
-            splitLandscapeRailToggle.setClickable(false);
-        }
-        splitLandscapeRailUndo = railUndo;
-        splitLandscapeRailClear = railClear;
-        splitLandscapeRailSaved = railSaved;
-        splitLandscapeRailSend = railSend;
-        splitLandscapeRailTextWatcher =
-                new TextWatcher() {
-                    @Override
-                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-                    @Override
-                    public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-                    @Override
-                    public void afterTextChanged(Editable s) {
-                        updateImeCaptureToolbarState();
-                        refreshImeComposeNonAsciiHighlights(false);
-                    }
-                };
-        externalEdit.addTextChangedListener(splitLandscapeRailTextWatcher);
-        refreshImeSubComposeModeToggleIcon();
-        updateImeCaptureToolbarState();
-    }
-
-    /** Clears split-landscape rail binding (fragment-owned {@code EditText} must outlive this view). */
-    public void clearSplitLandscapeImeComposeRail() {
-        if (splitLandscapeComposeExternalEdit != null && splitLandscapeRailTextWatcher != null) {
-            splitLandscapeComposeExternalEdit.removeTextChangedListener(splitLandscapeRailTextWatcher);
-        }
-        splitLandscapeRailTextWatcher = null;
-        splitLandscapeComposeExternalEdit = null;
-        splitLandscapeRailToggle = null;
-        splitLandscapeRailUndo = null;
-        splitLandscapeRailClear = null;
-        splitLandscapeRailSaved = null;
-        splitLandscapeRailSend = null;
-    }
-
-    /** Reloads Direct HID vs compose from prefs (keeps split halves in sync after rail toggle). */
-    public void resyncImeSubComposeDirectHidFromPrefs() {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
-        }
-        SharedPreferences p = ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-        imeSubComposeDirectHidMode = p.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
-        if (!systemImeCaptureMode) {
-            imeSubComposeDirectHidMode = false;
-        }
-        rebuildFixedTopRowsPanels();
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        refreshVisibleTopPanelButtonStates();
-        updateImeCaptureToolbarState();
-        refreshImeSubComposeModeToggleIcon();
-    }
-
-    /** Split-landscape rail mode button hidden; portrait IME toolbar cycles A/B/C instead. */
-    public void onSplitLandscapeImeRailModeToggleClicked() {
-    }
-
-    public void onSplitLandscapeImeRailUndoClicked() {
-        onImeCaptureUndoClicked();
-    }
-
-    public void onSplitLandscapeImeRailClearClicked() {
-        onImeCaptureClearClicked();
-    }
-
-    public void onSplitLandscapeImeRailSendClicked() {
-        onImeCaptureSendClicked();
-    }
-
-    private void addImeCaptureEditorBelowTopStrip() {
-        if (isImeSubComposePortraitContext()) {
-            SharedPreferences portraitImePrefs =
-                    getContext().getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-            imeSubComposeExpanded = portraitImePrefs.getBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false);
-            imeSubComposeDirectHidMode = portraitImePrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
-            if (imeSubComposeDirectHidMode) {
-                imeSubComposeExpanded = false;
-                portraitImePrefs.edit().putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false).apply();
-            }
-            applyImeTopStripVisibilityForSubCompose();
-
-            imeCaptureEditorRow = new LinearLayout(getContext());
-            imeCaptureEditorRow.setOrientation(HORIZONTAL);
-            float editorRowWeight =
-                    imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
-            imeCaptureEditorRow.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, editorRowWeight));
-
-            EditText et = new EditText(getContext());
-            imeCaptureEdit = et;
-            LinearLayout.LayoutParams etLp =
-                    new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            et.setLayoutParams(etLp);
-            et.setFocusable(true);
-            et.setFocusableInTouchMode(true);
-            et.setClickable(true);
-            et.setGravity(Gravity.TOP | Gravity.START);
-            et.setHint(R.string.ime_capture_hint);
-            et.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-            et.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                    | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                    | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-            et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(IME_CAPTURE_MAX_TEXT_LEN)});
-            int pad = dpToPx(8);
-            et.setPadding(pad, pad, pad, pad);
-            et.setTextColor(resolveThemeTextColor());
-            et.setHintTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-            et.setBackground(null);
-            imeCaptureEditorRow.addView(et);
-
-            imeSubComposeExpandButton = new ImageButton(getContext());
-            int btnPx = dpToPx(48);
-            LinearLayout.LayoutParams expLp = new LinearLayout.LayoutParams(btnPx, LayoutParams.WRAP_CONTENT);
-            expLp.gravity = Gravity.BOTTOM;
-            imeSubComposeExpandButton.setLayoutParams(expLp);
-            imeSubComposeExpandButton.setMinimumHeight(btnPx);
-            imeSubComposeExpandButton.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
-            imeSubComposeExpandButton.setBackgroundResource(R.drawable.key_background);
-            applyFlatKeyStyle(imeSubComposeExpandButton);
-            imeSubComposeExpandButton.setOnClickListener(v -> onImeSubComposeExpandToggleClicked());
-            refreshImeSubComposeExpandIcon();
-            imeCaptureEditorRow.addView(imeSubComposeExpandButton);
-
-            addView(imeCaptureEditorRow);
-
-            imeCaptureAccentDivider = new View(getContext());
-            imeCaptureAccentDivider.setLayoutParams(
-                    new LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(2)));
-            imeCaptureAccentDivider.setBackgroundColor(ThemeManager.getColorPrimary(getContext()));
-            addView(imeCaptureAccentDivider);
-
-            imeCaptureToolbar = new LinearLayout(getContext());
-            imeCaptureToolbar.setOrientation(HORIZONTAL);
-            imeCaptureToolbar.setBaselineAligned(false);
-            imeCaptureToolbar.setLayoutParams(
-                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, IME_COMPOSE_TOOLBAR_ROW_WEIGHT));
-            imeCaptureToolbar.setGravity(Gravity.CENTER_VERTICAL);
-            imeCaptureToolbar.setPadding(0, 0, 0, 0);
-            int keyMargin = dpToPx(KEY_OUTER_MARGIN_DP);
-
-            imeCaptureTouchpadButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureTouchpadButton, R.drawable.ic_compose_touchpad_24, R.string.compose_touchpad);
-            imeCaptureTouchpadButton.setOnClickListener(v -> {
-                if (onImeSubComposeChromeListener != null) {
-                    onImeSubComposeChromeListener.onImeToolbarPopOutTouchpadRequested(CustomKeyboardView.this);
-                }
-            });
-            LinearLayout.LayoutParams tpLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            tpLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureTouchpadButton.setLayoutParams(tpLp);
-
-            imeSubComposeModeToggle = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeSubComposeModeToggle,
-                    R.drawable.ic_ime_compose_mode_note_24,
-                    R.string.ime_sub_compose_mode_toggle_direct);
-            imeSubComposeModeToggle.setVisibility(VISIBLE);
-            imeSubComposeModeToggle.setClickable(true);
-            imeSubComposeModeToggle.setOnClickListener(v -> onImeSubComposeModeToggleClicked());
-            LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            modeLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeSubComposeModeToggle.setLayoutParams(modeLp);
-
-            imeCaptureDirectModeHint = new TextView(getContext());
-            imeCaptureDirectModeHint.setText(R.string.ime_sub_compose_direct_hid_hint);
-            imeCaptureDirectModeHint.setTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            imeCaptureDirectModeHint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-            imeCaptureDirectModeHint.setMaxLines(2);
-            imeCaptureDirectModeHint.setEllipsize(TextUtils.TruncateAt.END);
-            imeCaptureDirectModeHint.setGravity(Gravity.CENTER);
-            imeCaptureDirectModeHint.setTextAlignment(TEXT_ALIGNMENT_CENTER);
-            LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            hintLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureDirectModeHint.setLayoutParams(hintLp);
-
-            imeCaptureClearButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureClearButton, R.drawable.ic_compose_clear_24, R.string.compose_clear);
-            imeCaptureClearButton.setOnClickListener(v -> onImeCaptureClearClicked());
-            LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            clearLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureClearButton.setLayoutParams(clearLp);
-
-            imeCaptureUndoButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureUndoButton, R.drawable.ic_compose_undo_24, R.string.compose_undo);
-            imeCaptureUndoButton.setOnClickListener(v -> onImeCaptureUndoClicked());
-            LinearLayout.LayoutParams undoLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            undoLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureUndoButton.setLayoutParams(undoLp);
-
-            imeCaptureSavedTextsButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureSavedTextsButton,
-                    R.drawable.ic_ime_saved_text_24,
-                    R.string.ime_saved_text_cd_open_library);
-            imeCaptureSavedTextsButton.setOnClickListener(v -> onImeCaptureSavedTextsClicked());
-            LinearLayout.LayoutParams savedLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            savedLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureSavedTextsButton.setLayoutParams(savedLp);
-
-            imeCaptureSendButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureSendButton, R.drawable.ic_compose_send_24, R.string.compose_send);
-            imeCaptureSendButton.setOnClickListener(v -> onImeCaptureSendClicked());
-            LinearLayout.LayoutParams sendLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 3f);
-            sendLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureSendButton.setLayoutParams(sendLp);
-
-            imeCaptureToolbar.addView(imeCaptureTouchpadButton);
-            imeCaptureToolbar.addView(imeSubComposeModeToggle);
-            imeCaptureToolbar.addView(imeCaptureDirectModeHint);
-            imeCaptureToolbar.addView(imeCaptureSavedTextsButton);
-            imeCaptureToolbar.addView(imeCaptureClearButton);
-            imeCaptureToolbar.addView(imeCaptureUndoButton);
-            imeCaptureToolbar.addView(imeCaptureSendButton);
-            addView(imeCaptureToolbar);
-
-            et.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                    updateImeCaptureToolbarState();
-                    refreshImeComposeNonAsciiHighlights(false);
-                }
-            });
-
-            if (imeSubComposeDirectHidMode) {
-                ImeTextForwarder.attach(
-                        et,
-                        this::peekConnectionManager,
-                        this::getTargetOs,
-                        imeTextExecutor);
-            } else {
-                ImeTextForwarder.detach(et);
-            }
-            refreshImeSubComposeModeToggleIcon();
-            applyImeSubComposeDirectHidUi();
-            updateImeCaptureToolbarState();
-            post(this::notifyImeSubComposeDirectHidModeChanged);
-            if (imeSubComposeExpanded && onImeSubComposeChromeListener != null) {
-                post(() ->
-                        onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(CustomKeyboardView.this, true));
-            }
-        } else {
-            EditText et = new EditText(getContext());
-            imeCaptureEdit = et;
-            et.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, IME_SINGLE_TEXT_WEIGHT));
-            et.setFocusable(true);
-            et.setFocusableInTouchMode(true);
-            et.setClickable(true);
-            et.setGravity(Gravity.TOP | Gravity.START);
-            et.setHint(R.string.ime_capture_hint);
-            et.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-            et.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                    | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                    | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-            int pad = dpToPx(8);
-            et.setPadding(pad, pad, pad, pad);
-            et.setTextColor(resolveThemeTextColor());
-            et.setHintTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-            addView(et);
-            ImeTextForwarder.attach(
-                    et,
-                    this::peekConnectionManager,
-                    this::getTargetOs,
-                    imeTextExecutor);
-        }
-        post(this::postShowLocalImeSoftKeyboard);
-    }
-
-    /** Match {@link #addShortcutPanelRows} icon keys: function face, flat elevation, theme tint. */
-    private void styleImeToolbarLikeTopShortcutIconButton(ImageButton ib, int imageRes, int labelRes) {
-        applyFlatKeyStyle(ib);
-        ib.setBackgroundResource(R.drawable.function_button_background);
-        ib.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
-        int pv = dpToPx(1);
-        ib.setPadding(0, pv, 0, pv);
-        ib.setImageResource(imageRes);
-        ib.setColorFilter(resolveThemeTextColor());
-        ib.setContentDescription(getContext().getString(labelRes));
-    }
 
     @Nullable
     private ConnectionManager peekConnectionManager() {
@@ -9024,6 +7500,11 @@ public class CustomKeyboardView extends LinearLayout {
         }
         return null;
     }
+
+    private void detachLocalImeFieldQuiet() {
+        // KM Pro IME capture removed; no-op for layout lifecycle.
+    }
+
 
     @Override
     protected void onAttachedToWindow() {
@@ -9045,7 +7526,6 @@ public class CustomKeyboardView extends LinearLayout {
         }
         super.onDetachedFromWindow();
         clearSplitLandscapeImeComposeRail();
-        imeSubComposeSendExecutor.shutdownNow();
         detachLocalImeFieldQuiet();
         longPressHandler.removeCallbacksAndMessages(null);
         stopRepeatingDelete();

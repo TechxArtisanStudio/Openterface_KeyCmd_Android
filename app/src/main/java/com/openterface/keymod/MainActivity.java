@@ -186,7 +186,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     /** Coalesces KM Pro header redraws (IME callbacks can fire more than once per change). */
     private final Handler headerSlotsHandler = new Handler(Looper.getMainLooper());
     private final Runnable deferredRefreshHeaderModeSlots = this::refreshHeaderModeSlotButtons;
-    private int lastKmProHeaderVisualSignature = Integer.MIN_VALUE;
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
                 @Override
@@ -1156,43 +1155,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void onHeaderModeSlotClicked(int slotIndex1Based) {
-        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        if (f instanceof CompositeFragment) {
-            CompositeFragment cf = (CompositeFragment) f;
-            if (slotIndex1Based != 1 && !cf.isKmProPortraitImeDirectComposeAllowed()) {
-                return;
-            }
-            CustomKeyboardView.KmProKeyboardInputMode mode;
-            switch (slotIndex1Based) {
-                case 1:
-                    mode = CustomKeyboardView.KmProKeyboardInputMode.BUILT_IN_QWERTY;
-                    break;
-                case 2:
-                    mode = CustomKeyboardView.KmProKeyboardInputMode.IME_DIRECT_SEND;
-                    break;
-                case 3:
-                    mode = CustomKeyboardView.KmProKeyboardInputMode.IME_COMPOSE_SEND;
-                    break;
-                default:
-                    return;
-            }
-            if (cf.getKmProKeyboardInputMode() == mode) {
-                return;
-            }
-            // Selection tint immediately; heavy keyboard layout is deferred inside CustomKeyboardView.
-            refreshKmProHeaderInputModeSlots(cf, mode);
-            cf.setKmProKeyboardInputModeFromHostHeader(mode);
-            return;
-        }
         String mode = TopModeShortcutPrefs.getModeForSlot(MainActivity.this, slotIndex1Based);
         switchToLaunchMode(mode);
     }
 
     private boolean onHeaderModeSlotLongClicked(int slotIndex1Based) {
-        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        if (f instanceof CompositeFragment) {
-            return true;
-        }
         showHeaderModeSlotPicker(slotIndex1Based);
         return true;
     }
@@ -1220,13 +1187,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void refreshHeaderModeSlotButtons() {
-        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        if (f instanceof CompositeFragment) {
-            refreshKmProHeaderInputModeSlots((CompositeFragment) f, null);
-        } else {
-            lastKmProHeaderVisualSignature = Integer.MIN_VALUE;
-            refreshHeaderModeSlotButtonsStandard();
-        }
+        refreshHeaderModeSlotButtonsStandard();
     }
 
     private void refreshHeaderModeSlotButtonsStandard() {
@@ -1249,87 +1210,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
-    /**
-     * @param selectionTintOverride when non-null, selection tint uses this mode (optimistic update before
-     *     {@link CustomKeyboardView} finishes rebuilding).
-     */
-    private void refreshKmProHeaderInputModeSlots(
-            @NonNull CompositeFragment cf, @Nullable CustomKeyboardView.KmProKeyboardInputMode selectionTintOverride) {
-        boolean portraitImeExtras = cf.isKmProPortraitImeDirectComposeAllowed();
-        CustomKeyboardView.KmProKeyboardInputMode persisted = cf.getKmProKeyboardInputMode();
-        CustomKeyboardView.KmProKeyboardInputMode tintMode =
-                selectionTintOverride != null ? selectionTintOverride : persisted;
-        if (selectionTintOverride == null) {
-            int sig = persisted.ordinal() * 4 + (portraitImeExtras ? 1 : 0);
-            if (sig == lastKmProHeaderVisualSignature) {
-                return;
-            }
-            lastKmProHeaderVisualSignature = sig;
-        }
-
-        int neutralTint = headerNeutralActionTint();
-        int selectedTint = ContextCompat.getColor(this, R.color.primary);
-
-        int[] iconRes = new int[] {
-                R.drawable.ic_keyboard_keymod_24,
-                R.drawable.ic_keyboard_ime_24,
-                R.drawable.ic_ime_compose_mode_note_24
-        };
-        CustomKeyboardView.KmProKeyboardInputMode[] slotModes = new CustomKeyboardView.KmProKeyboardInputMode[] {
-                CustomKeyboardView.KmProKeyboardInputMode.BUILT_IN_QWERTY,
-                CustomKeyboardView.KmProKeyboardInputMode.IME_DIRECT_SEND,
-                CustomKeyboardView.KmProKeyboardInputMode.IME_COMPOSE_SEND
-        };
-
-        for (int i = 0; i < headerModeSlotButtons.length; i++) {
-            ImageButton button = headerModeSlotButtons[i];
-            if (button == null) {
-                continue;
-            }
-            int slot = i + 1;
-            int icon = iconRes[i];
-            Object tagIcon = button.getTag(R.id.tag_header_km_pro_slot_icon);
-            if (!(tagIcon instanceof Integer) || (Integer) tagIcon != icon) {
-                button.setImageResource(icon);
-                button.setTag(R.id.tag_header_km_pro_slot_icon, icon);
-            }
-            boolean enabled = slot == 1 || portraitImeExtras;
-            if (button.isEnabled() != enabled) {
-                button.setEnabled(enabled);
-            }
-            float targetAlpha = enabled ? 1f : 0.45f;
-            if (button.getAlpha() != targetAlpha) {
-                button.setAlpha(targetAlpha);
-            }
-
-            boolean selected = tintMode == slotModes[i];
-            int tint = selected ? selectedTint : neutralTint;
-            Object tagTint = button.getTag(R.id.tag_header_km_pro_slot_tint);
-            if (!(tagTint instanceof Integer) || (Integer) tagTint != tint) {
-                button.clearColorFilter();
-                ImageViewCompat.setImageTintList(button, ColorStateList.valueOf(tint));
-                button.setTag(R.id.tag_header_km_pro_slot_tint, tint);
-            }
-
-            int cdRes;
-            if (slot == 1) {
-                cdRes = R.string.header_km_pro_input_builtin_cd;
-            } else if (slot == 2) {
-                cdRes = portraitImeExtras
-                        ? R.string.header_km_pro_input_direct_cd
-                        : R.string.header_km_pro_input_direct_disabled_landscape_cd;
-            } else {
-                cdRes = portraitImeExtras
-                        ? R.string.header_km_pro_input_compose_cd
-                        : R.string.header_km_pro_input_compose_disabled_landscape_cd;
-            }
-            CharSequence cd = getString(cdRes);
-            if (!cd.equals(button.getContentDescription())) {
-                button.setContentDescription(cd);
-            }
-        }
-    }
-    
     private void setupConnectionStateListener() {
         connectionManager.addConnectionStateListener(connectionStateListener);
     }
