@@ -171,6 +171,9 @@
     <!-- Welcome & Guide (mode picker + tutorial); opened from launcher or side menu -->
     <string name="nav_welcome_guide">Welcome &amp; Guide</string>
     <string name="nav_welcome_guide_content_description">Welcome screen, mode picker, and tutorial</string>
+    <string name="report_bug">Report a bug</string>
+    <string name="report_bug_cd">Report a bug in a web form</string>
+    <string name="report_bug_no_browser_toast">No app can open this link. Install a browser and try again.</string>
     <string name="nav_menu_close_cd">Close menu</string>
     <string name="profile_builtin_default_name">Default</string>
     <string name="profile_builtin_default_description">Common shortcuts for any app</string>

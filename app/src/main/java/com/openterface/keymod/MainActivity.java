@@ -16,6 +16,7 @@ import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -95,6 +96,9 @@ import android.app.PendingIntent;
 public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
 
     private static final String TAG = "MainActivity";
+    /** Google Form: bug reports (opened from nav drawer). */
+    private static final String BUG_REPORT_FORM_URL =
+            "https://docs.google.com/forms/d/e/1FAIpQLScTnJF_Pj_iIMvu8tBPaY_-n45-ffADUFAr8Ws-f6_TckWVTQ/viewform?usp=publish-editor";
     private int appliedThemeResId;
     private UsbSerialPort port;
     private boolean isReading = false;
@@ -1503,6 +1507,16 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         dialog.show(getSupportFragmentManager(), "ConnectionDialog");
     }
 
+    /** Opens the bug-report Google Form in the user’s browser (or shows a toast if none). */
+    private void openBugReportForm() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(BUG_REPORT_FORM_URL));
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivity(intent);
+        } else {
+            Toast.makeText(this, R.string.report_bug_no_browser_toast, Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void startScan() {
         ScanSettings scanSettings = new ScanSettings.Builder().build();
         scanSubscription = rxBleClient.scanBleDevices(scanSettings)
@@ -1643,6 +1657,17 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 markDrawerCloseAsNavigation();
                 Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
                 startActivity(intent);
+            });
+        }
+
+        View reportBugRow = findViewById(R.id.nav_report_bug);
+        if (reportBugRow != null) {
+            reportBugRow.setOnClickListener(v -> {
+                markDrawerCloseAsNavigation();
+                if (drawerLayout != null) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                }
+                openBugReportForm();
             });
         }
 
