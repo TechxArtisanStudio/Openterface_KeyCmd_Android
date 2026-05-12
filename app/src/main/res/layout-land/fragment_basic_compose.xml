@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Landscape: same structure as portrait — editor uses full width; Clear / Redo / Send sit in one row
+  Landscape: same structure as portrait — editor uses full width; Undo clear / Clear / Send sit in one row
   directly above the IME inset zone (keyboard), like Pro IME compose toolbar placement.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -54,31 +54,31 @@
         android:paddingBottom="8dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_clear"
+            android:id="@+id/basic_compose_redo"
             style="@style/Widget.KeyMod.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:contentDescription="@string/compose_clear"
+            android:contentDescription="@string/compose_redo_clear"
             android:text=""
-            app:icon="@drawable/ic_compose_clear_24"
+            app:icon="@drawable/ic_compose_undo_24"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
             app:iconTint="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_redo"
+            android:id="@+id/basic_compose_clear"
             style="@style/Widget.KeyMod.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:contentDescription="@string/compose_redo_clear"
+            android:contentDescription="@string/compose_clear"
             android:text=""
-            app:icon="@drawable/ic_compose_undo_24"
+            app:icon="@drawable/ic_compose_clear_24"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"

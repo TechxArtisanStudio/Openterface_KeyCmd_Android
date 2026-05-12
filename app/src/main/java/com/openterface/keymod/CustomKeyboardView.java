@@ -7653,8 +7653,8 @@ public class CustomKeyboardView extends LinearLayout {
         boolean next = !imeSubComposeExpanded;
         persistImeSubComposeExpanded(next);
         applyImeTopStripVisibilityForSubCompose();
-        refreshImeSubComposeEditorRowWeight();
         refreshImeSubComposeExpandIcon();
+        applyImeSubComposeDirectHidUi();
         updateImeCaptureToolbarState();
         if (onImeSubComposeChromeListener != null) {
             onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, next);
@@ -7784,6 +7784,14 @@ public class CustomKeyboardView extends LinearLayout {
         v.setLayoutParams(lp);
     }
 
+    /**
+     * Inline composite touchpad is visible when portrait IME sub-compose is collapsed; the toolbar
+     * pop-out duplicates it. Show pop-out only when expanded chrome hides the inline touchpad.
+     */
+    private boolean shouldShowImeToolbarPopOutTouchpadButton() {
+        return imeSubComposeExpanded && !imeSubComposeDirectHidMode;
+    }
+
     private void applyImeSubComposeDirectHidUi() {
         if (!isImeSubComposePortraitContext() || imeCaptureToolbar == null || imeCaptureEdit == null) {
             return;
@@ -7804,16 +7812,19 @@ public class CustomKeyboardView extends LinearLayout {
                 imeCaptureAccentDivider.setVisibility(GONE);
             }
 
-            imeCaptureUndoButton.setVisibility(GONE);
             imeCaptureClearButton.setVisibility(GONE);
+            imeCaptureUndoButton.setVisibility(GONE);
             imeCaptureSendButton.setVisibility(GONE);
             imeCaptureDirectModeHint.setVisibility(VISIBLE);
 
-            setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 1f);
+            if (imeCaptureTouchpadButton != null) {
+                imeCaptureTouchpadButton.setVisibility(GONE);
+                setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 0f);
+            }
             setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 5f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
+            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 6f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 0f);
+            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
             setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 0f);
         } else {
             applyImeTopStripVisibilityForSubCompose();
@@ -7826,16 +7837,20 @@ public class CustomKeyboardView extends LinearLayout {
                 imeCaptureAccentDivider.setVisibility(VISIBLE);
             }
 
-            imeCaptureUndoButton.setVisibility(VISIBLE);
             imeCaptureClearButton.setVisibility(VISIBLE);
+            imeCaptureUndoButton.setVisibility(VISIBLE);
             imeCaptureSendButton.setVisibility(VISIBLE);
             imeCaptureDirectModeHint.setVisibility(GONE);
 
-            setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 1f);
+            boolean showPopOutTouchpad = shouldShowImeToolbarPopOutTouchpadButton();
+            if (imeCaptureTouchpadButton != null) {
+                imeCaptureTouchpadButton.setVisibility(showPopOutTouchpad ? VISIBLE : GONE);
+                setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, showPopOutTouchpad ? 1f : 0f);
+            }
             setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 3f);
+            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
+            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, showPopOutTouchpad ? 3f : 4f);
             setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
         }
         refreshImeSubComposeEditorRowWeight();
@@ -7855,12 +7870,6 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         if (imeSubComposeDirectHidMode) {
-            ConnectionManager cm0 = peekConnectionManager();
-            boolean connected0 = cm0 != null && cm0.isConnected();
-            if (imeCaptureTouchpadButton != null) {
-                imeCaptureTouchpadButton.setEnabled(!imeSubComposeSending && connected0);
-                imeCaptureTouchpadButton.setAlpha(imeCaptureTouchpadButton.isEnabled() ? 1f : 0.45f);
-            }
             if (imeSubComposeModeToggle != null) {
                 imeSubComposeModeToggle.setEnabled(!imeSubComposeSending);
                 imeSubComposeModeToggle.setAlpha(imeSubComposeModeToggle.isEnabled() ? 1f : 0.45f);
@@ -7871,16 +7880,22 @@ public class CustomKeyboardView extends LinearLayout {
         ConnectionManager cm = peekConnectionManager();
         Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, t);
 
+        if (imeCaptureTouchpadButton != null && shouldShowImeToolbarPopOutTouchpadButton()) {
+            boolean connected = cm != null && cm.isConnected();
+            imeCaptureTouchpadButton.setEnabled(!imeSubComposeSending && connected);
+            imeCaptureTouchpadButton.setAlpha(imeCaptureTouchpadButton.isEnabled() ? 1f : 0.45f);
+        }
+
+        boolean canClear = !imeSubComposeSending && !t.isEmpty();
+        imeCaptureClearButton.setEnabled(canClear);
+        imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
+
         if (imeCaptureUndoButton != null) {
             boolean canUndo =
                     !imeSubComposeSending && imeCaptureUndoSnapshot != null && !imeCaptureUndoSnapshot.isEmpty();
             imeCaptureUndoButton.setEnabled(canUndo);
             imeCaptureUndoButton.setAlpha(canUndo ? 1f : 0.45f);
         }
-
-        boolean canClear = !imeSubComposeSending && !t.isEmpty();
-        imeCaptureClearButton.setEnabled(canClear);
-        imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
 
         if (imeSubComposeSending) {
             imeCaptureSendButton.setImageResource(R.drawable.ic_compose_stop_24);
@@ -7984,6 +7999,11 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void setImeCaptureToolbarEnabledWhileSending(boolean enabled) {
+        if (imeCaptureClearButton != null) {
+            imeCaptureClearButton.setEnabled(enabled && imeCaptureEdit != null
+                    && imeCaptureEdit.getText() != null
+                    && imeCaptureEdit.getText().length() > 0);
+        }
         if (imeCaptureUndoButton != null) {
             imeCaptureUndoButton.setEnabled(
                     enabled
@@ -7991,12 +8011,8 @@ public class CustomKeyboardView extends LinearLayout {
                             && !imeCaptureUndoSnapshot.isEmpty());
             imeCaptureUndoButton.setAlpha(imeCaptureUndoButton.isEnabled() ? 1f : 0.45f);
         }
-        if (imeCaptureClearButton != null) {
-            imeCaptureClearButton.setEnabled(enabled && imeCaptureEdit != null
-                    && imeCaptureEdit.getText() != null
-                    && imeCaptureEdit.getText().length() > 0);
-        }
-        if (imeCaptureTouchpadButton != null) {
+        if (imeCaptureTouchpadButton != null
+                && imeCaptureTouchpadButton.getVisibility() == VISIBLE) {
             imeCaptureTouchpadButton.setEnabled(enabled);
             imeCaptureTouchpadButton.setAlpha(enabled ? 1f : 0.45f);
         }
@@ -8110,14 +8126,6 @@ public class CustomKeyboardView extends LinearLayout {
             hintLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
             imeCaptureDirectModeHint.setLayoutParams(hintLp);
 
-            imeCaptureUndoButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureUndoButton, R.drawable.ic_compose_undo_24, R.string.compose_undo);
-            imeCaptureUndoButton.setOnClickListener(v -> onImeCaptureUndoClicked());
-            LinearLayout.LayoutParams undoLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            undoLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureUndoButton.setLayoutParams(undoLp);
-
             imeCaptureClearButton = new ImageButton(getContext());
             styleImeToolbarLikeTopShortcutIconButton(
                     imeCaptureClearButton, R.drawable.ic_compose_clear_24, R.string.compose_clear);
@@ -8125,6 +8133,14 @@ public class CustomKeyboardView extends LinearLayout {
             LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
             clearLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
             imeCaptureClearButton.setLayoutParams(clearLp);
+
+            imeCaptureUndoButton = new ImageButton(getContext());
+            styleImeToolbarLikeTopShortcutIconButton(
+                    imeCaptureUndoButton, R.drawable.ic_compose_undo_24, R.string.compose_undo);
+            imeCaptureUndoButton.setOnClickListener(v -> onImeCaptureUndoClicked());
+            LinearLayout.LayoutParams undoLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
+            undoLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
+            imeCaptureUndoButton.setLayoutParams(undoLp);
 
             imeCaptureSendButton = new ImageButton(getContext());
             styleImeToolbarLikeTopShortcutIconButton(
@@ -8137,8 +8153,8 @@ public class CustomKeyboardView extends LinearLayout {
             imeCaptureToolbar.addView(imeCaptureTouchpadButton);
             imeCaptureToolbar.addView(imeSubComposeModeToggle);
             imeCaptureToolbar.addView(imeCaptureDirectModeHint);
-            imeCaptureToolbar.addView(imeCaptureUndoButton);
             imeCaptureToolbar.addView(imeCaptureClearButton);
+            imeCaptureToolbar.addView(imeCaptureUndoButton);
             imeCaptureToolbar.addView(imeCaptureSendButton);
             addView(imeCaptureToolbar);
 
