@@ -145,6 +145,12 @@ public class CompositeFragment extends Fragment {
      */
     private static final float PORTRAIT_IME_DIRECT_HID_TOUCHPAD_WEIGHT = 1.35f;
     private static final float PORTRAIT_IME_DIRECT_HID_KEYBOARD_WEIGHT = 1.25f;
+    /**
+     * Portrait numpad strip + portrait IME Compose &amp; Send (collapsed): horizontal chrome width ratio
+     * touchpad : mouse-key column. Mouse strip is placed on the layout start side (LTR: left).
+     */
+    private static final float PORTRAIT_STRIP_TOUCHPAD_WEIGHT = 5f;
+    private static final float PORTRAIT_STRIP_MOUSE_KEYS_WEIGHT = 2f;
     private final ExecutorService imeSplitTextExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ImeSplitTextForward");
         t.setDaemon(true);
@@ -389,10 +395,43 @@ public class CompositeFragment extends Fragment {
         return (drag | stripAndLockMaskWithoutGestureDrag()) & 0xFF;
     }
 
+    /**
+     * Reorders the two direct children of {@link #proTouchpadChromeRoot} so vertical comfortable layout
+     * (pad above buttons) and default horizontal strip (pad start, mouse end) stay consistent.
+     *
+     * @param mouseKeysFirst if true, mouse-key strip is index 0 and pad host index 1 (portrait numpad /
+     *     IME compose horizontal strip); if false, pad host first then mouse keys (XML default).
+     */
+    private void ensureProTouchpadChromeSiblingOrder(boolean mouseKeysFirst) {
+        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
+            return;
+        }
+        int iPad = proTouchpadChromeRoot.indexOfChild(touchpadPadHost);
+        int iMouse = proTouchpadChromeRoot.indexOfChild(proTouchpadMouseKeys);
+        if (iPad < 0 || iMouse < 0) {
+            return;
+        }
+        boolean already =
+                mouseKeysFirst ? (iMouse == 0 && iPad == 1) : (iPad == 0 && iMouse == 1);
+        if (already) {
+            return;
+        }
+        proTouchpadChromeRoot.removeView(touchpadPadHost);
+        proTouchpadChromeRoot.removeView(proTouchpadMouseKeys);
+        if (mouseKeysFirst) {
+            proTouchpadChromeRoot.addView(proTouchpadMouseKeys, 0);
+            proTouchpadChromeRoot.addView(touchpadPadHost, 1);
+        } else {
+            proTouchpadChromeRoot.addView(touchpadPadHost, 0);
+            proTouchpadChromeRoot.addView(proTouchpadMouseKeys, 1);
+        }
+    }
+
     private void resetProTouchpadChromeOrientationComfortable() {
         if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
             return;
         }
+        ensureProTouchpadChromeSiblingOrder(false);
         proTouchpadChromeRoot.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
         padLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
@@ -497,6 +536,8 @@ public class CompositeFragment extends Fragment {
             return;
         }
         proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
+        boolean portraitTargetStrip = numpadStripHorizontal || imeComposeStripHorizontal;
+        ensureProTouchpadChromeSiblingOrder(portraitTargetStrip);
         LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
         padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         padLp.width = 0;
@@ -506,10 +547,10 @@ public class CompositeFragment extends Fragment {
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
         int bottomPad =
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_bottom);
-        if (numpadStripHorizontal || imeComposeStripHorizontal) {
-            padLp.weight = 2f;
+        if (portraitTargetStrip) {
+            padLp.weight = PORTRAIT_STRIP_TOUCHPAD_WEIGHT;
             mLp.width = 0;
-            mLp.weight = 1f;
+            mLp.weight = PORTRAIT_STRIP_MOUSE_KEYS_WEIGHT;
             int hPad =
                     getResources()
                             .getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_strip_padding_horizontal);
@@ -1254,6 +1295,7 @@ public class CompositeFragment extends Fragment {
         if (splitToggleHandleView != null) {
             splitToggleHandleView.setVisibility(View.GONE);
         }
+        ensureProTouchpadChromeSiblingOrder(false);
         proTouchpadChromeRoot.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
         padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;

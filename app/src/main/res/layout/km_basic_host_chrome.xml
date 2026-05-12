@@ -2,14 +2,11 @@
 <!-- KM Basic shared chrome: menu, submode tabs, target OS, connection. Lives in KeyboardMouseFragment host. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="@dimen/km_basic_chrome_row_height"
     android:orientation="horizontal"
     android:baselineAligned="false"
     android:gravity="center_vertical"
-    android:paddingStart="4dp"
-    android:paddingEnd="4dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp">
+    android:padding="@dimen/header_padding">
 
     <ImageButton
         android:id="@+id/basic_km_menu_button"
@@ -25,7 +22,7 @@
 
     <HorizontalScrollView
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_weight="1"
         android:fillViewport="true"
         android:overScrollMode="never"
@@ -33,7 +30,7 @@
 
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
@@ -86,7 +83,7 @@
     <LinearLayout
         android:id="@+id/basic_km_connection"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
         android:padding="4dp"

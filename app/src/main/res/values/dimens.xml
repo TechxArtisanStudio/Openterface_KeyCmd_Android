@@ -32,6 +32,8 @@
     <dimen name="fragment_padding">8dp</dimen>
     <dimen name="fragment_margin">8dp</dimen>
 
+    <!-- KM Basic embedded chrome row: same fixed height as Pro `header_layout` (portrait/landscape follow @dimen/header_height). -->
+    <dimen name="km_basic_chrome_row_height">@dimen/header_height</dimen>
     <!-- KM Basic: keep tab chrome clear of status bar / cutout (used with WindowInsets; floor when insets are 0). -->
     <dimen name="km_basic_chrome_min_top_padding">12dp</dimen>
     <!-- KM Basic compose: min editor height in portrait (NestedScrollView allows shrinking when IME shows). -->
