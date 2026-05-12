@@ -158,15 +158,16 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED = 12f;
     /**
      * Portrait BOTH + IME capture (sub-compose collapsed): touchpad vs keyboard weights in
-     * {@code CompositeFragment#applyOrientationLayout}. When the text area expands, the fragment
-     * hides the touchpad and toggle so the keyboard column receives this fraction of the column
-     * height as collapsed; expanded it gets the full slice. Keep in sync with
+     * {@code CompositeFragment#applyOrientationLayout}. Keep in sync with
      * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} / {@code KEYBOARD_WEIGHT}.
      */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 0.9f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.7f;
+    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 1.0f;
+    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.5f;
     private static final float IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE =
             IME_SUB_COMPOSE_COLLAPSED_KB / (IME_SUB_COMPOSE_COLLAPSED_TP + IME_SUB_COMPOSE_COLLAPSED_KB);
+    /** Collapsed portrait keyboard internals: [shortcut strip] : [editor+toolbar] ~= 1 : 2. */
+    private static final float IME_SUB_COMPOSE_COLLAPSED_TOP_STRIP_WEIGHT = 0.7f;
+    private static final float IME_SUB_COMPOSE_COLLAPSED_EDITOR_WEIGHT = 1.4f;
     /**
      * Collapsed portrait stack has a fixed-height toggle ({@code R.dimen.toggle_handle_height}) between
      * touchpad and keyboard; expanded chrome hides it and that band is folded into the keyboard
@@ -288,6 +289,8 @@ public class CustomKeyboardView extends LinearLayout {
     private CustomKeyboardView splitPartner;
 
     private boolean systemImeCaptureMode;
+    /** Fragment-provided IME inset visibility for portrait single-pane KM Pro layout. */
+    private boolean portraitSystemImeVisible;
     private EditText imeCaptureEdit;
     private final ExecutorService imeTextExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ImeTextForward");
@@ -1282,6 +1285,19 @@ public class CustomKeyboardView extends LinearLayout {
 
     public boolean isSystemImeCaptureMode() {
         return systemImeCaptureMode;
+    }
+
+    /**
+     * Single-pane portrait host reports whether Android soft IME is currently visible.
+     * Used to collapse the top shortcut strip in portrait IME sub-compose for cleaner layout.
+     */
+    public void setPortraitSystemImeVisible(boolean visible) {
+        if (portraitSystemImeVisible == visible) {
+            return;
+        }
+        portraitSystemImeVisible = visible;
+        applyImeTopStripVisibilityForSubCompose();
+        requestLayout();
     }
 
     /**
@@ -4578,6 +4594,43 @@ public class CustomKeyboardView extends LinearLayout {
         view.setBackgroundResource(bg);
     }
 
+    /**
+     * PH1 IME vs KeyMod toggle: accent ring / fill states use {@code android:state_activated}
+     * ({@link #systemImeCaptureMode}); pressed states are defined in the drawable selector.
+     */
+    private void applyTopPanelImeToggleKeyCapBackground(View view) {
+        view.setClipToOutline(false);
+        view.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+        view.setBackgroundResource(R.drawable.top_strip_ime_toggle_background);
+    }
+
+    private void applyTopImeToggleIconTint(ImageButton ib) {
+        if (ib == null) {
+            return;
+        }
+        int fallback = resolveThemeTextColor();
+        int tint = systemImeCaptureMode
+                ? MaterialColors.getColor(
+                        ib, com.google.android.material.R.attr.colorOnPrimaryContainer, fallback)
+                : MaterialColors.getColor(
+                        ib, com.google.android.material.R.attr.colorPrimary, fallback);
+        ib.setColorFilter(tint);
+    }
+
+    /** Name/chord strip modes can render PH1 as a {@link Button}; keep accent foreground in sync with icon mode. */
+    private void applyTopImeToggleLabelTextColor(TextView tv) {
+        if (tv == null) {
+            return;
+        }
+        int fallback = resolveThemeTextColor();
+        int color = systemImeCaptureMode
+                ? MaterialColors.getColor(
+                        tv, com.google.android.material.R.attr.colorOnPrimaryContainer, fallback)
+                : MaterialColors.getColor(
+                        tv, com.google.android.material.R.attr.colorPrimary, fallback);
+        tv.setTextColor(color);
+    }
+
     private void addShortcutPanelRows(
             LinearLayout parent,
             List<Key> panelKeys,
@@ -4689,8 +4742,14 @@ public class CustomKeyboardView extends LinearLayout {
                     ImageButton ib = new ImageButton(getContext());
                     applyFlatKeyStyle(ib);
                     ib.setLayoutParams(p);
-                    applyTopPanelKeyCapBackground(ib, k, keyLockedVisualState);
-                    ib.setSelected(keyLockedVisualState);
+                    if (isTopImeToggleKey(k)) {
+                        applyTopPanelImeToggleKeyCapBackground(ib);
+                        ib.setActivated(systemImeCaptureMode);
+                        ib.setSelected(false);
+                    } else {
+                        applyTopPanelKeyCapBackground(ib, k, keyLockedVisualState);
+                        ib.setSelected(keyLockedVisualState);
+                    }
                     ib.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
                     int iconPad = fixedRowsSlice ? dpToPx(5) : 0;
                     ib.setPadding(iconPad, iconPad, iconPad, iconPad);
@@ -4699,7 +4758,11 @@ public class CustomKeyboardView extends LinearLayout {
                             && (k.code == 0x4C
                             || (fixedTopLocalFn != null && fixedTopLocalFn.keyCode == 0x4C));
                     ib.setScaleX(forwardDelIcon ? -1f : 1f);
-                    ib.setColorFilter(resolveThemeTextColor());
+                    if (isTopImeToggleKey(k)) {
+                        applyTopImeToggleIconTint(ib);
+                    } else {
+                        ib.setColorFilter(resolveThemeTextColor());
+                    }
                     if (isTopModeSlotKey(k)) {
                         Context ctx = getContext();
                         if (ctx != null) {
@@ -4785,8 +4848,14 @@ public class CustomKeyboardView extends LinearLayout {
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.MATCH_PARENT)
                             : p);
-                    applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
-                    b.setSelected(keyLockedVisualState);
+                    if (isTopImeToggleKey(k)) {
+                        applyTopPanelImeToggleKeyCapBackground(b);
+                        b.setActivated(systemImeCaptureMode);
+                        b.setSelected(false);
+                    } else {
+                        applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
+                        b.setSelected(keyLockedVisualState);
+                    }
                     b.setGravity(Gravity.CENTER);
                     int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
                     b.setPadding(textPad, textPad, textPad, textPad);
@@ -4825,7 +4894,6 @@ public class CustomKeyboardView extends LinearLayout {
                                         : TOP_SHORTCUT_PANEL_ACTION_LABEL_SP);
                         b.setTypeface(Typeface.DEFAULT_BOLD);
                     }
-                    b.setTextColor(resolveThemeTextColor());
                     b.setAllCaps(false);
                     if ("ESC".equals(k.label)
                             || "CTRL".equals(k.label)
@@ -4838,6 +4906,11 @@ public class CustomKeyboardView extends LinearLayout {
                         b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
                     } else if (fixedRowsSlice && !nameMode) {
                         b.setTypeface(Typeface.DEFAULT_BOLD);
+                    }
+                    if (isTopImeToggleKey(k)) {
+                        applyTopImeToggleLabelTextColor(b);
+                    } else {
+                        b.setTextColor(resolveThemeTextColor());
                     }
                     b.setTag(k);
                     b.setOnTouchListener(fixedRowsSlice
@@ -6158,8 +6231,19 @@ public class CustomKeyboardView extends LinearLayout {
                                 : (isTopModifierLockCandidate(key)
                                         ? isProModifierCapVisualOn(key)
                                         : modifierLocked);
-                applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
-                view.setSelected(keyLockedVisualState);
+                if (isTopImeToggleKey(key)) {
+                    applyTopPanelImeToggleKeyCapBackground(view);
+                    view.setActivated(systemImeCaptureMode);
+                    view.setSelected(false);
+                    if (view instanceof ImageButton) {
+                        applyTopImeToggleIconTint((ImageButton) view);
+                    } else if (view instanceof TextView) {
+                        applyTopImeToggleLabelTextColor((TextView) view);
+                    }
+                } else {
+                    applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
+                    view.setSelected(keyLockedVisualState);
+                }
             }
             return;
         }
@@ -7664,9 +7748,25 @@ public class CustomKeyboardView extends LinearLayout {
             lp.height = 0;
             lp.weight = 0f;
         } else {
+            boolean hideForPortraitImeKeyboard =
+                    isImeSubComposePortraitContext()
+                            && systemImeCaptureMode
+                            && !imeSubComposeDirectHidMode
+                            && portraitSystemImeVisible;
+            if (hideForPortraitImeKeyboard) {
+                target.setVisibility(GONE);
+                lp.height = 0;
+                lp.weight = 0f;
+                target.setLayoutParams(lp);
+                return;
+            }
             target.setVisibility(VISIBLE);
             lp.height = 0;
-            lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
+            if (isImeSubComposePortraitContext() && !imeSubComposeDirectHidMode) {
+                lp.weight = IME_SUB_COMPOSE_COLLAPSED_TOP_STRIP_WEIGHT;
+            } else {
+                lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
+            }
         }
         target.setLayoutParams(lp);
     }
@@ -7711,7 +7811,11 @@ public class CustomKeyboardView extends LinearLayout {
         }
         LayoutParams lp = (LayoutParams) imeCaptureEditorRow.getLayoutParams();
         lp.height = 0;
-        lp.weight = imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
+        if (!imeSubComposeExpanded && isImeSubComposePortraitContext()) {
+            lp.weight = IME_SUB_COMPOSE_COLLAPSED_EDITOR_WEIGHT;
+        } else {
+            lp.weight = imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
+        }
         imeCaptureEditorRow.setLayoutParams(lp);
         refreshImeSubComposeToolbarRowWeight();
     }

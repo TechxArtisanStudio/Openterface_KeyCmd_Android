@@ -309,22 +309,44 @@
                     android:src="@drawable/ic_compose_send_24" />
             </LinearLayout>
 
-            <EditText
-                android:id="@+id/composite_split_ime_edit"
+            <FrameLayout
+                android:id="@+id/composite_split_ime_edit_host"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:clickable="true"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:gravity="top|start"
-                android:hint="@string/ime_capture_hint"
-                android:importantForAutofill="no"
-                android:inputType="text|textCapSentences|textMultiLine"
-                android:padding="8dp"
-                android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"
-                android:textSize="14sp" />
+                android:layout_weight="1">
+
+                <EditText
+                    android:id="@+id/composite_split_ime_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:gravity="top|start"
+                    android:hint="@string/ime_capture_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="text|textCapSentences|textMultiLine"
+                    android:paddingStart="8dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="56dp"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <ImageButton
+                    android:id="@+id/composite_split_ime_expand_toggle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/ime_sub_compose_expand"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_ime_sub_compose_expand_24" />
+            </FrameLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>
