@@ -474,9 +474,9 @@ TechxArtisan により</string>
     <string name="ime_not_connected">USB または Bluetooth を接続してキーストロークを送信します。</string>
     <string name="ime_sub_compose_expand">テキストエリアを展開する</string>
     <string name="ime_sub_compose_collapse">タッチパッドとショートカットを表示する</string>
-    <string name="ime_capture_send_flush_note">Send は、ホスト上でバッファリングされたテキストを送信します。作成モードでは、「送信」をタップするまでキーストロークは送信されません。</string>
+    <string name="ime_capture_send_flush_note">「送信」は、ホストにバッファしたテキストを入力します。IME モード（キーボード＆マウス基本の「編集・送信」と同じ、先に入力してから送信する流れ）では、「送信」をタップするまでキー入力は送信されません。</string>
     <string name="ime_sub_compose_mode_toggle_direct">ダイレクト HID に切り替える: 入力すると各キーが送信されます</string>
-    <string name="ime_sub_compose_mode_toggle_compose">作成に切り替える: バッファを入力し、[送信] をタップします</string>
+    <string name="ime_sub_compose_mode_toggle_compose">IME 作成に切り替える: バッファを入力し、[送信] をタップ</string>
     <string name="ime_sub_compose_direct_hid_hint">入力するとキーが直接送信されます</string>
     <string name="voice_hub_title">音声入力</string>
     <string name="voice_transcribed_hint">転写されたテキストがここに表示されます…</string>
@@ -1051,7 +1051,7 @@ TechxArtisan により</string>
     ]]></string>
     <string name="kb_basic_touchpad_scroll_area_a11y"><![CDATA[Mouse wheel scroll strip
     ]]></string>
-    <string name="kb_mouse_placeholder_compose"><![CDATA[Compose as its own screen is coming soon. Use Keyboard & Mouse Pro for compose and IME workflows.
+    <string name="kb_mouse_placeholder_compose"><![CDATA[独立した Compose 画面は近日対応予定。キーボード＆マウス Pro では、基本の「編集・送信」と同じ IME の入力してから送信するワークフローをご利用ください。
     ]]></string>
     <string name="kb_mouse_placeholder_generic"><![CDATA[This section is not available yet.
     ]]></string>

@@ -795,7 +795,7 @@ by TechxArtisan</string>
     <string name="kb_mouse_placeholder_generic">This section is not available yet.</string>
     <string name="kb_mouse_placeholder_numpad">Num pad as its own screen is coming soon. Use Keyboard &amp; Mouse Pro for keypad and strips.</string>
     <string name="kb_mouse_placeholder_touchpad">Dedicated touchpad view is coming soon. Use Keyboard &amp; Mouse Pro for touchpad and keyboard together.</string>
-    <string name="kb_mouse_placeholder_compose">Compose as its own screen is coming soon. Use Keyboard &amp; Mouse Pro for compose and IME workflows.</string>
+    <string name="kb_mouse_placeholder_compose">Compose as its own screen is coming soon. Use Keyboard &amp; Mouse Pro for the same IME compose-and-send workflows as Compose &amp; Send in Basic.</string>
     <string name="top_mode_label_gamepad">Gamepad</string>
     <string name="gamepad_toast_edit_layout_hint">Drag components to reposition, tap Done when finished.</string>
     <string name="gamepad_toast_image_load_failed">Failed to load image</string>
@@ -1066,9 +1066,9 @@ by TechxArtisan</string>
     <string name="ime_not_connected">Connect USB or Bluetooth to send keystrokes.</string>
     <string name="ime_sub_compose_expand">Expand text area</string>
     <string name="ime_sub_compose_collapse">Show touchpad and shortcuts</string>
-    <string name="ime_capture_send_flush_note">Send types the buffered text on the host. In Compose mode, keystrokes are not sent until you tap Send.</string>
+    <string name="ime_capture_send_flush_note">Send types the buffered text on the host. In IME mode (the same type-then-send workflow as Compose &amp; Send in Keyboard &amp; Mouse Basic), keystrokes are not sent until you tap Send.</string>
     <string name="ime_sub_compose_mode_toggle_direct">Switch to direct HID: each key sends as you type</string>
-    <string name="ime_sub_compose_mode_toggle_compose">Switch to compose: type a buffer, then tap Send</string>
+    <string name="ime_sub_compose_mode_toggle_compose">Switch to IME compose: type a buffer, then tap Send</string>
     <string name="ime_sub_compose_direct_hid_hint">Keys send out directly as you type</string>
 
     <!-- Voice input mode (hub-aligned chrome; strings for theme-independent copy) -->

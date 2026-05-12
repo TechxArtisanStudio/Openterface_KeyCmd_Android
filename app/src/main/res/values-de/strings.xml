@@ -437,9 +437,9 @@ von TechxArtisan</string>
     <string name="ime_not_connected">Schließen Sie USB oder Bluetooth an, um Tastatureingaben zu senden.</string>
     <string name="ime_sub_compose_expand">Textbereich erweitern</string>
     <string name="ime_sub_compose_collapse">Touchpad und Verknüpfungen anzeigen</string>
-    <string name="ime_capture_send_flush_note">Send gibt den gepufferten Text auf dem Host ein. Im Verfassen-Modus werden Tastenanschläge erst gesendet, wenn Sie auf Senden tippen.</string>
+    <string name="ime_capture_send_flush_note">Send gibt den gepufferten Text auf dem Host ein. Im IME-Modus (derselbe Ablauf „tippen, dann senden“ wie „Verfassen &amp; Senden“ in Tastatur &amp; Maus Basis) werden Tastaturanschläge erst gesendet, wenn Sie auf Senden tippen.</string>
     <string name="ime_sub_compose_mode_toggle_direct">Wechseln Sie zu Direct HID: Jede Taste sendet, während Sie tippen</string>
-    <string name="ime_sub_compose_mode_toggle_compose">Wechseln Sie zum Verfassen: Geben Sie einen Puffer ein und tippen Sie dann auf Senden</string>
+    <string name="ime_sub_compose_mode_toggle_compose">Zum IME-Verfassen wechseln: Puffer eingeben, dann auf Senden tippen</string>
     <string name="ime_sub_compose_direct_hid_hint">Tasten werden direkt während der Eingabe gesendet</string>
     <string name="voice_hub_title">Spracheingabe</string>
     <string name="voice_transcribed_hint">Transkribierter Text erscheint hier…</string>
@@ -1088,7 +1088,7 @@ von TechxArtisan</string>
     ]]></string>
     <string name="kb_basic_touchpad_scroll_area_a11y"><![CDATA[Mouse wheel scroll strip
     ]]></string>
-    <string name="kb_mouse_placeholder_compose"><![CDATA[Compose as its own screen is coming soon. Use Keyboard & Mouse Pro for compose and IME workflows.
+    <string name="kb_mouse_placeholder_compose"><![CDATA[Eigener Verfassen-Bildschirm folgt. Nutzen Sie Tastatur & Maus Pro für dieselben IME-Verfassen-und-Senden-Abläufe wie „Verfassen & Senden“ in der Basisversion.
     ]]></string>
     <string name="kb_mouse_placeholder_generic"><![CDATA[This section is not available yet.
     ]]></string>

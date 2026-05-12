@@ -655,9 +655,9 @@
     <string name="ime_not_connected">Connect USB or Bluetooth to send keystrokes.</string>
     <string name="ime_sub_compose_expand">Expand text area</string>
     <string name="ime_sub_compose_collapse">Show touchpad and shortcuts</string>
-    <string name="ime_capture_send_flush_note">Send types the buffered text on the host. In Compose mode, keystrokes are not sent until you tap Send.</string>
-    <string name="ime_sub_compose_mode_toggle_direct">Switch to direct HID: each key sends as you type</string>
-    <string name="ime_sub_compose_mode_toggle_compose">Switch to compose: type a buffer, then tap Send</string>
+    <string name="ime_capture_send_flush_note">「傳送」會在主機輸入緩衝區文字。在 IME 模式下（與「鍵盤與滑鼠」基本版的「編輯發送」相同，皆為先輸入再傳送），在您輕觸傳送前按鍵不會送出。</string>
+    <string name="ime_sub_compose_mode_toggle_direct">切換為直接 HID：每鍵在您輸入時即送出</string>
+    <string name="ime_sub_compose_mode_toggle_compose">切換為 IME 撰寫：先輸入緩衝區，再輕觸傳送</string>
     <string name="ime_sub_compose_direct_hid_hint">Keys send out directly as you type</string>
     <string name="voice_hub_title">語音輸入</string>
     <string name="voice_transcribed_hint">Transcribed text appears here…</string>
@@ -998,7 +998,7 @@
     <string name="kb_basic_touchpad_mouse_right_a11y">滑鼠右鍵</string>
     <string name="kb_basic_touchpad_mouse_right_label">R</string>
     <string name="kb_basic_touchpad_scroll_area_a11y">滑鼠滾輪滑動條</string>
-    <string name="kb_mouse_placeholder_compose">獨立撰寫屏幕即將推齣。請在「鍵盤與滑鼠專業版」中使用撰寫與輸入法流程。</string>
+    <string name="kb_mouse_placeholder_compose">獨立撰寫畫面即將推出。請在「鍵盤與滑鼠專業版」使用與基本版「編輯發送」相同的 IME 撰寫後傳送流程。</string>
     <string name="kb_mouse_placeholder_generic">此分區暫不可用。</string>
     <string name="kb_mouse_placeholder_numpad">獨立數字鍵盤屏幕即將推齣。請在「鍵盤與滑鼠專業版」中使用數字鍵盤與快捷條。</string>
     <string name="kb_mouse_placeholder_touchpad">獨立觸控闆視圖即將推齣。請在「鍵盤與滑鼠專業版」中衕時使用觸控闆與鍵盤。</string>

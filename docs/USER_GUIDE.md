@@ -30,12 +30,14 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 | Mode | What It Does |
 |------|-------------|
 | ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad, target OS, **Setup** gear icon, connection). **No** Shortcut Hub strip rows 1–3 here. |
-| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. Uses the app header: tap the **Setup** gear **between** the global **target OS** icon and the **connection** cluster to open **Keyboard & Mouse Pro setup** (strip layouts, General preferences). Active Row 1 profile and Rows 2–3 strip profile are chosen there and in **Shortcut Hub**, not from an extra strip swipe page. |
+| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, **IME** workflows—the same type-then-send buffering as **Compose & Send** in Basic, with Pro’s layout and strips) in one surface—same as the advanced keyboard + touchpad experience. Uses the app header: tap the **Setup** gear **between** the global **target OS** icon and the **connection** cluster to open **Keyboard & Mouse Pro setup** (strip layouts, General preferences). Active Row 1 profile and Rows 2–3 strip profile are chosen there and in **Shortcut Hub**, not from an extra strip swipe page. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
 | ⚡ **Shortcuts** | **Shortcut Hub:** manage shortcut **profiles** (Default, KiCAD, …), Favorites, and imports. Rows 2–3 strip layouts are edited from **Keyboard & Mouse Pro** setup (header **Setup** gear) and the hub’s **Rows 2–3 · Strip** flows. |
 | 🎤 **Voice** | Voice-to-keyboard input with AI |
 | 🖥️ **Presentation** | Slide/presenter controls for decks |
+
+**Terminology — Compose & Send vs IME:** In **Keyboard & Mouse (Basic)**, the tab is labeled **Compose & Send** for buffering text, then tapping **Send** to deliver it to the host. **Keyboard & Mouse Pro** uses **IME** wording for the same workflow (edit in the capture area, then **Send**). Different labels, same behavior.
 
 ---
 

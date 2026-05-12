@@ -438,9 +438,9 @@ por TechxArtisan</string>
     <string name="ime_not_connected">Conecte USB o Bluetooth para enviar pulsaciones de teclas.</string>
     <string name="ime_sub_compose_expand">Ampliar área de texto</string>
     <string name="ime_sub_compose_collapse">Mostrar panel táctil y atajos</string>
-    <string name="ime_capture_send_flush_note">Enviar escribe el texto almacenado en el buffer en el host. En el modo Redactar, las pulsaciones de teclas no se envían hasta que toque Enviar.</string>
+    <string name="ime_capture_send_flush_note">Enviar escribe el texto almacenado en el buffer en el host. En modo IME (el mismo flujo de escribir y luego enviar que Redactar y enviar en Teclado y ratón Básico), las pulsaciones de teclas no se envían hasta que toque Enviar.</string>
     <string name="ime_sub_compose_mode_toggle_direct">Cambiar a HID directo: cada tecla se envía a medida que escribe</string>
-    <string name="ime_sub_compose_mode_toggle_compose">Cambie a redactar: escriba un búfer, luego toque Enviar</string>
+    <string name="ime_sub_compose_mode_toggle_compose">Cambiar a composición IME: escriba en el búfer y pulse Enviar</string>
     <string name="ime_sub_compose_direct_hid_hint">Las claves se envían directamente mientras escribe</string>
     <string name="voice_hub_title">Entrada de voz</string>
     <string name="voice_transcribed_hint">El texto transcrito aparece aquí...</string>
@@ -1089,7 +1089,7 @@ por TechxArtisan</string>
     ]]></string>
     <string name="kb_basic_touchpad_scroll_area_a11y"><![CDATA[Mouse wheel scroll strip
     ]]></string>
-    <string name="kb_mouse_placeholder_compose"><![CDATA[Compose as its own screen is coming soon. Use Keyboard & Mouse Pro for compose and IME workflows.
+    <string name="kb_mouse_placeholder_compose"><![CDATA[La pantalla Redactar por separado llegará pronto. Use Teclado y ratón Pro para los mismos flujos IME de redactar y enviar que en Básico con Redactar y enviar.
     ]]></string>
     <string name="kb_mouse_placeholder_generic"><![CDATA[This section is not available yet.
     ]]></string>
