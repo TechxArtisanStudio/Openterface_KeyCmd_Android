@@ -48,6 +48,10 @@
     <color name="holo_red_light">#FFFF4444</color>
     <color name="button_text">#FF212121</color>
     <color name="touchpad_background">#FFE0E0E0</color>
+    <color name="km_basic_touchpad_pattern_soft_light">#0FFFFFFF</color>
+    <color name="km_basic_touchpad_pattern_soft_shadow">#0B000000</color>
+    <color name="km_basic_touchpad_pattern_glow">#14FFFFFF</color>
+    <color name="km_basic_touchpad_pattern_sink">#12000000</color>
     <color name="touchpad_help_overlay_panel">#F5FFFFFF</color>
     <color name="sidebar_background">#FFFFFFFF</color>
     <color name="sidebar_item_text">#FF212121</color>

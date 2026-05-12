@@ -108,6 +108,7 @@
     <dimen name="compose_shortcut_strip_height">120dp</dimen>
     
     <!-- Touchpad -->
+    <dimen name="basic_touchpad_area_corner_radius">10dp</dimen>
     <dimen name="touchpad_corner_radius">12dp</dimen>
     <dimen name="touchpad_elevation">2dp</dimen>
     <dimen name="touchpad_help_overlay_shift_up">-28dp</dimen>

@@ -24,14 +24,15 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:background="@drawable/km_basic_touchpad_surface"
+            android:clipToOutline="true">
 
             <com.openterface.keymod.TouchPadView
                 android:id="@+id/basic_touch_pad"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="5"
-                android:background="@color/touchpad_background" />
+                android:layout_weight="5" />
 
             <com.openterface.keymod.basic.BasicPortraitScrollStripView
                 android:id="@+id/basic_touchpad_scroll_strip"
@@ -39,7 +40,6 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
-                android:background="@color/touchpad_background"
                 android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
         </LinearLayout>
     </FrameLayout>
@@ -53,8 +53,8 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingTop="8dp"
-        android:paddingStart="@dimen/basic_touchpad_mouse_column_horizontal_padding"
-        android:paddingEnd="@dimen/basic_touchpad_mouse_column_horizontal_padding">
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp">
 
         <TextView
             android:id="@+id/basic_touchpad_btn_left"

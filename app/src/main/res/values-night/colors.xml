@@ -48,6 +48,10 @@
 
     <!-- Touchpad surface: slightly above background_light (#FF1C1C1E) for affordance -->
     <color name="touchpad_background">#FF2C2C2E</color>
+    <color name="km_basic_touchpad_pattern_soft_light">#12FFFFFF</color>
+    <color name="km_basic_touchpad_pattern_soft_shadow">#14000000</color>
+    <color name="km_basic_touchpad_pattern_glow">#18FFFFFF</color>
+    <color name="km_basic_touchpad_pattern_sink">#1C000000</color>
     <color name="touchpad_help_overlay_panel">#EE2C2C2E</color>
 
 </resources>
