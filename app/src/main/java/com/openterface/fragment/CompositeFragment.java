@@ -111,6 +111,8 @@ public class CompositeFragment extends Fragment {
     @Nullable
     private ImageButton splitImeRailClear;
     @Nullable
+    private ImageButton splitImeRailSaved;
+    @Nullable
     private ImageButton splitImeRailSend;
     private final View.OnLayoutChangeListener splitImeComposeRailWidthListener =
             (v, l, t, r, b, ol, ot, or, ob) -> applySplitImeComposeRailAdaptiveWidth();
@@ -1456,6 +1458,7 @@ public class CompositeFragment extends Fragment {
                     splitImeRailToggle,
                     splitImeRailUndo,
                     splitImeRailClear,
+                    splitImeRailSaved,
                     splitImeRailSend);
         }
         updateSplitImeRailChromeVisibility();
@@ -1907,6 +1910,7 @@ public class CompositeFragment extends Fragment {
         splitImeRailToggle = view.findViewById(R.id.composite_split_ime_rail_toggle);
         splitImeRailUndo = view.findViewById(R.id.composite_split_ime_rail_undo);
         splitImeRailClear = view.findViewById(R.id.composite_split_ime_rail_clear);
+        splitImeRailSaved = view.findViewById(R.id.composite_split_ime_rail_saved);
         splitImeRailSend = view.findViewById(R.id.composite_split_ime_rail_send);
         if (splitImeEditorRow != null) {
             splitImeEditorRow.addOnLayoutChangeListener(splitImeComposeRailWidthListener);
@@ -1923,6 +1927,9 @@ public class CompositeFragment extends Fragment {
         }
         if (splitImeRailClear != null && splitImeChromeSource != null) {
             splitImeRailClear.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailClearClicked());
+        }
+        if (splitImeRailSaved != null && splitImeChromeSource != null) {
+            splitImeRailSaved.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailSavedClicked());
         }
         if (splitImeRailSend != null && splitImeChromeSource != null) {
             splitImeRailSend.setOnClickListener(v -> splitImeChromeSource.onSplitLandscapeImeRailSendClicked());
@@ -2202,6 +2209,7 @@ public class CompositeFragment extends Fragment {
             splitImeRailToggle = null;
             splitImeRailUndo = null;
             splitImeRailClear = null;
+            splitImeRailSaved = null;
             splitImeRailSend = null;
             splitLeftColumn = null;
             splitRightColumn = null;

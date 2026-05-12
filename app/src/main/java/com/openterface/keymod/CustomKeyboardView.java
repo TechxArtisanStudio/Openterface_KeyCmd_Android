@@ -56,6 +56,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.graphics.ColorUtils;
 import androidx.appcompat.app.AppCompatActivity;
@@ -65,10 +66,13 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.hid.Ch9329PacketUtil;
 import com.openterface.keymod.hid.KeyboardHidTransport;
+import com.openterface.keymod.util.ComposeSendPreviewDialog;
+import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
+import com.openterface.keymod.compose.ImeSavedTextBottomSheet;
 import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.google.android.material.color.MaterialColors;
@@ -325,6 +329,8 @@ public class CustomKeyboardView extends LinearLayout {
     private String imeCaptureUndoSnapshot;
     private ImageButton imeCaptureTouchpadButton;
     private ImageButton imeSubComposeModeToggle;
+    /** Opens saved-text library (compose mode only). */
+    private ImageButton imeCaptureSavedTextsButton;
     private ImageButton imeCaptureSendButton;
     /**
      * KM Pro split landscape: compose rail uses the fragment split IME {@code EditText} while portrait
@@ -340,6 +346,8 @@ public class CustomKeyboardView extends LinearLayout {
     private ImageButton splitLandscapeRailClear;
     @Nullable
     private ImageButton splitLandscapeRailSend;
+    @Nullable
+    private ImageButton splitLandscapeRailSaved;
     @Nullable
     private TextWatcher splitLandscapeRailTextWatcher;
     @Nullable
@@ -7598,6 +7606,7 @@ public class CustomKeyboardView extends LinearLayout {
         imeCaptureUndoSnapshot = null;
         imeCaptureTouchpadButton = null;
         imeSubComposeModeToggle = null;
+        imeCaptureSavedTextsButton = null;
         imeCaptureSendButton = null;
         imeCaptureDirectModeHint = null;
         imeCaptureAccentDivider = null;
@@ -7852,6 +7861,9 @@ public class CustomKeyboardView extends LinearLayout {
 
             imeCaptureClearButton.setVisibility(GONE);
             imeCaptureUndoButton.setVisibility(GONE);
+            if (imeCaptureSavedTextsButton != null) {
+                imeCaptureSavedTextsButton.setVisibility(GONE);
+            }
             imeCaptureSendButton.setVisibility(GONE);
             imeCaptureDirectModeHint.setVisibility(VISIBLE);
 
@@ -7863,6 +7875,9 @@ public class CustomKeyboardView extends LinearLayout {
             setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 6f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 0f);
             setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
+            if (imeCaptureSavedTextsButton != null) {
+                setImeToolbarCellWeight(imeCaptureSavedTextsButton, keyMargin, 0f);
+            }
             setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 0f);
         } else {
             applyImeTopStripVisibilityForSubCompose();
@@ -7877,6 +7892,9 @@ public class CustomKeyboardView extends LinearLayout {
 
             imeCaptureClearButton.setVisibility(VISIBLE);
             imeCaptureUndoButton.setVisibility(VISIBLE);
+            if (imeCaptureSavedTextsButton != null) {
+                imeCaptureSavedTextsButton.setVisibility(VISIBLE);
+            }
             imeCaptureSendButton.setVisibility(VISIBLE);
             imeCaptureDirectModeHint.setVisibility(GONE);
 
@@ -7888,7 +7906,10 @@ public class CustomKeyboardView extends LinearLayout {
             setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
             setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 1f);
             setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, showPopOutTouchpad ? 3f : 4f);
+            if (imeCaptureSavedTextsButton != null) {
+                setImeToolbarCellWeight(imeCaptureSavedTextsButton, keyMargin, 1f);
+            }
+            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, showPopOutTouchpad ? 2f : 3f);
             setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
         }
         refreshImeSubComposeEditorRowWeight();
@@ -7938,6 +7959,9 @@ public class CustomKeyboardView extends LinearLayout {
             if (splitLandscapeRailSend != null) {
                 splitLandscapeRailSend.setVisibility(GONE);
             }
+            if (splitLandscapeRailSaved != null) {
+                splitLandscapeRailSaved.setVisibility(GONE);
+            }
             return;
         }
         if (splitLandscapeRailUndo != null) {
@@ -7948,6 +7972,9 @@ public class CustomKeyboardView extends LinearLayout {
         }
         if (splitLandscapeRailSend != null) {
             splitLandscapeRailSend.setVisibility(VISIBLE);
+        }
+        if (splitLandscapeRailSaved != null) {
+            splitLandscapeRailSaved.setVisibility(VISIBLE);
         }
         String t = edit.getText() != null ? edit.getText().toString() : "";
         ConnectionManager cm = peekConnectionManager();
@@ -7980,6 +8007,16 @@ public class CustomKeyboardView extends LinearLayout {
         if (splitLandscapeRailUndo != null) {
             splitLandscapeRailUndo.setEnabled(canUndo);
             splitLandscapeRailUndo.setAlpha(canUndo ? 1f : 0.45f);
+        }
+
+        boolean canOpenSavedSheet = !imeSubComposeSending;
+        if (imeCaptureSavedTextsButton != null) {
+            imeCaptureSavedTextsButton.setEnabled(canOpenSavedSheet);
+            imeCaptureSavedTextsButton.setAlpha(canOpenSavedSheet ? 1f : 0.45f);
+        }
+        if (splitLandscapeRailSaved != null) {
+            splitLandscapeRailSaved.setEnabled(canOpenSavedSheet);
+            splitLandscapeRailSaved.setAlpha(canOpenSavedSheet ? 1f : 0.45f);
         }
 
         if (imeSubComposeSending) {
@@ -8070,7 +8107,7 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         if (assessment.warningInfo != null) {
-            showImeComposeSendWarningDialog(cm, assessment.warningInfo);
+            showImeComposeSendWarningDialog(cm, assessment.warningInfo, text);
             return;
         }
         startImeComposeSend(ma, cm, edit, text);
@@ -8078,7 +8115,8 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void showImeComposeSendWarningDialog(
             @Nullable ConnectionManager cm,
-            @NonNull ImeComposeSendGate.WarningInfo warningInfo) {
+            @NonNull ImeComposeSendGate.WarningInfo warningInfo,
+            @NonNull final String textToSend) {
         if (getContext() == null) {
             return;
         }
@@ -8086,59 +8124,128 @@ public class CustomKeyboardView extends LinearLayout {
         if (edit == null || imeSubComposeSending) {
             return;
         }
-        StringBuilder message =
-                new StringBuilder(
-                        getContext().getString(R.string.compose_send_warning_count, warningInfo.charCount));
-        if (warningInfo.hasNonAscii) {
-            message.append('\n').append(getContext().getString(R.string.compose_send_warning_non_ascii));
+        ComposeSendWarningDialog.show(
+                getContext(),
+                warningInfo,
+                () -> {
+                    if (imeSubComposeSending) {
+                        return;
+                    }
+                    AppCompatActivity act = unwrapAppCompatActivity(getContext());
+                    EditText currentEdit = effectiveImeCaptureEdit();
+                    if (!(act instanceof MainActivity) || currentEdit == null) {
+                        return;
+                    }
+                    MainActivity ma = (MainActivity) act;
+                    ImeComposeSendGate.SendAssessment reassess = assessImeCaptureSend(cm, textToSend);
+                    if (reassess.hardBlockReasonResId != null) {
+                        Toast.makeText(getContext(), reassess.hardBlockReasonResId, Toast.LENGTH_SHORT)
+                                .show();
+                        updateImeCaptureToolbarState();
+                        return;
+                    }
+                    startImeComposeSend(ma, cm, currentEdit, textToSend);
+                },
+                () -> {
+                    EditText currentEdit = effectiveImeCaptureEdit();
+                    if (currentEdit != null) {
+                        CharSequence cur = currentEdit.getText();
+                        String curStr = cur != null ? cur.toString() : "";
+                        if (!curStr.equals(textToSend)) {
+                            currentEdit.setText(textToSend);
+                        }
+                    }
+                    imeComposeHighlightNonAsciiChars = true;
+                    refreshImeComposeNonAsciiHighlights(true);
+                    if (currentEdit != null) {
+                        currentEdit.requestFocus();
+                    }
+                },
+                () -> {
+                    if (getContext() == null) {
+                        return;
+                    }
+                    ComposeSendPreviewDialog.show(getContext(), textToSend);
+                });
+    }
+
+    private void onImeCaptureSavedTextsClicked() {
+        openImeSavedTextLibrary();
+    }
+
+    /** Split-landscape rail: open saved-text bottom sheet. */
+    public void onSplitLandscapeImeRailSavedClicked() {
+        openImeSavedTextLibrary();
+    }
+
+    private void openImeSavedTextLibrary() {
+        if (imeSubComposeSending || imeSubComposeDirectHidMode) {
+            return;
         }
-        if (warningInfo.hasLengthRisk) {
-            message.append('\n').append(getContext().getString(R.string.compose_send_warning_length));
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        if (!(act instanceof FragmentActivity)) {
+            return;
         }
-        new AlertDialog.Builder(getContext())
-                .setTitle(R.string.compose_send_warning_title)
-                .setMessage(message.toString())
-                .setPositiveButton(
-                        R.string.compose_send_warning_send_anyway,
-                        (dialog, which) -> {
-                            if (imeSubComposeSending) {
-                                return;
-                            }
-                            AppCompatActivity act = unwrapAppCompatActivity(getContext());
-                            EditText currentEdit = effectiveImeCaptureEdit();
-                            if (!(act instanceof MainActivity) || currentEdit == null) {
-                                return;
-                            }
-                            MainActivity ma = (MainActivity) act;
-                            String now =
-                                    currentEdit.getText() != null
-                                            ? currentEdit.getText().toString()
-                                            : "";
-                            ImeComposeSendGate.SendAssessment reassess =
-                                    assessImeCaptureSend(cm, now);
-                            if (reassess.hardBlockReasonResId != null) {
-                                Toast.makeText(
-                                                getContext(),
-                                                reassess.hardBlockReasonResId,
-                                                Toast.LENGTH_SHORT)
-                                        .show();
-                                updateImeCaptureToolbarState();
-                                return;
-                            }
-                            startImeComposeSend(ma, cm, currentEdit, now);
-                        })
-                .setNeutralButton(
-                        R.string.compose_send_warning_check,
-                        (dialog, which) -> {
-                            imeComposeHighlightNonAsciiChars = true;
-                            refreshImeComposeNonAsciiHighlights(true);
-                            EditText currentEdit = effectiveImeCaptureEdit();
-                            if (currentEdit != null) {
-                                currentEdit.requestFocus();
-                            }
-                        })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        FragmentActivity fa = (FragmentActivity) act;
+        ImeSavedTextBottomSheet.show(
+                fa,
+                new ImeSavedTextBottomSheet.Host() {
+                    @NonNull
+                    @Override
+                    public String readCurrentEditorText() {
+                        EditText e = effectiveImeCaptureEdit();
+                        return e != null && e.getText() != null ? e.getText().toString() : "";
+                    }
+
+                    @Override
+                    public void onLoadIntoEditor(@NonNull String content) {
+                        EditText e = effectiveImeCaptureEdit();
+                        if (e == null) {
+                            return;
+                        }
+                        e.setText(content);
+                        Editable ed = e.getText();
+                        if (ed != null) {
+                            int len = ed.length();
+                            e.setSelection(len);
+                        }
+                        imeCaptureUndoSnapshot = null;
+                        imeComposeHighlightNonAsciiChars = false;
+                        refreshImeComposeNonAsciiHighlights(false);
+                        updateImeCaptureToolbarState();
+                    }
+
+                    @Override
+                    public void onSendSavedText(@NonNull String content) {
+                        attemptImeComposeSendForString(content);
+                    }
+                });
+    }
+
+    private void attemptImeComposeSendForString(@NonNull String text) {
+        if (imeSubComposeSending) {
+            return;
+        }
+        EditText edit = effectiveImeCaptureEdit();
+        if (edit == null) {
+            return;
+        }
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        if (!(act instanceof MainActivity)) {
+            return;
+        }
+        MainActivity ma = (MainActivity) act;
+        ConnectionManager cm = ma.getConnectionManager();
+        ImeComposeSendGate.SendAssessment assessment = assessImeCaptureSend(cm, text);
+        if (assessment.hardBlockReasonResId != null) {
+            Toast.makeText(getContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (assessment.warningInfo != null) {
+            showImeComposeSendWarningDialog(cm, assessment.warningInfo, text);
+            return;
+        }
+        startImeComposeSend(ma, cm, edit, text);
     }
 
     private void startImeComposeSend(
@@ -8255,6 +8362,14 @@ public class CustomKeyboardView extends LinearLayout {
             splitLandscapeRailToggle.setEnabled(enabled);
             splitLandscapeRailToggle.setAlpha(enabled ? 1f : 0.45f);
         }
+        if (imeCaptureSavedTextsButton != null) {
+            imeCaptureSavedTextsButton.setEnabled(enabled);
+            imeCaptureSavedTextsButton.setAlpha(enabled ? 1f : 0.45f);
+        }
+        if (splitLandscapeRailSaved != null) {
+            splitLandscapeRailSaved.setEnabled(enabled);
+            splitLandscapeRailSaved.setAlpha(enabled ? 1f : 0.45f);
+        }
     }
 
     /**
@@ -8265,12 +8380,14 @@ public class CustomKeyboardView extends LinearLayout {
             @Nullable ImageButton railToggle,
             @Nullable ImageButton railUndo,
             @Nullable ImageButton railClear,
+            @Nullable ImageButton railSaved,
             @Nullable ImageButton railSend) {
         clearSplitLandscapeImeComposeRail();
         splitLandscapeComposeExternalEdit = externalEdit;
         splitLandscapeRailToggle = railToggle;
         splitLandscapeRailUndo = railUndo;
         splitLandscapeRailClear = railClear;
+        splitLandscapeRailSaved = railSaved;
         splitLandscapeRailSend = railSend;
         splitLandscapeRailTextWatcher =
                 new TextWatcher() {
@@ -8301,6 +8418,7 @@ public class CustomKeyboardView extends LinearLayout {
         splitLandscapeRailToggle = null;
         splitLandscapeRailUndo = null;
         splitLandscapeRailClear = null;
+        splitLandscapeRailSaved = null;
         splitLandscapeRailSend = null;
     }
 
@@ -8454,6 +8572,16 @@ public class CustomKeyboardView extends LinearLayout {
             undoLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
             imeCaptureUndoButton.setLayoutParams(undoLp);
 
+            imeCaptureSavedTextsButton = new ImageButton(getContext());
+            styleImeToolbarLikeTopShortcutIconButton(
+                    imeCaptureSavedTextsButton,
+                    R.drawable.ic_ime_saved_text_24,
+                    R.string.ime_saved_text_cd_open_library);
+            imeCaptureSavedTextsButton.setOnClickListener(v -> onImeCaptureSavedTextsClicked());
+            LinearLayout.LayoutParams savedLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
+            savedLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
+            imeCaptureSavedTextsButton.setLayoutParams(savedLp);
+
             imeCaptureSendButton = new ImageButton(getContext());
             styleImeToolbarLikeTopShortcutIconButton(
                     imeCaptureSendButton, R.drawable.ic_compose_send_24, R.string.compose_send);
@@ -8467,6 +8595,7 @@ public class CustomKeyboardView extends LinearLayout {
             imeCaptureToolbar.addView(imeCaptureDirectModeHint);
             imeCaptureToolbar.addView(imeCaptureClearButton);
             imeCaptureToolbar.addView(imeCaptureUndoButton);
+            imeCaptureToolbar.addView(imeCaptureSavedTextsButton);
             imeCaptureToolbar.addView(imeCaptureSendButton);
             addView(imeCaptureToolbar);
 

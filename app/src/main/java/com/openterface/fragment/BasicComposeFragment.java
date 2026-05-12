@@ -22,11 +22,12 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.ComposeSendPreviewDialog;
+import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.NonAsciiTextHighlighter;
@@ -214,50 +215,38 @@ public class BasicComposeFragment extends Fragment {
         if (editor == null || sending) {
             return;
         }
-        StringBuilder message =
-                new StringBuilder(
-                        getString(R.string.compose_send_warning_count, warningInfo.charCount));
-        if (warningInfo.hasNonAscii) {
-            message.append('\n').append(getString(R.string.compose_send_warning_non_ascii));
-        }
-        if (warningInfo.hasLengthRisk) {
-            message.append('\n').append(getString(R.string.compose_send_warning_length));
-        }
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.compose_send_warning_title)
-                .setMessage(message.toString())
-                .setPositiveButton(
-                        R.string.compose_send_warning_send_anyway,
-                        (dialog, which) -> {
-                            MainActivity ma = mainActivity();
-                            if (ma == null || editor == null || sending) {
-                                return;
-                            }
-                            String now = editor.getText() != null ? editor.getText().toString() : "";
-                            ImeComposeSendGate.SendAssessment reassess =
-                                    ImeComposeSendGate.assess(cm, now);
-                            if (reassess.hardBlockReasonResId != null) {
-                                Toast.makeText(
-                                                requireContext(),
-                                                reassess.hardBlockReasonResId,
-                                                Toast.LENGTH_SHORT)
-                                        .show();
-                                refreshToolbarState();
-                                return;
-                            }
-                            startSend(ma, cm, now);
-                        })
-                .setNeutralButton(
-                        R.string.compose_send_warning_check,
-                        (dialog, which) -> {
-                            highlightNonAsciiChars = true;
-                            refreshEditorNonAsciiHighlights(true);
-                            if (editor != null) {
-                                editor.requestFocus();
-                            }
-                        })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        ComposeSendWarningDialog.show(
+                requireContext(),
+                warningInfo,
+                () -> {
+                    MainActivity ma = mainActivity();
+                    if (ma == null || editor == null || sending) {
+                        return;
+                    }
+                    String now = editor.getText() != null ? editor.getText().toString() : "";
+                    ImeComposeSendGate.SendAssessment reassess =
+                            ImeComposeSendGate.assess(cm, now);
+                    if (reassess.hardBlockReasonResId != null) {
+                        Toast.makeText(requireContext(), reassess.hardBlockReasonResId, Toast.LENGTH_SHORT)
+                                .show();
+                        refreshToolbarState();
+                        return;
+                    }
+                    startSend(ma, cm, now);
+                },
+                () -> {
+                    highlightNonAsciiChars = true;
+                    refreshEditorNonAsciiHighlights(true);
+                    if (editor != null) {
+                        editor.requestFocus();
+                    }
+                },
+                () -> {
+                    if (editor == null || editor.getText() == null) {
+                        return;
+                    }
+                    ComposeSendPreviewDialog.show(requireContext(), editor.getText().toString());
+                });
     }
 
     private void startSend(

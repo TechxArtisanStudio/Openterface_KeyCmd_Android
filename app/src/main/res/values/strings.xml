@@ -516,13 +516,45 @@ by TechxArtisan</string>
     <string name="compose_empty">No text to send.</string>
     <string name="compose_sent">Sent %1$d characters.</string>
     <string name="compose_cancelled">Send stopped.</string>
-    <string name="compose_send_warning_title">Send with warning?</string>
-    <string name="compose_send_warning_count">Total: %1$d characters.</string>
-    <string name="compose_send_warning_non_ascii">Some characters are not ASCII and may not be received correctly by the target device.</string>
-    <string name="compose_send_warning_length">Long text may lose characters on some target devices due to HID transmission limits.</string>
+    <string name="compose_send_warning_title">Review send risks</string>
+    <string name="compose_send_warning_count_label">Total length</string>
+    <string name="compose_send_warning_issues_header">Potential issues</string>
+    <string name="compose_send_warning_non_ascii_label">Compatibility</string>
+    <string name="compose_send_warning_length_label">Reliability</string>
+    <string name="compose_send_warning_count">%1$d characters</string>
+    <string name="compose_send_warning_non_ascii">Contains non-ASCII characters that the target device may not receive correctly.</string>
+    <string name="compose_send_warning_length">Long text can lose characters on some target devices due to HID transmission limits.</string>
     <string name="compose_send_warning_send_anyway">Send anyway</string>
+    <string name="compose_send_warning_inspect">Inspect text</string>
+    <string name="compose_send_warning_inspect_title">Inspect options</string>
     <string name="compose_send_warning_check">Check</string>
+    <string name="compose_send_warning_preview">Preview</string>
     <string name="compose_send_warning_no_non_ascii_found">No non-ASCII characters found to highlight.</string>
+    <string name="compose_send_preview_title">Send preview</string>
+    <string name="compose_send_preview_summary_title">Transmission summary</string>
+    <string name="compose_send_preview_payload_title">Sendable content</string>
+    <string name="compose_send_preview_summary">Original: %1$d chars\nWill send: %2$d chars\nDropped non-ASCII: %3$d</string>
+    <string name="compose_send_preview_empty_payload">No ASCII characters will be sent.</string>
+
+    <!-- Pro IME: saved text library (compose mode) -->
+    <string name="ime_saved_text_title">Saved texts</string>
+    <string name="ime_saved_text_cd_open_library">Open saved texts</string>
+    <string name="ime_saved_text_save_to_library">Save current</string>
+    <string name="ime_saved_text_save_cd">Save current text to library</string>
+    <string name="ime_saved_text_saved">Saved to library.</string>
+    <string name="ime_saved_text_save_empty">Nothing to save.</string>
+    <string name="ime_saved_text_empty">No saved texts yet. Tap Save current to add from the editor.</string>
+    <string name="ime_saved_text_load">Load</string>
+    <string name="ime_saved_text_send">Send</string>
+    <string name="ime_saved_text_pin">Pin to top</string>
+    <string name="ime_saved_text_unpin">Unpin</string>
+    <string name="ime_saved_text_rename">Rename</string>
+    <string name="ime_saved_text_delete">Delete</string>
+    <string name="ime_saved_text_delete_confirm_title">Delete saved text?</string>
+    <string name="ime_saved_text_delete_confirm_message">This cannot be undone.</string>
+    <string name="ime_saved_text_rename_title">Rename</string>
+    <string name="ime_saved_text_more">More</string>
+    <string name="ime_saved_text_preview_cd">Preview</string>
 
     <!-- Top strip PH1–PH3: long-press mode picker -->
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>
