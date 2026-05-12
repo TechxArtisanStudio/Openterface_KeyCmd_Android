@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:baselineAligned="false"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background_light">
 
     <com.openterface.keymod.basic.BasicPhysicalKeyboardView
         android:id="@+id/basic_physical_keyboard"

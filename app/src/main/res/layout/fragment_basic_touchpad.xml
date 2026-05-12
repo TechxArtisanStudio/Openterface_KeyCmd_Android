@@ -31,14 +31,14 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="5"
-                android:background="@color/background_light" />
+                android:background="@color/touchpad_background" />
 
             <com.openterface.keymod.basic.BasicPortraitScrollStripView
                 android:id="@+id/basic_touchpad_scroll_strip"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@color/background_light"
+                android:background="@color/touchpad_background"
                 android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
         </LinearLayout>
     </FrameLayout>

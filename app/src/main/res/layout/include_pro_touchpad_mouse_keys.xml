@@ -13,7 +13,7 @@
 
     <TextView
         android:id="@+id/pro_touchpad_btn_left"
-        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        style="@style/Widget.KeyMod.ProTouchpadMouseButton"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="2"
@@ -22,7 +22,7 @@
 
     <TextView
         android:id="@+id/pro_touchpad_btn_middle"
-        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        style="@style/Widget.KeyMod.ProTouchpadMouseButton"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_marginStart="8dp"
@@ -32,7 +32,7 @@
 
     <TextView
         android:id="@+id/pro_touchpad_btn_right"
-        style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+        style="@style/Widget.KeyMod.ProTouchpadMouseButton"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_marginStart="8dp"

@@ -1,5 +1,7 @@
 # KeyMod FAQ — Keyboard output, strip layouts, gamepad, and connections
 
+For **app theme colors** (light/dark, accent families, KM Pro surfaces), see [THEME_AND_KM_PRO_COLORS.md](THEME_AND_KM_PRO_COLORS.md).
+
 Common questions about what KeyMod can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
 
 ---

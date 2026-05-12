@@ -75,7 +75,7 @@ public class BasicPortraitScrollStripView extends View {
         dividerPaint.setColor(ContextCompat.getColor(getContext(), R.color.divider));
         dividerPaint.setStrokeWidth(Math.max(1f, getResources().getDisplayMetrics().density));
 
-        int chevronTint = ContextCompat.getColor(getContext(), R.color.km_basic_scroll_strip_chevron);
+        int chevronTint = ContextCompat.getColor(getContext(), R.color.km_touchpad_scroll_strip_chevron);
         Drawable up = AppCompatResources.getDrawable(getContext(), R.drawable.km_basic_scroll_strip_chevron_up);
         if (up != null) {
             chevronUp = DrawableCompat.wrap(up.mutate());

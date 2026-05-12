@@ -3206,7 +3206,9 @@ public class CustomKeyboardView extends LinearLayout {
             return 0;
         }
         int container = MaterialColors.getColor(
-                ctx, com.google.android.material.R.attr.colorPrimaryContainer, 0xFFFFE0B2);
+                ctx,
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                ThemeManager.getColorPrimaryContainer(ctx));
         int popupBg = ContextCompat.getColor(ctx, R.color.background_light);
         // ~60% primary-container hue: clearly distinct from bare popup, weaker than solid selected pill.
         return ColorUtils.blendARGB(container, popupBg, 0.40f);
@@ -4608,12 +4610,18 @@ public class CustomKeyboardView extends LinearLayout {
         if (ib == null) {
             return;
         }
-        int fallback = resolveThemeTextColor();
+        Context ctx = ib.getContext();
+        int onPrimaryContainerFallback = ThemeManager.getColorPrimaryContainer(ctx);
+        int primaryFallback = ThemeManager.getColorPrimary(ctx);
         int tint = systemImeCaptureMode
                 ? MaterialColors.getColor(
-                        ib, com.google.android.material.R.attr.colorOnPrimaryContainer, fallback)
+                        ib,
+                        com.google.android.material.R.attr.colorOnPrimaryContainer,
+                        onPrimaryContainerFallback)
                 : MaterialColors.getColor(
-                        ib, com.google.android.material.R.attr.colorPrimary, fallback);
+                        ib,
+                        com.google.android.material.R.attr.colorPrimary,
+                        primaryFallback);
         ib.setColorFilter(tint);
     }
 
@@ -4622,12 +4630,18 @@ public class CustomKeyboardView extends LinearLayout {
         if (tv == null) {
             return;
         }
-        int fallback = resolveThemeTextColor();
+        Context ctx = tv.getContext();
+        int onPrimaryContainerFallback = ThemeManager.getColorPrimaryContainer(ctx);
+        int primaryFallback = ThemeManager.getColorPrimary(ctx);
         int color = systemImeCaptureMode
                 ? MaterialColors.getColor(
-                        tv, com.google.android.material.R.attr.colorOnPrimaryContainer, fallback)
+                        tv,
+                        com.google.android.material.R.attr.colorOnPrimaryContainer,
+                        onPrimaryContainerFallback)
                 : MaterialColors.getColor(
-                        tv, com.google.android.material.R.attr.colorPrimary, fallback);
+                        tv,
+                        com.google.android.material.R.attr.colorPrimary,
+                        primaryFallback);
         tv.setTextColor(color);
     }
 
@@ -7596,8 +7610,11 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private int resolveThemeTextColor() {
-        int nightMode = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        return nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES ? 0xFFFFFFFF : 0xFF000000;
+        Context ctx = getContext();
+        if (ctx == null) {
+            return 0xFF212121;
+        }
+        return ContextCompat.getColor(ctx, R.color.text_primary);
     }
 
     private void toggleSystemImeCaptureFromUser() {
@@ -8154,7 +8171,8 @@ public class CustomKeyboardView extends LinearLayout {
                 int warningColor =
                         MaterialColors.getColor(
                                 imeCaptureSendButton,
-                                com.google.android.material.R.attr.colorTertiary);
+                                com.google.android.material.R.attr.colorTertiary,
+                                ThemeManager.getColorPrimary(imeCaptureSendButton.getContext()));
                 imeCaptureSendButton.setColorFilter(
                         showWarning ? warningColor : resolveThemeTextColor());
                 imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
@@ -8166,7 +8184,8 @@ public class CustomKeyboardView extends LinearLayout {
                 int warningColor =
                         MaterialColors.getColor(
                                 splitLandscapeRailSend,
-                                com.google.android.material.R.attr.colorTertiary);
+                                com.google.android.material.R.attr.colorTertiary,
+                                ThemeManager.getColorPrimary(splitLandscapeRailSend.getContext()));
                 splitLandscapeRailSend.setColorFilter(
                         showWarning ? warningColor : resolveThemeTextColor());
                 splitLandscapeRailSend.setContentDescription(getContext().getString(R.string.compose_send));
@@ -8422,7 +8441,8 @@ public class CustomKeyboardView extends LinearLayout {
         int color =
                 MaterialColors.getColor(
                         edit,
-                        com.google.android.material.R.attr.colorTertiaryContainer);
+                        com.google.android.material.R.attr.colorTertiaryContainer,
+                        ThemeManager.getColorPrimaryContainer(edit.getContext()));
         int highlighted = NonAsciiTextHighlighter.apply(editable, color);
         if (highlighted == 0) {
             imeComposeHighlightNonAsciiChars = false;

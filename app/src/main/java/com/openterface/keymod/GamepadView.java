@@ -1643,7 +1643,7 @@ public class GamepadView extends View {
 
         Context ctx = getContext();
         if (ctx != null) {
-            int chevronTint = ContextCompat.getColor(ctx, R.color.km_basic_scroll_strip_chevron);
+            int chevronTint = ContextCompat.getColor(ctx, R.color.km_touchpad_scroll_strip_chevron);
             Drawable up = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_up);
             Drawable dn = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_down);
             if (up != null && dn != null) {

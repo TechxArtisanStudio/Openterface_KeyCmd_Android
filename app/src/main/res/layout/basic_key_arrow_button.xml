@@ -14,5 +14,6 @@
         android:layout_gravity="center"
         android:contentDescription="@null"
         android:duplicateParentState="true"
-        android:scaleType="fitCenter" />
+        android:scaleType="fitCenter"
+        android:tint="@color/basic_key_icon_tint" />
 </FrameLayout>

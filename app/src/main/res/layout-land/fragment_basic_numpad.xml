@@ -9,7 +9,7 @@
     android:paddingEnd="@dimen/basic_keyboard_content_inset_end"
     android:paddingTop="8dp"
     android:paddingBottom="@dimen/basic_keyboard_content_inset_bottom"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background_light">
 
     <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),
          0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->

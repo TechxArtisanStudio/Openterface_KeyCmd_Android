@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -26,6 +27,7 @@ import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.util.ComposeSendPreviewDialog;
 import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
@@ -323,7 +325,9 @@ public class BasicComposeFragment extends Fragment {
         }
         int color =
                 MaterialColors.getColor(
-                        editor, com.google.android.material.R.attr.colorTertiaryContainer);
+                        editor,
+                        com.google.android.material.R.attr.colorTertiaryContainer,
+                        ThemeManager.getColorPrimaryContainer(editor.getContext()));
         int highlighted = NonAsciiTextHighlighter.apply(editable, color);
         if (highlighted == 0) {
             highlightNonAsciiChars = false;
@@ -356,13 +360,25 @@ public class BasicComposeFragment extends Fragment {
         boolean showWarning = canSend && assessment.warningInfo != null;
 
         int primary =
-                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorPrimary);
+                MaterialColors.getColor(
+                        sendBtn,
+                        com.google.android.material.R.attr.colorPrimary,
+                        ThemeManager.getColorPrimary(sendBtn.getContext()));
         int outline =
-                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOutline);
+                MaterialColors.getColor(
+                        sendBtn,
+                        com.google.android.material.R.attr.colorOutline,
+                        ContextCompat.getColor(sendBtn.getContext(), R.color.divider));
         int onSurface =
-                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorOnSurface);
+                MaterialColors.getColor(
+                        sendBtn,
+                        com.google.android.material.R.attr.colorOnSurface,
+                        ContextCompat.getColor(sendBtn.getContext(), R.color.text_primary));
         int warning =
-                MaterialColors.getColor(sendBtn, com.google.android.material.R.attr.colorTertiary);
+                MaterialColors.getColor(
+                        sendBtn,
+                        com.google.android.material.R.attr.colorTertiary,
+                        ThemeManager.getColorPrimary(sendBtn.getContext()));
         ColorStateList primaryStroke = ColorStateList.valueOf(primary);
         ColorStateList outlineStroke = ColorStateList.valueOf(outline);
         ColorStateList warningStroke = ColorStateList.valueOf(warning);

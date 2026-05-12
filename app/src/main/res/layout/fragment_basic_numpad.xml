@@ -9,7 +9,7 @@
     android:paddingEnd="@dimen/basic_keyboard_content_inset_end"
     android:paddingTop="8dp"
     android:paddingBottom="@dimen/basic_keyboard_content_inset_bottom"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background_light">
 
     <!-- 5 columns × 8 rows; row height ratio 1:1:2:2:3:3:3:3 (weights per row). ESC spans rows 0–1 (weight 1+1); + spans 4–5 (3+3); Enter spans 6–7 (3+3). -->
     <GridLayout

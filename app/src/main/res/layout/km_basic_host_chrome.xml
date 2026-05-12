@@ -6,6 +6,8 @@
     android:orientation="horizontal"
     android:baselineAligned="false"
     android:gravity="center_vertical"
+    android:background="@color/header_background"
+    android:elevation="@dimen/header_elevation"
     android:padding="@dimen/header_padding">
 
     <ImageButton

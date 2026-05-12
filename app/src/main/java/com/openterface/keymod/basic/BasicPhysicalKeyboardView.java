@@ -1056,7 +1056,6 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
         v.setLayoutParams(lp);
         ImageView icon = v.findViewById(R.id.basic_key_arrow_icon);
         icon.setImageResource(iconRes);
-        icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(getContext(), R.color.text_primary)));
         icon.setContentDescription(getContext().getString(cdRes));
         row.addView(v);
         return v;
