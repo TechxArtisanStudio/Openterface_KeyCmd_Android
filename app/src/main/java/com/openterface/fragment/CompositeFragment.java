@@ -177,14 +177,16 @@ public class CompositeFragment extends Fragment {
      * {@link #PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} pair, while keeping enough keyboard
      * column height for the shortcut strip (see {@link com.openterface.keymod.CustomKeyboardView}).
      */
-    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.3f;
-    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.4f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.20f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.38f;
     /**
      * Portrait numpad strip + portrait IME Compose &amp; Send (collapsed): horizontal chrome width ratio
      * touchpad : mouse-key column. Mouse strip is placed on the layout start side (LTR: left).
      */
     private static final float PORTRAIT_STRIP_TOUCHPAD_WEIGHT = 5f;
     private static final float PORTRAIT_STRIP_MOUSE_KEYS_WEIGHT = 2f;
+    private static final float PORTRAIT_COMFORTABLE_TOUCHPAD_WEIGHT = 5f;
+    private static final float PORTRAIT_COMFORTABLE_MOUSE_KEYS_WEIGHT = 2f;
     private final ExecutorService imeSplitTextExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ImeSplitTextForward");
         t.setDaemon(true);
@@ -469,15 +471,22 @@ public class CompositeFragment extends Fragment {
         }
         ensureProTouchpadChromeSiblingOrder(false);
         proTouchpadChromeRoot.setOrientation(LinearLayout.VERTICAL);
+        boolean isPortrait =
+                getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE;
         LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
         padLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
         padLp.height = 0;
-        padLp.weight = 1f;
+        padLp.weight = isPortrait ? PORTRAIT_COMFORTABLE_TOUCHPAD_WEIGHT : 1f;
         touchpadPadHost.setLayoutParams(padLp);
         LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
         mLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        mLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-        mLp.weight = 0f;
+        if (isPortrait) {
+            mLp.height = 0;
+            mLp.weight = PORTRAIT_COMFORTABLE_MOUSE_KEYS_WEIGHT;
+        } else {
+            mLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mLp.weight = 0f;
+        }
         proTouchpadMouseKeys.setLayoutParams(mLp);
         configureProMouseKeysRow(false);
         applyProTouchpadMouseKeysDefaultPadding();

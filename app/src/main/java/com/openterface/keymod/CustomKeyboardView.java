@@ -3744,12 +3744,20 @@ public class CustomKeyboardView extends LinearLayout {
             topStripWeight = IME_SINGLE_TOP_STRIP_WEIGHT;
         }
         LinearLayout topStripContainer = new LinearLayout(getContext());
-        topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
-        // Full built-in keyboard: many letter rows compete for height; floor strip so it stays as tall
-        // as the IME-capture shortcut block (see applyImeTopStripVisibilityForSubCompose).
+        int portraitShortcutStripHeight =
+                getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
+        // Portrait KM Pro single-pane: keep a deterministic shortcut-strip height so built-in and
+        // IME-direct keyboard states stay visually aligned when toggling.
+        if (!isLandscape(getContext()) && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
+            topStripContainer.setLayoutParams(
+                    new LayoutParams(LayoutParams.MATCH_PARENT, portraitShortcutStripHeight, 0f));
+        } else {
+            topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
+        }
+        // Full built-in keyboard: many letter rows compete for height; floor strip for safety on
+        // compact devices where parent constraints can squeeze below the target portrait size.
         if (!systemImeCaptureMode && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
-            topStripContainer.setMinimumHeight(
-                    getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height));
+            topStripContainer.setMinimumHeight(portraitShortcutStripHeight);
         }
         topStripContainer.setOrientation(VERTICAL);
         FrameLayout viewport = new FrameLayout(getContext());
@@ -7786,10 +7794,15 @@ public class CustomKeyboardView extends LinearLayout {
                 return;
             }
             target.setVisibility(VISIBLE);
-            lp.height = 0;
-            // Same vertical weight as single-pane IME / Direct HID so built-in vs IME toggle does not
-            // shrink the shortcut strip in portrait collapsed compose.
-            lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
+            if (isImeSubComposePortraitContext()) {
+                lp.height = getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
+                lp.weight = 0f;
+            } else {
+                lp.height = 0;
+                // Same vertical weight as single-pane IME / Direct HID so built-in vs IME toggle does not
+                // shrink the shortcut strip in portrait collapsed compose.
+                lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
+            }
         }
         target.setLayoutParams(lp);
     }
