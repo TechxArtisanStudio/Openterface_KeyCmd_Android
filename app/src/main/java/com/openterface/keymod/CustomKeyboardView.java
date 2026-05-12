@@ -157,16 +157,16 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP = 44;
     private static final float IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED = 12f;
     /**
-     * Portrait BOTH + IME capture (sub-compose collapsed): touchpad vs keyboard weights in
-     * {@code CompositeFragment#applyOrientationLayout}. Keep in sync with
-     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} / {@code KEYBOARD_WEIGHT}.
+     * Portrait BOTH + IME capture (sub-compose collapsed): touchpad vs keyboard column in
+     * {@link com.openterface.fragment.CompositeFragment#applyOrientationLayout}. Must match
+     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} /
+     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_WEIGHT} there.
      */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 1.0f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.5f;
+    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 0.9f;
+    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.7f;
     private static final float IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE =
             IME_SUB_COMPOSE_COLLAPSED_KB / (IME_SUB_COMPOSE_COLLAPSED_TP + IME_SUB_COMPOSE_COLLAPSED_KB);
-    /** Collapsed portrait keyboard internals: [shortcut strip] : [editor+toolbar] ~= 1 : 2. */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_TOP_STRIP_WEIGHT = 0.7f;
+    /** Collapsed portrait compose: editor row weight below the shortcut strip (strip uses {@link #IME_SINGLE_TOP_STRIP_WEIGHT}). */
     private static final float IME_SUB_COMPOSE_COLLAPSED_EDITOR_WEIGHT = 1.4f;
     /**
      * Collapsed portrait stack has a fixed-height toggle ({@code R.dimen.toggle_handle_height}) between
@@ -3744,6 +3744,12 @@ public class CustomKeyboardView extends LinearLayout {
         }
         LinearLayout topStripContainer = new LinearLayout(getContext());
         topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
+        // Full built-in keyboard: many letter rows compete for height; floor strip so it stays as tall
+        // as the IME-capture shortcut block (see applyImeTopStripVisibilityForSubCompose).
+        if (!systemImeCaptureMode && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
+            topStripContainer.setMinimumHeight(
+                    getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height));
+        }
         topStripContainer.setOrientation(VERTICAL);
         FrameLayout viewport = new FrameLayout(getContext());
         viewport.setLayoutParams(new LinearLayout.LayoutParams(
@@ -7779,11 +7785,9 @@ public class CustomKeyboardView extends LinearLayout {
             }
             target.setVisibility(VISIBLE);
             lp.height = 0;
-            if (isImeSubComposePortraitContext() && !imeSubComposeDirectHidMode) {
-                lp.weight = IME_SUB_COMPOSE_COLLAPSED_TOP_STRIP_WEIGHT;
-            } else {
-                lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
-            }
+            // Same vertical weight as single-pane IME / Direct HID so built-in vs IME toggle does not
+            // shrink the shortcut strip in portrait collapsed compose.
+            lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
         }
         target.setLayoutParams(lp);
     }

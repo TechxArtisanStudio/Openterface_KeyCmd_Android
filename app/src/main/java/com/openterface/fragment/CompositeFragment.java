@@ -159,12 +159,13 @@ public class CompositeFragment extends Fragment {
     /** Portrait IME sub-compose expanded: keyboard column consumes upper stack. */
     private static final float IME_SUB_COMPOSE_KEYBOARD_WEIGHT_EXPANDED = 24f;
     /**
-     * Portrait BOTH + IME capture (sub-compose collapsed): outer stack ratio for
-     * [touchpad+mouse] : [keyboard column] = 2 : 3, matching the target 2:1:2 three-way balance
-     * with keyboard internals handled in {@link com.openterface.keymod.CustomKeyboardView}.
+     * Portrait BOTH + IME capture (sub-compose collapsed): favor the keyboard column (~35% / ~65%)
+     * so the shortcut strip and IME row are less cramped than a touchpad-heavier split; weights sum
+     * to 2.6f to match {@link #PORTRAIT_IME_DIRECT_HID_TOUCHPAD_WEIGHT} pair for similar balance with
+     * the toggle handle. Keyboard internals remain in {@link com.openterface.keymod.CustomKeyboardView}.
      */
-    private static final float PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT = 1.0f;
-    private static final float PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_WEIGHT = 1.5f;
+    private static final float PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT = 0.9f;
+    private static final float PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_WEIGHT = 1.7f;
     /**
      * Portrait BOTH + IME Direct HID: more touchpad, less keyboard column than collapsed compose
      * so the shortcut strip + toolbar do not stretch when the editor row collapses.
@@ -172,6 +173,13 @@ public class CompositeFragment extends Fragment {
      */
     private static final float PORTRAIT_IME_DIRECT_HID_TOUCHPAD_WEIGHT = 1.35f;
     private static final float PORTRAIT_IME_DIRECT_HID_KEYBOARD_WEIGHT = 1.25f;
+    /**
+     * Portrait BOTH + built-in HID (IME capture off): more touchpad / less letter-key area than
+     * {@link #PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} pair, while keeping enough keyboard
+     * column height for the shortcut strip (see {@link com.openterface.keymod.CustomKeyboardView}).
+     */
+    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.2f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.5f;
     /**
      * Portrait numpad strip + portrait IME Compose &amp; Send (collapsed): horizontal chrome width ratio
      * touchpad : mouse-key column. Mouse strip is placed on the layout start side (LTR: left).
@@ -2524,8 +2532,9 @@ public class CompositeFragment extends Fragment {
             rootLayout.setOrientation(LinearLayout.VERTICAL);
 
             // Portrait numpad + touchpad: touchpad : numpad (keyboard strip) = 1 : 4.
-            // Portrait BOTH (full keyboard): default 1.5 : 1.0; IME capture collapsed sub-compose uses
-            // PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_* so the strip + editor row get more vertical space.
+            // Portrait BOTH + IME capture collapsed: PORTRAIT_IME_* for strip + IME row space.
+            // Portrait BOTH + built-in: PORTRAIT_BOTH_BUILT_IN_* — taller touchpad band, shorter QWERTY
+            // block than the IME column share, without shrinking the shortcut strip (PH1 toggle uses IME pair).
             float touchpadWeight = displayMode == DisplayMode.KEYBOARD ? 1f : 1.5f;
             float keyboardWeight = displayMode == DisplayMode.KEYBOARD ? 4f : 1.0f;
             if (displayMode != DisplayMode.KEYBOARD
@@ -2538,6 +2547,9 @@ public class CompositeFragment extends Fragment {
                     touchpadWeight = PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT;
                     keyboardWeight = PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_WEIGHT;
                 }
+            } else if (displayMode == DisplayMode.BOTH && !keyboardView.isSystemImeCaptureMode()) {
+                touchpadWeight = PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT;
+                keyboardWeight = PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT;
             }
 
             touchpadSection.setLayoutParams(new LinearLayout.LayoutParams(

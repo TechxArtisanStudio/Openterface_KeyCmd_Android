@@ -20,28 +20,48 @@
         android:layout_height="0dp"
         android:layout_weight="5">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:baselineAligned="false"
-            android:orientation="horizontal"
             android:background="@drawable/km_basic_touchpad_surface"
             android:clipToOutline="true">
 
-            <com.openterface.keymod.TouchPadView
-                android:id="@+id/basic_touch_pad"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="5" />
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
-            <com.openterface.keymod.basic.BasicPortraitScrollStripView
-                android:id="@+id/basic_touchpad_scroll_strip"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
-                android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
-        </LinearLayout>
+                <com.openterface.keymod.TouchPadView
+                    android:id="@+id/basic_touch_pad"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="5" />
+
+                <com.openterface.keymod.basic.BasicPortraitScrollStripView
+                    android:id="@+id/basic_touchpad_scroll_strip"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
+                    android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/basic_touchpad_brand_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="12dp"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="8dp"
+                android:maxWidth="200dp"
+                android:adjustViewBounds="true"
+                android:scaleType="fitCenter"
+                android:alpha="0.82"
+                android:src="@drawable/ic_openterface_wordmark"
+                android:tint="@color/text_secondary"
+                android:contentDescription="@string/touch_pad_brand_content_description"
+                android:importantForAccessibility="yes" />
+        </FrameLayout>
     </FrameLayout>
 
     <LinearLayout

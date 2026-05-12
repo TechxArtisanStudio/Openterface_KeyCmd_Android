@@ -1,6 +1,7 @@
 package com.openterface.fragment;
 
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -55,6 +56,8 @@ public class BasicComposeFragment extends Fragment {
     private MaterialButton clearBtn;
     private MaterialButton redoBtn;
     private MaterialButton sendBtn;
+    @Nullable private View actionsRow;
+    @Nullable private View composeBrandLogo;
     @Nullable
     private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
@@ -83,6 +86,8 @@ public class BasicComposeFragment extends Fragment {
         clearBtn = view.findViewById(R.id.basic_compose_clear);
         redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
+        actionsRow = view.findViewById(R.id.basic_compose_actions);
+        composeBrandLogo = view.findViewById(R.id.basic_compose_brand_logo);
 
         clearBtn.setOnClickListener(v -> onClearClicked());
         redoBtn.setOnClickListener(v -> onRedoClicked());
@@ -99,11 +104,62 @@ public class BasicComposeFragment extends Fragment {
                     @Override
                     public void afterTextChanged(Editable s) {
                         refreshToolbarState();
+                        refreshComposeBrandLogoVisibility();
                         refreshEditorNonAsciiHighlights(false);
                     }
                 });
         refreshToolbarState();
+        refreshComposeBrandLogoVisibility();
         setupBasicComposeImeInsets(view);
+        refreshComposeLayoutState(view);
+        view.post(() -> refreshComposeLayoutState(view));
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        View v = getView();
+        if (v != null) {
+            refreshComposeLayoutState(v);
+        }
+    }
+
+    /**
+     * Portrait: always show Undo / Clear / Send and let the editor fill the available compose area
+     * so there is no large dead gap above the action row.
+     *
+     * <p>Landscape: while the IME is open (non-zero bottom IME inset), hide the action row and let
+     * the editor use {@code MATCH_PARENT} so typing space is maximized. When the keyboard is
+     * dismissed or minimized (IME inset back to 0), show the row again so Send / Clear / Undo stay
+     * reachable without rotating to portrait.
+     */
+    private void refreshComposeLayoutState(@NonNull View root) {
+        if (actionsRow == null || editor == null) {
+            return;
+        }
+        boolean landscape =
+                root.getResources().getConfiguration().orientation
+                        == Configuration.ORIENTATION_LANDSCAPE;
+        int imeBottom = 0;
+        WindowInsetsCompat windowInsets = ViewCompat.getRootWindowInsets(root);
+        if (windowInsets != null) {
+            imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+        }
+        boolean hideActionsForLandscapeIme = landscape && imeBottom > 0;
+
+        actionsRow.setVisibility(hideActionsForLandscapeIme ? View.GONE : View.VISIBLE);
+
+        ViewGroup.LayoutParams lp = editor.getLayoutParams();
+        if (lp != null) {
+            lp.height =
+                    (!landscape || hideActionsForLandscapeIme)
+                            ? ViewGroup.LayoutParams.MATCH_PARENT
+                            : ViewGroup.LayoutParams.WRAP_CONTENT;
+            editor.setLayoutParams(lp);
+        }
+
+        refreshComposeBrandLogoVisibility();
+        root.post(root::requestLayout);
     }
 
     /**
@@ -142,6 +198,7 @@ public class BasicComposeFragment extends Fragment {
                             baseTop,
                             baseEnd + rightInset,
                             baseBottom + bottomInset);
+                    refreshComposeLayoutState(v);
                     return windowInsets;
                 });
         root.post(() -> ViewCompat.requestApplyInsets(root));
@@ -348,6 +405,18 @@ public class BasicComposeFragment extends Fragment {
         }
     }
 
+    private void refreshComposeBrandLogoVisibility() {
+        if (composeBrandLogo == null || editor == null) {
+            return;
+        }
+        Editable text = editor.getText();
+        WindowInsetsCompat windowInsets = ViewCompat.getRootWindowInsets(editor);
+        boolean imeVisible =
+                windowInsets != null && windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom > 0;
+        boolean showLogo = !sending && !imeVisible && (text == null || text.length() == 0);
+        composeBrandLogo.setVisibility(showLogo ? View.VISIBLE : View.GONE);
+    }
+
     private void refreshToolbarState() {
         if (sendBtn == null || clearBtn == null || redoBtn == null) {
             return;
@@ -426,6 +495,7 @@ public class BasicComposeFragment extends Fragment {
                 sendBtn.setIconTint(primaryIcon);
             }
         }
+        refreshComposeBrandLogoVisibility();
     }
 
     @Nullable

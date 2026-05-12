@@ -13,11 +13,15 @@
 
     <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),
          0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
     <GridLayout
         android:id="@+id/basic_numpad_grid"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:alignmentMode="alignMargins"
         android:columnCount="8"
         android:rowCount="5"
@@ -456,8 +460,7 @@
             android:gravity="center"
             android:text="="
             android:tag="NUMPAD_EQUALS" />
-        <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -466,10 +469,25 @@
             android:layout_columnWeight="2"
             android:layout_rowWeight="1"
             android:layout_gravity="fill"
-            android:gravity="center"
-            android:text="0"
-            android:tag="NUMPAD_0"
-            android:contentDescription="@string/kb_basic_numpad_zero_desc" />
+            android:background="@drawable/key_background"
+            android:layout_margin="4dp"
+            android:tag="NUMPAD_0">
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:maxWidth="@dimen/km_basic_numpad_zero_wordmark_max_width"
+                android:maxHeight="@dimen/km_basic_numpad_zero_wordmark_max_height"
+                android:contentDescription="@string/kb_basic_numpad_zero_desc"
+                android:paddingStart="6dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="4dp"
+                android:scaleType="fitCenter"
+                app:srcCompat="@drawable/ic_openterface_wordmark"
+                app:tint="@color/text_secondary" />
+        </FrameLayout>
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"
             android:layout_width="0dp"
@@ -483,4 +501,6 @@
             android:text="."
             android:tag="NUMPAD_DOT" />
     </GridLayout>
+
+    </FrameLayout>
 </LinearLayout>

@@ -91,6 +91,10 @@
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>
     <dimen name="basic_keyboard_arrow_icon_size">22dp</dimen>
+    <!-- KM Basic NumPad 0 (openterface wordmark): cap size for portrait/landscape parity; slightly under
+         Compose toolbar icon size (24dp) so the key stays readable. -->
+    <dimen name="km_basic_numpad_zero_wordmark_max_height">20dp</dimen>
+    <dimen name="km_basic_numpad_zero_wordmark_max_width">168dp</dimen>
     <!-- KM Basic: floating label above/below key on press -->
     <dimen name="basic_key_preview_corner_radius">9dp</dimen>
     <dimen name="basic_key_preview_padding_h">16dp</dimen>
