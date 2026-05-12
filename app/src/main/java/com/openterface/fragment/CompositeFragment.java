@@ -177,8 +177,8 @@ public class CompositeFragment extends Fragment {
      * {@link #PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} pair, while keeping enough keyboard
      * column height for the shortcut strip (see {@link com.openterface.keymod.CustomKeyboardView}).
      */
-    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.2f;
-    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.5f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.3f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.4f;
     /**
      * Portrait numpad strip + portrait IME Compose &amp; Send (collapsed): horizontal chrome width ratio
      * touchpad : mouse-key column. Mouse strip is placed on the layout start side (LTR: left).
