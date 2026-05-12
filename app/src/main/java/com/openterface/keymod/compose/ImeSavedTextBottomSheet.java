@@ -1,7 +1,7 @@
 package com.openterface.keymod.compose;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Build;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
@@ -24,6 +24,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.ComposeSendPreviewDialog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,12 +54,30 @@ public final class ImeSavedTextBottomSheet {
         RecyclerView rv = root.findViewById(R.id.ime_saved_text_list);
         TextView empty = root.findViewById(R.id.ime_saved_text_empty);
         MaterialButton saveBtn = root.findViewById(R.id.ime_saved_text_save_current);
+        MaterialButton previewBtn = root.findViewById(R.id.ime_saved_text_action_preview);
+        MaterialButton loadBtn = root.findViewById(R.id.ime_saved_text_action_load);
+        MaterialButton sendBtn = root.findViewById(R.id.ime_saved_text_action_send);
 
         List<SavedTextItem> items = new ArrayList<>(repo.loadSorted());
-        Adapter adapter = new Adapter(activity, items, repo, host, dialog);
+        Adapter adapter =
+                new Adapter(
+                        activity,
+                        items,
+                        repo,
+                        host,
+                        dialog,
+                        hasSelection -> {
+                            int visibility = hasSelection ? View.VISIBLE : View.GONE;
+                            previewBtn.setVisibility(visibility);
+                            loadBtn.setVisibility(visibility);
+                            sendBtn.setVisibility(visibility);
+                        });
         rv.setLayoutManager(new LinearLayoutManager(activity));
         rv.setAdapter(adapter);
         refreshEmpty(empty, items);
+        previewBtn.setOnClickListener(v -> adapter.showPreviewForSelected());
+        loadBtn.setOnClickListener(v -> adapter.loadSelectedIntoEditor());
+        sendBtn.setOnClickListener(v -> adapter.sendSelected());
 
         saveBtn.setOnClickListener(
                 v -> {
@@ -71,6 +90,7 @@ public final class ImeSavedTextBottomSheet {
                     items.clear();
                     items.addAll(repo.loadSorted());
                     adapter.notifyDataSetChanged();
+                    adapter.setSelectedItemId(added.id);
                     refreshEmpty(empty, items);
                     rv.scrollToPosition(0);
                 });
@@ -89,18 +109,26 @@ public final class ImeSavedTextBottomSheet {
         private final SavedTextRepository repo;
         private final Host host;
         private final BottomSheetDialog dialog;
+        private final SelectionListener selectionListener;
+        private long selectedItemId = -1L;
+
+        interface SelectionListener {
+            void onSelectionChanged(boolean hasSelection);
+        }
 
         Adapter(
                 @NonNull Context ctx,
                 @NonNull List<SavedTextItem> items,
                 @NonNull SavedTextRepository repo,
                 @NonNull Host host,
-                @NonNull BottomSheetDialog dialog) {
+                @NonNull BottomSheetDialog dialog,
+                @NonNull SelectionListener selectionListener) {
             this.ctx = ctx;
             this.items = items;
             this.repo = repo;
             this.host = host;
             this.dialog = dialog;
+            this.selectionListener = selectionListener;
         }
 
         @NonNull
@@ -124,32 +152,31 @@ public final class ImeSavedTextBottomSheet {
                             DateUtils.FORMAT_ABBREV_RELATIVE);
             h.meta.setText(rel);
             h.preview.setText(previewOf(it.content));
+            h.pinnedIcon.setVisibility(it.pinned ? View.VISIBLE : View.GONE);
 
-            int primary =
-                    MaterialColors.getColor(h.pin, com.google.android.material.R.attr.colorPrimary, 0);
-            int onSurface =
+            boolean selected = it.id == selectedItemId;
+            int titleSelected =
+                    MaterialColors.getColor(h.title, com.google.android.material.R.attr.colorPrimary, 0);
+            int titleNormal =
                     MaterialColors.getColor(
-                            h.pin, com.google.android.material.R.attr.colorOnSurfaceVariant, 0);
-            h.pin.setIconResource(R.drawable.ic_bookmark_star_24);
-            if (it.pinned) {
-                h.pin.setIconTint(ColorStateList.valueOf(primary));
-            } else {
-                h.pin.setIconTint(ColorStateList.valueOf(onSurface));
-            }
-            h.pin.setOnClickListener(
+                            h.title, com.google.android.material.R.attr.colorOnSurface, 0);
+            h.title.setTextColor(selected ? titleSelected : titleNormal);
+            int selectedBg =
+                    MaterialColors.getColor(
+                            h.itemView,
+                            com.google.android.material.R.attr.colorSurfaceContainerHighest,
+                            0);
+            h.itemView.setBackgroundColor(selected ? selectedBg : Color.TRANSPARENT);
+            h.itemView.setOnClickListener(
                     v -> {
-                        repo.setPinned(it.id, !it.pinned);
-                        reloadFromRepo();
+                        if (selectedItemId == it.id) {
+                            selectedItemId = -1L;
+                        } else {
+                            selectedItemId = it.id;
+                        }
+                        notifyDataSetChanged();
+                        notifySelectionChanged();
                     });
-
-            h.load.setOnClickListener(
-                    v -> {
-                        String c = it.content != null ? it.content : "";
-                        host.onLoadIntoEditor(c);
-                        dialog.dismiss();
-                    });
-
-            h.send.setOnClickListener(v -> host.onSendSavedText(it.content != null ? it.content : ""));
 
             h.more.setOnClickListener(
                     v -> {
@@ -227,11 +254,73 @@ public final class ImeSavedTextBottomSheet {
         private void reloadFromRepo() {
             items.clear();
             items.addAll(repo.loadSorted());
+            if (findById(selectedItemId) == null) {
+                selectedItemId = -1L;
+            }
             notifyDataSetChanged();
+            notifySelectionChanged();
             TextView empty = dialog.findViewById(R.id.ime_saved_text_empty);
             if (empty != null) {
                 ImeSavedTextBottomSheet.refreshEmpty(empty, items);
             }
+        }
+
+        void setSelectedItemId(long itemId) {
+            selectedItemId = itemId;
+            notifyDataSetChanged();
+            notifySelectionChanged();
+        }
+
+        void showPreviewForSelected() {
+            SavedTextItem it = requireSelectedOrToast();
+            if (it == null) {
+                return;
+            }
+            ComposeSendPreviewDialog.show(ctx, it.content != null ? it.content : "");
+        }
+
+        void loadSelectedIntoEditor() {
+            SavedTextItem it = requireSelectedOrToast();
+            if (it == null) {
+                return;
+            }
+            host.onLoadIntoEditor(it.content != null ? it.content : "");
+            dialog.dismiss();
+        }
+
+        void sendSelected() {
+            SavedTextItem it = requireSelectedOrToast();
+            if (it == null) {
+                return;
+            }
+            host.onSendSavedText(it.content != null ? it.content : "");
+        }
+
+        @Nullable
+        private SavedTextItem requireSelectedOrToast() {
+            SavedTextItem selected = findById(selectedItemId);
+            if (selected == null) {
+                Toast.makeText(ctx, R.string.ime_saved_text_select_first, Toast.LENGTH_SHORT).show();
+            }
+            return selected;
+        }
+
+        @Nullable
+        private SavedTextItem findById(long id) {
+            if (id < 0) {
+                return null;
+            }
+            for (int i = 0; i < items.size(); i++) {
+                SavedTextItem it = items.get(i);
+                if (it.id == id) {
+                    return it;
+                }
+            }
+            return null;
+        }
+
+        private void notifySelectionChanged() {
+            selectionListener.onSelectionChanged(findById(selectedItemId) != null);
         }
 
         @Override
@@ -255,9 +344,7 @@ public final class ImeSavedTextBottomSheet {
             final TextView title;
             final TextView meta;
             final TextView preview;
-            final MaterialButton pin;
-            final MaterialButton load;
-            final MaterialButton send;
+            final View pinnedIcon;
             final MaterialButton more;
 
             VH(@NonNull View itemView) {
@@ -265,9 +352,7 @@ public final class ImeSavedTextBottomSheet {
                 title = itemView.findViewById(R.id.ime_saved_row_title);
                 meta = itemView.findViewById(R.id.ime_saved_row_meta);
                 preview = itemView.findViewById(R.id.ime_saved_row_preview);
-                pin = itemView.findViewById(R.id.ime_saved_row_pin);
-                load = itemView.findViewById(R.id.ime_saved_row_load);
-                send = itemView.findViewById(R.id.ime_saved_row_send);
+                pinnedIcon = itemView.findViewById(R.id.ime_saved_row_pinned_icon);
                 more = itemView.findViewById(R.id.ime_saved_row_more);
             }
         }

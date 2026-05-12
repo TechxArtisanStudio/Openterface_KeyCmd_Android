@@ -26,6 +26,36 @@
             android:textColor="?android:attr/textColorPrimary" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/ime_saved_text_action_preview"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/ime_saved_text_preview_selected_cd"
+            android:visibility="gone"
+            app:icon="@drawable/ic_visibility_24"
+            app:iconTint="?attr/colorControlNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ime_saved_text_action_load"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/ime_saved_text_load_selected_cd"
+            android:visibility="gone"
+            app:icon="@drawable/ic_file_download_material_24"
+            app:iconTint="?attr/colorControlNormal" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ime_saved_text_action_send"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/ime_saved_text_send_selected_cd"
+            android:visibility="gone"
+            app:icon="@drawable/ic_send_material_24"
+            app:iconTint="?attr/colorControlNormal" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/ime_saved_text_save_current"
             style="@style/Widget.Material3.Button.IconButton"
             android:layout_width="48dp"

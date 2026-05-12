@@ -555,6 +555,10 @@ by TechxArtisan</string>
     <string name="ime_saved_text_rename_title">Rename</string>
     <string name="ime_saved_text_more">More</string>
     <string name="ime_saved_text_preview_cd">Preview</string>
+    <string name="ime_saved_text_send_selected_cd">Send selected saved text</string>
+    <string name="ime_saved_text_load_selected_cd">Load selected saved text</string>
+    <string name="ime_saved_text_preview_selected_cd">Preview selected saved text</string>
+    <string name="ime_saved_text_select_first">Select a saved text first.</string>
 
     <!-- Top strip PH1–PH3: long-press mode picker -->
     <string name="top_mode_slot_picker_title">Choose mode for this shortcut</string>
