@@ -4,10 +4,12 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -1106,6 +1108,21 @@ public class CompositeFragment extends Fragment {
         return false;
     }
 
+    /**
+     * IME capture submode: portrait and reverse-portrait only (no landscape). Built-in keyboard
+     * restores {@link ActivityInfo#SCREEN_ORIENTATION_FULL_SENSOR} for normal KM Pro behavior.
+     */
+    private void applyKmProImeCaptureRequestedOrientation() {
+        if (!isAdded()) {
+            return;
+        }
+        Activity activity = requireActivity();
+        activity.setRequestedOrientation(
+                isImeCaptureActive()
+                        ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                        : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+    }
+
     private void registerImeCaptureListener(@Nullable CustomKeyboardView kbd) {
         if (kbd == null) {
             return;
@@ -1223,6 +1240,7 @@ public class CompositeFragment extends Fragment {
         }
         applyOrientationLayout();
         requestCompositeImeInsetsAfterImeChange();
+        applyKmProImeCaptureRequestedOrientation();
     }
 
     /**
@@ -1854,6 +1872,7 @@ public class CompositeFragment extends Fragment {
         }
         applyTouchpadInfoVisibility();
         refreshSplitLandscapeImeComposeRailBinding();
+        applyKmProImeCaptureRequestedOrientation();
     }
 
     private void syncNormalImeChromeFromPrefs() {
@@ -1861,6 +1880,7 @@ public class CompositeFragment extends Fragment {
             return;
         }
         applyTouchpadInfoVisibility();
+        applyKmProImeCaptureRequestedOrientation();
     }
 
     private void updateSplitTouchPadTips() {
@@ -1997,6 +2017,10 @@ public class CompositeFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        Activity activity = getActivity();
+        if (activity != null) {
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+        }
         if (touchpadSection != null) {
             touchpadSection.removeOnLayoutChangeListener(proTouchpadSectionLayoutListener);
         }

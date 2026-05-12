@@ -198,8 +198,8 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     /**
-     * Full-width PC keyboard is only practical in landscape. Compose &amp; send locks to portrait
-     * (including upside-down) only. Other KM Basic submodes follow full rotation.
+     * Full-width PC keyboard is only practical in landscape. Compose &amp; send and touchpad lock to
+     * portrait (including upside-down) only. Other KM Basic submodes follow full rotation.
      */
     private void applyOrientationForCurrentSubmode() {
         if (getActivity() == null) {
@@ -207,7 +207,7 @@ public final class KeyboardMouseFragment extends Fragment {
         }
         if (SUBMODE_KEYBOARD.equals(currentSubmode)) {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        } else if (SUBMODE_COMPOSE.equals(currentSubmode)) {
+        } else if (SUBMODE_COMPOSE.equals(currentSubmode) || SUBMODE_TOUCHPAD.equals(currentSubmode)) {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
         } else {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);

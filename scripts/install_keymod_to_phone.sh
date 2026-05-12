@@ -44,6 +44,11 @@ fi
 if [[ -z "$TARGET_SERIAL" ]]; then
   echo "Error: no connected physical Android phone found."
   echo "Tip: connect phone, enable USB debugging, accept RSA prompt, then retry."
+  if adb devices | awk 'NR>1 && $2=="device" && $1 ~ /^emulator-/ { found=1 } END { exit !found }'; then
+    emu="$(adb devices | awk 'NR>1 && $2=="device" && $1 ~ /^emulator-/ { print $1; exit }')"
+    echo "Tip: this script ignores emulators by default. To install on the emulator, pass its serial, e.g.:"
+    echo "  $0 $emu"
+  fi
   adb devices
   exit 1
 fi
