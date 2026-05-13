@@ -47,6 +47,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewOutlineProvider;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -2912,6 +2913,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (gamingTouch) {
                         v.setPressed(true);
                         gamingHoldActive[0] = true;
+                        setParentDisallowInterceptTouchEvent(v, true);
                         if (KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
                             sendHidKeyDataForKey(key);
                         } else {
@@ -2932,9 +2934,12 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     if (isFnAlternateHintsToggleKey(key)) {
                         v.setPressed(true);
+                        setParentDisallowInterceptTouchEvent(v, true);
                         return true;
                     }
-                    return false;
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, Boolean.TRUE);
+                    setParentDisallowInterceptTouchEvent(v, true);
+                    return true;
                 }
                 case MotionEvent.ACTION_MOVE: {
                     if (isAlternatePopupVisible()) {
@@ -2944,6 +2949,9 @@ public class CustomKeyboardView extends LinearLayout {
                     if (v.getTag(R.id.tag_custom_keyboard_pending_alternates) instanceof Runnable) {
                         // Keep the touch on this key until long-press fires; otherwise a parent may
                         // cancel the stream before the alternates popup opens.
+                        return true;
+                    }
+                    if (Boolean.TRUE.equals(v.getTag(R.id.tag_custom_keyboard_tap_consume_move))) {
                         return true;
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
@@ -2958,6 +2966,8 @@ public class CustomKeyboardView extends LinearLayout {
                     return false;
                 }
                 case MotionEvent.ACTION_UP: {
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
+                    setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingObj = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
                     if (pendingObj instanceof Runnable) {
@@ -2981,7 +2991,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (shouldRepeatOnLongPress(key)) {
                         stopRepeatingDelete();
                     }
-                    if (!suppressTapUp && isTouchInsideView(v, event)) {
+                    if (!suppressTapUp && isTouchInsideViewSlopForTapUp(v, event)) {
                         handleKeyPress(key);
                     }
                     holdRepeatSuppressUpTap = false;
@@ -2989,6 +2999,8 @@ public class CustomKeyboardView extends LinearLayout {
                     return false;
                 }
                 case MotionEvent.ACTION_CANCEL: {
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
+                    setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingCancel = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
                     if (pendingCancel instanceof Runnable) {
@@ -3023,6 +3035,31 @@ public class CustomKeyboardView extends LinearLayout {
         float x = event.getX();
         float y = event.getY();
         return x >= 0 && x <= view.getWidth() && y >= 0 && y <= view.getHeight();
+    }
+
+    private static void setParentDisallowInterceptTouchEvent(@Nullable View v, boolean disallow) {
+        if (v == null) {
+            return;
+        }
+        ViewParent parent = v.getParent();
+        if (parent instanceof ViewGroup) {
+            ((ViewGroup) parent).requestDisallowInterceptTouchEvent(disallow);
+        }
+    }
+
+    /**
+     * For ACTION_UP tap commit only: expand hit rect by touch slop so quick lifts slightly outside
+     * the key still send HID (KM Pro built-in vs KM Basic responsiveness).
+     */
+    private static boolean isTouchInsideViewSlopForTapUp(@Nullable View view, @Nullable MotionEvent event) {
+        if (view == null || event == null) {
+            return false;
+        }
+        Context ctx = view.getContext();
+        int slop = ctx != null ? ViewConfiguration.get(ctx).getScaledTouchSlop() : 0;
+        float x = event.getX();
+        float y = event.getY();
+        return x >= -slop && x <= view.getWidth() + slop && y >= -slop && y <= view.getHeight() + slop;
     }
 
     /**
