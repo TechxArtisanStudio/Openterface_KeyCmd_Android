@@ -110,7 +110,9 @@
     <dimen name="basic_key_preview_f_row_extra_up">12dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
     <dimen name="compose_shortcut_strip_height">132dp</dimen>
-    
+    <!-- KM Pro portrait IME host: thin strip below CustomKeyboardView (must not overlay shortcut rows). -->
+    <dimen name="km_pro_ime_host_height">2dp</dimen>
+
     <!-- Touchpad -->
     <dimen name="basic_touchpad_area_corner_radius">10dp</dimen>
     <dimen name="touchpad_corner_radius">12dp</dimen>

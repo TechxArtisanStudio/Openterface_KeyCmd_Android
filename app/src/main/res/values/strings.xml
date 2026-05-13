@@ -1110,6 +1110,11 @@ by TechxArtisan</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <!-- KM Pro PH1 merged A/B/C input mode (tap cycles portrait: built-in → IME direct → IME compose) -->
     <string name="top_shortcut_km_pro_input_built_in_short">Built-in</string>
+    <string name="km_pro_secondary_toggle_built_in_short">BI</string>
+    <string name="km_pro_secondary_toggle_ime_short">IME</string>
+    <string name="km_pro_secondary_toggle_full_short">Full</string>
+    <string name="km_pro_secondary_toggle_split_short">Split</string>
+    <string name="km_pro_ime_direct_send_input_a11y">IME direct send: use the system keyboard; keys are sent to the host. Switch back with the BI key on the shortcut strip.</string>
     <string name="top_shortcut_km_pro_input_ime_direct_short">IME direct</string>
     <string name="top_shortcut_km_pro_input_ime_compose_short">IME compose</string>
     <string name="top_shortcut_km_pro_input_built_in_cd">Built-in QWER keyboard. Tap to switch to IME direct send.</string>

@@ -48,6 +48,38 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
+                <HorizontalScrollView
+                    android:id="@+id/km_pro_header_tabs_scroll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:visibility="gone"
+                    android:fillViewport="false"
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:id="@+id/km_pro_header_tab_keyboard"
+                            style="@style/KbMouseSubmodeTab"
+                            android:text="@string/kb_mouse_sub_keyboard" />
+
+                        <TextView
+                            android:id="@+id/km_pro_header_tab_numpad"
+                            style="@style/KbMouseSubmodeTab"
+                            android:text="@string/kb_mouse_sub_numpad" />
+
+                        <TextView
+                            android:id="@+id/km_pro_header_tab_compose"
+                            style="@style/KbMouseSubmodeTab"
+                            android:text="@string/kb_mouse_sub_compose" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
                 <!-- Title consumes flex space; Target OS + connection stay trailing (KM Pro). -->
                 <LinearLayout
                     android:layout_width="0dp"

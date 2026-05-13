@@ -82,6 +82,7 @@ import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
@@ -266,7 +267,14 @@ public class CustomKeyboardView extends LinearLayout {
         void onRequestSwitchToMode(String launchPanelMode);
     }
 
+    public interface OnKmProSecondaryLayoutToggleListener {
+        void onRequestToggle(CustomKeyboardView source);
+    }
+
     private OnTopModeShortcutListener onTopModeShortcutListener;
+    @Nullable private OnKmProSecondaryLayoutToggleListener onKmProSecondaryLayoutToggleListener;
+    /** Wraps QWERTY rows only (KM Pro single-pane); strip stays visible when this is {@link View#INVISIBLE}. */
+    @Nullable private LinearLayout kmProLetterKeyboardBody;
 
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
@@ -1146,6 +1154,22 @@ public class CustomKeyboardView extends LinearLayout {
         onTopModeShortcutListener = listener;
     }
 
+    public void setOnKmProSecondaryLayoutToggleListener(
+            @Nullable OnKmProSecondaryLayoutToggleListener listener) {
+        onKmProSecondaryLayoutToggleListener = listener;
+    }
+
+    /**
+     * KM Pro portrait: show or hide only the main letter-key rows while keeping the fixed shortcut strip
+     * (Shortcut Hub row + fixed rows with P1R2C7) visible. {@link View#INVISIBLE} preserves layout weight
+     * for alignment with the IME slot.
+     */
+    public void setKmProPortraitLetterBodyVisible(boolean visible) {
+        if (kmProLetterKeyboardBody != null) {
+            kmProLetterKeyboardBody.setVisibility(visible ? VISIBLE : INVISIBLE);
+        }
+    }
+
     public void setOnImeCaptureModeChangedListener(@Nullable OnImeCaptureModeChangedListener listener) {
     }
 
@@ -1315,10 +1339,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private static boolean isTopImeToggleKey(Key key) {
-        return key != null
-                && key.isTopPanelKey
-                && "PH1".equals(key.label)
-                && key.code == KEY_IME_TOGGLE;
+        return key != null && key.isTopPanelKey && key.code == KEY_IME_TOGGLE;
     }
 
     private static boolean isTopShortcutActionLabelEligible(Key key) {
@@ -1410,11 +1431,7 @@ public class CustomKeyboardView extends LinearLayout {
             return "";
         }
         if (key.code == KEY_IME_TOGGLE) {
-            Context ctx = getContext();
-            if (ctx != null) {
-                return ctx.getString(R.string.top_shortcut_km_pro_input_built_in_short);
-            }
-            return "";
+            return key.label != null ? key.label : "";
         }
         if (key.symbolLabel != null) {
             String chord = key.symbolLabel.trim();
@@ -2294,6 +2311,7 @@ public class CustomKeyboardView extends LinearLayout {
         stopGamingKeyRepeat();
         detachLocalImeFieldQuiet();
         removeAllViews();
+        kmProLetterKeyboardBody = null;
 
         if (shortcutsStripOnly && splitPart == SPLIT_NONE) {
             addTopFunctionRows();
@@ -2365,6 +2383,17 @@ public class CustomKeyboardView extends LinearLayout {
         // In landscape fullscreen mode, always show the top scrolling panel
         if (showExtraPortraitKeys && isLandscape(getContext()) && splitPart == SPLIT_NONE) {
             addTopFunctionRows();
+        }
+
+        LinearLayout letterBodyContainer = null;
+        final boolean wrapLetterRows = splitPart == SPLIT_NONE;
+        if (wrapLetterRows) {
+            letterBodyContainer = new LinearLayout(getContext());
+            letterBodyContainer.setOrientation(VERTICAL);
+            letterBodyContainer.setLayoutParams(
+                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.0f));
+            kmProLetterKeyboardBody = letterBodyContainer;
+            addView(letterBodyContainer);
         }
 
         String[] functionalKeyCodes = {"46", "47", "48", "49", "4A", "4B", "4C", "4D", "4E", "3B", "3C", "3D", "3E", "3F", "29", "3A", "40", "41", "42", "43", "44", "45", "3D", "3F"};
@@ -2614,7 +2643,11 @@ public class CustomKeyboardView extends LinearLayout {
                 attachKeyListeners(listenerTarget, key);
                 rowLayout.addView(button);
             }
-            addView(rowLayout);
+            if (letterBodyContainer != null) {
+                letterBodyContainer.addView(rowLayout);
+            } else {
+                addView(rowLayout);
+            }
         }
 
         if (showExtraPortraitKeys && !isLandscape(getContext())) {
@@ -4062,12 +4095,8 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("TAB", "", 0x2B, "2B", 1f, R.drawable.keyboard_tab_24, 0f, false, false, -1, true), 1, 2, 3));
         keys.add(fixedStripSlotKey(new Key("UP", "", 0x52, "52", 1f, R.drawable.keyboard_arrow_up_24, 0f, false, false, -1, true), 1, 2, 4));
         keys.add(fixedStripSlotKey(new Key("ENTER", "", 0x28, "28", 1f, R.drawable.keyboard_return_24px, 0f, false, false, -1, true), 1, 2, 5));
-        // Row 2 col 7: empty slot (KM Pro input mode is header-only; was PH1 / KEY_IME_TOGGLE).
-        keys.add(fixedStripSlotKey(
-                new Key("", "", KEY_NOOP_PLACEHOLDER, "", 1f, 0, 0f, false, false, -1, true),
-                1,
-                2,
-                6));
+        // Row 2 col 7: secondary layout toggle (portrait BI/IME, landscape Full/Split).
+        keys.add(fixedStripSlotKey(buildKmProSecondaryLayoutToggleKey(), 1, 2, 6));
         // Row 3: ESC, SHIFT, DEL, Left(icon), Down(icon), Right(icon), local Fn toggle
         keys.add(fixedStripSlotKey(new Key("ESC", "", 0x29, "29", 1f, 0, 0f, false, false, -1, true), 1, 3, 0));
         keys.add(fixedStripSlotKey(new Key("SHIFT", "", 0xE1, "E1", 1f, R.drawable.shift_24px, 0f, false, false, -1, true), 1, 3, 1));
@@ -4078,6 +4107,28 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
+    }
+
+    private Key buildKmProSecondaryLayoutToggleKey() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return new Key("BI", "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        if (isLandscape(ctx)) {
+            boolean split = KmProSubmodePrefs.isLandscapeSplit(ctx);
+            String label =
+                    split
+                            ? ctx.getString(R.string.km_pro_secondary_toggle_split_short)
+                            : ctx.getString(R.string.km_pro_secondary_toggle_full_short);
+            return new Key(label, "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        boolean ime = KmProSubmodePrefs.isPortraitImeSurface(ctx);
+        // Action-oriented labels: show "IME" while built-in is visible; show "BI" while system IME is up.
+        String label =
+                ime
+                        ? ctx.getString(R.string.km_pro_secondary_toggle_built_in_short)
+                        : ctx.getString(R.string.km_pro_secondary_toggle_ime_short);
+        return new Key(label, "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
     }
 
     private List<Key> buildFixedTopRowsPage2() {
@@ -7091,6 +7142,13 @@ public class CustomKeyboardView extends LinearLayout {
 
         if (isTopShortcutToggleKey(key)) {
             cycleTopShortcutDisplayMode();
+            return;
+        }
+
+        if (key.code == KEY_IME_TOGGLE) {
+            if (onKmProSecondaryLayoutToggleListener != null) {
+                onKmProSecondaryLayoutToggleListener.onRequestToggle(this);
+            }
             return;
         }
 

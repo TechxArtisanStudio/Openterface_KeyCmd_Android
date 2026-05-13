@@ -164,24 +164,6 @@
 
             </LinearLayout>
 
-            <!-- Toggle Handle (right side) -->
-            <LinearLayout
-                android:id="@+id/toggle_handle"
-                android:layout_width="@dimen/toggle_handle_width_landscape"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:background="@color/background_light"
-                android:clickable="true"
-                android:focusable="true">
-
-                <View
-                    android:id="@+id/toggle_handle_pill"
-                    android:layout_width="4dp"
-                    android:layout_height="40dp"
-                    android:background="@drawable/toggle_handle_pill"/>
-
-            </LinearLayout>
-
         </LinearLayout>
 
         <!-- Right column: top shortcuts + right keyboard -->

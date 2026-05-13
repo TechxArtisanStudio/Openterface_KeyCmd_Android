@@ -33,6 +33,7 @@ import android.widget.ImageView;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -70,6 +71,7 @@ import com.openterface.fragment.PresentationFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329HostLockQuery;
 import com.openterface.keymod.hid.Ch9329InboundParser;
@@ -179,6 +181,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private ImeSavedTextFragment.Host imeSavedTextHost;
     @Nullable
     private ImageButton kmProSetupHeaderButton;
+    @Nullable
+    private HorizontalScrollView kmProHeaderTabsScroll;
+    @Nullable
+    private TextView kmProHeaderTabKeyboard;
+    @Nullable
+    private TextView kmProHeaderTabNumpad;
+    @Nullable
+    private TextView kmProHeaderTabCompose;
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
                 @Override
@@ -583,6 +593,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
         kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
         applyHeaderRightClusterNavInsets();
+        setupKmProHeaderSubmodeTabs();
 
         // Display app version in sidebar footer
         TextView versionText = findViewById(R.id.version_text);
@@ -655,6 +666,59 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 && imeSavedTextOverlay != null
                 && imeSavedTextOverlay.getVisibility() == View.VISIBLE) {
             hideImeSavedTextOverlay();
+        }
+        applyKmProHeaderSubmodeChrome(f);
+    }
+
+    private void setupKmProHeaderSubmodeTabs() {
+        kmProHeaderTabsScroll = findViewById(R.id.km_pro_header_tabs_scroll);
+        kmProHeaderTabKeyboard = findViewById(R.id.km_pro_header_tab_keyboard);
+        kmProHeaderTabNumpad = findViewById(R.id.km_pro_header_tab_numpad);
+        kmProHeaderTabCompose = findViewById(R.id.km_pro_header_tab_compose);
+        if (kmProHeaderTabKeyboard != null) {
+            kmProHeaderTabKeyboard.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_KEYBOARD));
+        }
+        if (kmProHeaderTabNumpad != null) {
+            kmProHeaderTabNumpad.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_NUMPAD));
+        }
+        if (kmProHeaderTabCompose != null) {
+            kmProHeaderTabCompose.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_COMPOSE));
+        }
+    }
+
+    private void onKmProHeaderSubmodeTabClicked(@NonNull String submodeKey) {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).applyKmProSubmodeFromHost(submodeKey);
+        }
+        syncKmProHeaderTabSelectionUi();
+    }
+
+    /** Updates selected state for KM Pro header tabs from {@link KmProSubmodePrefs}. */
+    public void syncKmProHeaderTabSelectionUi() {
+        if (kmProHeaderTabKeyboard == null) {
+            return;
+        }
+        String sub = KmProSubmodePrefs.getSubmode(this);
+        kmProHeaderTabKeyboard.setSelected(KmProSubmodePrefs.SUBMODE_KEYBOARD.equals(sub));
+        if (kmProHeaderTabNumpad != null) {
+            kmProHeaderTabNumpad.setSelected(KmProSubmodePrefs.SUBMODE_NUMPAD.equals(sub));
+        }
+        if (kmProHeaderTabCompose != null) {
+            kmProHeaderTabCompose.setSelected(KmProSubmodePrefs.SUBMODE_COMPOSE.equals(sub));
+        }
+    }
+
+    private void applyKmProHeaderSubmodeChrome(@Nullable Fragment f) {
+        boolean show = f instanceof CompositeFragment;
+        if (kmProHeaderTabsScroll != null) {
+            kmProHeaderTabsScroll.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        if (show) {
+            syncKmProHeaderTabSelectionUi();
         }
     }
 

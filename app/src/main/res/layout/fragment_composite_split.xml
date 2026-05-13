@@ -34,7 +34,7 @@
             android:theme="@style/ButtonTheme"
             app:showGuiHidKey="false"/>
 
-        <!-- Touchpad Section (center): pad + optional mouse keys, then toggle handle -->
+        <!-- Touchpad Section (center): pad + optional mouse keys -->
         <LinearLayout
             android:id="@+id/touchpad_section"
             android:layout_width="match_parent"
@@ -155,24 +155,6 @@
                 </LinearLayout>
 
                 <include layout="@layout/include_pro_touchpad_mouse_keys" />
-
-            </LinearLayout>
-
-            <!-- Toggle Handle (right side) -->
-            <LinearLayout
-                android:id="@+id/toggle_handle"
-                android:layout_width="@dimen/toggle_handle_height"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:background="@color/background_light"
-                android:clickable="true"
-                android:focusable="true">
-
-                <View
-                    android:id="@+id/toggle_handle_pill"
-                    android:layout_width="40dp"
-                    android:layout_height="4dp"
-                    android:background="@drawable/toggle_handle_pill"/>
 
             </LinearLayout>
 

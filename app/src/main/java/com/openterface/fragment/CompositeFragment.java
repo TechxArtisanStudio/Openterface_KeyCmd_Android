@@ -23,8 +23,10 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.inputmethod.InputMethodManager;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -37,9 +39,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.openterface.keymod.BluetoothService;
-import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CustomKeyboardView;
 import com.openterface.keymod.hid.MouseRelHidTransport;
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 import com.openterface.keymod.touchpad.TouchpadMouseStripBinder;
 import com.openterface.keymod.MainActivity;
@@ -48,6 +50,7 @@ import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.TouchPadView;
+import com.openterface.keymod.util.KmProImeDirectSendController;
 import com.openterface.keymod.util.TouchPadHaptics;
 import com.openterface.keymod.util.TouchPadHelpDialog;
 import com.openterface.keymod.util.TouchPadPointerPhase;
@@ -75,8 +78,9 @@ public class CompositeFragment extends Fragment {
     private TouchPadView touchPad;
     private LinearLayout rootLayout;
     private LinearLayout touchpadSection;
-    private LinearLayout toggleHandle;
-    private View toggleHandlePill;
+    @Nullable private LinearLayout kmProKeyboardSlot;
+    @Nullable private EditText kmProImeHost;
+    @Nullable private KmProImeDirectSendController kmProImeDirectSend;
     private TextView touchPadTips;
     /** Normal layout only; null while split layout is shown. */
     private View touchPadInfoButton;
@@ -91,7 +95,6 @@ public class CompositeFragment extends Fragment {
     private FrameLayout contentContainer;
     private LinearLayout splitLeftColumn;
     private LinearLayout splitRightColumn;
-    private View splitToggleHandleView;
     private FrameLayout splitTopLeftFrame;
     private FrameLayout splitTopRightFrame;
     /** Inflated split layout root (landscape {@code fragment_composite_split}). */
@@ -135,6 +138,8 @@ public class CompositeFragment extends Fragment {
 
     private enum DisplayMode { BOTH, KEYBOARD, TOUCHPAD, SPLIT }
     private DisplayMode displayMode = DisplayMode.BOTH;
+    private enum ProSubmode { KEYBOARD, NUMPAD, COMPOSE }
+    private ProSubmode currentSubmode = ProSubmode.KEYBOARD;
 
     /** Keyboard &amp; Mouse Pro: swipe-up host modifier locks (separate from KM Basic’s controller). */
     private final KmBasicHoldLockController proHoldLockController = new KmBasicHoldLockController();
@@ -937,12 +942,9 @@ public class CompositeFragment extends Fragment {
                 TouchPadTipsFormatter.buildCompact(requireContext(), isDragMode, pointerPhase));
     }
 
-    /** Portrait keyboard-only strip: touchpad + numpad; gesture help UI is suppressed. */
+    /** Numpad strip: touchpad + numpad grid; gesture help UI is suppressed (portrait or landscape). */
     private boolean isPortraitNumpadTouchpadMode() {
-        if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_PORTRAIT) {
-            return false;
-        }
-        return displayMode == DisplayMode.KEYBOARD;
+        return currentSubmode == ProSubmode.NUMPAD && displayMode == DisplayMode.KEYBOARD;
     }
 
     private void applyPortraitNumpadTouchpadChrome() {
@@ -1065,13 +1067,12 @@ public class CompositeFragment extends Fragment {
         View normalView = inflater.inflate(R.layout.fragment_composite, contentContainer, false);
         contentContainer.addView(normalView);
 
+        currentSubmode = loadPersistedSubmode();
+        displayMode = loadPersistedLandscapeLayout();
         setupNormalViews(normalView);
         applyOrientationLayout();
         applyDisplayMode();
-
-        if (toggleHandle != null) {
-            toggleHandle.setOnClickListener(v -> cycleDisplayMode());
-        }
+        syncMainActivityKmProTabs();
 
         if (keyboardView != null && port != null) {
             keyboardView.setPort(port);
@@ -1085,6 +1086,12 @@ public class CompositeFragment extends Fragment {
         bindProHoldLockControllerToKeyboardViews();
 
         return contentContainer;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        syncMainActivityKmProTabs();
     }
 
     @Override
@@ -1115,6 +1122,11 @@ public class CompositeFragment extends Fragment {
                 ((ViewGroup) parent).removeView(splitTouchPadBottomWashOverlay);
             }
             splitTouchPadBottomWashOverlay = null;
+        }
+        hideKmProImeSurface();
+        if (kmProImeDirectSend != null) {
+            kmProImeDirectSend.detach();
+            kmProImeDirectSend = null;
         }
         super.onDestroyView();
         clearKeyboardOsListeners();
@@ -1154,10 +1166,20 @@ public class CompositeFragment extends Fragment {
         kbdView.setOnTopModeShortcutListener(mode -> ((MainActivity) requireActivity()).switchToLaunchMode(mode));
     }
 
+    private void registerSecondaryLayoutToggleListener(@Nullable CustomKeyboardView kbdView) {
+        if (kbdView == null) {
+            return;
+        }
+        kbdView.setOnKmProSecondaryLayoutToggleListener(source -> onSecondaryLayoutToggleRequested());
+    }
+
     private void setupNormalViews(View view) {
         rootLayout = view.findViewById(R.id.composite_root);
-        setupCompositeImeRootInsets(rootLayout);
+        kmProKeyboardSlot = view.findViewById(R.id.km_pro_keyboard_slot);
+        kmProImeHost = view.findViewById(R.id.km_pro_ime_host);
         keyboardView = view.findViewById(R.id.keyboard_view);
+        View imeInsetTarget = kmProKeyboardSlot != null ? kmProKeyboardSlot : rootLayout;
+        setupCompositeImeRootInsets(imeInsetTarget);
         touchPad = view.findViewById(R.id.touchPad);
         touchpadSection = view.findViewById(R.id.touchpad_section);
         proTouchpadChromeRoot = view.findViewById(R.id.pro_touchpad_chrome_root);
@@ -1167,14 +1189,20 @@ public class CompositeFragment extends Fragment {
         proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
-        toggleHandle = view.findViewById(R.id.toggle_handle);
-        toggleHandlePill = view.findViewById(R.id.toggle_handle_pill);
         touchPadTips = view.findViewById(R.id.touchPadTips);
         touchPadInfoButton = view.findViewById(R.id.touchPadInfo);
         setupBottomWashOverlays();
         updateTouchPadTips();
         registerProTouchpadSectionLayoutListener();
+        registerSecondaryLayoutToggleListener(keyboardView);
         touchpadSection.post(CompositeFragment.this::refreshProTouchpadChromeFromKmProSetup);
+        if (kmProImeHost != null) {
+            if (kmProImeDirectSend != null) {
+                kmProImeDirectSend.detach();
+            }
+            kmProImeDirectSend = new KmProImeDirectSendController(this);
+            kmProImeDirectSend.attach(kmProImeHost);
+        }
     }
 
     private void setupSplitViews(View view) {
@@ -1192,16 +1220,10 @@ public class CompositeFragment extends Fragment {
         splitTouchpadSection = touchpadSection;
         splitTouchPad = view.findViewById(R.id.touchPad);
         splitTouchPadTips = view.findViewById(R.id.touchPadTips);
-        View splitToggleHandle = view.findViewById(R.id.toggle_handle);
-        splitToggleHandleView = splitToggleHandle;
         setupBottomWashOverlays();
 
         if (splitTouchPadTips != null) {
             updateSplitTouchPadTips();
-        }
-
-        if (splitToggleHandle != null) {
-            splitToggleHandle.setOnClickListener(v -> cycleDisplayMode());
         }
 
         // Suppress top panels inside each keyboard half by setting split part
@@ -1215,6 +1237,7 @@ public class CompositeFragment extends Fragment {
             // Register for OS change updates
             registerKeyboardOsListener(keyboardViewLeft);
             registerTopModeShortcutListener(keyboardViewLeft);
+            registerSecondaryLayoutToggleListener(keyboardViewLeft);
             // Create shared top panel from the left keyboard
             if (splitTopLeftFrame != null && splitTopRightFrame != null) {
                 keyboardViewLeft.createSplitLandscapeTopPanel(
@@ -1239,6 +1262,7 @@ public class CompositeFragment extends Fragment {
             // Register for OS change updates
             registerKeyboardOsListener(keyboardViewRight);
             registerTopModeShortcutListener(keyboardViewRight);
+            registerSecondaryLayoutToggleListener(keyboardViewRight);
         }
         bindProHoldLockControllerToKeyboardViews();
 
@@ -1359,82 +1383,280 @@ public class CompositeFragment extends Fragment {
         });
     }
 
-    private void cycleDisplayMode() {
-        normalizeDisplayModeForOrientation();
-        boolean isPortrait =
-                getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
-        if (isPortrait) {
-            switch (displayMode) {
-                case BOTH:
-                    displayMode = DisplayMode.KEYBOARD;
-                    break;
-                case KEYBOARD:
-                case TOUCHPAD:
-                case SPLIT:
-                    displayMode = DisplayMode.BOTH;
-                    break;
+    private boolean isLandscapeOrientation() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    /** NumPad / Compose in landscape use the same vertical composition as portrait. */
+    private boolean usePortraitStyleKmProRootLayout() {
+        if (!isLandscapeOrientation()) {
+            return true;
+        }
+        return currentSubmode == ProSubmode.NUMPAD || currentSubmode == ProSubmode.COMPOSE;
+    }
+
+    @NonNull
+    private static ProSubmode proSubmodeFromPrefKey(@NonNull String key) {
+        if (KmProSubmodePrefs.SUBMODE_NUMPAD.equals(key)) {
+            return ProSubmode.NUMPAD;
+        }
+        if (KmProSubmodePrefs.SUBMODE_COMPOSE.equals(key)) {
+            return ProSubmode.COMPOSE;
+        }
+        return ProSubmode.KEYBOARD;
+    }
+
+    @NonNull
+    private static String prefKeyFromProSubmode(@NonNull ProSubmode submode) {
+        switch (submode) {
+            case NUMPAD:
+                return KmProSubmodePrefs.SUBMODE_NUMPAD;
+            case COMPOSE:
+                return KmProSubmodePrefs.SUBMODE_COMPOSE;
+            case KEYBOARD:
+            default:
+                return KmProSubmodePrefs.SUBMODE_KEYBOARD;
+        }
+    }
+
+    /** Called from {@link MainActivity} header chips. */
+    public void applyKmProSubmodeFromHost(@NonNull String submodeKey) {
+        if (!isAdded()) {
+            return;
+        }
+        ProSubmode next = proSubmodeFromPrefKey(submodeKey);
+        if (next == currentSubmode) {
+            syncMainActivityKmProTabs();
+            return;
+        }
+        currentSubmode = next;
+        KmProSubmodePrefs.setSubmode(requireContext(), prefKeyFromProSubmode(currentSubmode));
+        applyDisplayMode();
+        syncMainActivityKmProTabs();
+    }
+
+    private void syncMainActivityKmProTabs() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).syncKmProHeaderTabSelectionUi();
+        }
+    }
+
+    private void hideKmProImeSurface() {
+        if (!isAdded()) {
+            return;
+        }
+        if (kmProImeDirectSend != null) {
+            kmProImeDirectSend.clearEditorAndState();
+        }
+        if (kmProImeHost != null) {
+            InputMethodManager imm =
+                    (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(kmProImeHost.getWindowToken(), 0);
             }
-        } else {
-            switch (displayMode) {
-                case KEYBOARD:
-                    displayMode = DisplayMode.SPLIT;
-                    break;
-                case SPLIT:
-                    displayMode = DisplayMode.KEYBOARD;
-                    break;
-                case BOTH:
-                case TOUCHPAD:
-                default:
-                    displayMode = DisplayMode.SPLIT;
-                    break;
+            kmProImeHost.clearFocus();
+            kmProImeHost.setVisibility(View.GONE);
+        }
+        if (keyboardView != null && splitRoot == null) {
+            keyboardView.setKmProPortraitLetterBodyVisible(true);
+            if (currentSubmode == ProSubmode.KEYBOARD) {
+                keyboardView.setVisibility(View.VISIBLE);
             }
         }
-        applyDisplayMode();
+    }
+
+    private void showKmProImeSurface() {
+        if (!isAdded() || splitRoot != null || keyboardView == null || kmProImeHost == null) {
+            return;
+        }
+        if (kmProImeDirectSend != null) {
+            kmProImeDirectSend.clearEditorAndState();
+        }
+        keyboardView.setVisibility(View.VISIBLE);
+        keyboardView.setKmProPortraitLetterBodyVisible(false);
+        kmProImeHost.setVisibility(View.VISIBLE);
+        kmProImeHost.requestFocus();
+        InputMethodManager imm =
+                (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            kmProImeHost.post(
+                    () -> imm.showSoftInput(kmProImeHost, InputMethodManager.SHOW_IMPLICIT));
+        }
     }
 
     /**
-     * Landscape Keyboard & Mouse: only keyboard-only and split layouts are offered; coerce legacy
-     * BOTH/TOUCHPAD to SPLIT.
+     * Portrait keyboard submode: swap built-in HID vs system IME in the weighted keyboard slot.
      */
-    private void normalizeDisplayModeForOrientation() {
-        if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
+    private void applyPortraitKeyboardSurface() {
+        if (!isAdded() || splitRoot != null) {
             return;
         }
-        if (displayMode == DisplayMode.BOTH || displayMode == DisplayMode.TOUCHPAD) {
-            displayMode = DisplayMode.SPLIT;
+        if (currentSubmode != ProSubmode.KEYBOARD) {
+            hideKmProImeSurface();
+            return;
+        }
+        if (isLandscapeOrientation()) {
+            hideKmProImeSurface();
+            return;
+        }
+        if (KmProSubmodePrefs.isPortraitImeSurface(requireContext())) {
+            showKmProImeSurface();
+        } else {
+            hideKmProImeSurface();
+        }
+    }
+
+    private ProSubmode loadPersistedSubmode() {
+        return proSubmodeFromPrefKey(KmProSubmodePrefs.getSubmode(requireContext()));
+    }
+
+    private DisplayMode loadPersistedLandscapeLayout() {
+        return KmProSubmodePrefs.isLandscapeSplit(requireContext())
+                ? DisplayMode.SPLIT
+                : DisplayMode.KEYBOARD;
+    }
+
+    private void persistLandscapeLayout(@NonNull DisplayMode mode) {
+        KmProSubmodePrefs.setLandscapeLayoutKey(
+                requireContext(),
+                mode == DisplayMode.SPLIT
+                        ? KmProSubmodePrefs.LAYOUT_SPLIT
+                        : KmProSubmodePrefs.LAYOUT_FULL);
+    }
+
+    private void requestSubmode(@NonNull ProSubmode requestedSubmode) {
+        applyKmProSubmodeFromHost(prefKeyFromProSubmode(requestedSubmode));
+    }
+
+    private void onSecondaryLayoutToggleRequested() {
+        boolean isLandscape = isLandscapeOrientation();
+        if (currentSubmode != ProSubmode.KEYBOARD) {
+            requestSubmode(ProSubmode.KEYBOARD);
+            return;
+        }
+        if (isLandscape) {
+            displayMode = displayMode == DisplayMode.SPLIT ? DisplayMode.KEYBOARD : DisplayMode.SPLIT;
+            persistLandscapeLayout(displayMode);
+            applyDisplayMode();
+            return;
+        }
+        boolean ime = !KmProSubmodePrefs.isPortraitImeSurface(requireContext());
+        KmProSubmodePrefs.setPortraitInputSurface(requireContext(), ime);
+        applyPortraitKeyboardSurface();
+        refreshSecondaryToggleLabels();
+    }
+
+    private void refreshSecondaryToggleLabels() {
+        if (keyboardView != null) {
+            keyboardView.reloadForCurrentOrientation();
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.reloadForCurrentOrientation();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.reloadForCurrentOrientation();
         }
     }
 
     private void applyDisplayMode() {
-        normalizeDisplayModeForOrientation();
+        if (currentSubmode != ProSubmode.KEYBOARD) {
+            hideKmProImeSurface();
+        }
+        boolean isLandscape = isLandscapeOrientation();
+
+        if (currentSubmode == ProSubmode.NUMPAD) {
+            displayMode = DisplayMode.KEYBOARD;
+            ensureNormalLayout();
+            if (touchpadSection != null) {
+                touchpadSection.setVisibility(View.VISIBLE);
+            }
+            if (keyboardView != null) {
+                keyboardView.setVisibility(View.VISIBLE);
+                keyboardView.setShortcutsStripOnly(false);
+                keyboardView.setShowExtraPortraitKeys(true);
+                keyboardView.reloadForCurrentOrientation();
+            }
+            applyOrientationLayout();
+            applyPortraitNumpadTouchpadChrome();
+            syncMainActivityKmProTabs();
+            refreshSecondaryToggleLabels();
+            return;
+        }
+
+        if (currentSubmode == ProSubmode.COMPOSE) {
+            displayMode = DisplayMode.BOTH;
+            ensureNormalLayout();
+            if (touchpadSection != null) {
+                touchpadSection.setVisibility(View.VISIBLE);
+            }
+            if (keyboardView != null) {
+                keyboardView.setVisibility(View.VISIBLE);
+                keyboardView.setShowExtraPortraitKeys(false);
+                keyboardView.setShortcutsStripOnly(true);
+                keyboardView.reloadForCurrentOrientation();
+            }
+            applyOrientationLayout();
+            applyPortraitNumpadTouchpadChrome();
+            syncMainActivityKmProTabs();
+            refreshSecondaryToggleLabels();
+            return;
+        }
+
+        // Keyboard submode
+        if (isLandscape) {
+            if (displayMode != DisplayMode.SPLIT && displayMode != DisplayMode.KEYBOARD) {
+                displayMode = loadPersistedLandscapeLayout();
+            }
+            if (displayMode != DisplayMode.SPLIT) {
+                displayMode = DisplayMode.KEYBOARD;
+            }
+            persistLandscapeLayout(displayMode);
+        } else {
+            displayMode = DisplayMode.BOTH;
+        }
+
         boolean isInSplit = displayMode == DisplayMode.SPLIT;
 
         if (isInSplit) {
+            hideKmProImeSurface();
             ensureSplitLayout();
+            if (keyboardViewLeft != null) {
+                keyboardViewLeft.setShortcutsStripOnly(false);
+                keyboardViewLeft.setShowExtraPortraitKeys(false);
+            }
+            if (keyboardViewRight != null) {
+                keyboardViewRight.setShortcutsStripOnly(false);
+                keyboardViewRight.setShowExtraPortraitKeys(false);
+            }
+            syncMainActivityKmProTabs();
+            refreshSecondaryToggleLabels();
             return;
         }
 
         // Ensure we have the normal layout
         ensureNormalLayout();
 
-        boolean isPortrait =
-                getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
+        boolean portraitLike =
+                !isLandscapeOrientation() || usePortraitStyleKmProRootLayout();
         if (touchpadSection != null) {
-            // Portrait keyboard-only (numpad): show touchpad above grid; landscape KEYBOARD stays touchpad-off.
             boolean showTouchpad =
-                    (isPortrait || displayMode != DisplayMode.KEYBOARD)
+                    (portraitLike || displayMode != DisplayMode.KEYBOARD)
                             && displayMode != DisplayMode.TOUCHPAD;
             touchpadSection.setVisibility(showTouchpad ? View.VISIBLE : View.GONE);
         }
         if (keyboardView != null) {
             keyboardView.setVisibility(
-                displayMode != DisplayMode.TOUCHPAD ? View.VISIBLE : View.GONE);
-
+                    displayMode != DisplayMode.TOUCHPAD ? View.VISIBLE : View.GONE);
+            keyboardView.setShortcutsStripOnly(false);
             keyboardView.reloadForCurrentOrientation();
-            keyboardView.setShowExtraPortraitKeys(displayMode == DisplayMode.KEYBOARD);
+            keyboardView.setShowExtraPortraitKeys(false);
         }
 
+        syncMainActivityKmProTabs();
+        refreshSecondaryToggleLabels();
         applyPortraitNumpadTouchpadChrome();
+        applyPortraitKeyboardSurface();
     }
 
     private void ensureSplitLayout() {
@@ -1444,10 +1666,31 @@ public class CompositeFragment extends Fragment {
             if (normal != null) {
                 contentContainer.removeView(normal);
             }
-            View splitView = LayoutInflater.from(requireContext()).inflate(
-                    R.layout.fragment_composite_split, contentContainer, false);
+            View splitView =
+                    LayoutInflater.from(requireContext())
+                            .inflate(R.layout.fragment_composite_split, contentContainer, false);
             contentContainer.addView(splitView);
-            setupSplitViews(splitView);
+            try {
+                setupSplitViews(splitView);
+            } catch (RuntimeException e) {
+                Log.e(TAG, "KM Pro split layout failed; falling back to full keyboard", e);
+                contentContainer.removeView(splitView);
+                displayMode = DisplayMode.KEYBOARD;
+                persistLandscapeLayout(displayMode);
+                View normalView =
+                        LayoutInflater.from(requireContext())
+                                .inflate(R.layout.fragment_composite, contentContainer, false);
+                contentContainer.addView(normalView);
+                setupNormalViews(normalView);
+                if (keyboardView != null && port != null) {
+                    keyboardView.setPort(port);
+                }
+                registerTopModeShortcutListener(keyboardView);
+                registerKeyboardOsListener(keyboardView);
+                setupTouchPad(touchPad, touchPadTips, touchPadInfoButton);
+                bindProHoldLockControllerToKeyboardViews();
+                applyOrientationLayout();
+            }
         }
 
         // Update split keyboard views
@@ -1480,15 +1723,11 @@ public class CompositeFragment extends Fragment {
             splitLayoutRoot = null;
             splitTouchPadInfoButton = null;
             splitTouchpadSection = null;
-            splitToggleHandleView = null;
 
             View normalView = LayoutInflater.from(requireContext()).inflate(
                     R.layout.fragment_composite, contentContainer, false);
             contentContainer.addView(normalView);
             setupNormalViews(normalView);
-            if (toggleHandle != null) {
-                toggleHandle.setOnClickListener(v -> cycleDisplayMode());
-            }
             if (keyboardView != null && port != null) {
                 keyboardView.setPort(port);
             }
@@ -1504,62 +1743,50 @@ public class CompositeFragment extends Fragment {
         if (splitRoot != null) {
             return;
         }
-        if (rootLayout == null || touchpadSection == null || toggleHandle == null || keyboardView == null) {
+        if (rootLayout == null || touchpadSection == null || keyboardView == null) {
             return;
         }
 
-        boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        if (isLandscape) {
-            rootLayout.setOrientation(LinearLayout.HORIZONTAL);
+        View keyboardColumn = kmProKeyboardSlot != null ? kmProKeyboardSlot : keyboardView;
 
-            touchpadSection.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
-
-            toggleHandle.setLayoutParams(new LinearLayout.LayoutParams(
-                    getResources().getDimensionPixelSize(R.dimen.toggle_handle_width_landscape),
-                    ViewGroup.LayoutParams.MATCH_PARENT));
-            toggleHandle.setGravity(android.view.Gravity.CENTER);
-
-            keyboardView.setLayoutParams(new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
-
-            if (toggleHandlePill != null) {
-                toggleHandlePill.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), dpToPx(40)));
-            }
-        } else {
+        if (usePortraitStyleKmProRootLayout()) {
             rootLayout.setOrientation(LinearLayout.VERTICAL);
 
-            // Portrait numpad + touchpad: touchpad : numpad (keyboard strip) = 1 : 4.
-            // Portrait BOTH + built-in HID: PORTRAIT_BOTH_BUILT_IN_*.
-            float touchpadWeight = displayMode == DisplayMode.KEYBOARD ? 1f : 1.5f;
-            float keyboardWeight = displayMode == DisplayMode.KEYBOARD ? 4f : 1.0f;
-            if (displayMode == DisplayMode.BOTH) {
+            float touchpadWeight;
+            float keyboardWeight;
+
+            if (currentSubmode == ProSubmode.NUMPAD) {
+                touchpadWeight = 1f;
+                keyboardWeight = 4f;
+            } else if (currentSubmode == ProSubmode.COMPOSE) {
                 touchpadWeight = PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT;
                 keyboardWeight = PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT;
+            } else {
+                touchpadWeight = displayMode == DisplayMode.KEYBOARD ? 1f : 1.5f;
+                keyboardWeight = displayMode == DisplayMode.KEYBOARD ? 4f : 1.0f;
+                if (displayMode == DisplayMode.BOTH) {
+                    touchpadWeight = PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT;
+                    keyboardWeight = PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT;
+                }
             }
 
             touchpadSection.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, touchpadWeight));
 
-            toggleHandle.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    getResources().getDimensionPixelSize(R.dimen.toggle_handle_height)));
-            toggleHandle.setGravity(android.view.Gravity.CENTER);
-
-            keyboardView.setLayoutParams(new LinearLayout.LayoutParams(
+            keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, keyboardWeight));
+        } else {
+            rootLayout.setOrientation(LinearLayout.HORIZONTAL);
 
-            if (toggleHandlePill != null) {
-                toggleHandlePill.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(40), dpToPx(4)));
-            }
+            touchpadSection.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
+
+            keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
         }
         if (touchpadSection != null) {
             touchpadSection.post(this::applyProTouchpadMouseLayoutCompactOrComfortable);
         }
-    }
-
-    private int dpToPx(int dp) {
-        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     /** Entering landscape: ensure KM Pro keyboard stays on built-in HID layout. */
@@ -1578,17 +1805,10 @@ public class CompositeFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             applyKmProLandscapeBuiltInKeyboardGuard();
+            if (KmProSubmodePrefs.isPortraitImeSurface(requireContext())) {
+                KmProSubmodePrefs.setPortraitInputSurface(requireContext(), false);
+            }
         }
-        boolean isPortrait = newConfig.orientation == Configuration.ORIENTATION_PORTRAIT;
-
-        if (displayMode == DisplayMode.SPLIT && isPortrait) {
-            displayMode = DisplayMode.BOTH;
-            ensureNormalLayout();
-            applyDisplayMode();
-            return;
-        }
-
-        normalizeDisplayModeForOrientation();
         applyDisplayMode();
         if (displayMode == DisplayMode.SPLIT) {
             if (keyboardViewLeft != null) {
