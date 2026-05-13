@@ -100,6 +100,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.Executors;
 
 public class CustomKeyboardView extends LinearLayout {
@@ -2165,24 +2167,41 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Resolves {@code @string/…} or numeric {@code @12345} references in keyboard layout XML
-     * (same rules as {@code android:keyLabel}). Raw literals are returned unchanged.
+     * {@code @package:string/name} as emitted for some compiled {@code res/xml} attrs (not only
+     * {@code @string/name}). Optional package defaults to the app package.
+     */
+    private static final Pattern KEYBOARD_LAYOUT_STRING_RES =
+            Pattern.compile("^@(?:([^:]+):)?string/(.+)$");
+
+    /**
+     * Resolves string resource references in keyboard layout XML: {@code @string/name},
+     * {@code @package:string/name}, or numeric {@code @12345}. Raw literals are returned unchanged.
      */
     private static String resolveKeyboardLayoutStringAttr(Context context, String value) {
         if (value == null || value.isEmpty()) {
             return "";
         }
+        if (!value.startsWith("@")) {
+            return value;
+        }
         try {
-            if (value.startsWith("@") && value.length() > 1) {
+            if (value.length() > 1) {
                 String idStr = value.substring(1);
                 try {
                     int resId = Integer.parseInt(idStr);
                     return context.getResources().getString(resId);
                 } catch (NumberFormatException ignored) {
-                    // fall through to @string/name
+                    // fall through
                 }
-                String resourceName = value.startsWith("@string/") ? value.substring("@string/".length()) : value;
-                int resId = context.getResources().getIdentifier(resourceName, "string", context.getPackageName());
+            }
+            Matcher m = KEYBOARD_LAYOUT_STRING_RES.matcher(value);
+            if (m.matches()) {
+                String pkg = m.group(1);
+                String name = m.group(2);
+                if (pkg == null || pkg.isEmpty()) {
+                    pkg = context.getPackageName();
+                }
+                int resId = context.getResources().getIdentifier(name, "string", pkg);
                 if (resId != 0) {
                     return context.getResources().getString(resId);
                 }
@@ -3347,7 +3366,10 @@ public class CustomKeyboardView extends LinearLayout {
         AlternateOption pipe = mapAsciiAlternate("|");
         if (bs != null) {
             AlternateOption up = slots[AlternatePopupGeometry.SLOT_UP];
-            if (up == null || "|".equals(up.display)) {
+            // Keep explicit "?" on Up (shift-/); do not replace with "\" (KM Pro portrait / key).
+            if (up != null && "?".equals(up.display)) {
+                // leave Up as-is
+            } else if (up == null || "|".equals(up.display)) {
                 slots[AlternatePopupGeometry.SLOT_UP] = bs;
             }
         }
