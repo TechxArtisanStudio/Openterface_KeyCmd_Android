@@ -184,6 +184,9 @@ public class CustomKeyboardView extends LinearLayout {
     private boolean isCtrlLeftLocked = false;
     private boolean isAltLeftLocked = false;
     private boolean isWinLeftLocked = false;
+    private boolean isCtrlRightLocked = false;
+    private boolean isAltRightLocked = false;
+    private boolean isWinRightLocked = false;
     @Nullable private KmBasicHoldLockController holdLockController;
     private final KmBasicHoldLockController.Listener proHoldLockListener =
             controller -> {
@@ -664,9 +667,20 @@ public class CustomKeyboardView extends LinearLayout {
                     ? R.xml.keyboard_lower_landscape
                     : R.xml.keyboard_lower_portrait;
         } else {
-            keyboardResId = isLandscape(context)
-                    ? R.xml.keyboard_lower_landscape_no_gui
-                    : R.xml.keyboard_lower_portrait_no_gui;
+            if (isLandscape(context)) {
+                String targetOs =
+                        context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                                .getString("target_os", "macos");
+                if ("macos".equals(targetOs)) {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui_mac;
+                } else if ("windows".equals(targetOs) || "linux".equals(targetOs)) {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui_pc;
+                } else {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui;
+                }
+            } else {
+                keyboardResId = R.xml.keyboard_lower_portrait_no_gui;
+            }
         }
         lowerKeys = parseKeyboard(context, keyboardResId);
         applyTargetOsLabels(context);
@@ -715,6 +729,17 @@ public class CustomKeyboardView extends LinearLayout {
                             : context.getString(R.string.Alt);
                     key.iconResId = 0;
                 } else if (key.code == 0xE3) {
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
+                } else if (key.code == 0xE4) {
+                    key.label = context.getString(R.string.modifier_control);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE6) {
+                    key.label = "macos".equals(targetOs)
+                            ? context.getString(R.string.modifier_option)
+                            : context.getString(R.string.Alt);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE7) {
                     key.label = guiLabel;
                     key.iconResId = guiIconResId;
                 } else if ("Win".equals(key.label)) {
@@ -783,6 +808,20 @@ public class CustomKeyboardView extends LinearLayout {
                     } else if (key.code == 0x2A) {
                         key.label = context.getString(R.string.BackSpace);
                         key.iconResId = R.drawable.backspace;
+                    } else if (key.code == 0xE4) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE6) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE7) {
+                        key.label = guiNameLabel;
+                        key.iconResId = guiIconResId;
+                    } else if (key.code == 0x65) {
+                        key.label = "";
+                        key.iconResId = R.drawable.ic_list_alt_24;
                     }
                 } else if (mode == DISPLAY_MODE_NAME || mode == DISPLAY_MODE_CHORD) {
                     if (key.code == 0x2B) {
@@ -810,6 +849,20 @@ public class CustomKeyboardView extends LinearLayout {
                         key.iconResId = 0;
                     } else if (key.code == 0x2A) {
                         key.label = context.getString(R.string.key_display_name_bksp);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE4) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE6) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE7) {
+                        key.label = guiNameLabel;
+                        key.iconResId = 0;
+                    } else if (key.code == 0x65) {
+                        key.label = "App";
                         key.iconResId = 0;
                     }
                 }
@@ -973,6 +1026,9 @@ public class CustomKeyboardView extends LinearLayout {
             isCtrlLeftLocked = false;
             isAltLeftLocked = false;
             isWinLeftLocked = false;
+            isCtrlRightLocked = false;
+            isAltRightLocked = false;
+            isWinRightLocked = false;
             syncModifierStates();
             updateKeyboard();
         }
@@ -1141,7 +1197,11 @@ public class CustomKeyboardView extends LinearLayout {
             return false;
         }
         int c = key.code;
-        return c == 0xE0 || c == 0xE1 || c == 0xE2 || c == 0xE3;
+        if (c == 0xE0 || c == 0xE1 || c == 0xE2 || c == 0xE3) {
+            return true;
+        }
+        // KM Pro no-GUI landscape: right extended modifiers (CtrlR / AltR / WinR).
+        return !showGuiHidKey && (c == 0xE4 || c == 0xE6 || c == 0xE7);
     }
 
     private void tapProModifierMomentary(Key key) {
@@ -1714,6 +1774,9 @@ public class CustomKeyboardView extends LinearLayout {
         splitPartner.isCtrlLeftLocked = isCtrlLeftLocked;
         splitPartner.isAltLeftLocked = isAltLeftLocked;
         splitPartner.isWinLeftLocked = isWinLeftLocked;
+        splitPartner.isCtrlRightLocked = isCtrlRightLocked;
+        splitPartner.isAltRightLocked = isAltRightLocked;
+        splitPartner.isWinRightLocked = isWinRightLocked;
         splitPartner.post(() -> splitPartner.updateKeyboard());
     }
 
@@ -2261,7 +2324,9 @@ public class CustomKeyboardView extends LinearLayout {
         return noGuiKeyboard
                 && key != null
                 && (key.code == 0xE0 || key.code == 0xE2 || key.code == 0xE3
-                        || key.code == 0x2C || key.code == 0xE1 || key.code == 0x28 || key.code == 0x2A);
+                        || key.code == 0xE4 || key.code == 0xE6 || key.code == 0xE7
+                        || key.code == 0x2C || key.code == 0xE1 || key.code == 0x28 || key.code == 0x2A
+                        || key.code == 0x65);
     }
 
     private float baseKeycapTextSpForKey(Key key) {
@@ -2377,6 +2442,8 @@ public class CustomKeyboardView extends LinearLayout {
             currentKeys = expandSpaceBarForSplitRows(currentKeys);
             List<List<Key>> splitKeys = new ArrayList<>();
             for (List<Key> row : currentKeys) {
+                // Even-sized rows split evenly (e.g. KM Pro landscape no-GUI bottom row has 8 keys →
+                // mid 4: left half Fn…LGui, right half Space…RCtrl only; Space is not shared across halves).
                 int mid = (row.size() + 1) / 2; // round up for odd rows
                 List<Key> sideKeys = new ArrayList<>();
                 if (splitPart == SPLIT_LEFT) {
@@ -2497,6 +2564,8 @@ public class CustomKeyboardView extends LinearLayout {
                         || key.label.equals("Right_arrow")
                         || (key.label.equals("Super") && key.iconResId != 0)
                         || (key.code == 0xE3 && key.iconResId != 0)
+                        || (key.code == 0xE7 && key.iconResId != 0)
+                        || (key.code == 0x65 && key.iconResId != 0)
                         || (key.code == 0x2B && key.iconResId != 0);
                 if (shouldUseIconButton) {
                     ImageButton imageButton = new ImageButton(getContext());
@@ -2510,7 +2579,13 @@ public class CustomKeyboardView extends LinearLayout {
                         imageButton.setContentDescription(
                                 getContext().getString(R.string.Space_Button));
                     }
-                    if ((key.code == 0xE3 && isWinLeftLocked) || (key.code == 0xE1 && isShiftLeftLocked)) {
+                    if (key.code == 0x65 && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.km_basic_cd_application_key));
+                    }
+                    if ((key.code == 0xE3 && isWinLeftLocked)
+                            || (key.code == 0xE7 && isWinRightLocked)
+                            || (key.code == 0xE1 && isShiftLeftLocked)) {
                         imageButton.setBackgroundResource(R.drawable.press_button_background);
                     } else {
                         imageButton.setBackgroundResource(R.drawable.key_background);
@@ -2530,6 +2605,8 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                         if ("Win".equals(key.label) || "Cmd".equals(key.label) || "Super".equals(key.label)
                                 || key.code == 0xE3
+                                || key.code == 0xE7
+                                || key.code == 0x65
                                 || (key.code == 0x2B && key.iconResId != 0)
                                 || key.code == 0x2A || key.code == 0xE1 || key.code == 0x28
                                 || (key.code == 0x2C && key.iconResId != 0)
@@ -3438,6 +3515,9 @@ public class CustomKeyboardView extends LinearLayout {
         combinedValue += isShiftLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         if ((option.modifierMask & MOD_CTRL) != 0) {
             combinedValue |= parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
         }
@@ -5011,6 +5091,9 @@ public class CustomKeyboardView extends LinearLayout {
             case 0xE1: return isShiftLeftLocked;
             case 0xE2: return isAltLeftLocked;
             case 0xE3: return isWinLeftLocked;
+            case 0xE4: return isCtrlRightLocked;
+            case 0xE6: return isAltRightLocked;
+            case 0xE7: return isWinRightLocked;
             default: return false;
         }
     }
@@ -5029,6 +5112,15 @@ public class CustomKeyboardView extends LinearLayout {
                 break;
             case 0xE3:
                 isWinLeftLocked = locked;
+                break;
+            case 0xE4:
+                isCtrlRightLocked = locked;
+                break;
+            case 0xE6:
+                isAltRightLocked = locked;
+                break;
+            case 0xE7:
+                isWinRightLocked = locked;
                 break;
             default:
                 return;
@@ -5053,6 +5145,9 @@ public class CustomKeyboardView extends LinearLayout {
         combinedValue += isShiftLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         if ((fnModifierMask & MOD_CTRL) != 0) {
             combinedValue |= parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
         }
@@ -7420,6 +7515,9 @@ public class CustomKeyboardView extends LinearLayout {
         combinedValue += effectiveShiftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         // Extra numpad Fn mapping replaces the keycap meaning (e.g. Tab→Save); do not add base requiresShift
         // or we would send Shift+Tab instead of Tab, Shift+# alongside Fn modifiers, etc.
         if (key.requiresShift && extraNumpadFn == null) {
