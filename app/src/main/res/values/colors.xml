@@ -52,6 +52,10 @@
     <color name="km_basic_touchpad_pattern_soft_shadow">#0B000000</color>
     <color name="km_basic_touchpad_pattern_glow">#14FFFFFF</color>
     <color name="km_basic_touchpad_pattern_sink">#12000000</color>
+    <!-- KM Basic numpad idle: clearer edges on white keys vs background_light; slightly stronger weave than touchpad tokens. -->
+    <color name="km_basic_numpad_key_stroke">#2A000000</color>
+    <color name="km_basic_numpad_pattern_soft_light">#1AFFFFFF</color>
+    <color name="km_basic_numpad_pattern_soft_shadow">#10000000</color>
     <color name="touchpad_help_overlay_panel">#F5FFFFFF</color>
     <color name="sidebar_background">#FFFFFFFF</color>
     <color name="sidebar_item_text">#FF212121</color>

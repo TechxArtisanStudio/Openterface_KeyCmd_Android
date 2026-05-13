@@ -471,13 +471,14 @@
             android:layout_columnWeight="2"
             android:layout_rowWeight="3"
             android:layout_gravity="fill"
-            android:background="@drawable/key_background"
+            android:background="@drawable/km_basic_numpad_key_background"
             android:layout_margin="4dp"
             android:tag="NUMPAD_0">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:duplicateParentState="true"
                 android:adjustViewBounds="true"
                 android:maxWidth="@dimen/km_basic_numpad_zero_wordmark_max_width"
                 android:maxHeight="@dimen/km_basic_numpad_zero_wordmark_max_height"
@@ -488,7 +489,7 @@
                 android:paddingBottom="4dp"
                 android:scaleType="fitCenter"
                 app:srcCompat="@drawable/ic_openterface_wordmark"
-                app:tint="@color/text_secondary" />
+                app:tint="@color/basic_key_label_color" />
         </FrameLayout>
         <TextView
             style="@style/Widget.KeyMod.BasicNumpadCell"

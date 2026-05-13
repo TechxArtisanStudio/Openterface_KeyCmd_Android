@@ -54,4 +54,9 @@
     <color name="km_basic_touchpad_pattern_sink">#1C000000</color>
     <color name="touchpad_help_overlay_panel">#EE2C2C2E</color>
 
+    <!-- KM Basic numpad: keep touchpad weave strength; no extra stroke (dark keys already separate from surface). -->
+    <color name="km_basic_numpad_key_stroke">#00000000</color>
+    <color name="km_basic_numpad_pattern_soft_light">@color/km_basic_touchpad_pattern_soft_light</color>
+    <color name="km_basic_numpad_pattern_soft_shadow">@color/km_basic_touchpad_pattern_soft_shadow</color>
+
 </resources>
