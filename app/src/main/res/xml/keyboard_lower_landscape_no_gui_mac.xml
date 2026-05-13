@@ -38,26 +38,27 @@
     </Row>
 
     <Row>
-        <!-- Shift row width ratio 1.8 : 1×7 : 3 (Enter on no-GUI; / on GUI). -->
-        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="18%p"/>
-        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="',,," custom:keyCornerHint="'" android:keyWidth="10%p"/>
-        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="&#34;,,," custom:keyCornerHint="&#34;" android:keyWidth="10%p"/>
-        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,,," custom:keyCornerHint=";" android:keyWidth="10%p"/>
-        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,,," custom:keyCornerHint=":" android:keyWidth="10%p"/>
-        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="/,,," custom:keyCornerHint="/" android:keyWidth="10%p"/>
-        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&#124;,,," custom:keyCornerHint="&#124;" android:keyWidth="10%p"/>
-        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="\\,,," custom:keyCornerHint="\\" android:keyWidth="10%p"/>
-        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="30%p"/>
+        <!-- Shift row: / same as portrait full keyboard; widths sum 100% (16 : 9×7 : 9 : 12). -->
+        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="16%p"/>
+        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="',,," custom:keyCornerHint="'" android:keyWidth="9%p"/>
+        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="&#34;,,," custom:keyCornerHint="&#34;" android:keyWidth="9%p"/>
+        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,,," custom:keyCornerHint=";" android:keyWidth="9%p"/>
+        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,,," custom:keyCornerHint=":" android:keyWidth="9%p"/>
+        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="/,,," custom:keyCornerHint="/" android:keyWidth="9%p"/>
+        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&#124;,,," custom:keyCornerHint="&#124;" android:keyWidth="9%p"/>
+        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="\\,,," custom:keyCornerHint="\\" android:keyWidth="9%p"/>
+        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="&#92;,&#124;" custom:keyCornerHint="&#92;" android:keyWidth="9%p"/>
+        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="12%p"/>
     </Row>
 
     <!-- macOS: no Fn on bottom (Fn on row2). Split expands Space to two halves. -->
     <Row>
         <Key android:codes="E0" android:keyLabel="@string/modifier_control" android:keyWidth="10%p"/>
         <Key android:codes="E2" android:keyLabel="@string/Alt" android:keyWidth="10%p"/>
-        <Key android:codes="E3" android:keyLabel="@string/Win" android:keyWidth="11%p"/>
-        <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:isRepeatable="true" android:keyWidth="36%p"/>
-        <Key android:codes="E7" android:keyLabel="@string/Win" android:keyWidth="11%p"/>
+        <Key android:codes="E3" android:keyLabel="@string/Win" android:keyWidth="10%p"/>
+        <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:isRepeatable="true" android:keyWidth="40%p"/>
+        <Key android:codes="E7" android:keyLabel="@string/Win" android:keyWidth="10%p"/>
         <Key android:codes="E6" android:keyLabel="@string/Alt" android:keyWidth="10%p"/>
-        <Key android:codes="E4" android:keyLabel="@string/modifier_control" android:keyWidth="12%p"/>
+        <Key android:codes="E4" android:keyLabel="@string/modifier_control" android:keyWidth="10%p"/>
     </Row>
 </Keyboard>

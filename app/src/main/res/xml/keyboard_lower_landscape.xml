@@ -38,16 +38,17 @@
     </Row>
 
     <Row>
-        <!-- Shift row width ratio 1.8 : 1×7 : 3 (GUI row ends with /). -->
-        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="18%p"/>
-        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="!" custom:keyCornerHint="!" android:keyWidth="10%p"/>
-        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="=,&#63;" custom:keyCornerHint="&#63;" android:keyWidth="10%p"/>
-        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,~" custom:keyCornerHint=";" android:keyWidth="10%p"/>
-        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,&#96;" custom:keyCornerHint="&#96;" android:keyWidth="10%p"/>
-        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="',-" custom:keyCornerHint="'" android:keyWidth="10%p"/>
-        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&quot;,'" custom:keyCornerHint="&quot;" android:keyWidth="10%p"/>
-        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="+,_" custom:keyCornerHint="+" android:keyWidth="10%p"/>
-        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="&#92;,&#124;" custom:keyCornerHint="&#92;" android:keyWidth="30%p"/>
+        <!-- Shift row: / matches portrait; Enter narrowed vs former single 30% slot (16 : 9×7 : 9 : 12). -->
+        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="16%p"/>
+        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="!" custom:keyCornerHint="!" android:keyWidth="9%p"/>
+        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="=,&#63;" custom:keyCornerHint="&#63;" android:keyWidth="9%p"/>
+        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,~" custom:keyCornerHint=";" android:keyWidth="9%p"/>
+        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,&#96;" custom:keyCornerHint="&#96;" android:keyWidth="9%p"/>
+        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="',-" custom:keyCornerHint="'" android:keyWidth="9%p"/>
+        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&quot;,'" custom:keyCornerHint="&quot;" android:keyWidth="9%p"/>
+        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="+,_" custom:keyCornerHint="+" android:keyWidth="9%p"/>
+        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="&#92;,&#124;" custom:keyCornerHint="&#92;" android:keyWidth="9%p"/>
+        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="12%p"/>
     </Row>
 
     <!-- No Fn: comma, Win, Space, period, Enter (former Fn 15% → Space + modifiers). -->
