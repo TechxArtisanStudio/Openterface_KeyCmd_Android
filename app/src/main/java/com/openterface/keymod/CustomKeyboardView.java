@@ -130,6 +130,11 @@ public class CustomKeyboardView extends LinearLayout {
      */
     public static final float KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT = 1f;
     public static final float KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT = 2.2f;
+    /**
+     * {@link #expandSpaceBarForSplitRows} halves the wide Space (e.g. 36%p → 18%p). Openterface on
+     * Space applies only to the unsplit bar; halves stay under this floor even after split rescale.
+     */
+    private static final float KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT = 30f;
     /** Top shortcut strip (row 1 profile + rows 2–3 fixed): label text (sp). */
     private static final float TOP_SHORTCUT_PANEL_TEXT_SP = 12f;
     private static final float TOP_SHORTCUT_PANEL_ACTION_LABEL_SP = 12f;
@@ -2026,6 +2031,18 @@ public class CustomKeyboardView extends LinearLayout {
         return isLandscape(getContext()) && splitPart == SPLIT_NONE && !shortcutsStripOnly;
     }
 
+    /**
+     * KM Pro landscape full keyboard (not split, not shortcut-strip-only): show Openterface wordmark
+     * on the wide Space key instead of the generic space-bar icon. Split halves are excluded by
+     * {@link #useKmProLandscapeFullShortcutStripHeightWeightRatio} and by {@link #KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT}.
+     */
+    private boolean shouldUseOpenterfaceWordmarkOnSpaceKey(@NonNull Key key) {
+        return key.code == 0x2C
+                && key.iconResId != 0
+                && useKmProLandscapeFullShortcutStripHeightWeightRatio()
+                && key.widthPercent >= KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT;
+    }
+
     private void bindService(Context context) {
         Intent intent = new Intent(context, BluetoothService.class);
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -2602,6 +2619,50 @@ public class CustomKeyboardView extends LinearLayout {
                         || (key.code == 0x65 && key.iconResId != 0)
                         || (key.code == 0x2B && key.iconResId != 0);
                 if (shouldUseIconButton) {
+                    if (shouldUseOpenterfaceWordmarkOnSpaceKey(key)) {
+                        // Match portrait KM Pro footer + touchpad footer (maybeAddKmProPortraitKeyboardBrandFooter,
+                        // fragment_composite touchPadBrandLogo): fixed height, max width, secondary tint, 0.82 alpha.
+                        // Use explicit logoW from drawable aspect so the ImageView cannot measure oversized
+                        // before maxWidth is applied (WRAP_CONTENT + wide vector was still filling the key).
+                        Context ctx = getContext();
+                        FrameLayout brandCell = new FrameLayout(ctx);
+                        applyFlatKeyStyle(brandCell);
+                        brandCell.setLayoutParams(params);
+                        brandCell.setBackgroundResource(R.drawable.key_background);
+                        brandCell.setClickable(false);
+
+                        ImageView brand = new ImageView(ctx);
+                        Resources res = ctx.getResources();
+                        int logoH =
+                                res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_height);
+                        int maxLogoW =
+                                res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_max_width);
+                        int logoW = maxLogoW;
+                        Drawable wordmark = ContextCompat.getDrawable(ctx, R.drawable.ic_openterface_wordmark);
+                        if (wordmark != null) {
+                            int iw = wordmark.getIntrinsicWidth();
+                            int ih = wordmark.getIntrinsicHeight();
+                            if (iw > 0 && ih > 0) {
+                                logoW = Math.min(maxLogoW, Math.round(logoH * (iw / (float) ih)));
+                            }
+                        }
+                        FrameLayout.LayoutParams logoLp =
+                                new FrameLayout.LayoutParams(logoW, logoH, Gravity.CENTER);
+                        brand.setLayoutParams(logoLp);
+                        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+                        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        brand.setAdjustViewBounds(false);
+                        brand.setAlpha(0.82f);
+                        brand.setColorFilter(
+                                ContextCompat.getColor(ctx, R.color.text_secondary),
+                                PorterDuff.Mode.SRC_IN);
+                        brand.setContentDescription(ctx.getString(R.string.Space_Button));
+                        brand.setClickable(true);
+                        brand.setFocusable(true);
+                        brandCell.addView(brand);
+                        button = brandCell;
+                        listenerTarget = brand;
+                    } else {
                     ImageButton imageButton = new ImageButton(getContext());
                     applyFlatKeyStyle(imageButton);
                     imageButton.setLayoutParams(params);
@@ -2657,10 +2718,17 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                     }
                     int iconPaddingDp =
-                            ((isBackspaceKey(key) || key.code == 0x4C) && isLandscape(getContext())) ? 2 : 4;
-                    imageButton.setPadding(dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp));
+                            ((isBackspaceKey(key) || key.code == 0x4C) && isLandscape(getContext()))
+                                    ? 2
+                                    : 4;
+                    imageButton.setPadding(
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp));
                     button = imageButton;
                     listenerTarget = imageButton;
+                    }
                 } else {
                     String fnDisplayLabel = getFnDisplayLabel(key);
                     int fnDisplayIconResId = getFnDisplayIconResId(key);
@@ -3077,6 +3145,14 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x1B: return new FnMapping("F11", 0x44, 0); // x
             case 0x06: return new FnMapping("F12", 0x45, 0); // c
             case 0x2A: return new FnMapping("Del", 0x4C, 0, R.drawable.backspace_24);
+            case 0x38: // / on KM Pro portrait built-in (keyboard_lower_portrait_no_gui) only
+                if (!showGuiHidKey) {
+                    Context ctx = getContext();
+                    if (ctx != null && !isLandscape(ctx)) {
+                        return new FnMapping("?", 0x38, MOD_SHIFT);
+                    }
+                }
+                return null;
             default: return null;
         }
     }
