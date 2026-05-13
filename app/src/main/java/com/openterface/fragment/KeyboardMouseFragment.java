@@ -376,10 +376,19 @@ public final class KeyboardMouseFragment extends Fragment {
         Fragment f = buildChildForSubmode(submode);
         FragmentTransaction tx = getChildFragmentManager().beginTransaction();
         tx.replace(R.id.kb_mouse_host, f);
-        tx.commit();
-        getChildFragmentManager().executePendingTransactions();
+        tx.runOnCommit(
+                () -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    notifyKeyboardBodyIfShown();
+                });
+        if (getChildFragmentManager().isStateSaved()) {
+            tx.commitAllowingStateLoss();
+        } else {
+            tx.commit();
+        }
         refreshBasicEmbeddedChrome();
-        notifyKeyboardBodyIfShown();
     }
 
     /**

@@ -1597,16 +1597,28 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     private void updateNavSelection() {
         if (navKeyboardMouse != null) {
-            navKeyboardMouse.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE));
+            navKeyboardMouse.setSelected(
+                    LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(currentNavMode));
         }
         if (navKeyboardMousePro != null) {
-            navKeyboardMousePro.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO));
+            navKeyboardMousePro.setSelected(
+                    LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO.equals(currentNavMode));
         }
-        if (navGamepad != null) navGamepad.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_GAMEPAD));
-        if (navShortcuts != null) navShortcuts.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_SHORTCUTS));
-        if (navMacros != null) navMacros.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_MACROS));
-        if (navVoice != null) navVoice.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_VOICE));
-        if (navPresentation != null) navPresentation.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_PRESENTATION));
+        if (navGamepad != null) {
+            navGamepad.setSelected(LaunchPanelActivity.MODE_GAMEPAD.equals(currentNavMode));
+        }
+        if (navShortcuts != null) {
+            navShortcuts.setSelected(LaunchPanelActivity.MODE_SHORTCUTS.equals(currentNavMode));
+        }
+        if (navMacros != null) {
+            navMacros.setSelected(LaunchPanelActivity.MODE_MACROS.equals(currentNavMode));
+        }
+        if (navVoice != null) {
+            navVoice.setSelected(LaunchPanelActivity.MODE_VOICE.equals(currentNavMode));
+        }
+        if (navPresentation != null) {
+            navPresentation.setSelected(LaunchPanelActivity.MODE_PRESENTATION.equals(currentNavMode));
+        }
     }
 
     private void updateTargetOsHeaderIcon() {
@@ -1809,6 +1821,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * Handle launch mode from LaunchPanelActivity
      */
     private void handleLaunchMode(String mode) {
+        if (mode == null) {
+            mode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+        }
         if (LaunchPanelActivity.MODE_NUMPAD.equals(mode)) {
             currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
             updateNavSelection();
