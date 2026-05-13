@@ -2027,9 +2027,6 @@ public class CompositeFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             applyKmProLandscapeBuiltInKeyboardGuard();
-            if (KmProSubmodePrefs.isPortraitImeSurface(requireContext())) {
-                KmProSubmodePrefs.setPortraitInputSurface(requireContext(), false);
-            }
         }
         applyDisplayMode();
         if (displayMode == DisplayMode.SPLIT) {
