@@ -174,6 +174,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Nullable
     private View headerRightCluster;
     @Nullable
+    private View headerEndPullSpacer;
+    @Nullable
     private View kmProSettingsOverlay;
     @Nullable
     private View imeSavedTextOverlay;
@@ -587,6 +589,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
         headerRightCluster = findViewById(R.id.header_right_cluster);
+        headerEndPullSpacer = findViewById(R.id.header_end_pull_spacer);
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
             updateTargetOsHeaderIcon();
@@ -774,18 +777,39 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * {@code layout_weight} width and leave a dead band beside the icons.
      */
     private void syncKmProHeaderTabsSpacerVisibility() {
-        if (kmProHeaderTabsSpacer == null) {
+        if (kmProHeaderTabsSpacer != null) {
+            TextView appTitle = findViewById(R.id.app_title);
+            boolean headerShown = headerLayout == null || headerLayout.getVisibility() == View.VISIBLE;
+            boolean showSpacer =
+                    headerShown
+                            && kmProHeaderTabsScroll != null
+                            && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE
+                            && appTitle != null
+                            && appTitle.getVisibility() != View.VISIBLE;
+            kmProHeaderTabsSpacer.setVisibility(showSpacer ? View.VISIBLE : View.GONE);
+        }
+        syncHeaderEndPullSpacerVisibility();
+    }
+
+    /**
+     * When the weighted app title and KM Pro tab strip are both hidden, the header row would
+     * otherwise leave the right cluster immediately after the menu. A weighted spacer pulls
+     * target OS / mode setup / connection to the trailing edge (Presentation, Shortcut Hub, etc.).
+     */
+    private void syncHeaderEndPullSpacerVisibility() {
+        if (headerEndPullSpacer == null) {
+            return;
+        }
+        if (headerLayout == null || headerLayout.getVisibility() != View.VISIBLE) {
+            headerEndPullSpacer.setVisibility(View.GONE);
             return;
         }
         TextView appTitle = findViewById(R.id.app_title);
-        boolean headerShown = headerLayout == null || headerLayout.getVisibility() == View.VISIBLE;
-        boolean showSpacer =
-                headerShown
-                        && kmProHeaderTabsScroll != null
-                        && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE
-                        && appTitle != null
-                        && appTitle.getVisibility() != View.VISIBLE;
-        kmProHeaderTabsSpacer.setVisibility(showSpacer ? View.VISIBLE : View.GONE);
+        boolean titleVisible = appTitle != null && appTitle.getVisibility() == View.VISIBLE;
+        boolean proTabsVisible =
+                kmProHeaderTabsScroll != null
+                        && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE;
+        headerEndPullSpacer.setVisibility(!titleVisible && !proTabsVisible ? View.VISIBLE : View.GONE);
     }
 
     private void toggleKmProSettingsOverlay() {
