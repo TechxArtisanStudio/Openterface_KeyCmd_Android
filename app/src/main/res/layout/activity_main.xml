@@ -75,16 +75,16 @@
                             android:src="@drawable/ic_km_pro_submode_keyboard" />
 
                         <ImageButton
-                            android:id="@+id/km_pro_header_tab_numpad"
-                            style="@style/KmProSubmodeTabIcon"
-                            android:contentDescription="@string/kb_mouse_sub_numpad"
-                            android:src="@drawable/ic_km_pro_submode_numpad" />
-
-                        <ImageButton
                             android:id="@+id/km_pro_header_tab_compose"
                             style="@style/KmProSubmodeTabIcon"
                             android:contentDescription="@string/kb_mouse_sub_compose"
                             android:src="@drawable/ic_km_pro_submode_compose" />
+
+                        <ImageButton
+                            android:id="@+id/km_pro_header_tab_numpad"
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_numpad"
+                            android:src="@drawable/ic_km_pro_submode_numpad" />
                     </LinearLayout>
                 </HorizontalScrollView>
 
