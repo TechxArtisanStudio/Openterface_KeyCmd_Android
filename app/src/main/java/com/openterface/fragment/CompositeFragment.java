@@ -134,6 +134,8 @@ public class CompositeFragment extends Fragment {
     public UsbSerialPort port;
     private BluetoothService bluetoothService;
     private boolean isServiceBound;
+    /** True after {@link Context#bindService} for {@link BluetoothService} returns true; drives unbind in {@link #onDestroyView()}. */
+    private boolean proBluetoothServiceBindRequested;
     private boolean isDragMode = false;
 
     private static final long POINTER_IDLE_AFTER_MS = 400L;
@@ -953,6 +955,10 @@ public class CompositeFragment extends Fragment {
             touchPadTips.setVisibility(View.GONE);
             return;
         }
+        if (!KmProTouchpadPrefs.isGestureStatusLineVisible(requireContext())) {
+            touchPadTips.setVisibility(View.GONE);
+            return;
+        }
         touchPadTips.setVisibility(View.VISIBLE);
         // Portrait numpad: status line only; info button is hidden in numpad strip mode.
         touchPadTips.setText(
@@ -1073,6 +1079,10 @@ public class CompositeFragment extends Fragment {
             splitTouchPadTips.setVisibility(View.GONE);
             return;
         }
+        if (!KmProTouchpadPrefs.isGestureStatusLineVisible(requireContext())) {
+            splitTouchPadTips.setVisibility(View.GONE);
+            return;
+        }
         splitTouchPadTips.setVisibility(View.VISIBLE);
         splitTouchPadTips.setText(
                 TouchPadTipsFormatter.buildCompact(requireContext(), isDragMode, pointerPhase));
@@ -1144,7 +1154,8 @@ public class CompositeFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         // Bind to BluetoothService
         Intent intent = new Intent(requireContext(), BluetoothService.class);
-        requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        proBluetoothServiceBindRequested =
+                requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
         initTouchPadWashStyle();
 
         // Create container to swap between normal and split layouts
@@ -1217,12 +1228,22 @@ public class CompositeFragment extends Fragment {
             kmProImeDirectSend.detach();
             kmProImeDirectSend = null;
         }
-        super.onDestroyView();
+        // Must run before super.onDestroyView(): setDragMode updates tips / hybrid visuals on live views.
         clearKeyboardOsListeners();
         setDragMode(false);
-        if (isServiceBound) {
-            requireContext().unbindService(serviceConnection);
+        super.onDestroyView();
+        if (proBluetoothServiceBindRequested) {
+            proBluetoothServiceBindRequested = false;
+            Context c = getContext();
+            if (c != null) {
+                try {
+                    c.unbindService(serviceConnection);
+                } catch (IllegalArgumentException e) {
+                    Log.w(TAG, "BluetoothService unbind skipped", e);
+                }
+            }
             isServiceBound = false;
+            bluetoothService = null;
             Log.d(TAG, "Unbound from BluetoothService");
         }
     }
