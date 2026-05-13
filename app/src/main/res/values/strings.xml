@@ -28,8 +28,8 @@
     <string name="km_basic_cd_windows_modifier">Windows key</string>
     <string name="km_basic_cd_application_key">Application key</string>
     <string name="km_basic_key_sup">Sup</string>
-    <!-- KM Pro portrait no-GUI / key: long-press Up=? Down=|; use @string in keyboard XML so AAPT does not treat ? as ?attr/ -->
-    <string name="km_pro_no_gui_slash_key_alternates" translatable="false">\u003f,\u007c</string>
+    <!-- KM Pro portrait no-GUI / key: long-press Up=? only (no Down |); @string avoids AAPT ?attr in res/xml -->
+    <string name="km_pro_no_gui_slash_key_alternates" translatable="false">\u003f</string>
     <string name="km_pro_no_gui_slash_corner_hint" translatable="false">\u003f</string>
     <string name="km_basic_setup_button_cd">Basic mode: keyboard and touchpad options</string>
     <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: keys display (strip and main keyboard), alternate hints, and active Shortcut Hub profile</string>
