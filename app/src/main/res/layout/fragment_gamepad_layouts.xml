@@ -41,7 +41,7 @@
             android:maxLines="1"
             android:paddingEnd="@dimen/spacing_small"
             android:text="@string/gamepad_presets_sheet_title"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.SheetTitle"
             android:textColor="?attr/colorOnSurface"
             tools:text="Layouts" />
 

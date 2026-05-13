@@ -133,6 +133,6 @@ public final class GamepadLayoutPreviewRenderer {
     /** Themed context for {@link #render(Context, GamepadLayoutPresetDocument)}. */
     @NonNull
     public static Context wrapPreviewContext(@NonNull Context base) {
-        return new ContextThemeWrapper(base, R.style.Theme_KeyMod_GamepadPresetPickerDialog);
+        return new ContextThemeWrapper(base, R.style.Theme_KeyCmd_GamepadPresetPickerDialog);
     }
 }

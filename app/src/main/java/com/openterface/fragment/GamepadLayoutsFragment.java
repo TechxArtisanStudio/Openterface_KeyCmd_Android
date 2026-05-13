@@ -156,7 +156,7 @@ public final class GamepadLayoutsFragment extends Fragment {
                                             String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
                                             String base = !safe.isEmpty() ? safe : id;
                                             h.launchGamepadPresetSaveToDocument(
-                                                    id, "KeyMod_gamepad_" + base + ".json");
+                                                    id, "KeyCmd_gamepad_" + base + ".json");
                                         });
                             }
 
@@ -393,7 +393,7 @@ public final class GamepadLayoutsFragment extends Fragment {
                                     String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
                                     String base = !safe.isEmpty() ? safe : presetId;
                                     host.launchGamepadPresetSaveToDocument(
-                                            presetId, "KeyMod_gamepad_" + base + ".json");
+                                            presetId, "KeyCmd_gamepad_" + base + ".json");
                                 });
                         return true;
                     }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">设置</string>
     <string name="settings_tab_general">常规</string>
     <string name="settings_tab_voice">语音</string>
@@ -628,9 +628,9 @@
     <string name="top_shortcut_display_mode_cd_icon">快捷栏与主键盘：图标显示。点按切换到组合键文字。</string>
     <string name="top_shortcut_display_mode_cd_chord">快捷栏：组合键（如 Alt+X）。主键盘 Tab 与修饰键为名称。点按切换到快捷方式名称。</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Built-in</string>
+    <string name="top_shortcut_ime_toggle_keycmd">KeyCmd keyboard (tap for system IME)</string>
+    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyCmd keyboard)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Built-in</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Tip: Long-press this key to lock the modifier.</string>
     <string name="ime_not_connected">Connect USB or Bluetooth to send keystrokes.</string>

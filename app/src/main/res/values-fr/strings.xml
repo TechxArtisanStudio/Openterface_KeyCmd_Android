@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_tab_general">Général</string>
     <string name="settings_tab_voice">Voix</string>
@@ -429,9 +429,9 @@ par TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Bande et clavier principal : icônes. Appuyez pour passer au texte combiné.</string>
     <string name="top_shortcut_display_mode_cd_chord">Bande : touches combinées (p. ex. Alt+X). Clavier principal : Tab et modificateurs en noms. Appuyez pour passer aux noms de raccourcis.</string>
     <string name="ime_capture_hint">Tapez et modifiez un long texte ici : appuyez sur Envoyer pour l\'envoyer à l\'appareil connecté.</string>
-    <string name="top_shortcut_ime_toggle_keymod">Clavier KeyMod (appuyez pour l\'IME du système)</string>
-    <string name="top_shortcut_ime_toggle_system">Système IME (appuyez pour le clavier KeyMod)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Intégré</string>
+    <string name="top_shortcut_ime_toggle_keycmd">Clavier KeyCmd (appuyez pour l\'IME du système)</string>
+    <string name="top_shortcut_ime_toggle_system">Système IME (appuyez pour le clavier KeyCmd)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Intégré</string>
     <string name="top_shortcut_ime_toggle_system_short">Système IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Astuce : appuyez longuement sur cette touche pour verrouiller le modificateur.</string>
     <string name="ime_not_connected">Connectez USB ou Bluetooth pour envoyer des frappes.</string>

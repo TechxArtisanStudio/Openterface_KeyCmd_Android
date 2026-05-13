@@ -7,7 +7,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
 /**
  * Applies persisted app locale before any activity is created.
  */
-public class KeyModApplication extends Application {
+public class KeyCmdApplication extends Application {
 
     @Override
     public void onCreate() {

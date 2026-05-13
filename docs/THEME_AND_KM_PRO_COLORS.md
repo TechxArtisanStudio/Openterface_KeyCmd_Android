@@ -1,6 +1,6 @@
 # Theme colors and Keyboard & Mouse (Basic + Pro)
 
-This app uses **View + XML** theming (Material 3 `Theme.KeyMod.*`), not Jetpack Compose.
+This app uses **View + XML** theming (Material 3 `Theme.KeyCmd.*`), not Jetpack Compose.
 
 ## Canonical sources
 
@@ -31,7 +31,7 @@ This app uses **View + XML** theming (Material 3 `Theme.KeyMod.*`), not Jetpack 
 ## KM Pro–specific notes
 
 - **KM Pro settings** (`fragment_km_pro_settings.xml`): surfaces and text use semantic colors; elevated cards use `@color/card_background`.
-- **Pro touchpad mouse row** (`include_pro_touchpad_mouse_keys.xml`): `@style/Widget.KeyMod.ProTouchpadMouseButton` (inherits Basic numpad/mouse styling).
+- **Pro touchpad mouse row** (`include_pro_touchpad_mouse_keys.xml`): `@style/Widget.KeyCmd.ProTouchpadMouseButton` (inherits Basic numpad/mouse styling).
 - **Programmatic keyboard chrome** (`CustomKeyboardView`): default label/icon tint follows `@color/text_primary`; accent-dependent bits use `MaterialColors` with fallbacks from `ThemeManager`.
 
 Avoid hard-coded `0xFF…` text colors in new code; prefer `@color/text_primary` / theme attrs or `ThemeManager` helpers.

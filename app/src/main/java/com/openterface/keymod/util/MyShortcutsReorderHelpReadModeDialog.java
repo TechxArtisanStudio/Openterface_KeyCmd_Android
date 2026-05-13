@@ -59,7 +59,7 @@ public final class MyShortcutsReorderHelpReadModeDialog {
     }
 
     public static void show(@NonNull AppCompatActivity activity, @NonNull CharSequence body) {
-        final Dialog dialog = new Dialog(activity, R.style.Theme_KeyMod_FullScreenReadingHelp);
+        final Dialog dialog = new Dialog(activity, R.style.Theme_KeyCmd_FullScreenReadingHelp);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_my_shortcuts_reorder_help_read_mode);
         dialog.setCancelable(true);

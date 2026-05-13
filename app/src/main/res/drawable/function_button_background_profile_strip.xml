@@ -6,7 +6,7 @@
             <corners android:radius="9dp" />
         </shape>
     </item>
-    <!-- Idle: same neutral base as fixed strip keys, plus theme accent wash (per Theme.KeyMod.*). -->
+    <!-- Idle: same neutral base as fixed strip keys, plus theme accent wash (per Theme.KeyCmd.*). -->
     <item android:state_pressed="false">
         <layer-list>
             <item>

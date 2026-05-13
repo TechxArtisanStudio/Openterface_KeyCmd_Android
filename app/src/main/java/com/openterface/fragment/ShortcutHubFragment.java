@@ -1270,7 +1270,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 Toast.makeText(getContext(), R.string.shortcut_hub_toast_export_failed_generic, Toast.LENGTH_SHORT).show();
                 return;
             }
-            String filename = "keymod_profile_" + safeName + "_" + System.currentTimeMillis() + ".json";
+            String filename = "keycmd_profile_" + safeName + "_" + System.currentTimeMillis() + ".json";
             File outFile = new File(shareDir, filename);
             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
                 fos.write(json.getBytes(StandardCharsets.UTF_8));
@@ -1301,7 +1301,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         // Save to Downloads folder
         try {
-            String filename = "keymod_profile_" + profile.name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase() + ".json";
+            String filename = "keycmd_profile_" + profile.name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase() + ".json";
             java.io.File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
                 android.os.Environment.DIRECTORY_DOWNLOADS);
             java.io.File outputFile = new java.io.File(downloadsDir, filename);

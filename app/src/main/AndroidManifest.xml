@@ -39,7 +39,7 @@
     </queries>
 
     <application
-        android:name=".KeyModApplication"
+        android:name=".KeyCmdApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -47,7 +47,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.KeyMod"
+        android:theme="@style/Theme.KeyCmd"
         tools:targetApi="34">
         
         <!-- Launch Panel Activity (Entry Point) -->
@@ -56,7 +56,7 @@
             android:name="com.openterface.keymod.LaunchPanelActivity"
             android:exported="true"
             android:screenOrientation="fullSensor"
-            android:theme="@style/Theme.KeyMod">
+            android:theme="@style/Theme.KeyCmd">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -69,7 +69,7 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
-            android:theme="@style/Theme.KeyMod"
+            android:theme="@style/Theme.KeyCmd"
             android:windowSoftInputMode="adjustResize" />
         
         <!-- Settings Activity -->
@@ -78,7 +78,7 @@
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
-            android:theme="@style/Theme.KeyMod" />
+            android:theme="@style/Theme.KeyCmd" />
 
         <service
             android:name="com.openterface.keymod.BluetoothService"

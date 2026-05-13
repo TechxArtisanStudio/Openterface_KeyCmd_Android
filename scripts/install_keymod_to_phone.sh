@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# Install current KeyMod debug app to a connected physical Android phone.
+# Install current KeyCmd debug app to a connected physical Android phone.
 # Usage:
 #   ./scripts/install_keymod_to_phone.sh
 #   ./scripts/install_keymod_to_phone.sh <device_serial>

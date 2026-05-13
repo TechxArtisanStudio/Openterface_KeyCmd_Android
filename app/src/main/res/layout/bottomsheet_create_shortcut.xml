@@ -170,7 +170,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/create_shortcut_mod_cmd"
-                style="@style/Widget.KeyMod.CreateShortcut.Modifier"
+                style="@style/Widget.KeyCmd.CreateShortcut.Modifier"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
@@ -180,7 +180,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/create_shortcut_mod_ctrl"
-                style="@style/Widget.KeyMod.CreateShortcut.Modifier"
+                style="@style/Widget.KeyCmd.CreateShortcut.Modifier"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
@@ -190,7 +190,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/create_shortcut_mod_shift"
-                style="@style/Widget.KeyMod.CreateShortcut.Modifier"
+                style="@style/Widget.KeyCmd.CreateShortcut.Modifier"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
@@ -200,7 +200,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/create_shortcut_mod_alt"
-                style="@style/Widget.KeyMod.CreateShortcut.Modifier"
+                style="@style/Widget.KeyCmd.CreateShortcut.Modifier"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

@@ -1,8 +1,8 @@
-# KeyMod FAQ — Keyboard output, strip layouts, gamepad, and connections
+# KeyCmd FAQ — Keyboard output, strip layouts, gamepad, and connections
 
 For **app theme colors** (light/dark, accent families, KM Pro surfaces), see [THEME_AND_KM_PRO_COLORS.md](THEME_AND_KM_PRO_COLORS.md).
 
-Common questions about what KeyMod can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
+Common questions about what KeyCmd can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
 
 ---
 
@@ -14,11 +14,11 @@ Common questions about what KeyMod can type over USB, especially **Rows 2–3 st
 
 ---
 
-## Does KeyMod send “Unicode” or special characters directly over USB?
+## Does KeyCmd send “Unicode” or special characters directly over USB?
 
-**Not as a dedicated Unicode pipe.** KeyMod works like a **standard USB keyboard**: it sends **key presses and modifier keys** (Shift, Ctrl, Alt, Win/Command, and so on). The **computer you plug into** turns those into letters and symbols using your **keyboard layout** and software.
+**Not as a dedicated Unicode pipe.** KeyCmd works like a **standard USB keyboard**: it sends **key presses and modifier keys** (Shift, Ctrl, Alt, Win/Command, and so on). The **computer you plug into** turns those into letters and symbols using your **keyboard layout** and software.
 
-So KeyMod does **not** bypass the normal rules of “USB keyboard + host OS.” There is no mode where **every symbol printed on a key** is guaranteed to appear on screen, for all characters and all machines.
+So KeyCmd does **not** bypass the normal rules of “USB keyboard + host OS.” There is no mode where **every symbol printed on a key** is guaranteed to appear on screen, for all characters and all machines.
 
 ---
 
@@ -32,7 +32,7 @@ The fixed strip and Rows 2–3 overrides behave like a **normal keyboard**: the 
 
 ## What usually works on “any” computer?
 
-You can count on KeyMod behaving like a **real keyboard** for:
+You can count on KeyCmd behaving like a **real keyboard** for:
 
 - Letters, digits, and common punctuation **as your host layout maps them**  
 - **Keyboard shortcuts** (copy, paste, save, etc.—depending on OS and app)  
@@ -64,7 +64,7 @@ Changing modifier mode **rebuilds** the active keyboard (**Basic** or **Pro**) a
 
 This switch appears when **Momentary and long-press chord** is selected. It is **on** by default. It applies to **Basic** full-keyboard chording and to **Pro** chording on the main keyboard and strip modifier keys.
 
-When **on**, after you long-press a modifier, KeyMod sends a **real modifier-down** to the connected device and, after each chorded key, sends the **hold again** so the target keeps treating the modifier as pressed while your finger stays on the modifier. That supports several shifted symbols in a row (for example **!** then **@** without releasing Shift between number taps).
+When **on**, after you long-press a modifier, KeyCmd sends a **real modifier-down** to the connected device and, after each chorded key, sends the **hold again** so the target keeps treating the modifier as pressed while your finger stays on the modifier. That supports several shifted symbols in a row (for example **!** then **@** without releasing Shift between number taps).
 
 When **off**, you still get the on-screen chord highlight, but the host may only see the modifier combined with each single key event. Turn it **off** if a specific computer misbehaves with sustained modifier-down over USB.
 
@@ -76,8 +76,8 @@ When **off**, you still get the on-screen chord highlight, but the host may only
 
 | Option | What happens on the connected computer |
 |--------|------------------------------------------|
-| **Repeat (default)** | After a short pause, KeyMod sends **many separate key taps** while your finger stays down—similar to auto-repeat when you hold a key for typing (for example a row of **w** characters). |
-| **Hold** | KeyMod sends **one key-down** when you press and **releases** when you lift your finger. The host treats it like a **physically held key**—often what games or movement controls expect. |
+| **Repeat (default)** | After a short pause, KeyCmd sends **many separate key taps** while your finger stays down—similar to auto-repeat when you hold a key for typing (for example a row of **w** characters). |
+| **Hold** | KeyCmd sends **one key-down** when you press and **releases** when you lift your finger. The host treats it like a **physically held key**—often what games or movement controls expect. |
 
 This applies to the **full keyboard** in **Keyboard & Mouse (Basic)** (letters, numbers, function row, Space, arrows, and similar keys). It does **not** change **Keyboard & Mouse Pro** or the shortcut strip.
 
@@ -119,48 +119,48 @@ Exact controls and labels follow the **Gamepad** screen and preset editor in you
 
 ---
 
-## Where does Bluetooth actually connect? Is KeyMod a Bluetooth receiver for my PC?
+## Where does Bluetooth actually connect? Is KeyCmd a Bluetooth receiver for my PC?
 
-**No.** The usual **Bluetooth** link for KeyMod is **between your phone and the KeyMod hardware**. KeyMod does **not** act as a **Bluetooth dongle** or receiver for the **target computer** you plug into over USB.
+**No.** The usual **Bluetooth** link for KeyCmd is **between your phone and the KeyCmd hardware**. KeyCmd does **not** act as a **Bluetooth dongle** or receiver for the **target computer** you plug into over USB.
 
-Think of KeyMod as a **portable keyboard and mouse** to the host: **hardware control** (real **keyboard and mouse HID** over USB or the phone–KeyMod link), combined with **software flexibility** on the phone (layouts, mapping, and presets). The target machine does not pair with your phone’s Bluetooth keyboard—that path is **not** “Bluetooth keyboard → PC via KeyMod pairing.”
+Think of KeyCmd as a **portable keyboard and mouse** to the host: **hardware control** (real **keyboard and mouse HID** over USB or the phone–KeyCmd link), combined with **software flexibility** on the phone (layouts, mapping, and presets). The target machine does not pair with your phone’s Bluetooth keyboard—that path is **not** “Bluetooth keyboard → PC via KeyCmd pairing.”
 
 For wire-format details on how keys reach the host, see **HID Protocol (CH9329)** in [USER_GUIDE.md](USER_GUIDE.md).
 
 ---
 
-## Can I pair a Bluetooth keyboard (or controller) only to my phone and still control the target through KeyMod?
+## Can I pair a Bluetooth keyboard (or controller) only to my phone and still control the target through KeyCmd?
 
-**In principle, yes** at the **software** level: the app can treat **different input sources** on the phone (on-screen controls, presets, and—where supported—**mapped** external input) and translate them into what KeyMod sends.
+**In principle, yes** at the **software** level: the app can treat **different input sources** on the phone (on-screen controls, presets, and—where supported—**mapped** external input) and translate them into what KeyCmd sends.
 
 Important caveats:
 
-- There is **no generic “raw Bluetooth HID pipe”** through KeyMod to the PC. Anything coming from another device is handled by **Android and the KeyMod app**, then turned into **outgoing** KeyMod traffic the firmware understands.
-- You still need a **working phone ↔ KeyMod** session for the bridge to run.
+- There is **no generic “raw Bluetooth HID pipe”** through KeyCmd to the PC. Anything coming from another device is handled by **Android and the KeyCmd app**, then turned into **outgoing** KeyCmd traffic the firmware understands.
+- You still need a **working phone ↔ KeyCmd** session for the bridge to run.
 
-So the mental model is **“phone + app in the middle,”** not “KeyMod becomes the PC’s Bluetooth radio.”
+So the mental model is **“phone + app in the middle,”** not “KeyCmd becomes the PC’s Bluetooth radio.”
 
 ---
 
 ## If I use a Bluetooth game controller paired to my phone, does the target PC see a real gamepad (Xbox / PlayStation style)?
 
-**Not with current KeyMod hardware.** Today, KeyMod outputs **standard keyboard and mouse HID** to the host (the same family of behavior described around **CH9329** in [USER_GUIDE.md](USER_GUIDE.md)). The app can **map** sticks and buttons to **keys and mouse actions**, so the **target sees a keyboard and mouse**, not native **gamepad HID**.
+**Not with current KeyCmd hardware.** Today, KeyCmd outputs **standard keyboard and mouse HID** to the host (the same family of behavior described around **CH9329** in [USER_GUIDE.md](USER_GUIDE.md)). The app can **map** sticks and buttons to **keys and mouse actions**, so the **target sees a keyboard and mouse**, not native **gamepad HID**.
 
 **Native gamepad HID to the host** may be possible in the future but would need **firmware-level** work, not only app UI.
 
 ---
 
-## My desktop has no Bluetooth—can I use KeyMod plus my phone as a kind of “relay”?
+## My desktop has no Bluetooth—can I use KeyCmd plus my phone as a kind of “relay”?
 
-**Yes as a workflow idea, with limits.** You can plug KeyMod into the PC over **USB**, connect **phone ↔ KeyMod** (Bluetooth as your setup uses), and drive everything from the **KeyMod app** on the phone—**without** putting a Bluetooth dongle in the PC or pairing a keyboard directly to Windows.
+**Yes as a workflow idea, with limits.** You can plug KeyCmd into the PC over **USB**, connect **phone ↔ KeyCmd** (Bluetooth as your setup uses), and drive everything from the **KeyCmd app** on the phone—**without** putting a Bluetooth dongle in the PC or pairing a keyboard directly to Windows.
 
-If you also use a **Bluetooth keyboard or controller paired only to the phone**, you are still inside the model above: the **PC never pairs** with that peripheral; the **app** decides how (or whether) those inputs map into **keyboard/mouse** actions toward KeyMod. You do **not** get “the PC thinks my phone is a generic Bluetooth keyboard.”
+If you also use a **Bluetooth keyboard or controller paired only to the phone**, you are still inside the model above: the **PC never pairs** with that peripheral; the **app** decides how (or whether) those inputs map into **keyboard/mouse** actions toward KeyCmd. You do **not** get “the PC thinks my phone is a generic Bluetooth keyboard.”
 
 ---
 
-## Can Android talk to KeyMod and another Bluetooth device at the same time?
+## Can Android talk to KeyCmd and another Bluetooth device at the same time?
 
-**Often yes in practice**—many Android devices can keep **more than one Bluetooth connection** alive. Whether **your** phone can reliably use **KeyMod plus** a given **keyboard or controller** at once depends on **Android version, OEM Bluetooth stack, and the peripheral**. For KeyMod, what matters is that the **KeyMod session stays stable** and that any **extra** device is one the **app and OS** can expose for **mapping** into outgoing control—not a guarantee for every accessory on every phone.
+**Often yes in practice**—many Android devices can keep **more than one Bluetooth connection** alive. Whether **your** phone can reliably use **KeyCmd plus** a given **keyboard or controller** at once depends on **Android version, OEM Bluetooth stack, and the peripheral**. For KeyCmd, what matters is that the **KeyCmd session stays stable** and that any **extra** device is one the **app and OS** can expose for **mapping** into outgoing control—not a guarantee for every accessory on every phone.
 
 ---
 

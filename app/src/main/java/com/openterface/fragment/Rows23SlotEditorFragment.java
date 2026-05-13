@@ -292,7 +292,7 @@ public class Rows23SlotEditorFragment extends Fragment {
             }
 
             TextView title = new TextView(requireContext());
-            TextViewCompat.setTextAppearance(title, R.style.TextAppearance_KeyMod_SectionCaption);
+            TextViewCompat.setTextAppearance(title, R.style.TextAppearance_KeyCmd_SectionCaption);
             title.setText(section.titleRes);
             title.setPadding(0, dp(i == 0 ? 4 : 0), 0, dp(10));
             keySectionsLayout.addView(title);

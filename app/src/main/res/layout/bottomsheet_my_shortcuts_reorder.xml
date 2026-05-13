@@ -85,7 +85,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/reorder_cancel"
-                style="@style/Widget.KeyMod.Favorites.Action.Secondary"
+                style="@style/Widget.KeyCmd.Favorites.Action.Secondary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -96,7 +96,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/reorder_create"
-                style="@style/Widget.KeyMod.Favorites.Action.Tertiary"
+                style="@style/Widget.KeyCmd.Favorites.Action.Tertiary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -107,7 +107,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/reorder_reset"
-                style="@style/Widget.KeyMod.Favorites.Action.Tertiary"
+                style="@style/Widget.KeyCmd.Favorites.Action.Tertiary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -118,7 +118,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/reorder_done"
-                style="@style/Widget.KeyMod.Favorites.Action.Primary"
+                style="@style/Widget.KeyCmd.Favorites.Action.Primary"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

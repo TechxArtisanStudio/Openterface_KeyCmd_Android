@@ -36,7 +36,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_title"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.SheetTitle"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.SheetTitle"
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.divider.MaterialDivider
@@ -48,7 +48,7 @@
             android:id="@+id/gamepad_module_id_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
             android:textColor="?android:attr/textColorSecondary"
             android:fontFamily="monospace"
             android:textIsSelectable="true"
@@ -62,7 +62,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_dpad_hint"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
             android:textSize="13sp"
             android:lineSpacingExtra="2dp"
             android:visibility="gone"
@@ -73,7 +73,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_section_mode"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
             android:layout_marginBottom="8dp" />
 
         <RadioGroup
@@ -129,14 +129,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_pointer_mouse_sensitivity_title"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_pointer_mouse_sensitivity_summary"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
             <LinearLayout
@@ -149,7 +149,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_config_slider_slower"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginEnd="8dp" />
 
                 <SeekBar
@@ -166,7 +166,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_config_slider_faster"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
         </LinearLayout>
@@ -183,14 +183,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_split_gap_title"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_split_gap_summary"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
             <LinearLayout
@@ -203,7 +203,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_dpad_split_gap_tight"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginEnd="8dp" />
 
                 <SeekBar
@@ -220,7 +220,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_dpad_split_gap_wide"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
         </LinearLayout>
@@ -237,14 +237,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_split_outer_title"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_split_outer_summary"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
             <LinearLayout
@@ -257,7 +257,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_dpad_split_outer_near"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginEnd="8dp" />
 
                 <SeekBar
@@ -274,7 +274,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_dpad_split_outer_far"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
         </LinearLayout>
@@ -291,14 +291,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_cross_arm_decoration_title"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                 android:layout_marginBottom="4dp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_dpad_cross_arm_decoration_summary"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginBottom="8dp" />
 
             <RadioGroup
@@ -344,7 +344,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_stick_direction_keys_label"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                 android:layout_marginBottom="12dp" />
 
             <!-- D-Pad Cross Layout -->
@@ -450,7 +450,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_stick_center_key_title"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
                     android:layout_marginBottom="4dp" />
 
                 <TextView
@@ -458,7 +458,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/gamepad_stick_center_key_summary"
-                    android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                    android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                     android:layout_marginBottom="8dp" />
 
                 <LinearLayout
@@ -473,7 +473,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/gamepad_stick_pointer_hub_mouse_title"
-                        android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                        android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                         android:layout_marginBottom="4dp" />
 
                     <RadioGroup
@@ -539,7 +539,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/gamepad_stick_config_size_label"
-            android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+            android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout
@@ -553,7 +553,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_config_slider_small"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginEnd="8dp" />
 
             <SeekBar
@@ -570,7 +570,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/gamepad_config_slider_large"
-                android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Caption"
+                android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Caption"
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 

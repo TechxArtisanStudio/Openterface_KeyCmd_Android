@@ -1699,7 +1699,7 @@ public class GamepadFragment extends Fragment {
         parent.setVisibility(View.VISIBLE);
         int gap = dp(12);
         TextView sectionTitle = new TextView(ctx);
-        sectionTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        sectionTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         sectionTitle.setText(R.string.gamepad_module_gesture_timing_title);
         parent.addView(sectionTitle);
 
@@ -1714,7 +1714,7 @@ public class GamepadFragment extends Fragment {
         parent.addView(resetBtn);
 
         TextView dwellLabel = new TextView(ctx);
-        dwellLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        dwellLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         dwellLabel.setText(R.string.gamepad_gesture_sensitivity_min_press_label);
         parent.addView(dwellLabel);
         Slider dwellSlider = new Slider(ctx);
@@ -1729,7 +1729,7 @@ public class GamepadFragment extends Fragment {
         parent.addView(dwellSlider);
 
         TextView scaleLabel = new TextView(ctx);
-        scaleLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        scaleLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         scaleLabel.setText(R.string.gamepad_gesture_sensitivity_radius_scale_label);
         parent.addView(scaleLabel);
         Slider scaleSlider = new Slider(ctx);
@@ -1744,7 +1744,7 @@ public class GamepadFragment extends Fragment {
         parent.addView(scaleSlider);
 
         TextView turboLabel = new TextView(ctx);
-        turboLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        turboLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         turboLabel.setText(R.string.gamepad_gesture_sensitivity_turbo_period_label);
         parent.addView(turboLabel);
         Slider turboSlider = new Slider(ctx);
@@ -2346,7 +2346,7 @@ public class GamepadFragment extends Fragment {
                 return;
             }
             String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-            File outFile = new File(shareDir, "keymod_gamepad_" + safe + "_" + System.currentTimeMillis() + ".json");
+            File outFile = new File(shareDir, "keycmd_gamepad_" + safe + "_" + System.currentTimeMillis() + ".json");
             try (FileOutputStream fos = new FileOutputStream(outFile)) {
                 fos.write(json.getBytes(StandardCharsets.UTF_8));
             }
@@ -3055,7 +3055,7 @@ public class GamepadFragment extends Fragment {
 
         TextView hexLabel = new TextView(ctx);
         hexLabel.setText(R.string.gamepad_module_color_hex_label);
-        hexLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        hexLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         LinearLayout.LayoutParams hexLabelLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         hexLabelLp.topMargin = dp(12);
@@ -3213,7 +3213,7 @@ public class GamepadFragment extends Fragment {
         row.setPadding(0, vPad, 0, vPad);
         TextView lab = new TextView(ctx);
         lab.setText(label);
-        lab.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        lab.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         lab.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams labLp = new LinearLayout.LayoutParams(
                 dpForContext(ctx, 28), LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -3237,7 +3237,7 @@ public class GamepadFragment extends Fragment {
         }
         TextView layerTitle = new TextView(ctx);
         layerTitle.setText(R.string.gamepad_layer_order_title);
-        layerTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        layerTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         titleLp.topMargin = dp(12);
@@ -3630,8 +3630,8 @@ public class GamepadFragment extends Fragment {
         int hp = Math.round((tp.heightNorm != null ? tp.heightNorm : GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM) * 100f);
         hSeek.setProgress(Math.max(10, Math.min(65, hp)));
 
-        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
-        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         root.addView(wTitle);
         root.addView(wSeek);
         root.addView(hTitle);
@@ -3718,7 +3718,7 @@ public class GamepadFragment extends Fragment {
 
         TextView wTitle = new TextView(ctx);
         wTitle.setText(R.string.gamepad_touchpad_width_pct);
-        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar wSeek = new android.widget.SeekBar(ctx);
         wSeek.setMax(65);
         int wp = Math.round((m.widthNorm != null ? m.widthNorm
@@ -3727,7 +3727,7 @@ public class GamepadFragment extends Fragment {
 
         TextView hTitle = new TextView(ctx);
         hTitle.setText(R.string.gamepad_touchpad_height_pct);
-        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar hSeek = new android.widget.SeekBar(ctx);
         hSeek.setMax(65);
         int hp = Math.round((m.heightNorm != null ? m.heightNorm
@@ -3741,7 +3741,7 @@ public class GamepadFragment extends Fragment {
 
         TextView sensTitle = new TextView(ctx);
         sensTitle.setText(R.string.gamepad_scroll_strip_sensitivity_pct);
-        sensTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        sensTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar sensSeek = new android.widget.SeekBar(ctx);
         sensSeek.setMax(375);
         float sens = m.scrollStripSensitivity != null ? m.scrollStripSensitivity : 1f;
@@ -3837,7 +3837,7 @@ public class GamepadFragment extends Fragment {
 
         TextView title = new TextView(ctx);
         title.setText(R.string.gamepad_mouse_btn_size_pct);
-        title.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        title.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
         seek.setMax(150);
         float cur = layoutDoc.layout.touchpadMouseButtonScale != null
@@ -3897,7 +3897,7 @@ public class GamepadFragment extends Fragment {
 
         TextView moduleSizeTitle = new TextView(ctx);
         moduleSizeTitle.setText(R.string.gamepad_mouse_btn_size_pct);
-        moduleSizeTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        moduleSizeTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar moduleScaleSeek = new android.widget.SeekBar(ctx);
         moduleScaleSeek.setMax(150);
         moduleScaleSeek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
@@ -3909,7 +3909,7 @@ public class GamepadFragment extends Fragment {
         if (GamepadLayoutDocEditor.hasTouchpad(layoutDoc)) {
             TextView globalTitle = new TextView(ctx);
             globalTitle.setText(R.string.gamepad_touchpad_mouse_btn_size_title);
-            globalTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+            globalTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
             root.addView(globalTitle);
 
             android.widget.SeekBar globalSeek = new android.widget.SeekBar(ctx);
@@ -3947,7 +3947,7 @@ public class GamepadFragment extends Fragment {
                 bindGestureLockSpinnerRows(ctx, gestureMouseBox, m);
 
         TextView gestureSensHint = new TextView(ctx);
-        gestureSensHint.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        gestureSensHint.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         int onSurfaceVar = MaterialColors.getColor(
                 ctx,
                 com.google.android.material.R.attr.colorOnSurfaceVariant,
@@ -4616,7 +4616,7 @@ public class GamepadFragment extends Fragment {
         container.removeAllViews();
         TextView section = new TextView(ctx);
         section.setText(R.string.gamepad_gesture_lock_section);
-        section.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        section.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         container.addView(section);
         int[] labelIds = {
             R.string.gamepad_gesture_slot_up_left,
@@ -4645,7 +4645,7 @@ public class GamepadFragment extends Fragment {
         for (int i = 0; i < 4; i++) {
             TextView rowLabel = new TextView(ctx);
             rowLabel.setText(labelIds[i]);
-            rowLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+            rowLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
             container.addView(rowLabel);
             android.widget.Spinner sp = new android.widget.Spinner(ctx);
             sp.setAdapter(ad);
@@ -5137,7 +5137,7 @@ public class GamepadFragment extends Fragment {
 
         TextView pickerTitle = new TextView(requireContext());
         pickerTitle.setText(R.string.gamepad_key_picker_title);
-        pickerTitle.setTextAppearance(requireContext(), R.style.TextAppearance_KeyMod_GamepadConfig_Title);
+        pickerTitle.setTextAppearance(requireContext(), R.style.TextAppearance_KeyCmd_GamepadConfig_Title);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         titleLp.bottomMargin = dp(10);
@@ -5501,7 +5501,7 @@ public class GamepadFragment extends Fragment {
     private TextView createGamepadModuleIdTextViewForSheet(@NonNull Context ctx, @NonNull String layoutModuleId) {
         TextView tv = new TextView(ctx);
         tv.setId(R.id.gamepad_module_id_text);
-        tv.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        tv.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         int secondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         tv.setTextColor(secondary);

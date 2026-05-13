@@ -25,7 +25,7 @@
 
             <EditText
                 android:id="@+id/basic_compose_editor"
-                style="@style/Widget.KeyMod.BasicComposeEditor"
+                style="@style/Widget.KeyCmd.BasicComposeEditor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/kb_basic_compose_editor_hint"
@@ -48,10 +48,26 @@
         android:paddingBottom="12dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_redo"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            android:id="@+id/basic_compose_saved_texts"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/ime_saved_text_cd_open_library"
+            android:text=""
+            app:icon="@drawable/ic_bookmark_star_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_redo"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:gravity="center"
             android:contentDescription="@string/compose_redo_clear"
@@ -64,7 +80,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_clear"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -80,7 +96,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_send"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"

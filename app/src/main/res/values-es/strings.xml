@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">Configuración</string>
     <string name="settings_tab_general">General</string>
     <string name="settings_tab_voice">Voz</string>
@@ -430,9 +430,9 @@ por TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Banda y teclado principal: íconos. Toque para cambiar al texto combinado.</string>
     <string name="top_shortcut_display_mode_cd_chord">Banda: teclas combinadas (p. ej., Alt+X). Teclado principal: Tab y modificadores como nombres. Toque para cambiar a nombres de atajos.</string>
     <string name="ime_capture_hint">Escriba y edite texto largo aquí: toque Enviar para enviarlo al dispositivo conectado</string>
-    <string name="top_shortcut_ime_toggle_keymod">Teclado KeyMod (toque para IME del sistema)</string>
-    <string name="top_shortcut_ime_toggle_system">IME del sistema (toque para teclado KeyMod)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Integrado</string>
+    <string name="top_shortcut_ime_toggle_keycmd">Teclado KeyCmd (toque para IME del sistema)</string>
+    <string name="top_shortcut_ime_toggle_system">IME del sistema (toque para teclado KeyCmd)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Integrado</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Consejo: mantenga presionada esta tecla para bloquear el modificador.</string>
     <string name="ime_not_connected">Conecte USB o Bluetooth para enviar pulsaciones de teclas.</string>

@@ -16,7 +16,7 @@
     </style>
 
     <!-- New shortcut bottom sheet -->
-    <style name="Widget.KeyMod.CreateShortcut.Modifier" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <style name="Widget.KeyCmd.CreateShortcut.Modifier" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:minHeight">44dp</item>
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
@@ -26,7 +26,7 @@
         <item name="cornerRadius">10dp</item>
     </style>
 
-    <style name="Widget.KeyMod.CreateShortcut.Chip" parent="Widget.MaterialComponents.Chip.Choice">
+    <style name="Widget.KeyCmd.CreateShortcut.Chip" parent="Widget.MaterialComponents.Chip.Choice">
         <item name="chipMinHeight">44dp</item>
         <item name="android:textSize">14sp</item>
         <item name="chipCornerRadius">22dp</item>
@@ -35,7 +35,7 @@
         <item name="chipEndPadding">10dp</item>
     </style>
 
-    <style name="Widget.KeyMod.CreateShortcut.Chip.Small" parent="Widget.MaterialComponents.Chip.Choice">
+    <style name="Widget.KeyCmd.CreateShortcut.Chip.Small" parent="Widget.MaterialComponents.Chip.Choice">
         <item name="chipMinHeight">40dp</item>
         <item name="android:textSize">12sp</item>
         <item name="chipCornerRadius">20dp</item>
@@ -45,33 +45,33 @@
     </style>
 
     <!-- Favorites reorder sheet visual alignment with New Shortcut -->
-    <style name="TextAppearance.KeyMod.SectionCaption" parent="TextAppearance.MaterialComponents.Caption">
+    <style name="TextAppearance.KeyCmd.SectionCaption" parent="TextAppearance.MaterialComponents.Caption">
         <item name="android:textAllCaps">true</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <style name="Widget.KeyMod.Favorites.Action.Secondary" parent="Widget.MaterialComponents.Button.TextButton">
+    <style name="Widget.KeyCmd.Favorites.Action.Secondary" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <style name="Widget.KeyMod.Favorites.Action.Tertiary" parent="Widget.MaterialComponents.Button.TextButton">
+    <style name="Widget.KeyCmd.Favorites.Action.Tertiary" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <style name="Widget.KeyMod.Favorites.Action.Primary" parent="Widget.MaterialComponents.Button.TextButton">
+    <style name="Widget.KeyCmd.Favorites.Action.Primary" parent="Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">?attr/colorPrimary</item>
         <item name="android:textStyle">bold</item>
     </style>
 
     <!-- Shortcut Hub profile detail: tabs match Material, no forced all-caps -->
-    <style name="TextAppearance.KeyMod.HubTab" parent="TextAppearance.MaterialComponents.Button">
+    <style name="TextAppearance.KeyCmd.HubTab" parent="TextAppearance.MaterialComponents.Button">
         <item name="android:textAllCaps">false</item>
         <item name="android:textSize">13sp</item>
         <item name="android:letterSpacing">0</item>
     </style>
 
-    <style name="Widget.KeyMod.HubHeaderButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <style name="Widget.KeyCmd.HubHeaderButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:minHeight">48dp</item>
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
@@ -107,7 +107,7 @@
         <item name="android:focusable">true</item>
     </style>
 
-    <style name="Widget.KeyMod.BasicNumpadCell" parent="@android:style/Widget.TextView">
+    <style name="Widget.KeyCmd.BasicNumpadCell" parent="@android:style/Widget.TextView">
         <item name="android:background">@drawable/km_basic_numpad_key_background</item>
         <item name="android:textColor">@color/basic_key_label_color</item>
         <item name="android:textSize">16sp</item>
@@ -117,14 +117,14 @@
     </style>
 
     <!-- Numpad direction keys: flat name avoids dotted-style implicit parent; icon + tint in layout. -->
-    <style name="KeyModBasicNumpadIconCell">
+    <style name="KeyCmdBasicNumpadIconCell">
         <item name="android:background">@drawable/km_basic_numpad_key_background</item>
         <item name="android:layout_margin">4dp</item>
         <item name="android:padding">4dp</item>
         <item name="android:scaleType">fitCenter</item>
     </style>
 
-    <style name="Widget.KeyMod.BasicTouchpadMouseButton" parent="Widget.KeyMod.BasicNumpadCell">
+    <style name="Widget.KeyCmd.BasicTouchpadMouseButton" parent="Widget.KeyCmd.BasicNumpadCell">
         <item name="android:background">@drawable/km_basic_touchpad_mouse_button_background</item>
         <item name="android:layout_margin">2dp</item>
         <item name="android:textSize">16sp</item>
@@ -132,9 +132,9 @@
     </style>
 
     <!-- KM Pro touchpad L/M/R row: same visuals as Basic mouse row; separate name for Pro call sites. -->
-    <style name="Widget.KeyMod.ProTouchpadMouseButton" parent="Widget.KeyMod.BasicTouchpadMouseButton" />
+    <style name="Widget.KeyCmd.ProTouchpadMouseButton" parent="Widget.KeyCmd.BasicTouchpadMouseButton" />
 
-    <style name="Widget.KeyMod.BasicComposeActionButton" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Widget.KeyCmd.BasicComposeActionButton" parent="Widget.Material3.Button.OutlinedButton">
         <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textAllCaps">true</item>
@@ -147,22 +147,22 @@
     </style>
 
     <!-- Gamepad stick / button module configuration dialogs (aligned with touchpad presentation card) -->
-    <style name="TextAppearance.KeyMod.GamepadConfig.SheetTitle" parent="TextAppearance.Material3.TitleMedium">
+    <style name="TextAppearance.KeyCmd.GamepadConfig.SheetTitle" parent="TextAppearance.Material3.TitleMedium">
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
-    <style name="TextAppearance.KeyMod.GamepadConfig.Title" parent="TextAppearance.Material3.TitleLarge">
+    <style name="TextAppearance.KeyCmd.GamepadConfig.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
-    <style name="TextAppearance.KeyMod.GamepadConfig.Section" parent="TextAppearance.Material3.TitleSmall">
+    <style name="TextAppearance.KeyCmd.GamepadConfig.Section" parent="TextAppearance.Material3.TitleSmall">
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
-    <style name="TextAppearance.KeyMod.GamepadConfig.Caption" parent="TextAppearance.Material3.BodySmall">
+    <style name="TextAppearance.KeyCmd.GamepadConfig.Caption" parent="TextAppearance.Material3.BodySmall">
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
     <!-- KM Basic IME compose: same surface tier as keys; theme text/hint for day/night + accent themes.
-         Explicit parent avoids AAPT inferring non-existent Widget.KeyMod.BasicCompose / Widget.KeyMod. -->
-    <style name="Widget.KeyMod.BasicComposeEditor" parent="@android:style/Widget.EditText">
+         Explicit parent avoids AAPT inferring non-existent Widget.KeyCmd.BasicCompose / Widget.KeyCmd. -->
+    <style name="Widget.KeyCmd.BasicComposeEditor" parent="@android:style/Widget.EditText">
         <item name="android:background">@drawable/basic_compose_editor_background</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
         <item name="android:textColorHint">?attr/colorOnSurfaceVariant</item>

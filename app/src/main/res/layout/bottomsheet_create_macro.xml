@@ -222,7 +222,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/create_macro_pick_time"
-            style="@style/Widget.KeyMod.HubHeaderButton"
+            style="@style/Widget.KeyCmd.HubHeaderButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

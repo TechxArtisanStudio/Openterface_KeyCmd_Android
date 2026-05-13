@@ -111,8 +111,7 @@ public class CompositeFragment extends Fragment {
     /** Inflated split layout root (landscape {@code fragment_composite_split}). */
     private View splitLayoutRoot;
     private View splitTouchPadInfoButton;
-    /** Fills {@code composite_root} when KM Pro Compose hides touchpad + keyboard slot (temporary). */
-    @Nullable private View kmProComposeClearFill;
+    @Nullable private View kmProComposeFragmentHost;
 
     /**
      * Portrait Keyboard submode + BOTH display: slightly taller keyboard band vs touchpad so IME
@@ -156,6 +155,8 @@ public class CompositeFragment extends Fragment {
                 updateTouchPadTips();
                 updateSplitTouchPadTips();
             };
+
+    private static final String TAG_KM_PRO_COMPOSE = "km_pro_compose";
 
     private enum DisplayMode { BOTH, KEYBOARD, TOUCHPAD, SPLIT }
     private DisplayMode displayMode = DisplayMode.BOTH;
@@ -859,6 +860,12 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.setPort(newPort);
         }
+        if (isAdded()) {
+            Fragment composeChild = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+            if (composeChild instanceof BasicComposeFragment) {
+                ((BasicComposeFragment) composeChild).onHostPortChanged(newPort);
+            }
+        }
         if (newPort == null) {
             proHoldLockController.clearAllAndReleaseHid(null, bluetoothService, isServiceBound);
         }
@@ -1388,6 +1395,7 @@ public class CompositeFragment extends Fragment {
             kmProImeDirectSend.detach();
             kmProImeDirectSend = null;
         }
+        hideKmProComposeSubUi();
         // Must run before super.onDestroyView(): setDragMode updates tips / hybrid visuals on live views.
         clearKeyboardOsListeners();
         setDragMode(false);
@@ -1445,7 +1453,7 @@ public class CompositeFragment extends Fragment {
 
     private void setupNormalViews(View view) {
         rootLayout = view.findViewById(R.id.composite_root);
-        kmProComposeClearFill = view.findViewById(R.id.km_pro_compose_clear_fill);
+        kmProComposeFragmentHost = view.findViewById(R.id.km_pro_compose_fragment_host);
         kmProKeyboardSlot = view.findViewById(R.id.km_pro_keyboard_slot);
         kmProImeHost = view.findViewById(R.id.km_pro_ime_host);
         kmProKeyboardBaselinePaddingCaptured = false;
@@ -1700,15 +1708,15 @@ public class CompositeFragment extends Fragment {
     }
 
     /**
-     * Compose in landscape uses the same vertical composition as portrait. NumPad is kept
-     * portrait-only via {@link #applyKmProSubmodeRequestedOrientation()}; the numpad branch remains
-     * for any transient frame during rotation.
+     * NumPad in landscape uses the same vertical composition as portrait. NumPad and Compose are kept
+     * portrait-only via {@link #applyKmProSubmodeRequestedOrientation()}; this branch remains for
+     * any transient frame during rotation.
      */
     private boolean usePortraitStyleKmProRootLayout() {
         if (!isLandscapeOrientation()) {
             return true;
         }
-        return currentSubmode == ProSubmode.NUMPAD || currentSubmode == ProSubmode.COMPOSE;
+        return currentSubmode == ProSubmode.NUMPAD;
     }
 
     /**
@@ -1721,7 +1729,7 @@ public class CompositeFragment extends Fragment {
         if (activity == null) {
             return;
         }
-        if (currentSubmode == ProSubmode.NUMPAD) {
+        if (currentSubmode == ProSubmode.NUMPAD || currentSubmode == ProSubmode.COMPOSE) {
             activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
         } else {
             activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
@@ -1898,16 +1906,58 @@ public class CompositeFragment extends Fragment {
         }
     }
 
+    private void hideKmProComposeSubUi() {
+        if (kmProComposeFragmentHost != null) {
+            kmProComposeFragmentHost.setVisibility(View.GONE);
+        }
+        if (!isAdded()) {
+            return;
+        }
+        Fragment existing = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+        if (existing != null) {
+            getChildFragmentManager().beginTransaction().remove(existing).commitAllowingStateLoss();
+        }
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).hideImeSavedTextOverlay();
+        }
+    }
+
+    private void showKmProComposeSubUi() {
+        if (kmProComposeFragmentHost == null || !isAdded()) {
+            return;
+        }
+        kmProComposeFragmentHost.setVisibility(View.VISIBLE);
+        Fragment current = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+        if (!(current instanceof BasicComposeFragment)) {
+            BasicComposeFragment frag = BasicComposeFragment.instantiateForKmProEmbedded(port);
+            getChildFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.km_pro_compose_fragment_host, frag, TAG_KM_PRO_COMPOSE)
+                    .runOnCommit(
+                            () -> {
+                                Fragment f =
+                                        getChildFragmentManager()
+                                                .findFragmentByTag(TAG_KM_PRO_COMPOSE);
+                                if (f instanceof BasicComposeFragment) {
+                                    ((BasicComposeFragment) f).requestEditorImeForKmProEmbedded();
+                                }
+                            })
+                    .commitAllowingStateLoss();
+        } else {
+            ((BasicComposeFragment) current).onHostPortChanged(port);
+            ((BasicComposeFragment) current).requestEditorImeForKmProEmbedded();
+        }
+    }
+
     private void applyDisplayMode() {
         if (currentSubmode != ProSubmode.KEYBOARD) {
             hideKmProImeSurface();
         }
-        if (kmProComposeClearFill != null && splitRoot == null) {
-            kmProComposeClearFill.setVisibility(View.GONE);
-        }
         boolean isLandscape = isLandscapeOrientation();
 
         if (currentSubmode == ProSubmode.NUMPAD) {
+            hideKmProComposeSubUi();
             displayMode = DisplayMode.KEYBOARD;
             ensureNormalLayout();
             if (kmProKeyboardSlot != null) {
@@ -1938,9 +1988,7 @@ public class CompositeFragment extends Fragment {
             if (kmProKeyboardSlot != null) {
                 kmProKeyboardSlot.setVisibility(View.GONE);
             }
-            if (kmProComposeClearFill != null) {
-                kmProComposeClearFill.setVisibility(View.VISIBLE);
-            }
+            showKmProComposeSubUi();
             if (keyboardView != null) {
                 keyboardView.setShowExtraPortraitKeys(false);
                 keyboardView.setShortcutsStripOnly(false);
@@ -1969,6 +2017,7 @@ public class CompositeFragment extends Fragment {
         boolean isInSplit = displayMode == DisplayMode.SPLIT;
 
         if (isInSplit) {
+            hideKmProComposeSubUi();
             hideKmProImeSurface();
             ensureSplitLayout();
             if (keyboardViewLeft != null) {
@@ -1986,6 +2035,7 @@ public class CompositeFragment extends Fragment {
 
         // Ensure we have the normal layout
         ensureNormalLayout();
+        hideKmProComposeSubUi();
         if (kmProKeyboardSlot != null) {
             kmProKeyboardSlot.setVisibility(View.VISIBLE);
         }
@@ -2133,7 +2183,7 @@ public class CompositeFragment extends Fragment {
             keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, keyboardWeight));
 
-            applyKmProComposeClearFillLayoutParamsPortrait();
+            applyKmProComposeFragmentHostLayoutParamsPortrait();
             updateKmProPortraitKeyboardStripBottomPadding();
         } else {
             rootLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -2146,30 +2196,30 @@ public class CompositeFragment extends Fragment {
             keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
 
-            applyKmProComposeClearFillLayoutParamsLandscape();
+            applyKmProComposeFragmentHostLayoutParamsLandscape();
         }
         if (touchpadSection != null && touchpadSection.getVisibility() == View.VISIBLE) {
             touchpadSection.post(this::applyProTouchpadMouseLayoutCompactOrComfortable);
         }
     }
 
-    private void applyKmProComposeClearFillLayoutParamsPortrait() {
-        if (kmProComposeClearFill == null
-                || kmProComposeClearFill.getVisibility() != View.VISIBLE
+    private void applyKmProComposeFragmentHostLayoutParamsPortrait() {
+        if (kmProComposeFragmentHost == null
+                || kmProComposeFragmentHost.getVisibility() != View.VISIBLE
                 || splitRoot != null) {
             return;
         }
-        kmProComposeClearFill.setLayoutParams(
+        kmProComposeFragmentHost.setLayoutParams(
                 new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
     }
 
-    private void applyKmProComposeClearFillLayoutParamsLandscape() {
-        if (kmProComposeClearFill == null
-                || kmProComposeClearFill.getVisibility() != View.VISIBLE
+    private void applyKmProComposeFragmentHostLayoutParamsLandscape() {
+        if (kmProComposeFragmentHost == null
+                || kmProComposeFragmentHost.getVisibility() != View.VISIBLE
                 || splitRoot != null) {
             return;
         }
-        kmProComposeClearFill.setLayoutParams(
+        kmProComposeFragmentHost.setLayoutParams(
                 new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
     }
 

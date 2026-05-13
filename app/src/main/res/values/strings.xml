@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">Settings</string>
     <string name="settings_tab_general">General</string>
     <string name="settings_tab_voice">Voice</string>
@@ -812,7 +812,6 @@ by TechxArtisan</string>
     <string name="kb_mouse_sub_numpad">NumPad</string>
     <string name="kb_mouse_sub_touchpad">Touchpad</string>
     <string name="kb_mouse_sub_compose">Compose</string>
-    <string name="km_pro_compose_workspace_a11y">Compose workspace. Keyboard and touchpad are hidden while this layout is reworked.</string>
     <string name="kb_mouse_sub_ime">Compose &amp; Send</string>
     <string name="kb_basic_touchpad_scroll_area_a11y">Mouse wheel scroll strip</string>
     <string name="kb_basic_touchpad_mouse_left_label">L</string>
@@ -1111,9 +1110,9 @@ by TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Strip and main keyboard: showing icons. Tap to switch to combo text.</string>
     <string name="top_shortcut_display_mode_cd_chord">Strip: showing combo keys (e.g. Alt+X). Main keyboard Tab and modifier keys use names. Tap to switch to shortcut names.</string>
     <string name="ime_capture_hint">Type and edit long text here — tap Send to send it to the connected device</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod keyboard (tap for system IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyMod keyboard)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Built-in</string>
+    <string name="top_shortcut_ime_toggle_keycmd">KeyCmd keyboard (tap for system IME)</string>
+    <string name="top_shortcut_ime_toggle_system">System IME (tap for KeyCmd keyboard)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Built-in</string>
     <string name="top_shortcut_ime_toggle_system_short">Sys IME</string>
     <!-- KM Pro PH1 merged A/B/C input mode (tap cycles portrait: built-in → IME direct → IME compose) -->
     <string name="top_shortcut_km_pro_input_built_in_short">Built-in</string>
@@ -1128,7 +1127,7 @@ by TechxArtisan</string>
     <string name="top_shortcut_km_pro_input_ime_direct_cd">IME direct send: each key sends as you type. Tap to switch to IME compose send.</string>
     <string name="top_shortcut_km_pro_input_ime_compose_cd">IME compose send: type a buffer then tap Send. Tap to switch to built-in QWER keyboard.</string>
     <!-- Activity header slots when host is KM Pro (use header to switch built-in / direct / compose) -->
-    <string name="header_km_pro_input_builtin_cd">Built-in keyboard mode. Tap to use the KeyMod QWERTY keyboard.</string>
+    <string name="header_km_pro_input_builtin_cd">Built-in keyboard mode. Tap to use the KeyCmd QWERTY keyboard.</string>
     <string name="header_km_pro_input_direct_cd">Direct send mode: each key sends as you type. Portrait only.</string>
     <string name="header_km_pro_input_compose_cd">Compose mode: type a buffer then tap Send. Portrait only.</string>
     <string name="header_km_pro_input_direct_disabled_landscape_cd">Direct send mode is only available in portrait in Keyboard &amp; Mouse Pro.</string>

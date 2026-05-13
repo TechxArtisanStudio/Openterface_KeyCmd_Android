@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">Einstellungen</string>
     <string name="settings_tab_general">Allgemein</string>
     <string name="settings_tab_voice">Stimme</string>
@@ -429,9 +429,9 @@ von TechxArtisan</string>
     <string name="top_shortcut_display_mode_cd_icon">Leiste und Haupttastatur: Symbole. Tippen Sie, um zum Kombinationstext zu wechseln.</string>
     <string name="top_shortcut_display_mode_cd_chord">Leiste: Kombinationstasten (z. B. Alt+X). Haupttastatur: Tab und Modifikatoren als Namen. Tippen Sie, um zu Shortcut-Namen zu wechseln.</string>
     <string name="ime_capture_hint">Geben Sie hier den Langtext ein und bearbeiten Sie ihn – tippen Sie auf Senden, um ihn an das verbundene Gerät zu senden</string>
-    <string name="top_shortcut_ime_toggle_keymod">KeyMod-Tastatur (tippen für System-IME)</string>
-    <string name="top_shortcut_ime_toggle_system">System-IME (tippen für KeyMod-Tastatur)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Eingebaut</string>
+    <string name="top_shortcut_ime_toggle_keycmd">KeyCmd-Tastatur (tippen für System-IME)</string>
+    <string name="top_shortcut_ime_toggle_system">System-IME (tippen für KeyCmd-Tastatur)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Eingebaut</string>
     <string name="top_shortcut_ime_toggle_system_short">System-IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Tipp: Drücken Sie diese Taste lange, um den Modifikator zu sperren.</string>
     <string name="ime_not_connected">Schließen Sie USB oder Bluetooth an, um Tastatureingaben zu senden.</string>

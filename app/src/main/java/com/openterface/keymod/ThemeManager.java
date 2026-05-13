@@ -181,26 +181,26 @@ public final class ThemeManager {
 
     private static int resolveTheme(String family) {
         if (FAMILY_BLUE.equals(family)) {
-            return R.style.Theme_KeyMod_Blue;
+            return R.style.Theme_KeyCmd_Blue;
         }
         if (FAMILY_GREEN.equals(family)) {
-            return R.style.Theme_KeyMod_Green;
+            return R.style.Theme_KeyCmd_Green;
         }
         if (FAMILY_PINK.equals(family)) {
-            return R.style.Theme_KeyMod_Pink;
+            return R.style.Theme_KeyCmd_Pink;
         }
         if (FAMILY_PURPLE.equals(family)) {
-            return R.style.Theme_KeyMod_Purple;
+            return R.style.Theme_KeyCmd_Purple;
         }
         if (FAMILY_RED.equals(family)) {
-            return R.style.Theme_KeyMod_Red;
+            return R.style.Theme_KeyCmd_Red;
         }
         if (FAMILY_TEAL.equals(family)) {
-            return R.style.Theme_KeyMod_Teal;
+            return R.style.Theme_KeyCmd_Teal;
         }
         if (FAMILY_INDIGO.equals(family)) {
-            return R.style.Theme_KeyMod_Indigo;
+            return R.style.Theme_KeyCmd_Indigo;
         }
-        return R.style.Theme_KeyMod_Orange;
+        return R.style.Theme_KeyCmd_Orange;
     }
 }

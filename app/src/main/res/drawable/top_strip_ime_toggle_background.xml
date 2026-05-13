@@ -7,7 +7,7 @@
             <corners android:radius="9dp" />
         </shape>
     </item>
-    <!-- KeyMod: pressed — same feedback weight as other strip keys. -->
+    <!-- KeyCmd: pressed — same feedback weight as other strip keys. -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
             <solid android:color="?attr/colorPrimaryContainer" />
@@ -24,7 +24,7 @@
             <corners android:radius="9dp" />
         </shape>
     </item>
-    <!-- KeyMod: idle — neutral fill + accent outline so the slot reads as “special”. -->
+    <!-- KeyCmd: idle — neutral fill + accent outline so the slot reads as “special”. -->
     <item>
         <shape android:shape="rectangle">
             <solid android:color="@color/key_bg_function" />

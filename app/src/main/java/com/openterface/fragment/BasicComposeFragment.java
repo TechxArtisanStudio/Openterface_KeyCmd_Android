@@ -1,5 +1,6 @@
 package com.openterface.fragment;
 
+import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -40,9 +42,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * KM Basic IME-style compose: same send gating as Pro IME sub-compose ({@link ImeComposeSendGate}),
- * with Clear / Redo clear / Send and in-flight cancel (Send becomes Stop).
+ * with Saved texts / Clear / Redo clear / Send and in-flight cancel (Send becomes Stop).
  */
-public class BasicComposeFragment extends Fragment {
+public class BasicComposeFragment extends Fragment implements ImeSavedTextFragment.Host {
+
+    public static final String ARG_EMBEDDED_IN_KM_PRO = "embedded_in_km_pro";
+
+    private static final String TAG_KM_PRO_HOST = "BasicComposeFragment";
 
     public static BasicComposeFragment instantiateWithPort(@Nullable UsbSerialPort p) {
         BasicComposeFragment f = new BasicComposeFragment();
@@ -50,16 +56,29 @@ public class BasicComposeFragment extends Fragment {
         return f;
     }
 
+    /**
+     * Compose buffer embedded in KM Pro composite (portrait-locked); requests IME when shown.
+     */
+    @NonNull
+    public static BasicComposeFragment instantiateForKmProEmbedded(@Nullable UsbSerialPort p) {
+        BasicComposeFragment f = new BasicComposeFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_EMBEDDED_IN_KM_PRO, true);
+        f.setArguments(args);
+        f.port = p;
+        return f;
+    }
+
     public UsbSerialPort port;
 
     private EditText editor;
+    @Nullable private MaterialButton savedTextsBtn;
     private MaterialButton clearBtn;
     private MaterialButton redoBtn;
     private MaterialButton sendBtn;
     @Nullable private View actionsRow;
     @Nullable private View composeBrandLogo;
-    @Nullable
-    private String undoSnapshot;
+    @Nullable private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
     private boolean highlightNonAsciiChars;
@@ -67,6 +86,11 @@ public class BasicComposeFragment extends Fragment {
     /** Match {@link android.Manifest} {@code windowSoftInputMode} for {@link MainActivity}. */
     private static final int ACTIVITY_SOFT_INPUT_MODE =
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+
+    private boolean isEmbeddedInKmPro() {
+        Bundle a = getArguments();
+        return a != null && a.getBoolean(ARG_EMBEDDED_IN_KM_PRO, false);
+    }
 
     @Nullable
     @Override
@@ -83,6 +107,7 @@ public class BasicComposeFragment extends Fragment {
 
         editor = view.findViewById(R.id.basic_compose_editor);
         editor.setImeOptions(editor.getImeOptions() | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+        savedTextsBtn = view.findViewById(R.id.basic_compose_saved_texts);
         clearBtn = view.findViewById(R.id.basic_compose_clear);
         redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
@@ -92,6 +117,9 @@ public class BasicComposeFragment extends Fragment {
         clearBtn.setOnClickListener(v -> onClearClicked());
         redoBtn.setOnClickListener(v -> onRedoClicked());
         sendBtn.setOnClickListener(v -> onSendClicked());
+        if (savedTextsBtn != null) {
+            savedTextsBtn.setOnClickListener(v -> onSavedTextsClicked());
+        }
 
         editor.addTextChangedListener(
                 new TextWatcher() {
@@ -215,6 +243,9 @@ public class BasicComposeFragment extends Fragment {
             v.post(() -> ViewCompat.requestApplyInsets(v));
             v.postDelayed(() -> ViewCompat.requestApplyInsets(v), 120);
         }
+        if (isEmbeddedInKmPro()) {
+            requestEditorImeForKmProEmbedded();
+        }
     }
 
     @Override
@@ -223,6 +254,32 @@ public class BasicComposeFragment extends Fragment {
             getActivity().getWindow().setSoftInputMode(ACTIVITY_SOFT_INPUT_MODE);
         }
         super.onPause();
+    }
+
+    /** When hosted inside KM Pro Compose tab: focus editor and show soft keyboard. */
+    public void requestEditorImeForKmProEmbedded() {
+        if (!isEmbeddedInKmPro() || editor == null || !isAdded()) {
+            return;
+        }
+        editor.requestFocus();
+        InputMethodManager imm =
+                (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm == null) {
+            return;
+        }
+        editor.post(() -> imm.showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT));
+        editor.postDelayed(() -> imm.showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT), 220);
+    }
+
+    private void onSavedTextsClicked() {
+        if (sending) {
+            return;
+        }
+        MainActivity ma = mainActivity();
+        if (ma == null) {
+            return;
+        }
+        ma.showImeSavedTextOverlay(this);
     }
 
     private void onClearClicked() {
@@ -257,20 +314,31 @@ public class BasicComposeFragment extends Fragment {
         }
         ConnectionManager cm = ma.getConnectionManager();
         String text = editor.getText() != null ? editor.getText().toString() : "";
+        sendBufferAfterGate(ma, cm, text, true);
+    }
+
+    private void sendBufferAfterGate(
+            @NonNull MainActivity ma,
+            @Nullable ConnectionManager cm,
+            @NonNull String text,
+            boolean editorIsSourceBuffer) {
         ImeComposeSendGate.SendAssessment assessment = ImeComposeSendGate.assess(cm, text);
         if (assessment.hardBlockReasonResId != null) {
             Toast.makeText(requireContext(), assessment.hardBlockReasonResId, Toast.LENGTH_SHORT).show();
             return;
         }
         if (assessment.warningInfo != null) {
-            showComposeSendWarningDialog(cm, assessment.warningInfo);
+            showComposeSendWarningDialog(cm, assessment.warningInfo, text, editorIsSourceBuffer);
             return;
         }
-        startSend(ma, cm, text);
+        startSend(ma, cm, text, editorIsSourceBuffer);
     }
 
     private void showComposeSendWarningDialog(
-            @Nullable ConnectionManager cm, @NonNull ImeComposeSendGate.WarningInfo warningInfo) {
+            @Nullable ConnectionManager cm,
+            @NonNull ImeComposeSendGate.WarningInfo warningInfo,
+            @NonNull String pendingSendText,
+            boolean editorIsSourceBuffer) {
         if (editor == null || sending) {
             return;
         }
@@ -282,7 +350,10 @@ public class BasicComposeFragment extends Fragment {
                     if (ma == null || editor == null || sending) {
                         return;
                     }
-                    String now = editor.getText() != null ? editor.getText().toString() : "";
+                    String now =
+                            editorIsSourceBuffer
+                                    ? (editor.getText() != null ? editor.getText().toString() : "")
+                                    : pendingSendText;
                     ImeComposeSendGate.SendAssessment reassess =
                             ImeComposeSendGate.assess(cm, now);
                     if (reassess.hardBlockReasonResId != null) {
@@ -291,7 +362,7 @@ public class BasicComposeFragment extends Fragment {
                         refreshToolbarState();
                         return;
                     }
-                    startSend(ma, cm, now);
+                    startSend(ma, cm, now, editorIsSourceBuffer);
                 },
                 () -> {
                     highlightNonAsciiChars = true;
@@ -301,18 +372,29 @@ public class BasicComposeFragment extends Fragment {
                     }
                 },
                 () -> {
-                    if (editor == null || editor.getText() == null) {
+                    String preview =
+                            editorIsSourceBuffer
+                                    ? (editor != null && editor.getText() != null
+                                            ? editor.getText().toString()
+                                            : "")
+                                    : pendingSendText;
+                    if (preview.isEmpty()) {
                         return;
                     }
-                    ComposeSendPreviewDialog.show(requireContext(), editor.getText().toString());
+                    ComposeSendPreviewDialog.show(requireContext(), preview);
                 });
     }
 
     private void startSend(
-            @NonNull MainActivity ma, @Nullable ConnectionManager cm, @NonNull String text) {
+            @NonNull MainActivity ma,
+            @Nullable ConnectionManager cm,
+            @NonNull String text,
+            boolean clearEditorAfterSuccess) {
         cancelSend.set(false);
         sending = true;
-        editor.setEnabled(false);
+        if (editor != null) {
+            editor.setEnabled(false);
+        }
         refreshToolbarState();
 
         final String targetOs = ma.getTargetOs();
@@ -360,7 +442,7 @@ public class BasicComposeFragment extends Fragment {
                                                             getString(R.string.compose_sent, sentLen),
                                                             Toast.LENGTH_SHORT)
                                                     .show();
-                                            if (editor != null) {
+                                            if (clearEditorAfterSuccess && editor != null) {
                                                 editor.setText("");
                                             }
                                             refreshToolbarState();
@@ -461,6 +543,11 @@ public class BasicComposeFragment extends Fragment {
             editor.setActivated(!t.isEmpty());
         }
 
+        if (savedTextsBtn != null) {
+            savedTextsBtn.setEnabled(!sending);
+            savedTextsBtn.setAlpha(sending ? 0.45f : 1f);
+        }
+
         if (sending) {
             sendBtn.setText("");
             sendBtn.setIconResource(R.drawable.ic_compose_stop_24);
@@ -510,5 +597,36 @@ public class BasicComposeFragment extends Fragment {
 
     public void onHostPortChanged(@Nullable UsbSerialPort newPort) {
         port = newPort;
+    }
+
+    // --- ImeSavedTextFragment.Host ---
+
+    @NonNull
+    @Override
+    public String readCurrentEditorText() {
+        if (editor == null || editor.getText() == null) {
+            return "";
+        }
+        return editor.getText().toString();
+    }
+
+    @Override
+    public void onLoadIntoEditor(@NonNull String content) {
+        if (editor == null || sending) {
+            return;
+        }
+        editor.setText(content);
+        editor.setSelection(content.length());
+        refreshToolbarState();
+    }
+
+    @Override
+    public void onSendSavedText(@NonNull String content) {
+        MainActivity ma = mainActivity();
+        if (ma == null || sending) {
+            return;
+        }
+        ConnectionManager cm = ma.getConnectionManager();
+        sendBufferAfterGate(ma, cm, content, false);
     }
 }

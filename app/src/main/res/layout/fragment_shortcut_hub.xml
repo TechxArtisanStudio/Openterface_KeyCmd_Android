@@ -176,7 +176,7 @@
                 app:tabIndicatorFullWidth="false"
                 app:tabIndicatorHeight="3dp"
                 app:tabMode="scrollable"
-                app:tabTextAppearance="@style/TextAppearance.KeyMod.HubTab" />
+                app:tabTextAppearance="@style/TextAppearance.KeyCmd.HubTab" />
         </LinearLayout>
 
         <FrameLayout

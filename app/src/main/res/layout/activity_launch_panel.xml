@@ -38,7 +38,7 @@
                 android:maxWidth="300dp"
                 android:adjustViewBounds="true"
                 android:contentDescription="@string/app_name"
-                android:src="@drawable/ic_keymod_wordmark"
+                android:src="@drawable/ic_keycmd_wordmark"
                 android:tint="@color/launch_panel_brand_tint" />
 
         </LinearLayout>

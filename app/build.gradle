@@ -89,7 +89,7 @@ android {
         versionCode 17
         versionName "0.17"
 
-        setProperty("archivesBaseName", "KeyMod")
+        setProperty("archivesBaseName", "KeyCmd")
 
         buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
 
