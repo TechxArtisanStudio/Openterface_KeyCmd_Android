@@ -108,7 +108,7 @@
     </style>
 
     <style name="Widget.KeyMod.BasicNumpadCell" parent="@android:style/Widget.TextView">
-        <item name="android:background">@drawable/key_background</item>
+        <item name="android:background">@drawable/km_basic_numpad_key_background</item>
         <item name="android:textColor">@color/basic_key_label_color</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
@@ -118,13 +118,14 @@
 
     <!-- Numpad direction keys: flat name avoids dotted-style implicit parent; icon + tint in layout. -->
     <style name="KeyModBasicNumpadIconCell">
-        <item name="android:background">@drawable/key_background</item>
+        <item name="android:background">@drawable/km_basic_numpad_key_background</item>
         <item name="android:layout_margin">4dp</item>
         <item name="android:padding">4dp</item>
         <item name="android:scaleType">fitCenter</item>
     </style>
 
     <style name="Widget.KeyMod.BasicTouchpadMouseButton" parent="Widget.KeyMod.BasicNumpadCell">
+        <item name="android:background">@drawable/km_basic_touchpad_mouse_button_background</item>
         <item name="android:layout_margin">2dp</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>

@@ -1,10 +1,15 @@
 package com.openterface.fragment;
 
+import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.content.res.ColorStateList;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.LayoutInflater;
+import android.view.OrientationEventListener;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -63,6 +68,19 @@ public final class KeyboardMouseFragment extends Fragment {
 
     /** Session-scoped modifier / mouse-button locks for KM Basic sub-modes. */
     private final KmBasicHoldLockController holdLockController = new KmBasicHoldLockController();
+
+    /**
+     * Compose &amp; Send and Touchpad: allow only normal and reverse portrait. {@link
+     * ActivityInfo#SCREEN_ORIENTATION_SENSOR_PORTRAIT} often omits upside-down; {@link
+     * ActivityInfo#SCREEN_ORIENTATION_FULL_SENSOR} allows landscape, which we avoid by driving {@link
+     * ActivityInfo#SCREEN_ORIENTATION_PORTRAIT} / {@link ActivityInfo#SCREEN_ORIENTATION_REVERSE_PORTRAIT}
+     * from the orientation sensor.
+     */
+    @Nullable
+    private OrientationEventListener portraitPairOrientationListener;
+
+    /** Last {@link Activity#setRequestedOrientation} applied for portrait-pair submodes; {@link Integer#MIN_VALUE} = none. */
+    private int lastPortraitPairLock = Integer.MIN_VALUE;
 
     private final MainActivity.OnTargetOsChangeListener basicOsListener =
             os -> {
@@ -179,6 +197,7 @@ public final class KeyboardMouseFragment extends Fragment {
 
     @Override
     public void onPause() {
+        disablePortraitPairOrientationListener();
         if (getActivity() != null) {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
         }
@@ -198,20 +217,119 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     /**
-     * Full-width PC keyboard is only practical in landscape. Compose &amp; send and touchpad lock to
-     * portrait (including upside-down) only. Other KM Basic submodes follow full rotation.
+     * Full-width PC keyboard is only practical in landscape. Touchpad and Compose &amp; Send allow
+     * only the two portrait directions (see portrait-pair listener). Numpad and settings follow
+     * full rotation.
      */
     private void applyOrientationForCurrentSubmode() {
-        if (getActivity() == null) {
+        Activity activity = getActivity();
+        if (activity == null) {
             return;
         }
         if (SUBMODE_KEYBOARD.equals(currentSubmode)) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        } else if (SUBMODE_COMPOSE.equals(currentSubmode) || SUBMODE_TOUCHPAD.equals(currentSubmode)) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            disablePortraitPairOrientationListener();
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        } else if (isPortraitPairLockedSubmode()) {
+            ensurePortraitPairOrientationListenerEnabled();
         } else {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+            disablePortraitPairOrientationListener();
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
         }
+    }
+
+    private boolean isPortraitPairLockedSubmode() {
+        return SUBMODE_TOUCHPAD.equals(currentSubmode) || SUBMODE_COMPOSE.equals(currentSubmode);
+    }
+
+    private void disablePortraitPairOrientationListener() {
+        if (portraitPairOrientationListener != null) {
+            portraitPairOrientationListener.disable();
+        }
+        lastPortraitPairLock = Integer.MIN_VALUE;
+    }
+
+    private void ensurePortraitPairOrientationListenerEnabled() {
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        if (portraitPairOrientationListener == null) {
+            portraitPairOrientationListener =
+                    new OrientationEventListener(
+                            activity.getApplicationContext(), SensorManager.SENSOR_DELAY_NORMAL) {
+                        @Override
+                        public void onOrientationChanged(int orientation) {
+                            Activity a = getActivity();
+                            if (!isAdded() || a == null || !isPortraitPairLockedSubmode()) {
+                                return;
+                            }
+                            updatePortraitPairLockFromSensorDegrees(orientation);
+                        }
+                    };
+        }
+        if (!portraitPairOrientationListener.canDetectOrientation()) {
+            lastPortraitPairLock = Integer.MIN_VALUE;
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            return;
+        }
+        syncPortraitPairLockFromDisplayRotation();
+        portraitPairOrientationListener.enable();
+    }
+
+    private void syncPortraitPairLockFromDisplayRotation() {
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        int lock;
+        switch (displayRotationCompat(activity)) {
+            case Surface.ROTATION_180:
+                lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+                break;
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_90:
+            case Surface.ROTATION_270:
+            default:
+                lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                break;
+        }
+        applyPortraitPairLockIfChanged(activity, lock);
+    }
+
+    private static int displayRotationCompat(@NonNull Activity activity) {
+        Display display = activity.getDisplay();
+        if (display != null) {
+            return display.getRotation();
+        }
+        return activity.getWindowManager().getDefaultDisplay().getRotation();
+    }
+
+    private void updatePortraitPairLockFromSensorDegrees(int orientationDegrees) {
+        if (orientationDegrees == OrientationEventListener.ORIENTATION_UNKNOWN) {
+            return;
+        }
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        int lock;
+        if (orientationDegrees >= 315 || orientationDegrees < 45) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        } else if (orientationDegrees >= 135 && orientationDegrees < 225) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+        } else {
+            // Device held in a landscape band: keep UI in default portrait (never landscape).
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        }
+        applyPortraitPairLockIfChanged(activity, lock);
+    }
+
+    private void applyPortraitPairLockIfChanged(@NonNull Activity activity, int lock) {
+        if (lock == lastPortraitPairLock) {
+            return;
+        }
+        lastPortraitPairLock = lock;
+        activity.setRequestedOrientation(lock);
     }
 
     private void wireChrome(@NonNull View root) {
