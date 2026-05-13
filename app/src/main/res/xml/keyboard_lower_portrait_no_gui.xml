@@ -48,8 +48,8 @@
         <Key android:codes="F005" android:keyLabel="Fn" android:keyWidth="14%p"/>
         <Key android:codes="2B" android:keyLabel="@string/TAB" android:keyWidth="9%p"/>
         <Key android:codes="E0" android:keyLabel="@string/modifier_control" android:keyWidth="10%p"/>
-        <Key android:codes="E2" android:keyLabel="@string/Alt" android:keyWidth="10%p"/>
         <Key android:codes="2C" android:keyLabel="@string/Space_Button" android:isRepeatable="true" android:keyWidth="38%p"/>
+        <Key android:codes="E2" android:keyLabel="@string/Alt" android:keyWidth="10%p"/>
         <Key android:codes="E3" android:keyLabel="@string/Win" android:keyWidth="19%p"/>
     </Row>
 </Keyboard>

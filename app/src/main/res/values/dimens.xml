@@ -124,9 +124,9 @@
     <dimen name="km_basic_touchpad_brand_logo_height">12dp</dimen>
     <dimen name="km_basic_touchpad_brand_logo_max_width">200dp</dimen>
     <dimen name="km_basic_touchpad_brand_logo_margin_bottom">8dp</dimen>
-    <!-- KM Pro QWERTY footer only: nudge wordmark down vs letter rows; pair with portrait bottom reserve. -->
-    <dimen name="km_pro_keyboard_brand_footer_margin_top">20dp</dimen>
-    <dimen name="km_pro_keyboard_brand_footer_margin_bottom">4dp</dimen>
+    <!-- KM Pro QWERTY footer only: tight gaps so letter rows keep more height; shortcut strip stays fixed. -->
+    <dimen name="km_pro_keyboard_brand_footer_margin_top">6dp</dimen>
+    <dimen name="km_pro_keyboard_brand_footer_margin_bottom">2dp</dimen>
 
     <!-- Touchpad -->
     <dimen name="basic_touchpad_area_corner_radius">10dp</dimen>

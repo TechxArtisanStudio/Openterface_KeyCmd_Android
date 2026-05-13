@@ -1178,8 +1178,10 @@ public class CustomKeyboardView extends LinearLayout {
 
     /**
      * Portrait KM Pro full built-in QWERTY: bottom-centered Openterface wordmark below letter rows.
-     * Matches KM Basic portrait touchpad wordmark size/tint/alpha ({@code fragment_basic_touchpad}); adds top
-     * margin so the glyph sits nearer the vertical middle of the band above {@link R.dimen#km_pro_portrait_keyboard_bottom_reserve}.
+     * Matches KM Basic portrait touchpad wordmark size/tint/alpha ({@code fragment_basic_touchpad}); margins
+     * from {@link R.dimen#km_pro_keyboard_brand_footer_margin_top} and
+     * {@link R.dimen#km_pro_keyboard_brand_footer_margin_bottom} keep the band compact so
+     * {@link #kmProLetterKeyboardBody} (weight 1) receives more vertical space.
      */
     private void maybeAddKmProPortraitKeyboardBrandFooter(@Nullable LinearLayout letterBodyContainer) {
         if (letterBodyContainer == null
@@ -3702,9 +3704,9 @@ public class CustomKeyboardView extends LinearLayout {
         LinearLayout topStripContainer = new LinearLayout(getContext());
         int portraitShortcutStripHeight =
                 getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
-        // Portrait KM Pro single-pane: keep a deterministic shortcut-strip height so built-in and
-        // IME-direct keyboard states stay visually aligned when toggling.
-        if (!isLandscape(getContext()) && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
+        // KM Pro single-pane (portrait + landscape): fixed shortcut-strip height so the letter grid
+        // gets the remaining height; landscape weight-based strip starved QWERTY vs the macro rows.
+        if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
             topStripContainer.setLayoutParams(
                     new LayoutParams(LayoutParams.MATCH_PARENT, portraitShortcutStripHeight, 0f));
         } else {
