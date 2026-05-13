@@ -94,16 +94,13 @@
         <item name="android:focusable">true</item>
     </style>
 
-    <!-- KM Pro header submode: icon tabs, same pill background as Basic text tabs. -->
+    <!-- KM Pro header submode: icon tabs (see @dimen/km_pro_submode_tab_icon_size). -->
     <style name="KmProSubmodeTabIcon">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:minWidth">40dp</item>
-        <item name="android:minHeight">36dp</item>
-        <item name="android:paddingHorizontal">12dp</item>
-        <item name="android:paddingVertical">8dp</item>
-        <item name="android:layout_marginEnd">6dp</item>
-        <item name="android:background">@drawable/nav_item_background_selector</item>
+        <item name="android:layout_width">@dimen/km_pro_submode_tab_icon_size</item>
+        <item name="android:layout_height">@dimen/km_pro_submode_tab_icon_size</item>
+        <item name="android:padding">@dimen/km_pro_submode_tab_icon_padding</item>
+        <item name="android:layout_marginEnd">1dp</item>
+        <item name="android:background">@drawable/km_pro_submode_tab_background</item>
         <item name="android:tint">@color/km_pro_submode_tab_icon_tint</item>
         <item name="android:scaleType">fitCenter</item>
         <item name="android:clickable">true</item>

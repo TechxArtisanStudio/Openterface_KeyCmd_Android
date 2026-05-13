@@ -21,13 +21,18 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <LinearLayout
+            <FrameLayout
                 android:id="@+id/touchpad_pad_host"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/touchpad_pad_and_strip"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:baselineAligned="false">
 
                 <FrameLayout
                     android:id="@+id/touchpad_pad_content"
@@ -49,22 +54,11 @@
                     android:layout_gravity="bottom|center_horizontal"
                     android:orientation="vertical"
                     android:gravity="center_horizontal"
+                    android:visibility="gone"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:paddingBottom="12dp"
                     android:background="@android:color/transparent">
-
-                    <TextView
-                        android:id="@+id/touchPadTips"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_horizontal"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="4dp"
-                        android:background="@android:color/transparent"
-                        android:text="@string/touch_pad_compact_initial"/>
 
                     <ImageView
                         android:id="@+id/touchPadBrandLogo"
@@ -77,6 +71,7 @@
                         android:alpha="0.82"
                         android:src="@drawable/ic_openterface_wordmark"
                         android:tint="@color/text_secondary"
+                        android:visibility="gone"
                         android:contentDescription="@string/touch_pad_brand_content_description"
                         android:importantForAccessibility="yes"/>
                 </LinearLayout>
@@ -104,9 +99,9 @@
                     android:id="@+id/touchPadInfo"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:layout_gravity="top|end"
+                    android:layout_gravity="top|start"
                     android:layout_marginTop="4dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_marginStart="4dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/touch_pad_info_content_description"
                     android:padding="12dp"
@@ -124,7 +119,25 @@
                     android:visibility="gone"
                     android:background="@color/touchpad_background"
                     android:contentDescription="@string/km_pro_touchpad_scroll_strip_a11y" />
-            </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/touchPadTips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:gravity="center_horizontal"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="10dp"
+                    android:background="@android:color/transparent"
+                    android:text="@string/touch_pad_compact_initial"
+                    android:clickable="false"
+                    android:focusable="false" />
+            </FrameLayout>
 
             <include layout="@layout/include_pro_touchpad_mouse_keys" />
         </LinearLayout>

@@ -23,6 +23,8 @@
             android:layout_width="match_parent"
             android:layout_height="@dimen/header_height"
             android:padding="@dimen/header_padding"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:background="@color/header_background"
             android:elevation="@dimen/header_elevation">
 
@@ -37,11 +39,11 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/menu"
                 android:padding="@dimen/button_icon_padding"
-                android:tint="@color/text_primary"/>
+                android:tint="@color/text_secondary"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_toEndOf="@id/menu_button"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
@@ -50,17 +52,19 @@
 
                 <HorizontalScrollView
                     android:id="@+id/km_pro_header_tabs_scroll"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
                     android:visibility="gone"
-                    android:fillViewport="true"
+                    android:clipToPadding="false"
+                    android:clipChildren="false"
+                    android:fillViewport="false"
                     android:scrollbars="none"
                     android:overScrollMode="never">
 
                     <LinearLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
 
@@ -83,6 +87,13 @@
                             android:src="@drawable/ic_km_pro_submode_compose" />
                     </LinearLayout>
                 </HorizontalScrollView>
+
+                <Space
+                    android:id="@+id/km_pro_header_tabs_spacer"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/app_title"

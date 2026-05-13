@@ -20,6 +20,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -165,7 +166,7 @@ public class CompositeFragment extends Fragment {
 
     @Nullable private LinearLayout proTouchpadChromeRoot;
     @Nullable private ViewGroup proTouchpadMouseKeys;
-    @Nullable private LinearLayout touchpadPadHost;
+    @Nullable private ViewGroup touchpadPadHost;
     @Nullable private BasicPortraitScrollStripView proTouchpadScrollStrip;
     @Nullable private TouchpadMouseStripBinder proMouseStripBinder;
     @Nullable private TextView proMouseBtnLeft;
@@ -461,11 +462,11 @@ public class CompositeFragment extends Fragment {
         if (touchpadPadHost == null || !isAdded()) {
             return;
         }
-        if (!(touchpadPadHost instanceof LinearLayout)) {
+        LinearLayout row = touchpadPadHost.findViewById(R.id.touchpad_pad_and_strip);
+        if (row == null) {
             return;
         }
-        LinearLayout host = touchpadPadHost;
-        View padContent = host.findViewById(R.id.touchpad_pad_content);
+        View padContent = row.findViewById(R.id.touchpad_pad_content);
         BasicPortraitScrollStripView strip = proTouchpadScrollStrip;
         if (padContent == null || strip == null) {
             return;
@@ -493,7 +494,37 @@ public class CompositeFragment extends Fragment {
         strip.setLayoutParams(sLp);
     }
 
+    /**
+     * Gesture-hint {@link TextView} is drawn above the pad + scroll strip; forward touches so drags
+     * that start on the hint band still hit the pad or strip underneath.
+     */
+    private void wireKmProTouchPadTipsPassthrough(@Nullable TextView tips) {
+        if (tips == null || touchpadPadHost == null) {
+            return;
+        }
+        View row = touchpadPadHost.findViewById(R.id.touchpad_pad_and_strip);
+        if (!(row instanceof ViewGroup)) {
+            return;
+        }
+        ViewGroup padAndStrip = (ViewGroup) row;
+        tips.setOnTouchListener(
+                (v, event) -> {
+                    MotionEvent copy = MotionEvent.obtain(event);
+                    copy.offsetLocation(
+                            v.getLeft() - padAndStrip.getLeft(),
+                            v.getTop() - padAndStrip.getTop());
+                    boolean handled = padAndStrip.dispatchTouchEvent(copy);
+                    copy.recycle();
+                    return handled;
+                });
+    }
+
     private void applyProTouchpadMouseLayoutCompactOrComfortable() {
+        // Posted from layout passes and refresh paths; can run after the user leaves KM Pro (e.g. side
+        // nav to KM Basic) and this fragment is already detached — avoid requireContext() there.
+        if (!isAdded()) {
+            return;
+        }
         if (proTouchpadChromeRoot == null
                 || touchpadPadHost == null
                 || proTouchpadMouseKeys == null
@@ -1303,6 +1334,7 @@ public class CompositeFragment extends Fragment {
         proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
         touchPadTips = view.findViewById(R.id.touchPadTips);
         touchPadInfoButton = view.findViewById(R.id.touchPadInfo);
+        wireKmProTouchPadTipsPassthrough(touchPadTips);
         setupBottomWashOverlays();
         updateTouchPadTips();
         registerProTouchpadSectionLayoutListener();
@@ -1386,6 +1418,7 @@ public class CompositeFragment extends Fragment {
         proMouseBtnLeft = view.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = view.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = view.findViewById(R.id.pro_touchpad_btn_right);
+        wireKmProTouchPadTipsPassthrough(splitTouchPadTips);
         setupTouchPad(splitTouchPad, splitTouchPadTips, splitTouchPadInfoButton);
         registerProTouchpadSectionLayoutListener();
         if (touchpadSection != null) {

@@ -47,6 +47,9 @@
     <string name="km_pro_touchpad_scroll_strip_title">Vertical scroll strip</string>
     <string name="km_pro_touchpad_scroll_strip_summary">Show a drag strip beside the touchpad for mouse wheel up/down (same idea as Keyboard &amp; Mouse Basic). Works in all touchpad modes, including Gestures only.</string>
     <string name="km_pro_touchpad_scroll_strip_switch">Scroll strip</string>
+    <string name="km_pro_touchpad_gesture_status_title">Touchpad gesture status</string>
+    <string name="km_pro_touchpad_gesture_status_summary">Show the compact status line on the touchpad (e.g. buttons up / touch idle).</string>
+    <string name="km_pro_touchpad_gesture_status_switch">Show gesture status</string>
     <string name="km_pro_touchpad_strip_scroll_sensitivity">Strip scroll sensitivity</string>
     <string name="km_pro_touchpad_strip_scroll_sensitivity_desc">How fast content scrolls when you drag the strip. Independent from General → touchpad two-finger scroll sensitivity.</string>
     <string name="km_pro_touchpad_scroll_strip_a11y">Mouse wheel scroll strip</string>

@@ -50,10 +50,10 @@
             <ImageView
                 android:id="@+id/basic_touchpad_brand_logo"
                 android:layout_width="wrap_content"
-                android:layout_height="12dp"
+                android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
                 android:layout_gravity="bottom|center_horizontal"
-                android:layout_marginBottom="8dp"
-                android:maxWidth="200dp"
+                android:layout_marginBottom="@dimen/km_basic_touchpad_brand_logo_margin_bottom"
+                android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
                 android:adjustViewBounds="true"
                 android:scaleType="fitCenter"
                 android:alpha="0.82"

@@ -1024,17 +1024,20 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
 
     /**
      * Space bar uses the wide Openterface wordmark; {@link #inflateKey} defaults to arrow-icon size, so
-     * expand the icon to fit the key cell with horizontal insets and a capped height.
+     * expand the icon to fit the key cell with horizontal insets and height from
+     * {@code km_openterface_wordmark_keyboard_*}.
      */
     private void applySpaceBarBrandIconLayout(View keyRoot) {
         ImageView icon = keyRoot.findViewById(R.id.basic_key_icon);
         if (icon == null || icon.getVisibility() != VISIBLE) {
             return;
         }
-        float density = getResources().getDisplayMetrics().density;
-        // Smaller mark + generous side inset so it reads as a subtle brand hint, not a banner.
-        int horizontalPad = Math.round(8f * density);
-        int logoHeight = Math.round(13f * density);
+        int horizontalPad =
+                getResources()
+                        .getDimensionPixelSize(
+                                R.dimen.km_openterface_wordmark_keyboard_padding_horizontal);
+        int logoHeight =
+                getResources().getDimensionPixelSize(R.dimen.km_openterface_wordmark_keyboard_height);
         icon.setPadding(horizontalPad, 0, horizontalPad, 0);
         icon.setImageAlpha(210);
         FrameLayout.LayoutParams flp =

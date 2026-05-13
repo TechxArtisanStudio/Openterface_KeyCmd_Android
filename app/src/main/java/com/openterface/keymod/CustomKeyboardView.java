@@ -22,6 +22,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -36,6 +37,7 @@ import android.text.TextWatcher;
 import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.StateSet;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -127,6 +129,8 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP = 20f;
     /** Fixed top rows only (page 0–2 strip): same size as Combo Text mode; bold preserved in Text mode to limit wrap. */
     private static final float TOP_FIXED_ROWS_TEXT_SP = 12f;
+    /** BI / IME strip toggle: slightly larger than {@link #TOP_FIXED_ROWS_TEXT_SP}, always bold. */
+    private static final float TOP_FIXED_ROWS_IME_TOGGLE_TEXT_SP = 13.5f;
     private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 12f;
     /**
      * Emoji / single-glyph icons on fixed rows 2–3: autosize so single-char dingbats / math glyphs
@@ -275,6 +279,8 @@ public class CustomKeyboardView extends LinearLayout {
     @Nullable private OnKmProSecondaryLayoutToggleListener onKmProSecondaryLayoutToggleListener;
     /** Wraps QWERTY rows only (KM Pro single-pane); strip stays visible when this is {@link View#INVISIBLE}. */
     @Nullable private LinearLayout kmProLetterKeyboardBody;
+    /** Portrait KM Pro full QWERTY: bottom-centered wordmark (sibling after letter body). */
+    @Nullable private ImageView kmProPortraitBrandFooter;
 
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
@@ -1168,6 +1174,48 @@ public class CustomKeyboardView extends LinearLayout {
         if (kmProLetterKeyboardBody != null) {
             kmProLetterKeyboardBody.setVisibility(visible ? VISIBLE : INVISIBLE);
         }
+    }
+
+    /**
+     * Portrait KM Pro full built-in QWERTY: bottom-centered Openterface wordmark below letter rows.
+     * Matches KM Basic portrait touchpad wordmark size/tint/alpha ({@code fragment_basic_touchpad}); adds top
+     * margin so the glyph sits nearer the vertical middle of the band above {@link R.dimen#km_pro_portrait_keyboard_bottom_reserve}.
+     */
+    private void maybeAddKmProPortraitKeyboardBrandFooter(@Nullable LinearLayout letterBodyContainer) {
+        if (letterBodyContainer == null
+                || splitPart != SPLIT_NONE
+                || shortcutsStripOnly
+                || showExtraPortraitKeys
+                || isLandscape(getContext())) {
+            return;
+        }
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        ImageView brand = new ImageView(ctx);
+        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setAdjustViewBounds(true);
+        Resources res = ctx.getResources();
+        int h = res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_height);
+        int maxW = res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_max_width);
+        int topMargin = res.getDimensionPixelSize(R.dimen.km_pro_keyboard_brand_footer_margin_top);
+        int bottomMargin =
+                res.getDimensionPixelSize(R.dimen.km_pro_keyboard_brand_footer_margin_bottom);
+        brand.setMaxWidth(maxW);
+        brand.setPadding(0, 0, 0, 0);
+        brand.setAlpha(0.82f);
+        LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, h);
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        lp.topMargin = topMargin;
+        lp.bottomMargin = bottomMargin;
+        brand.setLayoutParams(lp);
+        brand.setColorFilter(
+                ContextCompat.getColor(ctx, R.color.text_secondary), PorterDuff.Mode.SRC_IN);
+        brand.setContentDescription(ctx.getString(R.string.touch_pad_brand_content_description));
+        addView(brand);
+        kmProPortraitBrandFooter = brand;
     }
 
     public void setOnImeCaptureModeChangedListener(@Nullable OnImeCaptureModeChangedListener listener) {
@@ -2312,6 +2360,7 @@ public class CustomKeyboardView extends LinearLayout {
         detachLocalImeFieldQuiet();
         removeAllViews();
         kmProLetterKeyboardBody = null;
+        kmProPortraitBrandFooter = null;
 
         if (shortcutsStripOnly && splitPart == SPLIT_NONE) {
             addTopFunctionRows();
@@ -2649,6 +2698,8 @@ public class CustomKeyboardView extends LinearLayout {
                 addView(rowLayout);
             }
         }
+
+        maybeAddKmProPortraitKeyboardBrandFooter(letterBodyContainer);
 
         if (showExtraPortraitKeys && !isLandscape(getContext())) {
             addExtraPortraitKeys();
@@ -4539,12 +4590,61 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Legacy PH1 strip slot (IME toggle removed): accent ring uses {@code android:state_activated}.
+     * BI/IME strip toggle: ring uses {@link ThemeManager#getColorPrimary} so the accent matches the
+     * user's color family even when {@code ?attr/colorPrimary} does not resolve strongly on this view's
+     * context (same rationale as {@link #applyTopImeToggleIconTint}).
      */
     private void applyTopPanelImeToggleKeyCapBackground(View view) {
         view.setClipToOutline(false);
         view.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
-        view.setBackgroundResource(R.drawable.top_strip_ime_toggle_background);
+        Context ctx = view.getContext();
+        if (ctx == null) {
+            view.setBackgroundResource(R.drawable.top_strip_ime_toggle_background);
+            return;
+        }
+        int cornerPx = dpToPx(9);
+        int strokePx = dpToPx(2);
+        int primary = ThemeManager.getColorPrimary(ctx);
+        int primaryContainer = ThemeManager.getColorPrimaryContainer(ctx);
+        int fillIdle = ContextCompat.getColor(ctx, R.color.key_bg_function);
+
+        GradientDrawable pressedActivated = new GradientDrawable();
+        pressedActivated.setShape(GradientDrawable.RECTANGLE);
+        pressedActivated.setCornerRadius(cornerPx);
+        pressedActivated.setColor(primary);
+
+        GradientDrawable pressedKeymod = new GradientDrawable();
+        pressedKeymod.setShape(GradientDrawable.RECTANGLE);
+        pressedKeymod.setCornerRadius(cornerPx);
+        pressedKeymod.setColor(primaryContainer);
+
+        GradientDrawable activatedIdle = new GradientDrawable();
+        activatedIdle.setShape(GradientDrawable.RECTANGLE);
+        activatedIdle.setCornerRadius(cornerPx);
+        activatedIdle.setColor(primaryContainer);
+        activatedIdle.setStroke(strokePx, primary);
+
+        GradientDrawable defaultIdle = new GradientDrawable();
+        defaultIdle.setShape(GradientDrawable.RECTANGLE);
+        defaultIdle.setCornerRadius(cornerPx);
+        defaultIdle.setColor(fillIdle);
+        defaultIdle.setStroke(strokePx, primary);
+
+        StateListDrawable sld = new StateListDrawable();
+        sld.addState(
+                new int[] {android.R.attr.state_pressed, android.R.attr.state_activated}, pressedActivated);
+        sld.addState(new int[] {android.R.attr.state_pressed}, pressedKeymod);
+        sld.addState(new int[] {android.R.attr.state_activated}, activatedIdle);
+        sld.addState(StateSet.WILD_CARD, defaultIdle);
+        view.setBackground(sld);
+    }
+
+    private void applyTopImeToggleLabelTypography(TextView tv) {
+        if (tv == null) {
+            return;
+        }
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, TOP_FIXED_ROWS_IME_TOGGLE_TEXT_SP);
+        tv.setTypeface(Typeface.DEFAULT_BOLD);
     }
 
     private void applyTopImeToggleIconTint(ImageButton ib) {
@@ -4552,13 +4652,12 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         Context ctx = ib.getContext();
-        int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
-        int primaryFallback = ThemeManager.getColorPrimary(ctx);
-        int tint = MaterialColors.getColor(
-                        ib,
-                        com.google.android.material.R.attr.colorPrimary,
-                        primaryFallback);
-        ib.setColorFilter(tint);
+        if (ctx == null) {
+            return;
+        }
+        // Use configured accent directly. MaterialColors harmonization against the light keycap fill
+        // can wash out the tint in light mode (same issue as the text label).
+        ib.setColorFilter(ThemeManager.getColorPrimary(ctx));
     }
 
     /** Name/chord strip modes can render PH1 as a {@link Button}; keep accent foreground in sync with icon mode. */
@@ -4567,13 +4666,10 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
         Context ctx = tv.getContext();
-        int onPrimaryContainerFallback = ThemeManager.getColorOnPrimaryContainer(ctx);
-        int primaryFallback = ThemeManager.getColorPrimary(ctx);
-        int color = MaterialColors.getColor(
-                        tv,
-                        com.google.android.material.R.attr.colorPrimary,
-                        primaryFallback);
-        tv.setTextColor(color);
+        if (ctx == null) {
+            return;
+        }
+        tv.setTextColor(ThemeManager.getColorPrimary(ctx));
     }
 
     private void addShortcutPanelRows(
@@ -4851,6 +4947,7 @@ public class CustomKeyboardView extends LinearLayout {
                         b.setTypeface(Typeface.DEFAULT_BOLD);
                     }
                     if (isTopImeToggleKey(k)) {
+                        applyTopImeToggleLabelTypography(b);
                         applyTopImeToggleLabelTextColor(b);
                     } else {
                         b.setTextColor(resolveThemeTextColor());
@@ -6181,7 +6278,9 @@ public class CustomKeyboardView extends LinearLayout {
                     if (view instanceof ImageButton) {
                         applyTopImeToggleIconTint((ImageButton) view);
                     } else if (view instanceof TextView) {
-                        applyTopImeToggleLabelTextColor((TextView) view);
+                        TextView tv = (TextView) view;
+                        applyTopImeToggleLabelTypography(tv);
+                        applyTopImeToggleLabelTextColor(tv);
                     }
                 } else {
                     applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);

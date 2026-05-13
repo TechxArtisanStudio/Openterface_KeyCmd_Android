@@ -184,6 +184,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Nullable
     private HorizontalScrollView kmProHeaderTabsScroll;
     @Nullable
+    private View kmProHeaderTabsSpacer;
+    @Nullable
     private ImageButton kmProHeaderTabKeyboard;
     @Nullable
     private ImageButton kmProHeaderTabNumpad;
@@ -672,6 +674,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     private void setupKmProHeaderSubmodeTabs() {
         kmProHeaderTabsScroll = findViewById(R.id.km_pro_header_tabs_scroll);
+        kmProHeaderTabsSpacer = findViewById(R.id.km_pro_header_tabs_spacer);
         kmProHeaderTabKeyboard = findViewById(R.id.km_pro_header_tab_keyboard);
         kmProHeaderTabNumpad = findViewById(R.id.km_pro_header_tab_numpad);
         kmProHeaderTabCompose = findViewById(R.id.km_pro_header_tab_compose);
@@ -687,6 +690,48 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             kmProHeaderTabCompose.setOnClickListener(
                     v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_COMPOSE));
         }
+        applyKmProHeaderTabsScrollInsets();
+    }
+
+    /**
+     * Keeps KM Pro submode icon tabs clear of display cutouts: uses {@link WindowInsetsCompat.Type#displayCutout()}
+     * left/right. Portrait + top-center cutout with no lateral inset: adds a small inset on the
+     * <strong>trailing</strong> edge only so tabs stay close to the menu. Does not apply cutout top
+     * padding on this view (would clip tab backgrounds inside the fixed header height).
+     */
+    private void applyKmProHeaderTabsScrollInsets() {
+        if (kmProHeaderTabsScroll == null) {
+            return;
+        }
+        final int baseStart = ViewCompat.getPaddingStart(kmProHeaderTabsScroll);
+        final int baseTop = kmProHeaderTabsScroll.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(kmProHeaderTabsScroll);
+        final int baseBottom = kmProHeaderTabsScroll.getPaddingBottom();
+        final float density = getResources().getDisplayMetrics().density;
+        // Light lateral inset when portrait has a top-center cutout but no reported side cutout.
+        // Keep modest so tabs stay nearer the menu; avoid large symmetric padding on both edges.
+        final int lateralGuardForTopCenterHolePx = Math.round(6f * density);
+        ViewCompat.setOnApplyWindowInsetsListener(
+                kmProHeaderTabsScroll,
+                (v, windowInsets) -> {
+                    Insets cut =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                    boolean portrait =
+                            getResources().getConfiguration().orientation
+                                    == Configuration.ORIENTATION_PORTRAIT;
+                    int padStart = baseStart + cut.left;
+                    int padEnd = baseEnd + cut.right;
+                    if (portrait
+                            && cut.top >= lateralGuardForTopCenterHolePx
+                            && cut.left == 0
+                            && cut.right == 0) {
+                        padEnd += lateralGuardForTopCenterHolePx;
+                    }
+                    int padTop = baseTop;
+                    ViewCompat.setPaddingRelative(v, padStart, padTop, padEnd, baseBottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(kmProHeaderTabsScroll);
     }
 
     private void onKmProHeaderSubmodeTabClicked(@NonNull String submodeKey) {
@@ -720,6 +765,27 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (show) {
             syncKmProHeaderTabSelectionUi();
         }
+        syncKmProHeaderTabsSpacerVisibility();
+    }
+
+    /**
+     * When KM Pro icon tabs replace the weighted title, a dedicated {@code Space} absorbs flex
+     * between the tab strip and the right cluster. Otherwise the scroll view would grow to
+     * {@code layout_weight} width and leave a dead band beside the icons.
+     */
+    private void syncKmProHeaderTabsSpacerVisibility() {
+        if (kmProHeaderTabsSpacer == null) {
+            return;
+        }
+        TextView appTitle = findViewById(R.id.app_title);
+        boolean headerShown = headerLayout == null || headerLayout.getVisibility() == View.VISIBLE;
+        boolean showSpacer =
+                headerShown
+                        && kmProHeaderTabsScroll != null
+                        && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE
+                        && appTitle != null
+                        && appTitle.getVisibility() != View.VISIBLE;
+        kmProHeaderTabsSpacer.setVisibility(showSpacer ? View.VISIBLE : View.GONE);
     }
 
     private void toggleKmProSettingsOverlay() {
@@ -1160,6 +1226,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         super.onConfigurationChanged(newConfig);
         if (headerRightCluster != null) {
             ViewCompat.requestApplyInsets(headerRightCluster);
+        }
+        if (kmProHeaderTabsScroll != null) {
+            ViewCompat.requestApplyInsets(kmProHeaderTabsScroll);
         }
         applyAppChromeForHostFragment();
     }
