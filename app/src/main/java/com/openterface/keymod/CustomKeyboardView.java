@@ -123,6 +123,13 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float TOP_PANEL_SCROLLABLE_ROW_WEIGHT = TOP_PANEL_ROW_WEIGHT;
     private static final float TOP_PANEL_FIXED_ROWS_WEIGHT = TOP_PANEL_ROW_WEIGHT * 2f;
     private static final float TOP_PANEL_TOTAL_WEIGHT = TOP_PANEL_ROWS * TOP_PANEL_ROW_WEIGHT;
+    /**
+     * KM Pro landscape: layout weight for shortcut strip vs letter keyboard — full mode inside
+     * {@link CustomKeyboardView}, and each side column in {@code layout-land/fragment_composite_split}
+     * (see {@link CompositeFragment#applyKmProLandscapeSplitStripVsKeyboardWeights()}).
+     */
+    public static final float KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT = 1f;
+    public static final float KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT = 2.2f;
     /** Top shortcut strip (row 1 profile + rows 2–3 fixed): label text (sp). */
     private static final float TOP_SHORTCUT_PANEL_TEXT_SP = 12f;
     private static final float TOP_SHORTCUT_PANEL_ACTION_LABEL_SP = 12f;
@@ -2008,7 +2015,9 @@ public class CustomKeyboardView extends LinearLayout {
 
     /**
      * KM Pro landscape built-in keyboard (letter grid + shortcut strip): split vertical space between
-     * shortcut strip and letter grid using layout weights (1 : 2.2) instead of a fixed strip height.
+     * shortcut strip and letter grid using layout weights
+     * ({@link #KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT} : {@link #KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT})
+     * instead of a fixed strip height.
      * <p>
      * Note: {@link CompositeFragment} sets {@code setShowExtraPortraitKeys(false)} for normal Keyboard
      * submode, including landscape full keyboard; do not gate this on {@code showExtraPortraitKeys}.
@@ -2529,7 +2538,10 @@ public class CustomKeyboardView extends LinearLayout {
         if (wrapLetterRows) {
             letterBodyContainer = new LinearLayout(getContext());
             letterBodyContainer.setOrientation(VERTICAL);
-            float letterBodyWeight = useKmProLandscapeFullShortcutStripHeightWeightRatio() ? 2.2f : 1f;
+            float letterBodyWeight =
+                    useKmProLandscapeFullShortcutStripHeightWeightRatio()
+                            ? KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT
+                            : 1f;
             letterBodyContainer.setLayoutParams(
                     new LayoutParams(LayoutParams.MATCH_PARENT, 0, letterBodyWeight));
             kmProLetterKeyboardBody = letterBodyContainer;
@@ -3813,9 +3825,13 @@ public class CustomKeyboardView extends LinearLayout {
         LinearLayout topStripContainer = new LinearLayout(getContext());
         int portraitShortcutStripHeight =
                 getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
-        // KM Pro landscape full keyboard: strip : letter grid = 1 : 2.2 by weight.
+        // KM Pro landscape full keyboard: strip : letter grid matches split column weights (see constants).
         if (useKmProLandscapeFullShortcutStripHeightWeightRatio()) {
-            topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+            topStripContainer.setLayoutParams(
+                    new LayoutParams(
+                            LayoutParams.MATCH_PARENT,
+                            0,
+                            KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT));
         } else if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
             // Portrait + landscape non-full: fixed shortcut-strip height so the letter grid gets the
             // remainder; fixed height avoids starving QWERTY vs macro rows on small landscape widths.

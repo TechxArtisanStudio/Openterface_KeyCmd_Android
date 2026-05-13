@@ -1426,6 +1426,43 @@ public class CompositeFragment extends Fragment {
         if (touchpadSection != null) {
             touchpadSection.post(CompositeFragment.this::refreshProTouchpadChromeFromKmProSetup);
         }
+        applyKmProLandscapeSplitStripVsKeyboardWeights();
+    }
+
+    /**
+     * Landscape split: each outer column splits height between the shortcut strip frames and the
+     * half-keyboard using the same weights as full-keyboard mode inside {@link CustomKeyboardView}.
+     */
+    private void applyKmProLandscapeSplitStripVsKeyboardWeights() {
+        if (!isLandscapeOrientation()
+                || splitTopLeftFrame == null
+                || splitTopRightFrame == null
+                || keyboardViewLeft == null
+                || keyboardViewRight == null) {
+            return;
+        }
+        float strip = CustomKeyboardView.KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT;
+        float letters = CustomKeyboardView.KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT;
+        applySplitColumnStripVsKeyboardWeight(splitTopLeftFrame, keyboardViewLeft, strip, letters);
+        applySplitColumnStripVsKeyboardWeight(splitTopRightFrame, keyboardViewRight, strip, letters);
+    }
+
+    private static void applySplitColumnStripVsKeyboardWeight(
+            View stripHost, View keyboardHost, float stripWeight, float letterWeight) {
+        ViewGroup.LayoutParams slp = stripHost.getLayoutParams();
+        ViewGroup.LayoutParams klp = keyboardHost.getLayoutParams();
+        if (!(slp instanceof LinearLayout.LayoutParams)
+                || !(klp instanceof LinearLayout.LayoutParams)) {
+            return;
+        }
+        LinearLayout.LayoutParams stripParams = (LinearLayout.LayoutParams) slp;
+        LinearLayout.LayoutParams kbParams = (LinearLayout.LayoutParams) klp;
+        stripParams.height = 0;
+        stripParams.weight = stripWeight;
+        kbParams.height = 0;
+        kbParams.weight = letterWeight;
+        stripHost.setLayoutParams(stripParams);
+        keyboardHost.setLayoutParams(kbParams);
     }
 
     private void setupTouchPad(TouchPadView pad, TextView tips, View infoButton) {
@@ -1915,6 +1952,7 @@ public class CompositeFragment extends Fragment {
 
     private void applyOrientationLayout() {
         if (splitRoot != null) {
+            applyKmProLandscapeSplitStripVsKeyboardWeights();
             return;
         }
         if (rootLayout == null || touchpadSection == null || keyboardView == null) {
