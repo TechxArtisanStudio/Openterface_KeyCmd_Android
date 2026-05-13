@@ -2164,6 +2164,35 @@ public class CustomKeyboardView extends LinearLayout {
         return out;
     }
 
+    /**
+     * Resolves {@code @string/…} or numeric {@code @12345} references in keyboard layout XML
+     * (same rules as {@code android:keyLabel}). Raw literals are returned unchanged.
+     */
+    private static String resolveKeyboardLayoutStringAttr(Context context, String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        try {
+            if (value.startsWith("@") && value.length() > 1) {
+                String idStr = value.substring(1);
+                try {
+                    int resId = Integer.parseInt(idStr);
+                    return context.getResources().getString(resId);
+                } catch (NumberFormatException ignored) {
+                    // fall through to @string/name
+                }
+                String resourceName = value.startsWith("@string/") ? value.substring("@string/".length()) : value;
+                int resId = context.getResources().getIdentifier(resourceName, "string", context.getPackageName());
+                if (resId != 0) {
+                    return context.getResources().getString(resId);
+                }
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.w(TAG, "resolveKeyboardLayoutStringAttr: not found: " + value, e);
+        }
+        return value;
+    }
+
     private List<List<Key>> parseKeyboard(Context context, int resourceId) {
         List<List<Key>> rows = new ArrayList<>();
         List<Key> currentRow = null;
@@ -2227,6 +2256,10 @@ public class CustomKeyboardView extends LinearLayout {
                         if (cornerHint == null) {
                             cornerHint = "";
                         }
+
+                        symbolLabel = resolveKeyboardLayoutStringAttr(context, symbolLabel);
+                        alternates = resolveKeyboardLayoutStringAttr(context, alternates);
+                        cornerHint = resolveKeyboardLayoutStringAttr(context, cornerHint);
 
                         symbolLabel = decodeKeyboardXmlEntities(symbolLabel);
                         alternates = decodeKeyboardXmlEntities(alternates);
@@ -3182,14 +3215,6 @@ public class CustomKeyboardView extends LinearLayout {
             case 0x1B: return new FnMapping("F11", 0x44, 0); // x
             case 0x06: return new FnMapping("F12", 0x45, 0); // c
             case 0x2A: return new FnMapping("Del", 0x4C, 0, R.drawable.backspace_24);
-            case 0x38: // / on KM Pro portrait built-in (keyboard_lower_portrait_no_gui) only
-                if (!showGuiHidKey) {
-                    Context ctx = getContext();
-                    if (ctx != null && !isLandscape(ctx)) {
-                        return new FnMapping("?", 0x38, MOD_SHIFT);
-                    }
-                }
-                return null;
             default: return null;
         }
     }

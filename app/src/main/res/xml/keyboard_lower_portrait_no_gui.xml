@@ -21,7 +21,7 @@
 
     <Row>
         <Key android:codes="2B" android:keyLabel="@string/TAB" android:keyWidth="9.202455%p" android:horizontalGap="1%p"/>
-        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,,€,,£,," custom:keyCornerHint="¥" android:keyWidth="10.224949%p"/>
+        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,£,,€,,," custom:keyCornerHint="¥" android:keyWidth="10.224949%p"/>
         <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates=",,`,~" custom:keyCornerHint="`" android:keyWidth="8.793456%p"/>
         <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates=",,-,_" custom:keyCornerHint="-" android:keyWidth="8.793456%p"/>
         <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates=",,+,=" custom:keyCornerHint="+" android:keyWidth="8.793456%p"/>
@@ -42,7 +42,7 @@
         <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="/,,," custom:keyCornerHint="/" android:keyWidth="9.090909%p"/>
         <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&#124;,,," custom:keyCornerHint="&#124;" android:keyWidth="9.090909%p"/>
         <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="\\,,," custom:keyCornerHint="\\" android:keyWidth="9.090909%p"/>
-        <Key android:codes="38" android:keyLabel="/" custom:keySymbolLabel="?" custom:keyAlternates="&#92;,&#124;" custom:keyCornerHint="&#92;" android:keyWidth="9.090909%p"/>
+        <Key android:codes="38" android:keyLabel="/" custom:keyAlternates="@string/km_pro_no_gui_slash_key_alternates" custom:keyCornerHint="@string/km_pro_no_gui_slash_corner_hint" android:keyWidth="9.090909%p"/>
         <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="13.636364%p"/>
     </Row>
 

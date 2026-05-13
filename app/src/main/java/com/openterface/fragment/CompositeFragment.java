@@ -12,6 +12,8 @@ import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,11 +31,13 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -165,6 +169,9 @@ public class CompositeFragment extends Fragment {
     private final KmBasicHoldLockController proHoldLockController = new KmBasicHoldLockController();
 
     @Nullable private LinearLayout proTouchpadChromeRoot;
+    /** Landscape split: wraps mouse keys + optional split brand logo; null in other layouts. */
+    @Nullable private LinearLayout proTouchpadMouseColumn;
+    @Nullable private ImageView proTouchpadSplitBrandLogo;
     @Nullable private ViewGroup proTouchpadMouseKeys;
     @Nullable private ViewGroup touchpadPadHost;
     @Nullable private BasicPortraitScrollStripView proTouchpadScrollStrip;
@@ -200,6 +207,7 @@ public class CompositeFragment extends Fragment {
                     applyProTouchpadMouseLayoutCompactOrComfortable();
                 }
                 applyProTouchpadScrollStripLayout();
+                refreshProTouchpadSplitBrandLogo();
             };
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -267,15 +275,21 @@ public class CompositeFragment extends Fragment {
         }
         bindProTouchpadChromeReferences();
         boolean show = KmProTouchpadPrefs.showsMouseKeyStrip(requireContext());
-        if (proTouchpadMouseKeys != null) {
+        if (proTouchpadMouseColumn != null) {
+            proTouchpadMouseColumn.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (proTouchpadMouseKeys != null) {
+                proTouchpadMouseKeys.setVisibility(show ? View.VISIBLE : View.GONE);
+            }
+        } else if (proTouchpadMouseKeys != null) {
             proTouchpadMouseKeys.setVisibility(show ? View.VISIBLE : View.GONE);
         }
         detachProMouseStripBinder();
         if (show) {
             attachProMouseStripBinderIfNeeded();
             applyProTouchpadMouseLayoutCompactOrComfortable();
-            if (proTouchpadMouseKeys != null) {
-                proTouchpadMouseKeys.post(CompositeFragment.this::applyProTouchpadMouseLayoutCompactOrComfortable);
+            View postTarget = proTouchpadChromeMouseSibling();
+            if (postTarget != null) {
+                postTarget.post(CompositeFragment.this::applyProTouchpadMouseLayoutCompactOrComfortable);
             }
         } else {
             proTouchpadMouseLayoutCompact = false;
@@ -287,6 +301,7 @@ public class CompositeFragment extends Fragment {
         updateHybridDragLeftVisual();
         applyProTouchpadScrollStripLayout();
         wireProTouchpadScrollStrip();
+        refreshProTouchpadSplitBrandLogo();
     }
 
     private void applyPadClickDragGesturesToTouchPads(Context context) {
@@ -313,6 +328,8 @@ public class CompositeFragment extends Fragment {
                 : null;
         if (root == null) {
             proTouchpadChromeRoot = null;
+            proTouchpadMouseColumn = null;
+            proTouchpadSplitBrandLogo = null;
             proTouchpadMouseKeys = null;
             touchpadPadHost = null;
             proTouchpadScrollStrip = null;
@@ -322,12 +339,115 @@ public class CompositeFragment extends Fragment {
             return;
         }
         proTouchpadChromeRoot = root.findViewById(R.id.pro_touchpad_chrome_root);
+        proTouchpadMouseColumn = root.findViewById(R.id.pro_touchpad_mouse_column);
+        proTouchpadSplitBrandLogo = root.findViewById(R.id.pro_touchpad_split_brand_logo);
         proTouchpadMouseKeys = root.findViewById(R.id.pro_touchpad_mouse_keys);
         touchpadPadHost = root.findViewById(R.id.touchpad_pad_host);
         proTouchpadScrollStrip = root.findViewById(R.id.pro_touchpad_scroll_strip);
         proMouseBtnLeft = root.findViewById(R.id.pro_touchpad_btn_left);
         proMouseBtnMiddle = root.findViewById(R.id.pro_touchpad_btn_middle);
         proMouseBtnRight = root.findViewById(R.id.pro_touchpad_btn_right);
+    }
+
+    /**
+     * Direct child of {@link #proTouchpadChromeRoot} that sits beside {@link #touchpadPadHost}
+     * (mouse-key row, or landscape-split column wrapping keys + brand logo).
+     */
+    @Nullable
+    private ViewGroup proTouchpadChromeMouseSibling() {
+        if (proTouchpadMouseColumn != null) {
+            return proTouchpadMouseColumn;
+        }
+        return proTouchpadMouseKeys;
+    }
+
+    /**
+     * KM Pro landscape split: Openterface wordmark under L/M/R — same pixel sizing as {@link
+     * CustomKeyboardView} wide Space key ({@code km_basic_touchpad_brand_logo_*}).
+     */
+    private void refreshProTouchpadSplitBrandLogo() {
+        if (!isAdded() || proTouchpadSplitBrandLogo == null) {
+            return;
+        }
+        boolean showLogo =
+                splitRoot != null
+                        && getResources().getConfiguration().orientation
+                                == Configuration.ORIENTATION_LANDSCAPE
+                        && KmProTouchpadPrefs.showsMouseKeyStrip(requireContext());
+        if (!showLogo) {
+            proTouchpadSplitBrandLogo.setVisibility(View.GONE);
+            applyProTouchpadMouseColumnInnerLayout(false);
+            return;
+        }
+        proTouchpadSplitBrandLogo.setVisibility(View.VISIBLE);
+        Context ctx = requireContext();
+        int logoH = ctx.getResources().getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_height);
+        int maxLogoW =
+                ctx.getResources().getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_max_width);
+        int logoW = maxLogoW;
+        Drawable wordmark = ContextCompat.getDrawable(ctx, R.drawable.ic_openterface_wordmark);
+        if (wordmark != null) {
+            int iw = wordmark.getIntrinsicWidth();
+            int ih = wordmark.getIntrinsicHeight();
+            if (iw > 0 && ih > 0) {
+                logoW = Math.min(maxLogoW, Math.round(logoH * (iw / (float) ih)));
+            }
+        }
+        LinearLayout.LayoutParams lp =
+                new LinearLayout.LayoutParams(logoW, logoH);
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        lp.bottomMargin =
+                ctx.getResources()
+                        .getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_margin_bottom);
+        proTouchpadSplitBrandLogo.setLayoutParams(lp);
+        proTouchpadSplitBrandLogo.setImageResource(R.drawable.ic_openterface_wordmark);
+        proTouchpadSplitBrandLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        proTouchpadSplitBrandLogo.setAdjustViewBounds(false);
+        proTouchpadSplitBrandLogo.setAlpha(0.82f);
+        proTouchpadSplitBrandLogo.setColorFilter(
+                ContextCompat.getColor(ctx, R.color.text_secondary), PorterDuff.Mode.SRC_IN);
+        proTouchpadSplitBrandLogo.setContentDescription(
+                ctx.getString(R.string.touch_pad_brand_content_description));
+        if (proTouchpadMouseLayoutCompact && proTouchpadMouseColumn != null) {
+            applyProTouchpadMouseColumnInnerLayout(true);
+        } else {
+            applyProTouchpadMouseColumnInnerLayout(false);
+        }
+    }
+
+    /**
+     * When {@link #proTouchpadMouseColumn} is used, distribute height between the key strip and the
+     * logo in landscape compact chrome; otherwise use natural wrap heights.
+     */
+    private void applyProTouchpadMouseColumnInnerLayout(boolean compactLandscapeChrome) {
+        if (proTouchpadMouseColumn == null || proTouchpadMouseKeys == null) {
+            return;
+        }
+        LinearLayout.LayoutParams kLp =
+                (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        if (compactLandscapeChrome
+                && proTouchpadSplitBrandLogo != null
+                && proTouchpadSplitBrandLogo.getVisibility() == View.VISIBLE) {
+            kLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            kLp.height = 0;
+            kLp.weight = 1f;
+        } else {
+            kLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            kLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            kLp.weight = 0f;
+        }
+        proTouchpadMouseKeys.setLayoutParams(kLp);
+        if (proTouchpadSplitBrandLogo != null) {
+            LinearLayout.LayoutParams gLp =
+                    (LinearLayout.LayoutParams) proTouchpadSplitBrandLogo.getLayoutParams();
+            gLp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            gLp.gravity = Gravity.CENTER_HORIZONTAL;
+            gLp.weight = 0f;
+            if (proTouchpadSplitBrandLogo.getVisibility() != View.VISIBLE) {
+                gLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            }
+            proTouchpadSplitBrandLogo.setLayoutParams(gLp);
+        }
     }
 
     private void detachProMouseStripBinder() {
@@ -381,11 +501,12 @@ public class CompositeFragment extends Fragment {
      *     horizontal strip); if false, pad host first then mouse keys (XML default).
      */
     private void ensureProTouchpadChromeSiblingOrder(boolean mouseKeysFirst) {
-        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
+        ViewGroup mouseSibling = proTouchpadChromeMouseSibling();
+        if (proTouchpadChromeRoot == null || touchpadPadHost == null || mouseSibling == null) {
             return;
         }
         int iPad = proTouchpadChromeRoot.indexOfChild(touchpadPadHost);
-        int iMouse = proTouchpadChromeRoot.indexOfChild(proTouchpadMouseKeys);
+        int iMouse = proTouchpadChromeRoot.indexOfChild(mouseSibling);
         if (iPad < 0 || iMouse < 0) {
             return;
         }
@@ -395,18 +516,20 @@ public class CompositeFragment extends Fragment {
             return;
         }
         proTouchpadChromeRoot.removeView(touchpadPadHost);
-        proTouchpadChromeRoot.removeView(proTouchpadMouseKeys);
+        proTouchpadChromeRoot.removeView(mouseSibling);
         if (mouseKeysFirst) {
-            proTouchpadChromeRoot.addView(proTouchpadMouseKeys, 0);
+            proTouchpadChromeRoot.addView(mouseSibling, 0);
             proTouchpadChromeRoot.addView(touchpadPadHost, 1);
         } else {
             proTouchpadChromeRoot.addView(touchpadPadHost, 0);
-            proTouchpadChromeRoot.addView(proTouchpadMouseKeys, 1);
+            proTouchpadChromeRoot.addView(mouseSibling, 1);
         }
     }
 
     private void resetProTouchpadChromeOrientationComfortable() {
-        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null) {
+        ViewGroup mouseSibling = proTouchpadChromeMouseSibling();
+        if (proTouchpadChromeRoot == null || touchpadPadHost == null || proTouchpadMouseKeys == null
+                || mouseSibling == null) {
             return;
         }
         ensureProTouchpadChromeSiblingOrder(false);
@@ -418,7 +541,7 @@ public class CompositeFragment extends Fragment {
         padLp.height = 0;
         padLp.weight = isPortrait ? PORTRAIT_COMFORTABLE_TOUCHPAD_WEIGHT : 1f;
         touchpadPadHost.setLayoutParams(padLp);
-        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) mouseSibling.getLayoutParams();
         mLp.width = ViewGroup.LayoutParams.MATCH_PARENT;
         if (isPortrait) {
             mLp.height = 0;
@@ -427,10 +550,12 @@ public class CompositeFragment extends Fragment {
             mLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             mLp.weight = 0f;
         }
-        proTouchpadMouseKeys.setLayoutParams(mLp);
+        mouseSibling.setLayoutParams(mLp);
         configureProMouseKeysRow(false);
         applyProTouchpadMouseKeysDefaultPadding();
+        applyProTouchpadMouseColumnInnerLayout(false);
         applyProTouchpadScrollStripLayout();
+        refreshProTouchpadSplitBrandLogo();
     }
 
     private void applyProTouchpadMouseKeysDefaultPadding() {
@@ -532,6 +657,10 @@ public class CompositeFragment extends Fragment {
                 || !KmProTouchpadPrefs.showsMouseKeyStrip(requireContext())) {
             return;
         }
+        ViewGroup mouseSibling = proTouchpadChromeMouseSibling();
+        if (mouseSibling == null) {
+            return;
+        }
         int th = touchpadSection.getHeight();
         int threshold =
                 getResources()
@@ -553,7 +682,7 @@ public class CompositeFragment extends Fragment {
         LinearLayout.LayoutParams padLp = (LinearLayout.LayoutParams) touchpadPadHost.getLayoutParams();
         padLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         padLp.width = 0;
-        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) proTouchpadMouseKeys.getLayoutParams();
+        LinearLayout.LayoutParams mLp = (LinearLayout.LayoutParams) mouseSibling.getLayoutParams();
         mLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
         int topPad =
                 getResources().getDimensionPixelSize(R.dimen.pro_touchpad_mouse_keys_padding_top);
@@ -577,9 +706,10 @@ public class CompositeFragment extends Fragment {
             proTouchpadMouseKeys.setPaddingRelative(hPad, topPad, hPad, bottomPad);
         }
         touchpadPadHost.setLayoutParams(padLp);
-        proTouchpadMouseKeys.setLayoutParams(mLp);
+        mouseSibling.setLayoutParams(mLp);
         configureProMouseKeysRow(true);
         applyProTouchpadScrollStripLayout();
+        refreshProTouchpadSplitBrandLogo();
     }
 
     private void configureProMouseKeysRow(boolean compactVerticalStrip) {

@@ -173,7 +173,31 @@
                         android:focusable="false" />
                 </FrameLayout>
 
-                <include layout="@layout/include_pro_touchpad_mouse_keys" />
+                <LinearLayout
+                    android:id="@+id/pro_touchpad_mouse_column"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <include layout="@layout/include_pro_touchpad_mouse_keys" />
+
+                    <ImageView
+                        android:id="@+id/pro_touchpad_split_brand_logo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginBottom="@dimen/km_basic_touchpad_brand_logo_margin_bottom"
+                        android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:alpha="0.82"
+                        android:src="@drawable/ic_openterface_wordmark"
+                        android:tint="@color/text_secondary"
+                        android:visibility="gone"
+                        android:contentDescription="@string/touch_pad_brand_content_description"
+                        android:importantForAccessibility="yes" />
+                </LinearLayout>
 
             </LinearLayout>
 
