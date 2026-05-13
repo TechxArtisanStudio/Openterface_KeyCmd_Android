@@ -112,6 +112,8 @@
     <dimen name="compose_shortcut_strip_height">132dp</dimen>
     <!-- KM Pro portrait IME host: thin strip below CustomKeyboardView (must not overlay shortcut rows). -->
     <dimen name="km_pro_ime_host_height">2dp</dimen>
+    <!-- KM Pro portrait Keyboard: reserve bottom space inside CustomKeyboardView (BI + IME) so shortcut rows align and clear Gboard. -->
+    <dimen name="km_pro_portrait_keyboard_bottom_reserve">32dp</dimen>
 
     <!-- Touchpad -->
     <dimen name="basic_touchpad_area_corner_radius">10dp</dimen>

@@ -81,6 +81,12 @@ public class CompositeFragment extends Fragment {
     @Nullable private LinearLayout kmProKeyboardSlot;
     @Nullable private EditText kmProImeHost;
     @Nullable private KmProImeDirectSendController kmProImeDirectSend;
+
+    private int kmProKeyboardBaselinePaddingLeft;
+    private int kmProKeyboardBaselinePaddingTop;
+    private int kmProKeyboardBaselinePaddingRight;
+    private int kmProKeyboardBaselinePaddingBottom;
+    private boolean kmProKeyboardBaselinePaddingCaptured;
     private TextView touchPadTips;
     /** Normal layout only; null while split layout is shown. */
     private View touchPadInfoButton;
@@ -101,10 +107,21 @@ public class CompositeFragment extends Fragment {
     private View splitLayoutRoot;
     private View splitTouchPadInfoButton;
     /**
-     * Portrait BOTH + built-in HID: touchpad vs keyboard column weights.
+     * Portrait Compose submode: touchpad vs shortcut strip (unchanged from historical BOTH ratio).
      */
-    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.20f;
-    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.38f;
+    private static final float PORTRAIT_COMPOSE_TOUCHPAD_WEIGHT = 1.20f;
+    private static final float PORTRAIT_COMPOSE_KEYBOARD_WEIGHT = 1.38f;
+
+    /**
+     * Portrait Keyboard submode + BOTH display: slightly taller keyboard band vs touchpad so IME
+     * does not crush the third shortcut row.
+     */
+    private static final float PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT = 1.10f;
+    private static final float PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT = 1.52f;
+
+    /** Portrait Keyboard submode + KEYBOARD-only display (no touchpad). */
+    private static final float PORTRAIT_KEYBOARD_ONLY_TOUCHPAD_WEIGHT = 0.92f;
+    private static final float PORTRAIT_KEYBOARD_ONLY_KEYBOARD_WEIGHT = 4.38f;
     /**
      * Portrait numpad strip: horizontal chrome width ratio touchpad : mouse-key column.
      */
@@ -965,15 +982,87 @@ public class CompositeFragment extends Fragment {
     }
 
     /**
-     * Lift the whole column above the soft keyboard when any descendant requests IME insets.
+     * Applies IME-related bottom padding on {@code root}.
+     *
+     * <p>For {@code km_pro_keyboard_slot}, bottom padding stays {@code 0}: MainActivity uses {@code
+     * adjustResize}, so the window already shrinks for the IME and padding the slot again would crush
+     * {@link com.openterface.keymod.CustomKeyboardView}. Other roots (e.g. split layout) keep full {@code Type.ime()} bottom.
      */
     private void setupCompositeImeRootInsets(@NonNull View root) {
-        ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
-            int imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), imeBottom);
-            return windowInsets;
-        });
+        final boolean slotZeroImePadding = root.getId() == R.id.km_pro_keyboard_slot;
+        ViewCompat.setOnApplyWindowInsetsListener(
+                root,
+                (v, windowInsets) -> {
+                    int imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+                    int bottom = slotZeroImePadding ? 0 : imeBottom;
+                    v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), bottom);
+                    return windowInsets;
+                });
         root.post(() -> ViewCompat.requestApplyInsets(root));
+    }
+
+    private void captureKmProKeyboardPaddingBaseline() {
+        if (keyboardView == null || kmProKeyboardBaselinePaddingCaptured) {
+            return;
+        }
+        kmProKeyboardBaselinePaddingLeft = keyboardView.getPaddingLeft();
+        kmProKeyboardBaselinePaddingTop = keyboardView.getPaddingTop();
+        kmProKeyboardBaselinePaddingRight = keyboardView.getPaddingRight();
+        kmProKeyboardBaselinePaddingBottom = keyboardView.getPaddingBottom();
+        kmProKeyboardBaselinePaddingCaptured = true;
+    }
+
+    private void restoreKmProKeyboardViewPaddingBaseline() {
+        if (keyboardView == null || !kmProKeyboardBaselinePaddingCaptured) {
+            return;
+        }
+        keyboardView.setPadding(
+                kmProKeyboardBaselinePaddingLeft,
+                kmProKeyboardBaselinePaddingTop,
+                kmProKeyboardBaselinePaddingRight,
+                kmProKeyboardBaselinePaddingBottom);
+    }
+
+    /** BI + IME: same bottom reserve so the shortcut strip stays vertically aligned when toggling. */
+    private void applyKmProPortraitKeyboardStripBottomReserve() {
+        if (keyboardView == null || !kmProKeyboardBaselinePaddingCaptured || !isAdded()) {
+            return;
+        }
+        int extra =
+                getResources()
+                        .getDimensionPixelSize(R.dimen.km_pro_portrait_keyboard_bottom_reserve);
+        keyboardView.setPadding(
+                kmProKeyboardBaselinePaddingLeft,
+                kmProKeyboardBaselinePaddingTop,
+                kmProKeyboardBaselinePaddingRight,
+                kmProKeyboardBaselinePaddingBottom + extra);
+    }
+
+    /**
+     * Portrait KM Pro Keyboard submode: apply strip bottom reserve; otherwise restore XML baseline.
+     */
+    private void updateKmProPortraitKeyboardStripBottomPadding() {
+        if (keyboardView == null) {
+            return;
+        }
+        if (splitRoot != null) {
+            if (kmProKeyboardBaselinePaddingCaptured) {
+                restoreKmProKeyboardViewPaddingBaseline();
+            }
+            return;
+        }
+        if (!isAdded() || !kmProKeyboardBaselinePaddingCaptured) {
+            return;
+        }
+        if (!usePortraitStyleKmProRootLayout() || currentSubmode != ProSubmode.KEYBOARD) {
+            restoreKmProKeyboardViewPaddingBaseline();
+            return;
+        }
+        if (displayMode == DisplayMode.TOUCHPAD) {
+            restoreKmProKeyboardViewPaddingBaseline();
+            return;
+        }
+        applyKmProPortraitKeyboardStripBottomReserve();
     }
 
     private void updateSplitTouchPadTips() {
@@ -1177,7 +1266,9 @@ public class CompositeFragment extends Fragment {
         rootLayout = view.findViewById(R.id.composite_root);
         kmProKeyboardSlot = view.findViewById(R.id.km_pro_keyboard_slot);
         kmProImeHost = view.findViewById(R.id.km_pro_ime_host);
+        kmProKeyboardBaselinePaddingCaptured = false;
         keyboardView = view.findViewById(R.id.keyboard_view);
+        captureKmProKeyboardPaddingBaseline();
         View imeInsetTarget = kmProKeyboardSlot != null ? kmProKeyboardSlot : rootLayout;
         setupCompositeImeRootInsets(imeInsetTarget);
         touchPad = view.findViewById(R.id.touchPad);
@@ -1464,6 +1555,7 @@ public class CompositeFragment extends Fragment {
                 keyboardView.setVisibility(View.VISIBLE);
             }
         }
+        updateKmProPortraitKeyboardStripBottomPadding();
     }
 
     private void showKmProImeSurface() {
@@ -1483,6 +1575,7 @@ public class CompositeFragment extends Fragment {
             kmProImeHost.post(
                     () -> imm.showSoftInput(kmProImeHost, InputMethodManager.SHOW_IMPLICIT));
         }
+        updateKmProPortraitKeyboardStripBottomPadding();
     }
 
     /**
@@ -1494,10 +1587,12 @@ public class CompositeFragment extends Fragment {
         }
         if (currentSubmode != ProSubmode.KEYBOARD) {
             hideKmProImeSurface();
+            applyOrientationLayout();
             return;
         }
         if (isLandscapeOrientation()) {
             hideKmProImeSurface();
+            applyOrientationLayout();
             return;
         }
         if (KmProSubmodePrefs.isPortraitImeSurface(requireContext())) {
@@ -1505,6 +1600,7 @@ public class CompositeFragment extends Fragment {
         } else {
             hideKmProImeSurface();
         }
+        applyOrientationLayout();
     }
 
     private ProSubmode loadPersistedSubmode() {
@@ -1759,11 +1855,17 @@ public class CompositeFragment extends Fragment {
                 touchpadWeight = 1f;
                 keyboardWeight = 4f;
             } else if (currentSubmode == ProSubmode.COMPOSE) {
-                touchpadWeight = PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT;
-                keyboardWeight = PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT;
+                touchpadWeight = PORTRAIT_COMPOSE_TOUCHPAD_WEIGHT;
+                keyboardWeight = PORTRAIT_COMPOSE_KEYBOARD_WEIGHT;
             } else {
-                touchpadWeight = displayMode == DisplayMode.KEYBOARD ? 1f : 1.5f;
-                keyboardWeight = displayMode == DisplayMode.KEYBOARD ? 4f : 1.0f;
+                touchpadWeight =
+                        displayMode == DisplayMode.KEYBOARD
+                                ? PORTRAIT_KEYBOARD_ONLY_TOUCHPAD_WEIGHT
+                                : 1.5f;
+                keyboardWeight =
+                        displayMode == DisplayMode.KEYBOARD
+                                ? PORTRAIT_KEYBOARD_ONLY_KEYBOARD_WEIGHT
+                                : 1.0f;
                 if (displayMode == DisplayMode.BOTH) {
                     touchpadWeight = PORTRAIT_BOTH_BUILT_IN_TOUCHPAD_WEIGHT;
                     keyboardWeight = PORTRAIT_BOTH_BUILT_IN_KEYBOARD_WEIGHT;
@@ -1775,8 +1877,12 @@ public class CompositeFragment extends Fragment {
 
             keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, keyboardWeight));
+
+            updateKmProPortraitKeyboardStripBottomPadding();
         } else {
             rootLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+            restoreKmProKeyboardViewPaddingBaseline();
 
             touchpadSection.setLayoutParams(new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f));
