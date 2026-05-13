@@ -50,10 +50,11 @@
 
                 <HorizontalScrollView
                     android:id="@+id/km_pro_header_tabs_scroll"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
+                    android:layout_weight="1"
                     android:visibility="gone"
-                    android:fillViewport="false"
+                    android:fillViewport="true"
                     android:scrollbars="none"
                     android:overScrollMode="never">
 
@@ -63,47 +64,40 @@
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
 
-                        <TextView
+                        <ImageButton
                             android:id="@+id/km_pro_header_tab_keyboard"
-                            style="@style/KbMouseSubmodeTab"
-                            android:text="@string/kb_mouse_sub_keyboard" />
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_keyboard"
+                            android:src="@drawable/ic_km_pro_submode_keyboard" />
 
-                        <TextView
+                        <ImageButton
                             android:id="@+id/km_pro_header_tab_numpad"
-                            style="@style/KbMouseSubmodeTab"
-                            android:text="@string/kb_mouse_sub_numpad" />
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_numpad"
+                            android:src="@drawable/ic_km_pro_submode_numpad" />
 
-                        <TextView
+                        <ImageButton
                             android:id="@+id/km_pro_header_tab_compose"
-                            style="@style/KbMouseSubmodeTab"
-                            android:text="@string/kb_mouse_sub_compose" />
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_compose"
+                            android:src="@drawable/ic_km_pro_submode_compose" />
                     </LinearLayout>
                 </HorizontalScrollView>
 
-                <!-- Title consumes flex space; Target OS + connection stay trailing (KM Pro). -->
-                <LinearLayout
+                <TextView
+                    android:id="@+id/app_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/app_title"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="@dimen/spacing_small"
-                        android:layout_marginEnd="@dimen/spacing_small"
-                        android:text="@string/app_name"
-                        android:textSize="@dimen/header_title_size"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:fontFamily="sans-serif-medium"
-                        android:maxLines="1"
-                        android:ellipsize="end"/>
-
-                </LinearLayout>
+                    android:layout_marginStart="@dimen/spacing_small"
+                    android:layout_marginEnd="@dimen/spacing_small"
+                    android:text="@string/app_name"
+                    android:textSize="@dimen/header_title_size"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
                 <LinearLayout
                     android:id="@+id/header_right_cluster"

@@ -184,11 +184,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Nullable
     private HorizontalScrollView kmProHeaderTabsScroll;
     @Nullable
-    private TextView kmProHeaderTabKeyboard;
+    private ImageButton kmProHeaderTabKeyboard;
     @Nullable
-    private TextView kmProHeaderTabNumpad;
+    private ImageButton kmProHeaderTabNumpad;
     @Nullable
-    private TextView kmProHeaderTabCompose;
+    private ImageButton kmProHeaderTabCompose;
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
                 @Override
