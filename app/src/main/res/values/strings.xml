@@ -33,7 +33,7 @@
     <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
     <string name="km_pro_settings_close">Back</string>
     <string name="km_pro_settings_section_strip_display">Keys display</string>
-    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1: how shortcuts on the strip look (names, icons, or combo text), and how Tab and the bottom-row modifier keys on the main keyboard look.</string>
+    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1: how shortcuts on the strip look (names, icons, or combo text), and how Tab and the modifier keys on the main keyboard look.</string>
     <string name="km_pro_settings_display_mode_name">Names</string>
     <string name="km_pro_settings_display_mode_icon">Icons</string>
     <string name="km_pro_settings_display_mode_chord">Combo</string>

@@ -327,7 +327,7 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float BASE_KEYCAP_TEXT_SP_PORTRAIT = 17f;
     private static final float BASE_KEYCAP_TEXT_SP_LANDSCAPE = 19f;
     /**
-     * Bottom row on Keyboard &amp; Mouse Pro (narrow Tab / Ctrl / Alt slots). Slightly smaller than
+     * Bottom row on Keyboard &amp; Mouse Pro (Fn / Ctrl / Alt / Space / GUI): slightly smaller than
      * {@link #BASE_KEYCAP_TEXT_SP_LANDSCAPE} / {@link #BASE_KEYCAP_TEXT_SP_PORTRAIT} to avoid wrap.
      */
     private static final float PRO_BOTTOM_ROW_TEXT_SP_LANDSCAPE = 14.5f;
@@ -2253,13 +2253,14 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Pro no-GUI QWERTY: compact cap size for Tab, modifiers, Space, Shift, Enter, and Bksp when
-     * shown as text (aligned with Tab / Ctrl / Opt).
+     * Pro no-GUI QWERTY: compact cap size for bottom-row modifiers, Space, Shift, Enter, and Bksp when
+     * shown as text. Tab lives on the letter row and uses {@link #BASE_KEYCAP_TEXT_SP_PORTRAIT} /
+     * {@link #BASE_KEYCAP_TEXT_SP_LANDSCAPE} like other letter keys.
      */
     private static boolean isProBottomRowCompactTextKey(Key key, boolean noGuiKeyboard) {
         return noGuiKeyboard
                 && key != null
-                && (key.code == 0x2B || key.code == 0xE0 || key.code == 0xE2 || key.code == 0xE3
+                && (key.code == 0xE0 || key.code == 0xE2 || key.code == 0xE3
                         || key.code == 0x2C || key.code == 0xE1 || key.code == 0x28 || key.code == 0x2A);
     }
 
@@ -2583,9 +2584,6 @@ public class CustomKeyboardView extends LinearLayout {
                         textButton.setMaxLines(1);
                         textButton.setEllipsize(android.text.TextUtils.TruncateAt.END);
                         float fnSp = getFnLabelTextSizeSp(fnDisplayLabel);
-                        if (isProBottomRowCompactTextKey(key, !showGuiHidKey) && key.code == 0x2B) {
-                            fnSp = Math.min(fnSp, baseKeycapTextSpForKey(key));
-                        }
                         textButton.setTextSize(fnSp);
                         textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                         textButton.setTextColor(resolveThemeTextColor());
