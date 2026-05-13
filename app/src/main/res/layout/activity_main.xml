@@ -155,16 +155,16 @@
 
                         <ImageView
                             android:id="@+id/connection_button"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="@dimen/header_connection_icon_size"
+                            android:layout_height="@dimen/header_connection_icon_size"
                             android:src="@drawable/ic_bluetooth"
                             android:tint="@color/text_secondary"
                             android:contentDescription="@string/connection"/>
 
                         <ImageView
                             android:id="@+id/signal_bars"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="@dimen/header_connection_icon_size"
+                            android:layout_height="@dimen/header_connection_icon_size"
                             android:layout_marginTop="1dp"
                             android:src="@drawable/signal_cellular_alt_off_24px"
                             android:tint="@color/primary"

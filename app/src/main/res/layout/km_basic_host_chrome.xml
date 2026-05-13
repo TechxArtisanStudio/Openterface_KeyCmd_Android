@@ -12,15 +12,14 @@
 
     <ImageButton
         android:id="@+id/basic_km_menu_button"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="4dp"
+        android:layout_width="@dimen/header_icon_size"
+        android:layout_height="@dimen/header_icon_size"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/menu"
-        android:padding="6dp"
+        android:padding="@dimen/button_icon_padding"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_menu"
-        android:tint="@color/text_primary" />
+        android:tint="@color/text_secondary" />
 
     <HorizontalScrollView
         android:layout_width="0dp"
@@ -60,24 +59,24 @@
 
     <ImageButton
         android:id="@+id/basic_km_target_os"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="4dp"
+        android:layout_width="@dimen/header_icon_size"
+        android:layout_height="@dimen/header_icon_size"
+        android:layout_marginEnd="2dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/target_os_header_cd"
-        android:padding="6dp"
+        android:padding="@dimen/button_icon_padding"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_os_macos"
         android:tint="@color/text_secondary" />
 
     <ImageButton
         android:id="@+id/basic_km_setup_button"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginEnd="4dp"
+        android:layout_width="@dimen/header_icon_size"
+        android:layout_height="@dimen/header_icon_size"
+        android:layout_marginEnd="2dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/km_basic_setup_button_cd"
-        android:padding="6dp"
+        android:padding="@dimen/button_icon_padding"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_settings"
         android:tint="@color/text_secondary" />
@@ -85,18 +84,20 @@
     <LinearLayout
         android:id="@+id/basic_km_connection"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
         android:padding="4dp"
-        android:background="?attr/selectableItemBackground"
+        android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
-        android:focusable="true">
+        android:focusable="true"
+        android:minWidth="@dimen/header_icon_size"
+        android:minHeight="@dimen/header_icon_size">
 
         <ImageView
             android:id="@+id/basic_km_connection_icon"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="@dimen/header_connection_icon_size"
+            android:layout_height="@dimen/header_connection_icon_size"
             android:contentDescription="@string/connection"
             android:src="@drawable/ic_bluetooth"
             android:tint="@color/text_secondary" />

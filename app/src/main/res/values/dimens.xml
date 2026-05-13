@@ -12,6 +12,8 @@
     <dimen name="header_padding">8dp</dimen>
     <dimen name="header_elevation">4dp</dimen>
     <dimen name="header_icon_size">40dp</dimen>
+    <!-- Bluetooth / connection glyph inside header_right_cluster (KM Pro + KM Basic chrome). -->
+    <dimen name="header_connection_icon_size">18dp</dimen>
     <!-- KM Pro header submode tabs: slightly smaller than header_right_cluster icons for density. -->
     <dimen name="km_pro_submode_tab_icon_size">32dp</dimen>
     <dimen name="km_pro_submode_tab_icon_padding">2dp</dimen>
