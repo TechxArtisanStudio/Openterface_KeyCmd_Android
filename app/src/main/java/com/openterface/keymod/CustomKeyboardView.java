@@ -808,6 +808,9 @@ public class CustomKeyboardView extends LinearLayout {
                     } else if (key.code == 0x2A) {
                         key.label = context.getString(R.string.BackSpace);
                         key.iconResId = R.drawable.backspace;
+                    } else if (key.code == 0x4C) {
+                        key.label = "";
+                        key.iconResId = R.drawable.backspace;
                     } else if (key.code == 0xE4) {
                         key.label = context.getString(R.string.modifier_control);
                         key.iconResId = 0;
@@ -849,6 +852,9 @@ public class CustomKeyboardView extends LinearLayout {
                         key.iconResId = 0;
                     } else if (key.code == 0x2A) {
                         key.label = context.getString(R.string.key_display_name_bksp);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x4C) {
+                        key.label = context.getString(R.string.Delete);
                         key.iconResId = 0;
                     } else if (key.code == 0xE4) {
                         key.label = context.getString(R.string.modifier_control);
@@ -2000,6 +2006,17 @@ public class CustomKeyboardView extends LinearLayout {
             == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
     }
 
+    /**
+     * KM Pro landscape full built-in keyboard: split vertical space between shortcut strip and letter
+     * grid using layout weights (1 : 3) instead of a fixed strip height.
+     */
+    private boolean useKmProLandscapeFullShortcutStripHeightWeightRatio() {
+        return showExtraPortraitKeys
+                && isLandscape(getContext())
+                && splitPart == SPLIT_NONE
+                && !shortcutsStripOnly;
+    }
+
     private void bindService(Context context) {
         Intent intent = new Intent(context, BluetoothService.class);
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -2247,6 +2264,9 @@ public class CustomKeyboardView extends LinearLayout {
                         } else if (label.equals("BackSpace")) {
                             iconResId = R.drawable.backspace;
                             System.out.println("Hardcoded icon for BackSpace: " + iconResId);
+                        } else if (code == 0x4C) {
+                            // Forward delete (Del): same glyph as backspace, mirrored in ImageButton setup.
+                            iconResId = R.drawable.backspace;
                         } else if (label.equals("Up_arrow")) {
                             iconResId = R.drawable.caret_up_fill;
                             System.out.println("Hardcoded icon for arrow_up: " + iconResId);
@@ -2509,8 +2529,9 @@ public class CustomKeyboardView extends LinearLayout {
         if (wrapLetterRows) {
             letterBodyContainer = new LinearLayout(getContext());
             letterBodyContainer.setOrientation(VERTICAL);
+            float letterBodyWeight = useKmProLandscapeFullShortcutStripHeightWeightRatio() ? 3f : 1f;
             letterBodyContainer.setLayoutParams(
-                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.0f));
+                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, letterBodyWeight));
             kmProLetterKeyboardBody = letterBodyContainer;
             addView(letterBodyContainer);
         }
@@ -2556,6 +2577,7 @@ public class CustomKeyboardView extends LinearLayout {
                         || (key.label.equals("Cmd") && key.iconResId != 0)
                         || (key.code == 0x2C && key.iconResId != 0)
                         || (key.code == 0x2A && key.iconResId != 0)
+                        || (key.code == 0x4C && key.iconResId != 0)
                         || (key.code == 0xE1 && key.iconResId != 0)
                         || (key.code == 0x28 && key.iconResId != 0)
                         || key.label.equals("Up_arrow")
@@ -2574,6 +2596,9 @@ public class CustomKeyboardView extends LinearLayout {
                     if (key.code == 0x2B && key.iconResId != 0) {
                         imageButton.setContentDescription(
                                 getContext().getString(R.string.key_display_name_tab));
+                    }
+                    if (key.code == 0x4C && key.iconResId != 0) {
+                        imageButton.setContentDescription(getContext().getString(R.string.Delete));
                     }
                     if (key.code == 0x2C && key.iconResId != 0) {
                         imageButton.setContentDescription(
@@ -2602,19 +2627,25 @@ public class CustomKeyboardView extends LinearLayout {
                         imageButton.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
                         if (isBackspaceKey(key)) {
                             imageButton.setScaleX(isFnLocked ? -1f : 1f);
+                        } else if (key.code == 0x4C) {
+                            imageButton.setScaleX(-1f);
                         }
                         if ("Win".equals(key.label) || "Cmd".equals(key.label) || "Super".equals(key.label)
                                 || key.code == 0xE3
                                 || key.code == 0xE7
                                 || key.code == 0x65
                                 || (key.code == 0x2B && key.iconResId != 0)
-                                || key.code == 0x2A || key.code == 0xE1 || key.code == 0x28
+                                || key.code == 0x2A
+                                || key.code == 0x4C
+                                || key.code == 0xE1
+                                || key.code == 0x28
                                 || (key.code == 0x2C && key.iconResId != 0)
                                 || fnHintsOnMainShift) {
                             imageButton.setColorFilter(resolveThemeTextColor());
                         }
                     }
-                    int iconPaddingDp = (isBackspaceKey(key) && isLandscape(getContext())) ? 2 : 4;
+                    int iconPaddingDp =
+                            ((isBackspaceKey(key) || key.code == 0x4C) && isLandscape(getContext())) ? 2 : 4;
                     imageButton.setPadding(dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp));
                     button = imageButton;
                     listenerTarget = imageButton;
@@ -3782,18 +3813,17 @@ public class CustomKeyboardView extends LinearLayout {
         LinearLayout topStripContainer = new LinearLayout(getContext());
         int portraitShortcutStripHeight =
                 getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
-        // KM Pro single-pane (portrait + landscape): fixed shortcut-strip height so the letter grid
-        // gets the remaining height; landscape weight-based strip starved QWERTY vs the macro rows.
-        if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
+        // KM Pro landscape full keyboard: strip : letter grid = 1 : 3 by weight.
+        if (useKmProLandscapeFullShortcutStripHeightWeightRatio()) {
+            topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+        } else if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
+            // Portrait + landscape non-full: fixed shortcut-strip height so the letter grid gets the
+            // remainder; fixed height avoids starving QWERTY vs macro rows on small landscape widths.
             topStripContainer.setLayoutParams(
                     new LayoutParams(LayoutParams.MATCH_PARENT, portraitShortcutStripHeight, 0f));
+            topStripContainer.setMinimumHeight(portraitShortcutStripHeight);
         } else {
             topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
-        }
-        // Full built-in keyboard: many letter rows compete for height; floor strip for safety on
-        // compact devices where parent constraints can squeeze below the target portrait size.
-        if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
-            topStripContainer.setMinimumHeight(portraitShortcutStripHeight);
         }
         topStripContainer.setOrientation(VERTICAL);
         FrameLayout viewport = new FrameLayout(getContext());

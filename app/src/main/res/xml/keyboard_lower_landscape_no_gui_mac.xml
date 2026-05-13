@@ -6,7 +6,7 @@
     android:verticalGap="0px"
     android:keyHeight="10%p">
 
-    <!-- Row1: Tab+q–p. Width ratio 1:1:…:1:2 (only p double). Split mid=6: Tab+qwer+t | yuiop. -->
+    <!-- Row1: Tab+q–p+Bksp. Equal width 1×12. Split mid=6: Tab+qwer+t | yuiop+Bksp. -->
     <Row>
         <Key android:codes="2B" android:keyLabel="@string/TAB" android:keyWidth="10%p" android:horizontalGap="1%p"/>
         <Key android:codes="14" android:keyLabel="q" custom:keySymbolLabel="Q" custom:keyAlternates="!,1" custom:keyCornerHint="!" android:keyWidth="10%p"/>
@@ -18,10 +18,11 @@
         <Key android:codes="18" android:keyLabel="u" custom:keySymbolLabel="U" custom:keyAlternates="&amp;,7" custom:keyCornerHint="&amp;" android:keyWidth="10%p"/>
         <Key android:codes="0C" android:keyLabel="i" custom:keySymbolLabel="I" custom:keyAlternates="*,8" custom:keyCornerHint="*" android:keyWidth="10%p"/>
         <Key android:codes="12" android:keyLabel="o" custom:keySymbolLabel="O" custom:keyAlternates=",9" custom:keyCornerHint="," android:keyWidth="10%p"/>
-        <Key android:codes="13" android:keyLabel="p" custom:keySymbolLabel="P" custom:keyAlternates=".0" custom:keyCornerHint="." android:keyWidth="20%p"/>
+        <Key android:codes="13" android:keyLabel="p" custom:keySymbolLabel="P" custom:keyAlternates=".0" custom:keyCornerHint="." android:keyWidth="10%p"/>
+        <Key android:codes="2A" android:keyLabel="@string/BackSpace" android:isRepeatable="true" android:keyWidth="10%p"/>
     </Row>
 
-    <!-- Row2: Fn+a–l+bksp (Fn moved from bottom). Split (mid=6): left Fn+asdfg, right hjkl+Del. -->
+    <!-- Row2: Fn+a–l+Del (forward delete). Split (mid=6): left Fn+asdfg, right hjkl+Del. -->
     <Row>
         <Key android:codes="F005" android:keyLabel="Fn" android:keyWidth="9.5%p" android:horizontalGap="1.1%p"/>
         <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,,€,,£,," custom:keyCornerHint="¥" android:keyWidth="10.6%p"/>
@@ -33,20 +34,20 @@
         <Key android:codes="0D" android:keyLabel="j" custom:keySymbolLabel="J" custom:keyAlternates=",,[,]" custom:keyCornerHint="[" android:keyWidth="8.35%p"/>
         <Key android:codes="0E" android:keyLabel="k" custom:keySymbolLabel="K" custom:keyAlternates=",,{,}" custom:keyCornerHint="{" android:keyWidth="8.35%p"/>
         <Key android:codes="0F" android:keyLabel="l" custom:keySymbolLabel="L" custom:keyAlternates=",,(,)" custom:keyCornerHint="(" android:keyWidth="8.35%p"/>
-        <Key android:codes="2A" android:keyLabel="@string/BackSpace" custom:keySymbolLabel="Del" android:isRepeatable="true" android:keyWidth="11.55%p"/>
+        <Key android:codes="4C" android:keyLabel="@string/Delete" android:isRepeatable="true" android:keyWidth="11.55%p"/>
     </Row>
 
     <Row>
-        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="16.25%p"/>
-        <!-- Narrow z–c shifts v left (r–f–v diagonal); wider Enter + slightly narrower b–m for pl / right columns. -->
-        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="',,," custom:keyCornerHint="'" android:keyWidth="8.82%p"/>
-        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="&#34;,,," custom:keyCornerHint="&#34;" android:keyWidth="8.82%p"/>
-        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,,," custom:keyCornerHint=";" android:keyWidth="8.82%p"/>
-        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,,," custom:keyCornerHint=":" android:keyWidth="9.07%p"/>
-        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="/,,," custom:keyCornerHint="/" android:keyWidth="8.95%p"/>
-        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&#124;,,," custom:keyCornerHint="&#124;" android:keyWidth="8.95%p"/>
-        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="\\,,," custom:keyCornerHint="\\" android:keyWidth="8.95%p"/>
-        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="21.34%p"/>
+        <!-- Shift row width ratio 1.8 : 1×7 : 3 (Enter on no-GUI; / on GUI). -->
+        <Key android:codes="E1" android:keyLabel="@string/Shift" android:keyWidth="18%p"/>
+        <Key android:codes="1D" android:keyLabel="z" custom:keySymbolLabel="Z" custom:keyAlternates="',,," custom:keyCornerHint="'" android:keyWidth="10%p"/>
+        <Key android:codes="1B" android:keyLabel="x" custom:keySymbolLabel="X" custom:keyAlternates="&#34;,,," custom:keyCornerHint="&#34;" android:keyWidth="10%p"/>
+        <Key android:codes="06" android:keyLabel="c" custom:keySymbolLabel="C" custom:keyAlternates=";,,," custom:keyCornerHint=";" android:keyWidth="10%p"/>
+        <Key android:codes="19" android:keyLabel="v" custom:keySymbolLabel="V" custom:keyAlternates=":,,," custom:keyCornerHint=":" android:keyWidth="10%p"/>
+        <Key android:codes="05" android:keyLabel="b" custom:keySymbolLabel="B" custom:keyAlternates="/,,," custom:keyCornerHint="/" android:keyWidth="10%p"/>
+        <Key android:codes="11" android:keyLabel="n" custom:keySymbolLabel="N" custom:keyAlternates="&#124;,,," custom:keyCornerHint="&#124;" android:keyWidth="10%p"/>
+        <Key android:codes="10" android:keyLabel="m" custom:keySymbolLabel="M" custom:keyAlternates="\\,,," custom:keyCornerHint="\\" android:keyWidth="10%p"/>
+        <Key android:codes="28" android:keyLabel="@string/Enter_Button" android:keyWidth="30%p"/>
     </Row>
 
     <!-- macOS: no Fn on bottom (Fn on row2). Split expands Space to two halves. -->
