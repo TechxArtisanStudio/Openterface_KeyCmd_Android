@@ -620,8 +620,8 @@ public class CompositeFragment extends Fragment {
     }
 
     /**
-     * Gesture-hint {@link TextView} is drawn above the pad + scroll strip; forward touches so drags
-     * that start on the hint band still hit the pad or strip underneath.
+     * Gesture-hint {@link TextView} is overlaid top-center on the pad + scroll strip; forward touches
+     * so drags that start on the hint band still hit the pad or strip underneath.
      */
     private void wireKmProTouchPadTipsPassthrough(@Nullable TextView tips) {
         if (tips == null || touchpadPadHost == null) {

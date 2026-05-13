@@ -7,7 +7,7 @@
     android:background="@drawable/bg_presentation_touchpad_dialog"
     android:clipToOutline="true">
 
-    <!-- Same stacking as Keyboard and Mouse: pad, bottom wash (added in code), tips, help, info -->
+    <!-- Same stacking as Keyboard and Mouse: pad, bottom wash (added in code), top-centered tips, help, info -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="280dp"
@@ -26,14 +26,14 @@
             android:id="@+id/presentation_touchpad_tips"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|center_horizontal"
+            android:layout_gravity="top|center_horizontal"
             android:gravity="center_horizontal"
             android:textColor="@color/presentation_text_secondary"
             android:textSize="10sp"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:paddingTop="8dp"
-            android:paddingBottom="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp"
             android:background="@android:color/transparent"
             android:clickable="true"
             android:focusable="true"
