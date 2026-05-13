@@ -2007,14 +2007,14 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * KM Pro landscape full built-in keyboard: split vertical space between shortcut strip and letter
-     * grid using layout weights (1 : 3) instead of a fixed strip height.
+     * KM Pro landscape built-in keyboard (letter grid + shortcut strip): split vertical space between
+     * shortcut strip and letter grid using layout weights (1 : 2.2) instead of a fixed strip height.
+     * <p>
+     * Note: {@link CompositeFragment} sets {@code setShowExtraPortraitKeys(false)} for normal Keyboard
+     * submode, including landscape full keyboard; do not gate this on {@code showExtraPortraitKeys}.
      */
     private boolean useKmProLandscapeFullShortcutStripHeightWeightRatio() {
-        return showExtraPortraitKeys
-                && isLandscape(getContext())
-                && splitPart == SPLIT_NONE
-                && !shortcutsStripOnly;
+        return isLandscape(getContext()) && splitPart == SPLIT_NONE && !shortcutsStripOnly;
     }
 
     private void bindService(Context context) {
@@ -2529,7 +2529,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (wrapLetterRows) {
             letterBodyContainer = new LinearLayout(getContext());
             letterBodyContainer.setOrientation(VERTICAL);
-            float letterBodyWeight = useKmProLandscapeFullShortcutStripHeightWeightRatio() ? 3f : 1f;
+            float letterBodyWeight = useKmProLandscapeFullShortcutStripHeightWeightRatio() ? 2.2f : 1f;
             letterBodyContainer.setLayoutParams(
                     new LayoutParams(LayoutParams.MATCH_PARENT, 0, letterBodyWeight));
             kmProLetterKeyboardBody = letterBodyContainer;
@@ -3813,7 +3813,7 @@ public class CustomKeyboardView extends LinearLayout {
         LinearLayout topStripContainer = new LinearLayout(getContext());
         int portraitShortcutStripHeight =
                 getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
-        // KM Pro landscape full keyboard: strip : letter grid = 1 : 3 by weight.
+        // KM Pro landscape full keyboard: strip : letter grid = 1 : 2.2 by weight.
         if (useKmProLandscapeFullShortcutStripHeightWeightRatio()) {
             topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         } else if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {

@@ -1204,6 +1204,7 @@ public class CompositeFragment extends Fragment {
         applyOrientationLayout();
         applyDisplayMode();
         syncMainActivityKmProTabs();
+        applyKmProSubmodeRequestedOrientation();
 
         if (keyboardView != null && port != null) {
             keyboardView.setPort(port);
@@ -1223,6 +1224,7 @@ public class CompositeFragment extends Fragment {
     public void onResume() {
         super.onResume();
         syncMainActivityKmProTabs();
+        applyKmProSubmodeRequestedOrientation();
     }
 
     @Override
@@ -1532,12 +1534,33 @@ public class CompositeFragment extends Fragment {
         return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
-    /** NumPad / Compose in landscape use the same vertical composition as portrait. */
+    /**
+     * Compose in landscape uses the same vertical composition as portrait. NumPad is kept
+     * portrait-only via {@link #applyKmProSubmodeRequestedOrientation()}; the numpad branch remains
+     * for any transient frame during rotation.
+     */
     private boolean usePortraitStyleKmProRootLayout() {
         if (!isLandscapeOrientation()) {
             return true;
         }
         return currentSubmode == ProSubmode.NUMPAD || currentSubmode == ProSubmode.COMPOSE;
+    }
+
+    /**
+     * KM Pro NumPad is designed for portrait (touchpad strip + numpad grid). Lock the activity to
+     * portrait while that tab is active so landscape does not show the full keyboard + shortcuts
+     * layout.
+     */
+    private void applyKmProSubmodeRequestedOrientation() {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (currentSubmode == ProSubmode.NUMPAD) {
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+        } else {
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+        }
     }
 
     @NonNull
@@ -1578,6 +1601,7 @@ public class CompositeFragment extends Fragment {
         KmProSubmodePrefs.setSubmode(requireContext(), prefKeyFromProSubmode(currentSubmode));
         applyDisplayMode();
         syncMainActivityKmProTabs();
+        applyKmProSubmodeRequestedOrientation();
     }
 
     private void syncMainActivityKmProTabs() {

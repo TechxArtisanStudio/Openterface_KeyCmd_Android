@@ -80,6 +80,29 @@ Engineering items (1–2, 4) **do not remove** the long-press alternates feature
 5. **Settings / onboarding copy**  
    Briefly explain that with **Alternate hints on**, base characters commit on **release** (and long-press opens alternates), vs **off** → behavior closer to KM Basic. Reduces “bug?” framing into informed tradeoff.
 
+## Legitimacy review (plan vs your reported issues)
+
+**Verdict: the plan is legitimate** — conclusions are grounded in a direct comparison of [`CustomKeyboardView.attachKeyListeners`](file:///Users/billywang/project/openterface/Openterface_KeyMod_Android/app/src/main/java/com/openterface/keymod/CustomKeyboardView.java) (≈2818–2939) and KM Basic’s [`BasicKeyFeedback.repeatableKeyTouchListener`](file:///Users/billywang/project/openterface/Openterface_KeyMod_Android/app/src/main/java/com/openterface/keymod/basic/BasicKeyFeedback.java) (≈127–137). No hand-waving: the behaviors differ in code, not only in subjective feel.
+
+**Mapping to your issues**
+
+1. **Confusion (haptic + visual, but no character)** — Explained by **decoupling**: `performKeyHapticFeedback` runs on **ACTION_DOWN** (≈2831) while `handleKeyPress` → HID runs on **ACTION_UP** only on the hints-on path (≈2904–2905). The user’s nervous system binds to DOWN; the host only updates after UP passes gates. That is a predictable mismatch, not an unexplained flake.
+
+2. **Missing keys on very quick taps** — Consistent with **UP-gated** send plus **strict** `isTouchInsideView` (≈2942–2945) and **ACTION_CANCEL** paths that remove the pending alternates runnable but **never** call `handleKeyPress` (≈2911–2934). Basic avoids this class of loss for letters because **HID already left on DOWN** in `repeatableKeyTouchListener`.
+
+3. **“Slightly delayed” vs Basic** — For a successful tap, HID is emitted at **finger-up** in Pro (hints on) vs **finger-down** in Basic. That is real **perceptual latency** (contact → lift) even when nothing is “slow” in the handler. It is **not** the same as blocking the whole `ViewConfiguration.getLongPressTimeout()` on every tap; the long-press runnable is **cancelled on UP** when the popup never opened (≈2882–2886).
+
+4. **Suspicion: long-press alternates conflict** — **Partially confirmed, with precision.** The conflict is **architectural** (same key must support “tap = base” vs “hold = alternates” without sending base on DOWN), not a timer **stalling** each key. The alternates machinery (`postDelayed(openAlternates)`, MOVE returning `true` while pending — ≈2846–2867) exists to keep the gesture alive for popup; it **correlates** with choosing UP-only HID, which in turn **correlates** with drops on cancel / sloppy UP. It is not proven that `showAlternatesPopup` fires on your failed taps.
+
+**What this plan does *not* yet prove (honest limits)**
+
+- **Transport / firmware**: USB/BT write failures or CH9329 buffering could add rare drops; the current symptoms (feedback without HID) are **fully explainable in UI logic**, so treat transport as a **secondary** hypothesis unless logs show failed writes.
+- **Hit-testing on hint strip**: For keys wrapped in a `FrameLayout` with a top `hintRow` ([≈2737–2761](file:///Users/billywang/project/openterface/Openterface_KeyMod_Android/app/src/main/java/com/openterface/keymod/CustomKeyboardView.java)), the **touch listener is on `textButton` only** (`listenerTarget = textButton`, ≈2793–2796). Taps that land primarily on the **hint overlay** might not hit the same code path as taps on the letter face; worth a focused QA pass if misses cluster near the top of keycaps **and** lack the Pro listener haptic.
+
+**Falsification / how you could disprove the plan**
+
+- If **Alternate hints off** (gaming / DOWN-first path) still shows the same **missing** HID rate as hints on for the same gesture, then look beyond UP-gating (e.g. overlay hits, transport). The plan predicts **drops and “ghost feedback”** improve markedly when hints are off for keys that support alternates.
+
 ## Key files
 
 - Pro: [`CustomKeyboardView.java`](file:///Users/billywang/project/openterface/Openterface_KeyMod_Android/app/src/main/java/com/openterface/keymod/CustomKeyboardView.java) — `attachKeyListeners`, `gamingTouch`, `isTouchInsideView`, `handleKeyPress`, `sendReleaseData`.
