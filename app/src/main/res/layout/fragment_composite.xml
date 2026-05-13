@@ -186,4 +186,15 @@
             android:importantForAutofill="no" />
     </LinearLayout>
 
+    <!-- KM Pro Compose: fills root when touchpad + keyboard slot are hidden (temporary cleared layout). -->
+    <View
+        android:id="@+id/km_pro_compose_clear_fill"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone"
+        android:background="@color/background_light"
+        android:contentDescription="@string/km_pro_compose_workspace_a11y"
+        android:importantForAccessibility="yes" />
+
 </LinearLayout>

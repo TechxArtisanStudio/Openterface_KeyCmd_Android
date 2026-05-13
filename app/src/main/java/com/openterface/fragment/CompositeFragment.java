@@ -111,11 +111,8 @@ public class CompositeFragment extends Fragment {
     /** Inflated split layout root (landscape {@code fragment_composite_split}). */
     private View splitLayoutRoot;
     private View splitTouchPadInfoButton;
-    /**
-     * Portrait Compose submode: touchpad vs shortcut strip (unchanged from historical BOTH ratio).
-     */
-    private static final float PORTRAIT_COMPOSE_TOUCHPAD_WEIGHT = 1.20f;
-    private static final float PORTRAIT_COMPOSE_KEYBOARD_WEIGHT = 1.38f;
+    /** Fills {@code composite_root} when KM Pro Compose hides touchpad + keyboard slot (temporary). */
+    @Nullable private View kmProComposeClearFill;
 
     /**
      * Portrait Keyboard submode + BOTH display: slightly taller keyboard band vs touchpad so IME
@@ -1448,6 +1445,7 @@ public class CompositeFragment extends Fragment {
 
     private void setupNormalViews(View view) {
         rootLayout = view.findViewById(R.id.composite_root);
+        kmProComposeClearFill = view.findViewById(R.id.km_pro_compose_clear_fill);
         kmProKeyboardSlot = view.findViewById(R.id.km_pro_keyboard_slot);
         kmProImeHost = view.findViewById(R.id.km_pro_ime_host);
         kmProKeyboardBaselinePaddingCaptured = false;
@@ -1904,11 +1902,17 @@ public class CompositeFragment extends Fragment {
         if (currentSubmode != ProSubmode.KEYBOARD) {
             hideKmProImeSurface();
         }
+        if (kmProComposeClearFill != null && splitRoot == null) {
+            kmProComposeClearFill.setVisibility(View.GONE);
+        }
         boolean isLandscape = isLandscapeOrientation();
 
         if (currentSubmode == ProSubmode.NUMPAD) {
             displayMode = DisplayMode.KEYBOARD;
             ensureNormalLayout();
+            if (kmProKeyboardSlot != null) {
+                kmProKeyboardSlot.setVisibility(View.VISIBLE);
+            }
             if (touchpadSection != null) {
                 touchpadSection.setVisibility(View.VISIBLE);
             }
@@ -1929,12 +1933,17 @@ public class CompositeFragment extends Fragment {
             displayMode = DisplayMode.BOTH;
             ensureNormalLayout();
             if (touchpadSection != null) {
-                touchpadSection.setVisibility(View.VISIBLE);
+                touchpadSection.setVisibility(View.GONE);
+            }
+            if (kmProKeyboardSlot != null) {
+                kmProKeyboardSlot.setVisibility(View.GONE);
+            }
+            if (kmProComposeClearFill != null) {
+                kmProComposeClearFill.setVisibility(View.VISIBLE);
             }
             if (keyboardView != null) {
-                keyboardView.setVisibility(View.VISIBLE);
                 keyboardView.setShowExtraPortraitKeys(false);
-                keyboardView.setShortcutsStripOnly(true);
+                keyboardView.setShortcutsStripOnly(false);
                 keyboardView.reloadForCurrentOrientation();
             }
             applyOrientationLayout();
@@ -1977,6 +1986,9 @@ public class CompositeFragment extends Fragment {
 
         // Ensure we have the normal layout
         ensureNormalLayout();
+        if (kmProKeyboardSlot != null) {
+            kmProKeyboardSlot.setVisibility(View.VISIBLE);
+        }
 
         boolean portraitLike =
                 !isLandscapeOrientation() || usePortraitStyleKmProRootLayout();
@@ -2100,9 +2112,6 @@ public class CompositeFragment extends Fragment {
             if (currentSubmode == ProSubmode.NUMPAD) {
                 touchpadWeight = 1f;
                 keyboardWeight = 4f;
-            } else if (currentSubmode == ProSubmode.COMPOSE) {
-                touchpadWeight = PORTRAIT_COMPOSE_TOUCHPAD_WEIGHT;
-                keyboardWeight = PORTRAIT_COMPOSE_KEYBOARD_WEIGHT;
             } else {
                 touchpadWeight =
                         displayMode == DisplayMode.KEYBOARD
@@ -2124,6 +2133,7 @@ public class CompositeFragment extends Fragment {
             keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, keyboardWeight));
 
+            applyKmProComposeClearFillLayoutParamsPortrait();
             updateKmProPortraitKeyboardStripBottomPadding();
         } else {
             rootLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -2135,10 +2145,32 @@ public class CompositeFragment extends Fragment {
 
             keyboardColumn.setLayoutParams(new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 2.0f));
+
+            applyKmProComposeClearFillLayoutParamsLandscape();
         }
-        if (touchpadSection != null) {
+        if (touchpadSection != null && touchpadSection.getVisibility() == View.VISIBLE) {
             touchpadSection.post(this::applyProTouchpadMouseLayoutCompactOrComfortable);
         }
+    }
+
+    private void applyKmProComposeClearFillLayoutParamsPortrait() {
+        if (kmProComposeClearFill == null
+                || kmProComposeClearFill.getVisibility() != View.VISIBLE
+                || splitRoot != null) {
+            return;
+        }
+        kmProComposeClearFill.setLayoutParams(
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    private void applyKmProComposeClearFillLayoutParamsLandscape() {
+        if (kmProComposeClearFill == null
+                || kmProComposeClearFill.getVisibility() != View.VISIBLE
+                || splitRoot != null) {
+            return;
+        }
+        kmProComposeClearFill.setLayoutParams(
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
     }
 
     /** Entering landscape: ensure KM Pro keyboard stays on built-in HID layout. */

@@ -456,7 +456,9 @@ public class BasicComposeFragment extends Fragment {
         ColorStateList mutedIcon = ColorStateList.valueOf(onSurface);
 
         if (editor != null) {
-            editor.setActivated(canSend && !sending && !showWarning);
+            // Frame border uses state_activated in basic_compose_editor_background: show shape theme
+            // (colorPrimary stroke) whenever the buffer has content, independent of send gating.
+            editor.setActivated(!t.isEmpty());
         }
 
         if (sending) {

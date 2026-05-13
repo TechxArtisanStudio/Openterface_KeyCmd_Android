@@ -812,6 +812,7 @@ by TechxArtisan</string>
     <string name="kb_mouse_sub_numpad">NumPad</string>
     <string name="kb_mouse_sub_touchpad">Touchpad</string>
     <string name="kb_mouse_sub_compose">Compose</string>
+    <string name="km_pro_compose_workspace_a11y">Compose workspace. Keyboard and touchpad are hidden while this layout is reworked.</string>
     <string name="kb_mouse_sub_ime">Compose &amp; Send</string>
     <string name="kb_basic_touchpad_scroll_area_a11y">Mouse wheel scroll strip</string>
     <string name="kb_basic_touchpad_mouse_left_label">L</string>
