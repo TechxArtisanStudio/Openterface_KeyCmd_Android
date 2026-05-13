@@ -4,7 +4,10 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.AttributeSet;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -13,8 +16,10 @@ import androidx.annotation.Nullable;
 import java.util.function.ToIntFunction;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.graphics.drawable.DrawableCompat;
 
+import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.R;
 
 /**
@@ -34,6 +39,27 @@ public class BasicPortraitScrollStripView extends View {
     private static final float CHEVRON_EDGE_PAD_DP = 6f;
     private static final float CHEVRON_MAX_WIDTH_FRACTION = 0.85f;
     private static final int CHEVRON_MIN_SHRUNK_PX = 8;
+
+    /** Chevron tint pulse after each wheel step (matches gamepad scroll strip cadence). */
+    private static final long CHEVRON_PULSE_MS = 100L;
+
+    private static final float PULSE_BLEND_STRONG = 0.55f;
+    private static final float PULSE_BLEND_HORIZONTAL = 0.4f;
+    private static final float FINGER_DOWN_CHEVRON_BLEND = 0.12f;
+
+    /**
+     * 0 = idle, 1 = wheel up (emphasize top chevron), -1 = wheel down, 2 = horizontal wheel (both).
+     */
+    private int chevronPulseDir;
+
+    private final Handler pulseHandler = new Handler(Looper.getMainLooper());
+    private final Runnable clearChevronPulse =
+            () -> {
+                chevronPulseDir = 0;
+                invalidate();
+            };
+
+    private boolean fingerDown;
 
     public interface OnStripScrollListener {
         void onStripScroll(int deltaX, int deltaY);
@@ -75,16 +101,13 @@ public class BasicPortraitScrollStripView extends View {
         dividerPaint.setColor(ContextCompat.getColor(getContext(), R.color.divider));
         dividerPaint.setStrokeWidth(Math.max(1f, getResources().getDisplayMetrics().density));
 
-        int chevronTint = ContextCompat.getColor(getContext(), R.color.km_touchpad_scroll_strip_chevron);
         Drawable up = AppCompatResources.getDrawable(getContext(), R.drawable.km_basic_scroll_strip_chevron_up);
         if (up != null) {
             chevronUp = DrawableCompat.wrap(up.mutate());
-            DrawableCompat.setTint(chevronUp, chevronTint);
         }
         Drawable down = AppCompatResources.getDrawable(getContext(), R.drawable.km_basic_scroll_strip_chevron_down);
         if (down != null) {
             chevronDown = DrawableCompat.wrap(down.mutate());
-            DrawableCompat.setTint(chevronDown, chevronTint);
         }
     }
 
@@ -95,6 +118,12 @@ public class BasicPortraitScrollStripView extends View {
     /** Pass null to use KM Basic touchpad prefs again. */
     public void setSensitivityPercentSupplier(@Nullable ToIntFunction<Context> supplier) {
         sensitivityPercentSupplier = supplier;
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        pulseHandler.removeCallbacks(clearChevronPulse);
+        super.onDetachedFromWindow();
     }
 
     @Override
@@ -120,6 +149,23 @@ public class BasicPortraitScrollStripView extends View {
         if (w <= 0 || h <= 0) {
             return;
         }
+        int baseChevronTint = ContextCompat.getColor(getContext(), R.color.km_touchpad_scroll_strip_chevron);
+        int accent = MaterialColors.getColor(this, com.google.android.material.R.attr.colorPrimary, baseChevronTint);
+        int upTint = baseChevronTint;
+        int dnTint = baseChevronTint;
+        if (chevronPulseDir == 2) {
+            upTint = ColorUtils.blendARGB(baseChevronTint, accent, PULSE_BLEND_HORIZONTAL);
+            dnTint = ColorUtils.blendARGB(baseChevronTint, accent, PULSE_BLEND_HORIZONTAL);
+        } else if (chevronPulseDir > 0) {
+            upTint = ColorUtils.blendARGB(baseChevronTint, accent, PULSE_BLEND_STRONG);
+        } else if (chevronPulseDir < 0) {
+            dnTint = ColorUtils.blendARGB(baseChevronTint, accent, PULSE_BLEND_STRONG);
+        } else if (fingerDown) {
+            upTint = ColorUtils.blendARGB(upTint, accent, FINGER_DOWN_CHEVRON_BLEND);
+            dnTint = ColorUtils.blendARGB(dnTint, accent, FINGER_DOWN_CHEVRON_BLEND);
+        }
+        DrawableCompat.setTint(chevronUp, upTint);
+        DrawableCompat.setTint(chevronDown, dnTint);
         float density = getResources().getDisplayMetrics().density;
         int pad = Math.round(CHEVRON_EDGE_PAD_DP * density);
         int maxSize = Math.round(CHEVRON_MAX_DP * density);
@@ -141,6 +187,18 @@ public class BasicPortraitScrollStripView extends View {
         chevronDown.draw(canvas);
     }
 
+    private void onWheelStepDispatched(int sx, int sy) {
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+        if (sy != 0) {
+            chevronPulseDir = sy > 0 ? 1 : -1;
+        } else if (sx != 0) {
+            chevronPulseDir = 2;
+        }
+        pulseHandler.removeCallbacks(clearChevronPulse);
+        pulseHandler.postDelayed(clearChevronPulse, CHEVRON_PULSE_MS);
+        invalidate();
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getActionMasked()) {
@@ -148,6 +206,8 @@ public class BasicPortraitScrollStripView extends View {
                 lastY = event.getY();
                 accumX = 0f;
                 accumY = 0f;
+                fingerDown = true;
+                invalidate();
                 return true;
             case MotionEvent.ACTION_MOVE:
                 float y = event.getY();
@@ -165,11 +225,16 @@ public class BasicPortraitScrollStripView extends View {
                 }
                 if (listener != null && (sx != 0 || sy != 0)) {
                     listener.onStripScroll(sx, sy);
+                    onWheelStepDispatched(sx, sy);
                 }
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 lastY = 0f;
+                fingerDown = false;
+                pulseHandler.removeCallbacks(clearChevronPulse);
+                chevronPulseDir = 0;
+                invalidate();
                 return true;
             default:
                 return super.onTouchEvent(event);
