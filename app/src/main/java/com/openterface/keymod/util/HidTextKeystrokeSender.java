@@ -9,6 +9,7 @@ import com.openterface.keymod.ConnectionManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,7 +27,95 @@ public final class HidTextKeystrokeSender {
         CANCELLED,
     }
 
+    /** Invoked from the send thread after each completed send unit (see {@link #countSendUnits}). */
+    @FunctionalInterface
+    public interface SendProgressListener {
+        /**
+         * @param completed send units finished so far, in range {@code 1..total}
+         * @param total from {@link #countSendUnits}; matches completed at end of a full send
+         */
+        void onProgress(int completed, int total);
+    }
+
     private HidTextKeystrokeSender() {}
+
+    /**
+     * Counts HID send units for {@link #send} with the same {@code text}, {@code allowUnicode}, and {@code
+     * targetOs}. Modifier tags, closing tags, and delay tokens contribute {@code 0}. Each special key token
+     * (e.g. {@code <ENTER>}) is one unit; each ASCII code point with a HID mapping is one unit; skipped
+     * non-ASCII when {@code allowUnicode} is false contributes {@code 0}; each Unicode code point when
+     * {@code allowUnicode} is true contributes one unit (one OS-specific sequence).
+     */
+    public static int countSendUnits(String text, boolean allowUnicode, String targetOs) {
+        Objects.requireNonNull(text, "text");
+        Objects.requireNonNull(targetOs, "targetOs");
+        List<String> tokens = tokenizeInput(text);
+        int activeMods = 0;
+        int units = 0;
+        for (String token : tokens) {
+            if (token.startsWith("</") && token.endsWith(">")) {
+                activeMods = 0;
+                continue;
+            }
+            switch (token) {
+                case "<CTRL>":
+                    activeMods |= 0x01;
+                    continue;
+                case "<SHIFT>":
+                    activeMods |= 0x02;
+                    continue;
+                case "<ALT>":
+                    activeMods |= 0x04;
+                    continue;
+                case "<CMD>":
+                case "<WIN>":
+                    activeMods |= 0x08;
+                    continue;
+                default:
+                    break;
+            }
+            if (token.equals("<DELAY1S>")
+                    || token.equals("<DELAY2S>")
+                    || token.equals("<DELAY5S>")
+                    || token.equals("<DELAY10S>")) {
+                continue;
+            }
+            int specialHid = specialTokenToHidCode(token);
+            if (specialHid > 0) {
+                units++;
+                continue;
+            }
+            for (int ci = 0; ci < token.length(); ) {
+                int cp = token.codePointAt(ci);
+                ci += Character.charCount(cp);
+                if (cp > 0x7E) {
+                    if (!allowUnicode) {
+                        continue;
+                    }
+                    units++;
+                } else {
+                    char c = (char) cp;
+                    int hidCode = mapCharToHidCode(c);
+                    if (hidCode < 0) {
+                        continue;
+                    }
+                    units++;
+                }
+            }
+        }
+        return units;
+    }
+
+    private static void reportProgress(
+            @Nullable SendProgressListener progress, int totalUnits, int[] completedHolder) {
+        if (progress == null || totalUnits <= 0) {
+            return;
+        }
+        // Cap so UI never sees completed > total if send/count logic ever diverges.
+        int next = Math.min(completedHolder[0] + 1, totalUnits);
+        completedHolder[0] = next;
+        progress.onProgress(next, totalUnits);
+    }
 
     /**
      * @param cancel if non-null, {@link AtomicBoolean#get()} is polled between steps; true aborts after key release.
@@ -39,8 +128,25 @@ public final class HidTextKeystrokeSender {
             boolean allowUnicode,
             @Nullable AtomicBoolean cancel
     ) throws InterruptedException {
+        return send(text, connectionManager, targetOs, allowUnicode, cancel, null);
+    }
+
+    /**
+     * Same as {@link #send(String, ConnectionManager, String, boolean, AtomicBoolean)} with optional progress
+     * after each send unit (see {@link #countSendUnits}). Callbacks run on the caller thread.
+     */
+    public static Result send(
+            String text,
+            ConnectionManager connectionManager,
+            String targetOs,
+            boolean allowUnicode,
+            @Nullable AtomicBoolean cancel,
+            @Nullable SendProgressListener progress
+    ) throws InterruptedException {
         List<String> tokens = tokenizeInput(text);
         int activeMods = 0;
+        final int totalUnits = progress != null ? countSendUnits(text, allowUnicode, targetOs) : 0;
+        final int[] completed = progress != null ? new int[] {0} : null;
 
         for (String token : tokens) {
             if (isCancelled(cancel, connectionManager)) {
@@ -91,6 +197,7 @@ public final class HidTextKeystrokeSender {
                 Thread.sleep(30);
                 connectionManager.sendKeyRelease();
                 Thread.sleep(10);
+                reportProgress(progress, totalUnits, completed);
                 continue;
             }
 
@@ -117,6 +224,7 @@ public final class HidTextKeystrokeSender {
                             sendUnicodeCharMacOS(cp, connectionManager);
                             break;
                     }
+                    reportProgress(progress, totalUnits, completed);
                 } else {
                     char c = (char) cp;
                     int hidCode = mapCharToHidCode(c);
@@ -129,6 +237,7 @@ public final class HidTextKeystrokeSender {
                     Thread.sleep(30);
                     connectionManager.sendKeyRelease();
                     Thread.sleep(10);
+                    reportProgress(progress, totalUnits, completed);
                 }
             }
         }

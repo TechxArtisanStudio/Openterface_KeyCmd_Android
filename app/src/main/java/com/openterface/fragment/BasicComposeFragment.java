@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -26,6 +27,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
@@ -80,11 +82,27 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     private MaterialButton redoBtn;
     private MaterialButton sendBtn;
     @Nullable private View actionsRow;
+    @Nullable private View sendProgressWrap;
+    @Nullable private LinearProgressIndicator sendProgressBar;
+    @Nullable private android.widget.TextView sendProgressLabel;
     @Nullable private View composeBrandLogo;
     @Nullable private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
     private boolean highlightNonAsciiChars;
+
+    /** Show determinate send progress only for longer sends (avoids flicker on short buffers). */
+    private static final int COMPOSE_SEND_PROGRESS_MIN_UNITS = 56;
+
+    private static final long COMPOSE_SEND_PROGRESS_UI_MIN_INTERVAL_MS = 67L;
+
+    /** Last N units: post every update so the bar does not skip ahead then jump to full. */
+    private static final int COMPOSE_SEND_PROGRESS_TAIL_UNTHROTTLE = 40;
+
+    private volatile boolean sendProgressUiActive;
+    private int lastComposeSendRemainingForA11y = -1;
+    private final Object sendProgressPostLock = new Object();
+    private long sendProgressLastPostMs;
 
     /** Match {@link android.Manifest} {@code windowSoftInputMode} for {@link MainActivity}. */
     private static final int ACTIVITY_SOFT_INPUT_MODE =
@@ -116,6 +134,9 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
         actionsRow = view.findViewById(R.id.basic_compose_actions);
+        sendProgressWrap = view.findViewById(R.id.basic_compose_send_progress_wrap);
+        sendProgressBar = view.findViewById(R.id.basic_compose_send_progress);
+        sendProgressLabel = view.findViewById(R.id.basic_compose_send_progress_label);
         composeBrandLogo = view.findViewById(R.id.basic_compose_brand_logo);
 
         clearBtn.setOnClickListener(v -> onClearClicked());
@@ -125,6 +146,8 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             savedTextsBtn.setOnClickListener(v -> onSavedTextsClicked());
         }
         saveLibraryBtn.setOnClickListener(v -> onSaveLibraryClicked());
+
+        prepareComposeSendProgressIndicator();
 
         editor.addTextChangedListener(
                 new TextWatcher() {
@@ -149,12 +172,40 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     }
 
     @Override
+    public void onDestroyView() {
+        hideSendProgressUi();
+        sendProgressWrap = null;
+        sendProgressBar = null;
+        sendProgressLabel = null;
+        super.onDestroyView();
+    }
+
+    private void prepareComposeSendProgressIndicator() {
+        if (sendProgressBar != null) {
+            sendProgressBar.setIndeterminate(false);
+            sendProgressBar.setMax(1000);
+        }
+    }
+
+    /**
+     * Posts compose send progress UI work only while the fragment view is attached, so HID thread
+     * callbacks cannot resurrect UI after teardown or completion.
+     */
+    private void postComposeProgressUi(@NonNull Runnable r) {
+        if (getActivity() == null || !isAdded() || getView() == null) {
+            return;
+        }
+        getActivity().runOnUiThread(r);
+    }
+
+    @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         View v = getView();
         if (v != null) {
             refreshComposeLayoutState(v);
         }
+        prepareComposeSendProgressIndicator();
     }
 
     /**
@@ -410,31 +461,79 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             boolean clearEditorAfterSuccess) {
         cancelSend.set(false);
         sending = true;
+
+        final String targetOs = ma.getTargetOs();
+        final int sentLen = text.length();
+        final int totalUnits = HidTextKeystrokeSender.countSendUnits(text, false, targetOs);
+        final boolean showSendProgress = totalUnits >= COMPOSE_SEND_PROGRESS_MIN_UNITS;
+        sendProgressUiActive = showSendProgress;
+        lastComposeSendRemainingForA11y = showSendProgress ? totalUnits : -1;
+        sendProgressLastPostMs = 0L;
+
         if (editor != null) {
             editor.setEnabled(false);
         }
         refreshToolbarState();
 
-        final String targetOs = ma.getTargetOs();
-        final int sentLen = text.length();
+        if (showSendProgress) {
+            postComposeProgressUi(
+                    () -> {
+                        if (!isAdded() || getView() == null || !sending || !sendProgressUiActive) {
+                            return;
+                        }
+                        if (sendProgressWrap != null) {
+                            sendProgressWrap.setVisibility(View.VISIBLE);
+                        }
+                        if (sendProgressBar != null) {
+                            sendProgressBar.setIndeterminate(false);
+                            sendProgressBar.setProgress(0, false);
+                        }
+                        if (sendProgressLabel != null) {
+                            sendProgressLabel.setText(
+                                    getString(R.string.compose_send_remaining, totalUnits));
+                        }
+                        lastComposeSendRemainingForA11y = totalUnits;
+                        if (sendBtn != null) {
+                            sendBtn.setContentDescription(
+                                    getString(R.string.compose_stop_a11y_with_remaining, totalUnits));
+                        }
+                    });
+        }
+
+        final HidTextKeystrokeSender.SendProgressListener progressListener =
+                showSendProgress
+                        ? (completed, total) -> {
+                            if (getActivity() == null || !isAdded()) {
+                                return;
+                            }
+                            postThrottledSendProgress(completed, total);
+                        }
+                        : null;
 
         new Thread(
                         () -> {
                             HidTextKeystrokeSender.Result result;
                             try {
-                                result = HidTextKeystrokeSender.send(text, cm, targetOs, false, cancelSend);
+                                result =
+                                        HidTextKeystrokeSender.send(
+                                                text, cm, targetOs, false, cancelSend, progressListener);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 result = HidTextKeystrokeSender.Result.CANCELLED;
                             } catch (Exception e) {
-                                postSendFinished(() -> {
-                                    sending = false;
-                                    if (editor != null) {
-                                        editor.setEnabled(true);
-                                    }
-                                    refreshToolbarState();
-                                    Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-                                });
+                                postSendFinished(
+                                        () -> {
+                                            sending = false;
+                                            if (editor != null) {
+                                                editor.setEnabled(true);
+                                            }
+                                            refreshToolbarState();
+                                            Toast.makeText(
+                                                            requireContext(),
+                                                            e.getMessage(),
+                                                            Toast.LENGTH_SHORT)
+                                                    .show();
+                                        });
                                 return;
                             }
                             HidTextKeystrokeSender.Result finalResult = result;
@@ -471,6 +570,73 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                         },
                         "basic-compose-send")
                 .start();
+    }
+
+    private void postThrottledSendProgress(int completed, int total) {
+        if (total <= 0) {
+            return;
+        }
+        final int totalClamped = total;
+        final int done = Math.min(Math.max(0, completed), totalClamped);
+        final int remaining = totalClamped - done;
+        final boolean atEnd = done >= totalClamped;
+        final boolean inTail = remaining <= COMPOSE_SEND_PROGRESS_TAIL_UNTHROTTLE;
+        long now = SystemClock.uptimeMillis();
+        synchronized (sendProgressPostLock) {
+            if (!atEnd
+                    && !inTail
+                    && (now - sendProgressLastPostMs) < COMPOSE_SEND_PROGRESS_UI_MIN_INTERVAL_MS) {
+                return;
+            }
+            sendProgressLastPostMs = now;
+        }
+        final int remainingLabel = Math.max(0, remaining);
+        postComposeProgressUi(
+                () -> {
+                    if (!isAdded() || getView() == null || !sending || !sendProgressUiActive) {
+                        return;
+                    }
+                    if (sendProgressWrap != null) {
+                        sendProgressWrap.setVisibility(View.VISIBLE);
+                    }
+                    if (sendProgressBar != null) {
+                        sendProgressBar.setIndeterminate(false);
+                        int p;
+                        if (atEnd) {
+                            p = 1000;
+                        } else {
+                            // Round for smoother motion; stay below max until the true completion frame.
+                            p = Math.min(999, Math.round(1000f * done / (float) totalClamped));
+                        }
+                        // Same animation mode throughout so the last segment does not snap after motion.
+                        sendProgressBar.setProgress(p, true);
+                    }
+                    if (sendProgressLabel != null) {
+                        sendProgressLabel.setText(
+                                getString(R.string.compose_send_remaining, remainingLabel));
+                    }
+                    lastComposeSendRemainingForA11y = remainingLabel;
+                    if (sendBtn != null) {
+                        sendBtn.setContentDescription(
+                                getString(
+                                        R.string.compose_stop_a11y_with_remaining, remainingLabel));
+                    }
+                });
+    }
+
+    private void hideSendProgressUi() {
+        sendProgressUiActive = false;
+        lastComposeSendRemainingForA11y = -1;
+        if (sendProgressWrap != null) {
+            sendProgressWrap.setVisibility(View.GONE);
+        }
+        if (sendProgressBar != null) {
+            sendProgressBar.setIndeterminate(false);
+            sendProgressBar.setProgress(0, false);
+        }
+        if (sendProgressLabel != null) {
+            sendProgressLabel.setText("");
+        }
     }
 
     private void refreshEditorNonAsciiHighlights(boolean showNoneFoundToast) {
@@ -527,6 +693,9 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (sendBtn == null || clearBtn == null || redoBtn == null || saveLibraryBtn == null) {
             return;
         }
+        if (!sending) {
+            hideSendProgressUi();
+        }
         MainActivity ma = mainActivity();
         ConnectionManager cm = ma != null ? ma.getConnectionManager() : null;
         String t = editor != null && editor.getText() != null ? editor.getText().toString() : "";
@@ -577,7 +746,14 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (sending) {
             sendBtn.setText("");
             sendBtn.setIconResource(R.drawable.ic_compose_stop_24);
-            sendBtn.setContentDescription(getString(R.string.compose_stop));
+            if (sendProgressUiActive && lastComposeSendRemainingForA11y >= 0) {
+                sendBtn.setContentDescription(
+                        getString(
+                                R.string.compose_stop_a11y_with_remaining,
+                                lastComposeSendRemainingForA11y));
+            } else {
+                sendBtn.setContentDescription(getString(R.string.compose_stop));
+            }
             sendBtn.setEnabled(true);
             sendBtn.setAlpha(1f);
             sendBtn.setStrokeColor(primaryStroke);

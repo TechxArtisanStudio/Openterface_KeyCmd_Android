@@ -561,6 +561,8 @@ by TechxArtisan</string>
     <string name="compose_touchpad">Touchpad</string>
     <string name="compose_send">Send</string>
     <string name="compose_stop">Stop</string>
+    <string name="compose_send_remaining">%1$d left</string>
+    <string name="compose_stop_a11y_with_remaining">Stop, %1$d left</string>
     <string name="compose_no_connection">Not connected — connect USB or Bluetooth first.</string>
     <string name="compose_empty">No text to send.</string>
     <string name="compose_sent">Sent %1$d characters.</string>

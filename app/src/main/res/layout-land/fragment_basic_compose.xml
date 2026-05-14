@@ -43,6 +43,37 @@
     </androidx.core.widget.NestedScrollView>
 
     <LinearLayout
+        android:id="@+id/basic_compose_send_progress_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:importantForAccessibility="yes">
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/basic_compose_send_progress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="1000"
+            app:indicatorColor="?attr/colorPrimary"
+            app:trackColor="?attr/colorSurfaceVariant"
+            app:trackCornerRadius="2dp"
+            app:trackThickness="3dp" />
+
+        <TextView
+            android:id="@+id/basic_compose_send_progress_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/basic_compose_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
