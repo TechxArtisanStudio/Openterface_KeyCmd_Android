@@ -23,6 +23,8 @@
             android:layout_width="match_parent"
             android:layout_height="@dimen/header_height"
             android:padding="@dimen/header_padding"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:background="@color/header_background"
             android:elevation="@dimen/header_elevation">
 
@@ -37,88 +39,84 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/menu"
                 android:padding="@dimen/button_icon_padding"
-                android:tint="@color/text_primary"/>
+                android:tint="@color/text_secondary"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_toEndOf="@id/menu_button"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Title + mode slots consume flex space; Target OS + connection stay trailing (KM Pro). -->
-                <LinearLayout
+                <HorizontalScrollView
+                    android:id="@+id/km_pro_header_tabs_scroll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:clipToPadding="false"
+                    android:clipChildren="false"
+                    android:fillViewport="false"
+                    android:scrollbars="none"
+                    android:overScrollMode="never">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageButton
+                            android:id="@+id/km_pro_header_tab_keyboard"
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_keyboard"
+                            android:src="@drawable/ic_km_pro_submode_keyboard" />
+
+                        <ImageButton
+                            android:id="@+id/km_pro_header_tab_compose"
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_compose"
+                            android:src="@drawable/ic_km_pro_submode_compose" />
+
+                        <ImageButton
+                            android:id="@+id/km_pro_header_tab_numpad"
+                            style="@style/KmProSubmodeTabIcon"
+                            android:contentDescription="@string/kb_mouse_sub_numpad"
+                            android:src="@drawable/ic_km_pro_submode_numpad" />
+                    </LinearLayout>
+                </HorizontalScrollView>
+
+                <Space
+                    android:id="@+id/km_pro_header_tabs_spacer"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/app_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:layout_marginStart="@dimen/spacing_small"
+                    android:layout_marginEnd="@dimen/spacing_small"
+                    android:text="@string/app_name"
+                    android:textSize="@dimen/header_title_size"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
-                    <TextView
-                        android:id="@+id/app_title"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="@dimen/spacing_small"
-                        android:layout_marginEnd="@dimen/spacing_small"
-                        android:text="@string/app_name"
-                        android:textSize="@dimen/header_title_size"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:fontFamily="sans-serif-medium"
-                        android:maxLines="1"
-                        android:ellipsize="end"/>
-
-                    <HorizontalScrollView
-                        android:id="@+id/header_end_scroll"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:scrollbars="none"
-                        android:fillViewport="false"
-                        android:overScrollMode="ifContentScrolls">
-
-                        <LinearLayout
-                            android:id="@+id/header_mode_slots_container"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="2dp"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-
-                            <ImageButton
-                                android:id="@+id/header_mode_slot_1"
-                                android:layout_width="@dimen/header_icon_size"
-                                android:layout_height="@dimen/header_icon_size"
-                                android:src="@drawable/keyboard_mouse"
-                                android:background="?attr/selectableItemBackgroundBorderless"
-                                android:contentDescription="@string/top_mode_label_keyboard_mouse"
-                                android:padding="@dimen/button_icon_padding"
-                                android:tint="@color/text_secondary" />
-
-                            <ImageButton
-                                android:id="@+id/header_mode_slot_2"
-                                android:layout_width="@dimen/header_icon_size"
-                                android:layout_height="@dimen/header_icon_size"
-                                android:src="@drawable/ic_presentation"
-                                android:background="?attr/selectableItemBackgroundBorderless"
-                                android:contentDescription="@string/presentation_mode"
-                                android:padding="@dimen/button_icon_padding"
-                                android:tint="@color/text_secondary" />
-
-                            <ImageButton
-                                android:id="@+id/header_mode_slot_3"
-                                android:layout_width="@dimen/header_icon_size"
-                                android:layout_height="@dimen/header_icon_size"
-                                android:src="@drawable/macros"
-                                android:background="?attr/selectableItemBackgroundBorderless"
-                                android:contentDescription="@string/top_mode_label_macros"
-                                android:padding="@dimen/button_icon_padding"
-                                android:tint="@color/text_secondary" />
-                        </LinearLayout>
-                    </HorizontalScrollView>
-                </LinearLayout>
+                <!-- Absorbs space when title + KM Pro tabs are hidden so target OS / setup / connection stay end-aligned. -->
+                <Space
+                    android:id="@+id/header_end_pull_spacer"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/header_right_cluster"
@@ -129,13 +127,38 @@
 
                     <ImageButton
                         android:id="@+id/target_os_header_button"
-                        android:layout_width="@dimen/header_icon_size"
-                        android:layout_height="@dimen/header_icon_size"
-                        android:layout_marginEnd="2dp"
+                        android:layout_width="@dimen/header_right_cluster_icon_size"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:layout_marginEnd="@dimen/header_right_cluster_button_gap"
                         android:src="@drawable/ic_os_macos"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/target_os_header_cd"
-                        android:padding="@dimen/button_icon_padding"
+                        android:padding="@dimen/header_right_cluster_icon_padding"
+                        android:tint="@color/text_secondary"/>
+
+                    <ImageButton
+                        android:id="@+id/mode_guide_header_button"
+                        android:layout_width="@dimen/header_right_cluster_icon_size"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:layout_marginEnd="@dimen/header_right_cluster_button_gap"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_mode_guide_24"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/mode_guide_header_cd"
+                        android:padding="@dimen/header_right_cluster_icon_padding"
+                        android:tint="@color/text_secondary"
+                        android:scaleType="fitCenter" />
+
+                    <ImageButton
+                        android:id="@+id/km_pro_setup_header_button"
+                        android:layout_width="@dimen/header_right_cluster_icon_size"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:layout_marginEnd="@dimen/header_right_cluster_button_gap"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_settings"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/km_pro_setup_button_cd"
+                        android:padding="@dimen/header_right_cluster_icon_padding"
                         android:tint="@color/text_secondary"/>
 
                     <LinearLayout
@@ -147,25 +170,25 @@
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:minWidth="@dimen/header_icon_size"
-                        android:minHeight="@dimen/header_icon_size"
-                        android:padding="4dp">
+                        android:minWidth="@dimen/header_right_cluster_icon_size"
+                        android:minHeight="@dimen/header_right_cluster_icon_size"
+                        android:padding="@dimen/header_right_cluster_connection_padding">
 
                         <ImageView
                             android:id="@+id/connection_button"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="@dimen/header_connection_icon_size"
+                            android:layout_height="@dimen/header_connection_icon_size"
                             android:src="@drawable/ic_bluetooth"
                             android:tint="@color/text_secondary"
                             android:contentDescription="@string/connection"/>
 
                         <ImageView
                             android:id="@+id/signal_bars"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="@dimen/header_connection_icon_size"
+                            android:layout_height="@dimen/header_connection_icon_size"
                             android:layout_marginTop="1dp"
                             android:src="@drawable/signal_cellular_alt_off_24px"
-                            android:tint="@color/primary"
+                            android:tint="?attr/colorPrimary"
                             android:visibility="gone"
                             android:contentDescription="Signal strength"/>
 
@@ -266,11 +289,34 @@
         </LinearLayout>
 
         <FrameLayout
-            android:id="@+id/fragment_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="9"
-            android:background="@color/background_light"/>
+            android:layout_weight="9">
+
+            <FrameLayout
+                android:id="@+id/fragment_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/background_light"/>
+
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/km_pro_settings_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/background_light"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
+            <androidx.fragment.app.FragmentContainerView
+                android:id="@+id/ime_saved_text_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/background_light"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+        </FrameLayout>
 
     </LinearLayout>
     </FrameLayout>

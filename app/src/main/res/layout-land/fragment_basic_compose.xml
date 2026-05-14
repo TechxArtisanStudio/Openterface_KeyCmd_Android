@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Landscape: same structure as portrait — editor uses full width; Clear / Redo / Send sit in one row
-  directly above the IME inset zone (keyboard), like Pro IME compose toolbar placement.
+  Landscape KM Basic: full-height compose editor; Clear / Undo / Send toolbar is hidden (use portrait
+  or another tab for those actions). Insets still pad the editor above IME / system bars.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -9,20 +9,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="?android:attr/colorBackground"
+    android:background="@color/background_light"
+    android:clipToPadding="false"
     android:paddingStart="12dp"
     android:paddingTop="8dp"
     android:paddingEnd="12dp"
     android:paddingBottom="4dp">
-
-    <TextView
-        android:id="@+id/basic_compose_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="6dp"
-        android:text="@string/kb_basic_compose_hint"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -32,17 +24,55 @@
         android:fillViewport="true"
         android:scrollbars="vertical">
 
-        <EditText
-            android:id="@+id/basic_compose_editor"
-            style="@style/Widget.KeyMod.BasicComposeEditor"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="@dimen/basic_compose_editor_min_height"
-            android:imeOptions="flagNoExtractUi"
-            android:inputType="textMultiLine|textCapSentences"
-            android:minLines="1"
-            android:scrollbars="vertical" />
+            android:layout_height="match_parent">
+
+            <EditText
+                android:id="@+id/basic_compose_editor"
+                style="@style/Widget.KeyCmd.BasicComposeEditor"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:hint="@string/kb_basic_compose_editor_hint"
+                android:minHeight="@dimen/basic_compose_editor_min_height"
+                android:imeOptions="flagNoExtractUi"
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="1"
+                android:scrollbars="vertical" />
+
+        </FrameLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/basic_compose_send_progress_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:importantForAccessibility="yes">
+
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/basic_compose_send_progress"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:max="1000"
+            app:indicatorColor="?attr/colorPrimary"
+            app:trackColor="?attr/colorSurfaceVariant"
+            app:trackCornerRadius="2dp"
+            app:trackThickness="3dp" />
+
+        <TextView
+            android:id="@+id/basic_compose_send_progress_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="monospace" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/basic_compose_actions"
@@ -51,11 +81,12 @@
         android:layout_marginTop="8dp"
         android:baselineAligned="false"
         android:orientation="horizontal"
-        android:paddingBottom="8dp">
+        android:paddingBottom="8dp"
+        android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_clear"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -69,16 +100,32 @@
             app:iconTint="?attr/colorOnSurface" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_redo"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            android:id="@+id/basic_compose_save_library"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:contentDescription="@string/compose_redo_clear"
+            android:contentDescription="@string/ime_saved_text_save_cd"
             android:text=""
-            app:icon="@drawable/ic_compose_undo_24"
+            app:icon="@drawable/ic_top_save"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_saved_texts"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/ime_saved_text_cd_open_library"
+            android:text=""
+            app:icon="@drawable/ic_bookmark_star_24"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
@@ -86,7 +133,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_send"
-            style="@style/Widget.KeyMod.BasicComposeActionButton"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -100,4 +147,40 @@
             app:iconSize="24dp"
             app:iconTint="?attr/colorOnSurface" />
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/basic_compose_km_pro_shortcut_strip_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/compose_shortcut_strip_height"
+        android:layout_marginStart="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
+        android:layout_marginEnd="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
+        android:layout_marginTop="6dp"
+        android:visibility="gone">
+
+        <com.openterface.keymod.CustomKeyboardView
+            android:id="@+id/basic_compose_km_pro_shortcut_strip"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="@dimen/keyboard_outer_padding_top"
+            android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
+            android:keyBackground="@drawable/key_background"
+            android:theme="@style/ButtonTheme"
+            app:showGuiHidKey="false" />
+    </FrameLayout>
+
+    <ImageView
+        android:id="@+id/basic_compose_brand_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="8dp"
+        android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:alpha="0.82"
+        android:src="@drawable/ic_openterface_wordmark"
+        android:tint="@color/text_secondary"
+        android:contentDescription="@string/touch_pad_brand_content_description"
+        android:importantForAccessibility="yes" />
 </LinearLayout>

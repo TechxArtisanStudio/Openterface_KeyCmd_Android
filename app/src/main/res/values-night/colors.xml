@@ -11,7 +11,8 @@
     <color name="divider">#FF3A3A3C</color>
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#FF8E8E93</color>
-    <color name="km_basic_scroll_strip_chevron">#FF6C6C70</color>
+    <color name="km_touchpad_scroll_strip_chevron">#FF6C6C70</color>
+    <color name="km_basic_scroll_strip_chevron">@color/km_touchpad_scroll_strip_chevron</color>
     <color name="launch_panel_brand_tint">#FFF0F0F0</color>
     <color name="header_connection_idle">#FF8E8E93</color>
 
@@ -47,6 +48,15 @@
 
     <!-- Touchpad surface: slightly above background_light (#FF1C1C1E) for affordance -->
     <color name="touchpad_background">#FF2C2C2E</color>
+    <color name="km_basic_touchpad_pattern_soft_light">#12FFFFFF</color>
+    <color name="km_basic_touchpad_pattern_soft_shadow">#14000000</color>
+    <color name="km_basic_touchpad_pattern_glow">#18FFFFFF</color>
+    <color name="km_basic_touchpad_pattern_sink">#1C000000</color>
     <color name="touchpad_help_overlay_panel">#EE2C2C2E</color>
+
+    <!-- KM Basic numpad: keep touchpad weave strength; no extra stroke (dark keys already separate from surface). -->
+    <color name="km_basic_numpad_key_stroke">#00000000</color>
+    <color name="km_basic_numpad_pattern_soft_light">@color/km_basic_touchpad_pattern_soft_light</color>
+    <color name="km_basic_numpad_pattern_soft_shadow">@color/km_basic_touchpad_pattern_soft_shadow</color>
 
 </resources>

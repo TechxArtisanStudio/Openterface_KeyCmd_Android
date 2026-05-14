@@ -22,6 +22,8 @@ import java.util.Set;
 
 /**
  * Loads/saves the active {@link GamepadLayoutPresetDocument} in default SharedPreferences.
+ * <p>Module {@code anchorX}/{@code anchorY} in the JSON document are authoritative for the dynamic layout;
+ * {@link GamepadConfigManager} SIMPLE positions are updated on {@link #save} so legacy paths stay aligned.
  */
 public final class GamepadLayoutDocumentStore {
 
@@ -41,7 +43,6 @@ public final class GamepadLayoutDocumentStore {
             if (d != null) {
                 try {
                     GamepadLayoutPresetDocument.validateOrThrow(d);
-                    mergeAnchorsFromDisk(context, d);
                     if (!d.modules.isEmpty()) {
                         return d;
                     }
@@ -68,6 +69,7 @@ public final class GamepadLayoutDocumentStore {
     public static void save(Context context, GamepadLayoutPresetDocument doc) {
         GamepadLayoutPresetDocument.validateOrThrow(doc);
         GamepadLayoutPresetBackgroundCodec.prepareForPersistence(context, doc);
+        GamepadLayoutDocEditor.normalizeModuleZOrder(doc);
         PreferenceManager.getDefaultSharedPreferences(context).edit()
                 .putString(GamepadPreferenceKeys.LAYOUT_DOCUMENT_JSON, GSON.toJson(doc))
                 .apply();
@@ -76,18 +78,6 @@ public final class GamepadLayoutDocumentStore {
             pos.put(m.id, new GamepadConfigManager.ComponentPosition(m.anchorX, m.anchorY));
         }
         new GamepadConfigManager(context).saveLayoutPositions(GamepadLayout.SIMPLE, pos);
-    }
-
-    private static void mergeAnchorsFromDisk(Context context, GamepadLayoutPresetDocument doc) {
-        Map<String, GamepadConfigManager.ComponentPosition> disk =
-                new GamepadConfigManager(context).loadLayoutPositions(GamepadLayout.SIMPLE);
-        for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
-            GamepadConfigManager.ComponentPosition p = disk.get(m.id);
-            if (p != null) {
-                m.anchorX = p.x;
-                m.anchorY = p.y;
-            }
-        }
     }
 
     /**
@@ -204,6 +194,23 @@ public final class GamepadLayoutDocumentStore {
             }
         }
         return "touchpad_" + (maxNum + 1);
+    }
+
+    /** Next id {@code scroll_strip_1}, {@code scroll_strip_2}, … based on existing SCROLL_STRIP modules. */
+    public static String nextScrollStripModuleId(GamepadLayoutPresetDocument doc) {
+        int maxNum = 0;
+        if (doc != null && doc.modules != null) {
+            for (GamepadLayoutPresetDocument.GamepadModule m : doc.modules) {
+                if (m == null || m.id == null || !m.id.startsWith("scroll_strip_")) {
+                    continue;
+                }
+                String suffix = m.id.substring("scroll_strip_".length());
+                if (suffix.matches("[0-9]+")) {
+                    maxNum = Math.max(maxNum, Integer.parseInt(suffix));
+                }
+            }
+        }
+        return "scroll_strip_" + (maxNum + 1);
     }
 
     /** Next id {@code mouse_btn_copy_1}, {@code mouse_btn_copy_2}, … for duplicated {@code MOUSE_BUTTON} modules. */

@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/hub_detail_settings_nested_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipToPadding="false"
+    android:paddingStart="16dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="28dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bottom_sheet_drag_handle_bg" />
+
+        <TextView
+            android:id="@+id/hub_detail_settings_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.01"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:cardBackgroundColor="@color/header_background"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/shortcut_hub_detail_settings_layout_section"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingMultiplier="1.15"
+                    android:text="@string/shortcut_hub_detail_settings_layout_summary"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/hub_detail_layout_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    app:checkedButton="@+id/hub_detail_layout_list"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/hub_detail_layout_list"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="48dp"
+                        android:text="@string/shortcut_hub_detail_settings_layout_list" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/hub_detail_layout_card"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="48dp"
+                        android:text="@string/shortcut_hub_detail_settings_layout_card" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/header_background"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/shortcut_hub_detail_settings_display_section"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingMultiplier="1.15"
+                    android:text="@string/shortcut_hub_detail_settings_display_summary"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <HorizontalScrollView
+                    android:id="@+id/hub_detail_display_toggle_scroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:clipToPadding="false"
+                    android:fillViewport="false"
+                    android:fadingEdgeLength="16dp"
+                    android:nestedScrollingEnabled="true"
+                    android:overScrollMode="ifContentScrolls"
+                    android:paddingStart="2dp"
+                    android:paddingEnd="2dp"
+                    android:requiresFadingEdge="horizontal"
+                    android:scrollbars="horizontal">
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/hub_detail_display_toggle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:checkedButton="@+id/hub_detail_display_name"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/hub_detail_display_name"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="@string/shortcut_hub_detail_settings_display_name" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/hub_detail_display_icon"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="@string/shortcut_hub_detail_settings_display_icon" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/hub_detail_display_chord"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="@string/shortcut_hub_detail_settings_display_chord" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/hub_detail_display_hybrid"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="48dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="@string/shortcut_hub_detail_settings_display_hybrid" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </HorizontalScrollView>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

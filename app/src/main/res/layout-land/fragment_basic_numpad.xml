@@ -9,15 +9,19 @@
     android:paddingEnd="@dimen/basic_keyboard_content_inset_end"
     android:paddingTop="8dp"
     android:paddingBottom="@dimen/basic_keyboard_content_inset_bottom"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background_light">
 
     <!-- Landscape numpad: 8 columns x 5 rows. Spans: BKSP (row 0, cols 2-3), + (rows 1-2, col 7),
          0 (row 4, cols 4-5), Enter (rows 3-4, col 7). All other cells 1x1. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
     <GridLayout
         android:id="@+id/basic_numpad_grid"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:alignmentMode="alignMargins"
         android:columnCount="8"
         android:rowCount="5"
@@ -25,7 +29,7 @@
 
         <!-- Row 0: ESC TAB [BKSP wide] NumLk / * - -->
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -38,7 +42,7 @@
             android:text="@string/kb_basic_numpad_esc"
             android:tag="Esc" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -51,7 +55,7 @@
             android:text="@string/kb_basic_numpad_tab"
             android:tag="TAB" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -65,7 +69,7 @@
             android:text="@string/kb_basic_numpad_nav_bksp"
             android:tag="DEL" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -77,7 +81,7 @@
             android:text="@string/kb_basic_numpad_num_lock"
             android:tag="NUM_LOCK" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -89,7 +93,7 @@
             android:text="/"
             android:tag="NUMPAD_DIVIDE" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -101,7 +105,7 @@
             android:text="*"
             android:tag="NUMPAD_MULTIPLY" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="0"
@@ -115,7 +119,7 @@
 
         <!-- Row 1: Prt Sc Ins Pause Pg Up 7 8 9 [+ tall] -->
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -128,7 +132,7 @@
             android:text="@string/kb_basic_numpad_prt_sc"
             android:tag="PrtSc" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -140,7 +144,7 @@
             android:text="@string/kb_basic_numpad_ins"
             android:tag="Ins" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -152,7 +156,7 @@
             android:text="@string/kb_basic_numpad_pause"
             android:tag="Pause" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -164,7 +168,7 @@
             android:text="@string/kb_basic_numpad_pg_up"
             android:tag="PgUp" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -176,7 +180,7 @@
             android:text="7"
             android:tag="NUMPAD_7" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -188,7 +192,7 @@
             android:text="8"
             android:tag="NUMPAD_8" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -200,7 +204,7 @@
             android:text="9"
             android:tag="NUMPAD_9" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="1"
@@ -216,7 +220,7 @@
 
         <!-- Row 2: Scr Lk Home End Pg Dn 4 5 6 (+ continued) -->
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -229,7 +233,7 @@
             android:text="@string/kb_basic_numpad_scr_lk"
             android:tag="ScrLk" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -241,7 +245,7 @@
             android:text="@string/kb_basic_numpad_home"
             android:tag="Home" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -253,7 +257,7 @@
             android:text="@string/kb_basic_numpad_end"
             android:tag="End" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -265,7 +269,7 @@
             android:text="@string/kb_basic_numpad_pg_dn"
             android:tag="PgDn" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -277,7 +281,7 @@
             android:text="4"
             android:tag="NUMPAD_4" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -289,7 +293,7 @@
             android:text="5"
             android:tag="NUMPAD_5" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="2"
@@ -303,7 +307,7 @@
 
         <!-- Row 3: DEL Up BKSP 00 1 2 3 [Enter tall] -->
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -316,7 +320,7 @@
             android:text="@string/kb_basic_numpad_nav_del"
             android:tag="Delete" />
         <androidx.appcompat.widget.AppCompatImageView
-            style="@style/KeyModBasicNumpadIconCell"
+            style="@style/KeyCmdBasicNumpadIconCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -329,7 +333,7 @@
             app:srcCompat="@drawable/keyboard_arrow_up_24"
             app:tint="@color/text_primary" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -342,7 +346,7 @@
             android:text="@string/kb_basic_numpad_nav_bksp"
             android:tag="DEL" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -354,7 +358,7 @@
             android:text="@string/kb_basic_numpad_00"
             android:tag="NUMPAD_00" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -366,7 +370,7 @@
             android:text="1"
             android:tag="NUMPAD_1" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -378,7 +382,7 @@
             android:text="2"
             android:tag="NUMPAD_2" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -390,7 +394,7 @@
             android:text="3"
             android:tag="NUMPAD_3" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="3"
@@ -406,7 +410,7 @@
 
         <!-- Row 4: Left Down Right = [0 wide] . (Enter continued) -->
         <androidx.appcompat.widget.AppCompatImageView
-            style="@style/KeyModBasicNumpadIconCell"
+            style="@style/KeyCmdBasicNumpadIconCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -419,7 +423,7 @@
             app:srcCompat="@drawable/keyboard_arrow_left_24"
             app:tint="@color/text_primary" />
         <androidx.appcompat.widget.AppCompatImageView
-            style="@style/KeyModBasicNumpadIconCell"
+            style="@style/KeyCmdBasicNumpadIconCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -432,7 +436,7 @@
             app:srcCompat="@drawable/keyboard_arrow_down_24"
             app:tint="@color/text_primary" />
         <androidx.appcompat.widget.AppCompatImageView
-            style="@style/KeyModBasicNumpadIconCell"
+            style="@style/KeyCmdBasicNumpadIconCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -445,7 +449,7 @@
             app:srcCompat="@drawable/keyboard_arrow_right_24"
             app:tint="@color/text_primary" />
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -456,8 +460,7 @@
             android:gravity="center"
             android:text="="
             android:tag="NUMPAD_EQUALS" />
-        <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -466,12 +469,28 @@
             android:layout_columnWeight="2"
             android:layout_rowWeight="1"
             android:layout_gravity="fill"
-            android:gravity="center"
-            android:text="0"
-            android:tag="NUMPAD_0"
-            android:contentDescription="@string/kb_basic_numpad_zero_desc" />
+            android:background="@drawable/km_basic_numpad_key_background"
+            android:layout_margin="4dp"
+            android:tag="NUMPAD_0">
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:duplicateParentState="true"
+                android:adjustViewBounds="true"
+                android:maxWidth="@dimen/km_basic_numpad_zero_wordmark_max_width"
+                android:maxHeight="@dimen/km_basic_numpad_zero_wordmark_max_height"
+                android:contentDescription="@string/kb_basic_numpad_zero_desc"
+                android:paddingStart="6dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="4dp"
+                android:scaleType="fitCenter"
+                app:srcCompat="@drawable/ic_openterface_wordmark"
+                app:tint="@color/basic_key_label_color" />
+        </FrameLayout>
         <TextView
-            style="@style/Widget.KeyMod.BasicNumpadCell"
+            style="@style/Widget.KeyCmd.BasicNumpadCell"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_row="4"
@@ -483,4 +502,6 @@
             android:text="."
             android:tag="NUMPAD_DOT" />
     </GridLayout>
+
+    </FrameLayout>
 </LinearLayout>

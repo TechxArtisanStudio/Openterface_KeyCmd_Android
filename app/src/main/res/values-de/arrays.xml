@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="language_names">
-        <item>Englisch</item>
-        <item>Chinesisch (Vereinfacht)</item>
-        <item>Chinesisch (Traditionell)</item>
-        <item>Spanisch</item>
-        <item>Französisch</item>
-        <item>Deutsch</item>
-        <item>Japanisch</item>
-    </string-array>
     <string-array name="voice_language_names">
         <item>Automatisch</item>
         <item>Englisch</item>

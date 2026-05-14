@@ -172,11 +172,19 @@
                     android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
 
-                <Spinner
-                    android:id="@+id/theme_family_spinner"
+                <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:spinnerMode="dropdown" />
+                    android:scrollbars="none"
+                    android:clipToPadding="false">
+
+                    <LinearLayout
+                        android:id="@+id/theme_family_swatches"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical" />
+                </HorizontalScrollView>
 
                 <CheckBox
                     android:id="@+id/theme_follow_system_checkbox"

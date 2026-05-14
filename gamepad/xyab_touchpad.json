@@ -23,7 +23,7 @@
       "displayLabel": "D",
       "id": "stick_left",
       "moduleAccentArgb": -13154481,
-      "scale": 1.15,
+      "scale": 0.82,
       "stickDownKey": 81,
       "stickLeftKey": 80,
       "stickRightKey": 79,
@@ -41,7 +41,7 @@
       "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -20443,
-      "scale": 1.28,
+      "scale": 0.91,
       "type": "BUTTON",
       "zIndex": 1
     },
@@ -55,7 +55,7 @@
       "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -14575807,
-      "scale": 1.28,
+      "scale": 0.91,
       "type": "BUTTON",
       "zIndex": 2
     },
@@ -69,7 +69,7 @@
       "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -43230,
-      "scale": 1.28,
+      "scale": 0.91,
       "type": "BUTTON",
       "zIndex": 3
     },
@@ -83,19 +83,19 @@
       "mappedKeyLabelVisible": false,
       "modifierMask": 0,
       "moduleAccentArgb": -11684126,
-      "scale": 1.28,
+      "scale": 0.91,
       "type": "BUTTON",
       "zIndex": 4
     },
     {
       "anchorX": 0.5,
       "anchorY": 0.268,
-      "heightNorm": 0.25,
+      "heightNorm": 0.178,
       "id": "touchpad_1",
       "moduleAccentArgb": -13154481,
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "TOUCHPAD",
-      "widthNorm": 0.3,
+      "widthNorm": 0.214,
       "zIndex": 5
     },
     {
@@ -104,7 +104,7 @@
       "displayLabel": "L",
       "id": "mouse_btn_l",
       "mouseButton": 1,
-      "scale": 0.62,
+      "scale": 0.5,
       "type": "MOUSE_BUTTON",
       "zIndex": 6
     },
@@ -114,7 +114,7 @@
       "displayLabel": "R",
       "id": "mouse_btn_r",
       "mouseButton": 3,
-      "scale": 0.62,
+      "scale": 0.5,
       "type": "MOUSE_BUTTON",
       "zIndex": 7
     },
@@ -125,7 +125,7 @@
       "hidKey": 20,
       "id": "button_select",
       "modifierMask": 0,
-      "scale": 0.75,
+      "scale": 0.53,
       "type": "BUTTON",
       "zIndex": 8
     },
@@ -137,7 +137,7 @@
       "hidKey": 8,
       "id": "button_start",
       "modifierMask": 0,
-      "scale": 0.75,
+      "scale": 0.53,
       "type": "BUTTON",
       "zIndex": 9
     },
@@ -148,7 +148,7 @@
       "dpadVariant": "cross",
       "id": "stick_left_2",
       "moduleAccentArgb": -13154481,
-      "scale": 1.15,
+      "scale": 0.82,
       "stickDownKey": 22,
       "stickLeftKey": 4,
       "stickRightKey": 7,
@@ -162,7 +162,7 @@
       "displayLabel": "M",
       "id": "stick_left_3",
       "moduleAccentArgb": -13154481,
-      "scale": 1.15,
+      "scale": 0.82,
       "stickDownKey": 22,
       "stickLeftKey": 4,
       "stickMouseSensitivity": 1.0,
@@ -173,5 +173,5 @@
       "zIndex": 11
     }
   ],
-  "schemaVersion": 8
+  "schemaVersion": 10
 }

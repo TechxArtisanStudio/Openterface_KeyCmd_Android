@@ -6,6 +6,14 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ## Unreleased
 
+### Documentation
+
+- **USER_GUIDE:** Settings entry point (navigation drawer **Settings** row), **Connection** steps (USB/BLE from the header connection sheet, not removed General buttons), **General** settings list (auto-connect, display, theme — not connection type pickers), build JDK note (**17+**), technical **version** row (points at `app/build.gradle` instead of a stale `1.0`), product intro link (**openterface.com** + repo). **video_script:** in-app name **KeyCmd** (replaces **KeyMod**). Older changelog entries may still say **KeyMod** where that matched the release at the time.
+
+### Keyboard & Mouse Pro
+
+- Removed the fourth fixed-strip swipe page (hub quick toggles for Row 1 profiles and Rows 2–3 strip profiles). Preference files for those legacy slots may still exist on disk; switching profiles uses **Keyboard & Mouse Pro** setup and **Shortcut Hub** as before. **Keyboard strip preset** JSON may still declare `fixedRowBuiltinPages: 4` from older exports; it is accepted on import and normalized to **3**.
+
 ### Gamepad
 
 - **Cross-device layouts**: On the gamepad canvas, **BUTTON**, **STICK_*** / **DPAD**, **MOUSE_BUTTON** (touchpad L/M/R), and **SHOULDER** / **TRIGGER** module **draw sizes** scale with the smaller **content** edge (`min(width, height)` after safe-area insets), using **800 px** as the reference min-edge (legacy fixed-pixel bases matched that order of magnitude). Very small or very large surfaces are **clamped** so controls stay tappable. **TOUCHPAD** size is unchanged (it already uses `widthNorm` / `heightNorm`). **Preset JSON** is unchanged—no new export fields.

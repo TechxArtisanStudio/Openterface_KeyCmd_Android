@@ -1,5 +1,7 @@
 package com.openterface.keymod;
 
+import com.openterface.keymod.ConnectionManager;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -8,13 +10,11 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
-import android.graphics.Outline;
 import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.Typeface;
@@ -34,6 +34,7 @@ import android.text.SpannableString;
 import android.text.Layout;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.StateSet;
@@ -46,6 +47,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewOutlineProvider;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -60,6 +62,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.graphics.ColorUtils;
 import androidx.appcompat.app.AppCompatActivity;
@@ -67,19 +70,26 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329PacketUtil;
 import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
-import com.openterface.keymod.util.ImeComposeSendGate;
-import com.openterface.keymod.util.ImeTextForwarder;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
-import com.openterface.keymod.util.TopRows23StripProfileSlotPrefs;
-import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.basic.BasicHoldLockPopup;
+import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.basic.BasicKeyPreview;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
+import com.openterface.keymod.basic.KmBasicHoldLockTiming;
+import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
+import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProKeyTapPreviewPrefs;
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
+import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
 import com.openterface.keymod.preset.StripSlotMapStore;
 import com.openterface.target.CH9329MSKBMap;
@@ -93,11 +103,25 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CustomKeyboardView extends LinearLayout {
+
+    /** KM Pro keyboard input: built-in HID QWERTY only (legacy IME modes removed). */
+    public enum KmProKeyboardInputMode {
+        BUILT_IN_QWERTY
+    }
+
     private static final String TAG = "CustomKeyboardView";
+
+    /**
+     * Touch / HID correlation for KM Pro built-in keys. Debug builds log by default; on release APKs
+     * run: {@code adb shell setprop log.tag.KmProTouch DEBUG} then
+     * {@code adb logcat -s KmProTouch:D KeyboardHidTransport:D}.
+     */
+    private static final String TAG_KMPRO_TOUCH = "KmProTouch";
     private static final int TOP_PANEL_COLUMNS = 7;
     private static final int TOP_PANEL_ROWS = 3;
     private static final int FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX = 1;
@@ -112,12 +136,26 @@ public class CustomKeyboardView extends LinearLayout {
     private static final float TOP_PANEL_SCROLLABLE_ROW_WEIGHT = TOP_PANEL_ROW_WEIGHT;
     private static final float TOP_PANEL_FIXED_ROWS_WEIGHT = TOP_PANEL_ROW_WEIGHT * 2f;
     private static final float TOP_PANEL_TOTAL_WEIGHT = TOP_PANEL_ROWS * TOP_PANEL_ROW_WEIGHT;
+    /**
+     * KM Pro landscape: layout weight for shortcut strip vs letter keyboard — full mode inside
+     * {@link CustomKeyboardView}, and each side column in {@code layout-land/fragment_composite_split}
+     * (see {@link CompositeFragment#applyKmProLandscapeSplitStripVsKeyboardWeights()}).
+     */
+    public static final float KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT = 1f;
+    public static final float KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT = 2.2f;
+    /**
+     * {@link #expandSpaceBarForSplitRows} halves the wide Space (e.g. 36%p → 18%p). Openterface on
+     * Space applies only to the unsplit bar; halves stay under this floor even after split rescale.
+     */
+    private static final float KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT = 30f;
     /** Top shortcut strip (row 1 profile + rows 2–3 fixed): label text (sp). */
     private static final float TOP_SHORTCUT_PANEL_TEXT_SP = 12f;
     private static final float TOP_SHORTCUT_PANEL_ACTION_LABEL_SP = 12f;
     private static final float TOP_SHORTCUT_PANEL_CUSTOM_GLYPH_SP = 20f;
     /** Fixed top rows only (page 0–2 strip): same size as Combo Text mode; bold preserved in Text mode to limit wrap. */
     private static final float TOP_FIXED_ROWS_TEXT_SP = 12f;
+    /** BI / IME strip toggle: slightly larger than {@link #TOP_FIXED_ROWS_TEXT_SP}, always bold. */
+    private static final float TOP_FIXED_ROWS_IME_TOGGLE_TEXT_SP = 13.5f;
     private static final float TOP_FIXED_ROWS_ACTION_LABEL_SP = 12f;
     /**
      * Emoji / single-glyph icons on fixed rows 2–3: autosize so single-char dingbats / math glyphs
@@ -128,61 +166,10 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_MIN_SP = 14;
     private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_MAX_SP = 22;
     private static final int TOP_FIXED_ROWS_CUSTOM_GLYPH_STEP_SP = 1;
-    /** Profile hub slots: autosize within [min,max] sp so two-line names fit above the bottom strip. */
-    private static final int TOP_PROFILE_HUB_SLOT_TEXT_MIN_SP = 9;
-    private static final int TOP_PROFILE_HUB_SLOT_TEXT_MAX_SP = 11;
-    private static final int TOP_PROFILE_HUB_SLOT_TEXT_STEP_SP = 1;
     /** Fixed rows 2–3: Fn-layer alternate (same placement as main-keyboard {@code keyCornerHint}; stronger alpha for strip). */
     private static final float TOP_FIXED_ROWS_FN_HINT_SP = 7f;
     private static final float TOP_FIXED_ROWS_FN_HINT_ALPHA = 0.36f;
     private static final int TOP_FIXED_ROWS_FN_HINT_MAX_CHARS = 8;
-    /** Single-pane IME: shortcut strip vs text vs space for soft keyboard (sum ~5.15). */
-    private static final float IME_SINGLE_TOP_STRIP_WEIGHT = 1.35f;
-    private static final float IME_SINGLE_TEXT_WEIGHT = 0.95f;
-    private static final String KEY_IME_SUB_COMPOSE_EXPANDED = "ime_sub_compose_expanded";
-    private static final String KEY_IME_SUB_COMPOSE_DIRECT_HID = "ime_sub_compose_direct_hid";
-    /** Portrait IME sub-compose: max field length (same order of magnitude as Compose). */
-    public static final int IME_CAPTURE_MAX_TEXT_LEN = 10_000;
-    /**
-     * Vertical weight for the IME compose toolbar row on the outer {@link CustomKeyboardView} column.
-     * Must be {@code IME_SINGLE_TOP_STRIP_WEIGHT / TOP_PANEL_ROWS} so this row's pixel height matches
-     * one shortcut row inside the viewport (three inner rows each use {@link #TOP_PANEL_ROW_WEIGHT}).
-     */
-    private static final float IME_COMPOSE_TOOLBAR_ROW_WEIGHT =
-            IME_SINGLE_TOP_STRIP_WEIGHT / (float) TOP_PANEL_ROWS;
-    /** Deterministic compose-toolbar row height in portrait sub-compose (expanded + minimized). */
-    private static final int IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP = 44;
-    private static final float IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED = 12f;
-    /**
-     * Portrait BOTH + IME capture (sub-compose collapsed): touchpad vs keyboard weights in
-     * {@code CompositeFragment#applyOrientationLayout}. When the text area expands, the fragment
-     * hides the touchpad and toggle so the keyboard column receives this fraction of the column
-     * height as collapsed; expanded it gets the full slice. Keep in sync with
-     * {@code PORTRAIT_IME_SUB_COMPOSE_COLLAPSED_TOUCHPAD_WEIGHT} / {@code KEYBOARD_WEIGHT}.
-     */
-    private static final float IME_SUB_COMPOSE_COLLAPSED_TP = 0.9f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KB = 1.7f;
-    private static final float IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE =
-            IME_SUB_COMPOSE_COLLAPSED_KB / (IME_SUB_COMPOSE_COLLAPSED_TP + IME_SUB_COMPOSE_COLLAPSED_KB);
-    /**
-     * Collapsed portrait stack has a fixed-height toggle ({@code R.dimen.toggle_handle_height}) between
-     * touchpad and keyboard; expanded chrome hides it and that band is folded into the keyboard
-     * column. The weight-based share above only accounts for weighted touchpad vs keyboard, so trim
-     * slightly so the compose toolbar row matches the collapsed visual height.
-     */
-    private static final float IME_COMPOSE_TOOLBAR_EXPANDED_FINE_HEIGHT_TRIM = 0.93f;
-    /**
-     * Expanded sub-compose: top strip is hidden (weight 0), so only editor + toolbar share vertical
-     * weight inside the keyboard. Scale the toolbar fraction to match the collapsed three-way split
-     * (top strip + slim editor + toolbar), then multiply by {@link #IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE}
-     * because {@code CompositeFragment} gives the keyboard the full portrait slice when expanded,
-     * so without this factor the toolbar row grows taller than before expand.
-     */
-    private static final float IME_COMPOSE_TOOLBAR_ROW_WEIGHT_EXPANDED =
-            IME_COMPOSE_TOOLBAR_ROW_WEIGHT * IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED
-                    / (IME_SINGLE_TOP_STRIP_WEIGHT + IME_SINGLE_TEXT_WEIGHT)
-                    * IME_SUB_COMPOSE_COLLAPSED_KEYBOARD_COLUMN_SHARE
-                    * IME_COMPOSE_TOOLBAR_EXPANDED_FINE_HEIGHT_TRIM;
     /** Extra numpad Fn-arrow overlay (dp); larger than top strip 24dp icons for the taller grid cells. */
     private static final int EXTRA_NUMPAD_FN_ARROW_ICON_DP = 36;
     /** Fn-layer Save / Undo / Tab icons — match top shortcut row visual weight (24dp assets, modest cell size). */
@@ -199,31 +186,21 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int KEY_TOP_MODE_SLOT_1 = 0xF007;
     private static final int KEY_TOP_MODE_SLOT_2 = 0xF008;
     private static final int KEY_TOP_MODE_SLOT_3 = 0xF009;
-    /** PH1: toggle system IME capture vs KeyMod HID keyboard. */
+    /** PH1: toggle system IME capture vs KeyCmd HID keyboard. */
     private static final int KEY_IME_TOGGLE = 0xF00A;
     private static final int KEY_TOP_SHORTCUT_DISPLAY_TOGGLE = 0xF00B;
     /** Local Fn latch for fixed top rows 2-3 only. */
     private static final int KEY_FIXED_TOP_LOCAL_FN = 0xF00C;
-    /** Shortcut Hub: Row 1 profile slot key codes (page 3 row 2); seven ids for prefs/back-compat. */
-    private static final int KEY_TOP_PROFILE_SLOT_1 = 0xF00D;
-    private static final int KEY_TOP_PROFILE_SLOT_7 = 0xF013;
     /** Row-1 strip: opens quick-create shortcut sheet (after last favorite on last page). */
     private static final int KEY_TOP_STRIP_CREATE_SHORTCUT = 0xF014;
-    /** Rows 2–3 strip profile quick toggles (page 3 row 3). */
-    private static final int KEY_TOP_STRIP_PROFILE_SLOT_1 = 0xF015;
-    private static final int KEY_TOP_STRIP_PROFILE_SLOT_6 = 0xF01A;
     private static final int KEY_NOOP_PLACEHOLDER = -1;
     private static final String APP_PREFS_NAME = "AppPrefs";
     private static final String KEY_SYSTEM_IME_CAPTURE = "system_ime_capture_mode";
-    /** Legacy boolean; migrated once to {@link #KEY_TOP_SHORTCUT_DISPLAY_MODE}. */
-    private static final String KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS = "top_shortcut_show_action_labels";
-    private static final String KEY_TOP_SHORTCUT_DISPLAY_MODE = "top_shortcut_display_mode";
+    private static final String KEY_IME_SUB_COMPOSE_DIRECT_HID = "ime_sub_compose_direct_hid";
     /** 0 = shortcut name, 1 = icon-first, 2 = chord (e.g. Alt+X). */
-    private static final int DISPLAY_MODE_NAME = 0;
-    private static final int DISPLAY_MODE_ICON = 1;
-    private static final int DISPLAY_MODE_CHORD = 2;
-    /** When false: hide alternate hints on letter keys and use hold-to-repeat instead of long-press alternates. */
-    private static final String KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED = "keyboard_alternates_hints_enabled";
+    private static final int DISPLAY_MODE_NAME = TopShortcutDisplayModePrefs.MODE_NAME;
+    private static final int DISPLAY_MODE_ICON = TopShortcutDisplayModePrefs.MODE_ICON;
+    private static final int DISPLAY_MODE_CHORD = TopShortcutDisplayModePrefs.MODE_CHORD;
     private static final int MOD_CTRL = 1;
     private static final int MOD_SHIFT = 2;
     private static final int MOD_ALT = 4;
@@ -232,6 +209,33 @@ public class CustomKeyboardView extends LinearLayout {
     private boolean isCtrlLeftLocked = false;
     private boolean isAltLeftLocked = false;
     private boolean isWinLeftLocked = false;
+    private boolean isCtrlRightLocked = false;
+    private boolean isAltRightLocked = false;
+    private boolean isWinRightLocked = false;
+    @Nullable private KmBasicHoldLockController holdLockController;
+    private final KmBasicHoldLockController.Listener proHoldLockListener =
+            controller -> {
+                if (isAttachedToWindow()) {
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                }
+            };
+    @Nullable private BasicHoldLockPopup activeHoldLockPopup;
+    @Nullable private View holdLockPopupAnchorView;
+    private boolean holdLockFingerDown;
+    private float holdLockGestureRawX;
+    private float holdLockGestureRawY;
+    private int holdLockPendingModMask;
+    private final Runnable proHoldLockPopupRunnable = this::onProHoldLockPopupTimeout;
+    /** Per modifier key view: boot bits for each finger in chord sustain (multi-touch). */
+    private final ArrayMap<View, Integer> proChordSustainBootByView = new ArrayMap<>();
+    private boolean proChordHostHoldSent;
+    private int proChordActiveExtKey;
+    private int proChordLongPressPendingMask;
+    @Nullable private View proChordLongPressAnchorView;
+    private final Runnable proChordLongPressRunnable = this::onProChordLongPressThreshold;
+    private final SharedPreferences.OnSharedPreferenceChangeListener kmProModifierPrefListener =
+            this::onKmProModifierPreferenceChanged;
     private boolean isRunning = true;
     private boolean isSymbolMode = false;
     private boolean isFnLocked = false;
@@ -244,19 +248,33 @@ public class CustomKeyboardView extends LinearLayout {
     private GridLayout extraNumpadGrid;
     private ImageButton extraNumpadFnButton;
     private boolean showExtraPortraitKeys = false;
+    /** When false, main keyboard and fixed strip page 1 omit the left GUI (Win/Cmd/Super) key. */
+    private boolean showGuiHidKey = true;
     /** When true, only the top shortcut strip(s) are shown (Compose mode). */
     private boolean shortcutsStripOnly = false;
     /** Top strip display mode for favorites and eligible fixed-row keys; see {@link #DISPLAY_MODE_NAME}. */
     private int topShortcutDisplayMode = DISPLAY_MODE_ICON;
     /**
      * When false, lower-keyboard keys that normally support long-press alternates use hold-to-repeat
-     * (gaming) and keycap alternate hints are hidden. Toggled via Fn + slash (0x38).
+     * (gaming) and keycap alternate hints are hidden. Toggled via the main keyboard left Shift key
+     * (built-in Pro layout: row below letters, left of Z) when main keyboard Fn is latched.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
+    /** KM Pro setup: floating label above key while pressed (see {@link KmProKeyTapPreviewPrefs}). */
+    private boolean kmProKeyTapPreviewEnabled;
+    private final BasicKeyPreview kmProKeyPreview = new BasicKeyPreview();
     private Runnable gamingRepeatRunnable;
     private Runnable gamingRepeatStarterRunnable;
     private Key gamingRepeatKey;
     private boolean gamingRepeatActive;
+    /** Pairs each gaming repeat tap with {@link #sendReleaseData} (same as KM Basic {@code tapKey}). */
+    private final Runnable gamingTapReleaseRunnable = this::sendReleaseData;
+
+    /**
+     * Coalesced all-keys-released after ordinary taps (KM Basic {@code physicalKeyReleaseRunnable}
+     * parity): one pending post per burst so rapid keys do not stack competing release threads.
+     */
+    private final Runnable keyboardTapReleaseRunnable = this::sendReleaseData;
 
     /** Split keyboard mode: which half to render (for landscape split mode with touchpad in middle) */
     public static final int SPLIT_NONE = 0;
@@ -266,26 +284,22 @@ public class CustomKeyboardView extends LinearLayout {
     /** The paired keyboard view in split mode, for syncing modifier states */
     private CustomKeyboardView splitPartner;
 
-    private boolean systemImeCaptureMode;
-    private EditText imeCaptureEdit;
     private final ExecutorService imeTextExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ImeTextForward");
+        Thread t = new Thread(r, "UnicodeStripSend");
         t.setDaemon(true);
         return t;
     });
-    private OnImeCaptureModeChangedListener onImeCaptureModeChangedListener;
 
     public interface OnImeCaptureModeChangedListener {
         void onImeCaptureModeChanged(CustomKeyboardView source, boolean enabled);
     }
 
-    /** Portrait IME capture: expand/collapse chrome and pop-out touchpad from the edit toolbar. */
+    /** @deprecated KM Pro IME sub-compose removed; interface retained for compatibility. */
     public interface OnImeSubComposeChromeListener {
         void onImeSubComposeExpandedChanged(CustomKeyboardView source, boolean expanded);
 
         void onImeToolbarPopOutTouchpadRequested(CustomKeyboardView source);
 
-        /** Called when Direct HID vs Compose sub-mode changes (portrait IME only). */
         default void onImeSubComposeDirectHidModeChanged(CustomKeyboardView source, boolean direct) {
         }
     }
@@ -294,41 +308,26 @@ public class CustomKeyboardView extends LinearLayout {
         void onRequestSwitchToMode(String launchPanelMode);
     }
 
+    public interface OnKmProSecondaryLayoutToggleListener {
+        void onRequestToggle(CustomKeyboardView source);
+    }
+
     private OnTopModeShortcutListener onTopModeShortcutListener;
-    @Nullable
-    private OnImeSubComposeChromeListener onImeSubComposeChromeListener;
-    private boolean imeSubComposeExpanded;
-    private LinearLayout imeCaptureEditorRow;
-    private ImageButton imeSubComposeExpandButton;
-    private LinearLayout imeCaptureToolbar;
-    private ImageButton imeCaptureUndoButton;
-    private ImageButton imeCaptureClearButton;
-    @Nullable
-    private String imeCaptureUndoSnapshot;
-    private ImageButton imeCaptureTouchpadButton;
-    private ImageButton imeSubComposeModeToggle;
-    private ImageButton imeCaptureSendButton;
-    @Nullable
-    private TextView imeCaptureDirectModeHint;
-    @Nullable
-    private View imeCaptureAccentDivider;
-    private boolean imeSubComposeDirectHidMode;
-    private final ExecutorService imeSubComposeSendExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ImeCaptureSend");
-        t.setDaemon(true);
-        return t;
-    });
-    private final AtomicBoolean imeSubComposeCancelSend = new AtomicBoolean(false);
-    private volatile boolean imeSubComposeSending;
-    private final Handler imeSubComposeMainHandler = new Handler(Looper.getMainLooper());
-    private static final long SHOW_LOCAL_IME_RETRY_DELAY_MS = 160L;
-    private final Runnable showLocalImeSoftKeyboardMainRunnable = this::runShowLocalImeSoftKeyboardMain;
-    private final Runnable showLocalImeSoftKeyboardRetryRunnable = this::runShowLocalImeSoftKeyboardRetry;
+    @Nullable private OnKmProSecondaryLayoutToggleListener onKmProSecondaryLayoutToggleListener;
+    /** Wraps QWERTY rows only (KM Pro single-pane); strip stays visible when this is {@link View#INVISIBLE}. */
+    @Nullable private LinearLayout kmProLetterKeyboardBody;
+    /** Portrait KM Pro full QWERTY: bottom-centered wordmark (sibling after letter body). */
+    @Nullable private ImageView kmProPortraitBrandFooter;
+
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
     private Handler repeatHandler = new Handler();
-    private Runnable repeatRunnable;
-    private boolean isRepeating = false;
+    /** Hold-to-repeat for Space / Bksp / DEL / arrows: tap-like HID pairs after {@link ViewConfiguration} delays. */
+    private Runnable holdKeyRepeatRunnable;
+    private Runnable holdKeyRepeatStarterRunnable;
+    private Key holdKeyRepeatKey;
+    private boolean holdKeyRepeatActive;
+    private boolean holdRepeatSuppressUpTap;
     private static final int ALT_LONG_PRESS_TIMEOUT_MS = ViewConfiguration.getLongPressTimeout();
     /**
      * macOS: brief Caps (0x39) tap toggles input source; longer hold toggles Caps Lock LED. Use a hold
@@ -364,6 +363,12 @@ public class CustomKeyboardView extends LinearLayout {
     private static final int ALT_POPUP_CELL_MIN_SIZE_DP = 40;
     private static final float BASE_KEYCAP_TEXT_SP_PORTRAIT = 17f;
     private static final float BASE_KEYCAP_TEXT_SP_LANDSCAPE = 19f;
+    /**
+     * Bottom row on Keyboard &amp; Mouse Pro (Fn / Ctrl / Alt / Space / GUI): slightly smaller than
+     * {@link #BASE_KEYCAP_TEXT_SP_LANDSCAPE} / {@link #BASE_KEYCAP_TEXT_SP_PORTRAIT} to avoid wrap.
+     */
+    private static final float PRO_BOTTOM_ROW_TEXT_SP_LANDSCAPE = 14.5f;
+    private static final float PRO_BOTTOM_ROW_TEXT_SP_PORTRAIT = 13f;
     private static final int KEY_OUTER_MARGIN_DP = 2;
     private final Handler longPressHandler = new Handler();
     private PopupWindow alternatePopupWindow;
@@ -634,17 +639,27 @@ public class CustomKeyboardView extends LinearLayout {
 
     public CustomKeyboardView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        if (attrs != null) {
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.CustomKeyboardView);
+            try {
+                showGuiHidKey = a.getBoolean(R.styleable.CustomKeyboardView_showGuiHidKey, true);
+            } finally {
+                a.recycle();
+            }
+        } else {
+            showGuiHidKey = true;
+        }
         init(context);
     }
     
     @Override
     protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        collapseImeSubComposePersistedForChrome();
 
         // Reload keyboard layout when orientation changes
         boolean isLandscape = newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
         Log.d(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
+        kmProKeyPreview.dismiss();
         loadKeyboardForCurrentState(getContext());
         removeAllViews();
         updateKeyboard();
@@ -655,12 +670,16 @@ public class CustomKeyboardView extends LinearLayout {
         setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         shortcutProfileManager = new ShortcutProfileManager(context.getApplicationContext());
         loadTopShortcutDisplayModeFromPrefs(context);
-        systemImeCaptureMode = context
-                .getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(KEY_SYSTEM_IME_CAPTURE, false);
-        keyboardAlternatesHintsEnabled = context
-                .getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                .getBoolean(KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED, true);
+        SharedPreferences appPrefs = context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
+        if (appPrefs.getBoolean(KEY_SYSTEM_IME_CAPTURE, false)
+                || appPrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)) {
+            appPrefs.edit()
+                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, false)
+                    .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false)
+                    .apply();
+        }
+        keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(context);
+        kmProKeyTapPreviewEnabled = KmProKeyTapPreviewPrefs.read(context);
 
         // Load keyboard layout based on orientation (matching iOS behavior)
         reloadForCurrentOrientation();
@@ -673,16 +692,38 @@ public class CustomKeyboardView extends LinearLayout {
     public void reloadForCurrentOrientation() {
         Context context = getContext();
         loadKeyboardForCurrentState(context);
+        kmProKeyPreview.dismiss();
         removeAllViews();
         updateKeyboard();
     }
 
     private void loadKeyboardForCurrentState(Context context) {
-        int keyboardResId = isLandscape(context)
-                ? R.xml.keyboard_lower_landscape
-                : R.xml.keyboard_lower_portrait;
+        int keyboardResId;
+        if (showGuiHidKey) {
+            keyboardResId = isLandscape(context)
+                    ? R.xml.keyboard_lower_landscape
+                    : R.xml.keyboard_lower_portrait;
+        } else {
+            if (isLandscape(context)) {
+                String targetOs =
+                        context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                                .getString("target_os", "macos");
+                if ("macos".equals(targetOs)) {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui_mac;
+                } else if ("windows".equals(targetOs) || "linux".equals(targetOs)) {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui_pc;
+                } else {
+                    keyboardResId = R.xml.keyboard_lower_landscape_no_gui;
+                }
+            } else {
+                keyboardResId = R.xml.keyboard_lower_portrait_no_gui;
+            }
+        }
         lowerKeys = parseKeyboard(context, keyboardResId);
         applyTargetOsLabels(context);
+        if (!showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(context);
+        }
     }
 
     /** Update key labels based on target OS (Win → Cmd for macOS) */
@@ -690,6 +731,7 @@ public class CustomKeyboardView extends LinearLayout {
         Context context = getContext();
         if (context == null) return;
         loadKeyboardForCurrentState(context);
+        kmProKeyPreview.dismiss();
         removeAllViews();
         updateKeyboard();
     }
@@ -698,27 +740,202 @@ public class CustomKeyboardView extends LinearLayout {
         String targetOs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
                 .getString("target_os", "macos");
 
-        String newLabel;
-        int newIconResId;
+        String guiLabel;
+        int guiIconResId;
         if ("macos".equals(targetOs)) {
-            newLabel = context.getString(R.string.Cmd);
-            newIconResId = R.drawable.keyboard_command_key_24px;
+            guiLabel = context.getString(R.string.modifier_command);
+            guiIconResId = R.drawable.keyboard_command_key_24px;
         } else if ("linux".equals(targetOs)) {
-            newLabel = context.getString(R.string.Super);
-            newIconResId = R.drawable.ic_os_linux;
+            guiLabel = context.getString(R.string.Super);
+            guiIconResId = R.drawable.ic_os_linux;
         } else {
-            newLabel = context.getString(R.string.Win);
-            newIconResId = R.drawable.windows;
+            guiLabel = context.getString(R.string.Win);
+            guiIconResId = R.drawable.windows;
         }
 
         for (List<Key> row : lowerKeys) {
             for (Key key : row) {
-                if ("Win".equals(key.label)) {
-                    key.label = newLabel;
-                    key.iconResId = newIconResId;
+                if (key == null) {
+                    continue;
+                }
+                if (key.code == 0xE0) {
+                    key.label = context.getString(R.string.modifier_control);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE2) {
+                    key.label = "macos".equals(targetOs)
+                            ? context.getString(R.string.modifier_option)
+                            : context.getString(R.string.Alt);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE3) {
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
+                } else if (key.code == 0xE4) {
+                    key.label = context.getString(R.string.modifier_control);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE6) {
+                    key.label = "macos".equals(targetOs)
+                            ? context.getString(R.string.modifier_option)
+                            : context.getString(R.string.Alt);
+                    key.iconResId = 0;
+                } else if (key.code == 0xE7) {
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
+                } else if ("Win".equals(key.label)) {
+                    // Legacy layouts: @string/Win resolved to the literal "Win" (English).
+                    key.label = guiLabel;
+                    key.iconResId = guiIconResId;
                 }
             }
         }
+    }
+
+    /**
+     * Keyboard &amp; Mouse Pro (no-GUI): letter-grid keys follow Keys display (names / icons / chord)
+     * like the shortcut strip. Call after {@link #applyTargetOsLabels(Context)}.
+     */
+    private void applyProQwertyDisplayModePresentation(Context context) {
+        if (showGuiHidKey || lowerKeys == null) {
+            return;
+        }
+        String targetOs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                .getString("target_os", "macos");
+        final int mode = topShortcutDisplayMode;
+
+        String guiNameLabel;
+        int guiIconResId;
+        if ("macos".equals(targetOs)) {
+            guiNameLabel = context.getString(R.string.modifier_command);
+            guiIconResId = R.drawable.keyboard_command_key_24px;
+        } else if ("linux".equals(targetOs)) {
+            guiNameLabel = context.getString(R.string.Super);
+            guiIconResId = R.drawable.ic_os_linux;
+        } else {
+            guiNameLabel = context.getString(R.string.Win);
+            guiIconResId = R.drawable.windows;
+        }
+
+        for (List<Key> row : lowerKeys) {
+            for (Key key : row) {
+                if (key == null) {
+                    continue;
+                }
+                if (mode == DISPLAY_MODE_ICON) {
+                    if (key.code == 0x2B) {
+                        key.label = "";
+                        key.iconResId = R.drawable.keyboard_tab_24;
+                    } else if (key.code == 0xE0) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE2) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE3) {
+                        key.label = guiNameLabel;
+                        key.iconResId = guiIconResId;
+                    } else if (key.code == 0x2C) {
+                        key.label = "";
+                        key.iconResId = R.drawable.space_bar_24px;
+                    } else if (key.code == 0xE1) {
+                        key.label = context.getString(R.string.Shift);
+                        key.iconResId = R.drawable.shift_24px;
+                    } else if (key.code == 0x28) {
+                        key.label = context.getString(R.string.Enter_Button);
+                        key.iconResId = R.drawable.keyboard_return_24px;
+                    } else if (key.code == 0x2A) {
+                        key.label = context.getString(R.string.BackSpace);
+                        key.iconResId = R.drawable.backspace;
+                    } else if (key.code == 0x4C) {
+                        key.label = "";
+                        key.iconResId = R.drawable.backspace;
+                    } else if (key.code == 0xE4) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE6) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE7) {
+                        key.label = guiNameLabel;
+                        key.iconResId = guiIconResId;
+                    } else if (key.code == 0x65) {
+                        key.label = "";
+                        key.iconResId = R.drawable.ic_list_alt_24;
+                    }
+                } else if (mode == DISPLAY_MODE_NAME || mode == DISPLAY_MODE_CHORD) {
+                    if (key.code == 0x2B) {
+                        key.label = context.getString(R.string.key_display_name_tab);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE0) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE2) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE3) {
+                        key.label = guiNameLabel;
+                        key.iconResId = 0;
+                    } else if (key.code == 0x2C) {
+                        key.label = context.getString(R.string.Space_Button);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE1) {
+                        key.label = context.getString(R.string.Shift);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x28) {
+                        key.label = context.getString(R.string.Enter_Button);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x2A) {
+                        key.label = context.getString(R.string.key_display_name_bksp);
+                        key.iconResId = 0;
+                    } else if (key.code == 0x4C) {
+                        key.label = context.getString(R.string.Delete);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE4) {
+                        key.label = context.getString(R.string.modifier_control);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE6) {
+                        key.label = "macos".equals(targetOs)
+                                ? context.getString(R.string.modifier_option)
+                                : context.getString(R.string.Alt);
+                        key.iconResId = 0;
+                    } else if (key.code == 0xE7) {
+                        key.label = guiNameLabel;
+                        key.iconResId = 0;
+                    } else if (key.code == 0x65) {
+                        key.label = "App";
+                        key.iconResId = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /** Split partner: sync display mode, strip panels, and QWERTY row after primary updates prefs. */
+    private void syncTopShortcutDisplayModeFromPrimary(int normalized) {
+        topShortcutDisplayMode = normalized;
+        rebuildFixedTopRowsPanels();
+        rebuildTopShortcutPanels();
+        syncTopPanelViewportContent();
+        Context ctx = getContext();
+        if (ctx != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(ctx);
+        }
+        removeAllViews();
+        updateKeyboard();
+    }
+
+    /** After prefs sync (Shortcut Hub / KM Pro setup): refresh bottom-row presentation and full layout. */
+    private void refreshProQwertyLetterGridOnlySelf() {
+        Context ctx = getContext();
+        if (ctx != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(ctx);
+        }
+        removeAllViews();
+        updateKeyboard();
     }
 
     public void setShowExtraPortraitKeys(boolean enabled) {
@@ -729,12 +946,6 @@ public class CustomKeyboardView extends LinearLayout {
         showExtraPortraitKeys = enabled;
         removeAllViews();
         updateKeyboard();
-        if (enabled && systemImeCaptureMode) {
-            hideSoftInputUsingKeyboardWindowToken();
-            if (getWindowToken() == null) {
-                post(this::hideSoftInputUsingKeyboardWindowToken);
-            }
-        }
     }
 
     /**
@@ -742,24 +953,6 @@ public class CustomKeyboardView extends LinearLayout {
      */
     public void setShortcutsStripOnly(boolean enabled) {
         if (shortcutsStripOnly == enabled) return;
-        if (enabled && systemImeCaptureMode) {
-            systemImeCaptureMode = false;
-            Context ctx = getContext();
-            if (ctx != null) {
-                ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                        .edit()
-                        .putBoolean(KEY_SYSTEM_IME_CAPTURE, false)
-                        .apply();
-            }
-            if (splitPartner != null) {
-                splitPartner.applyImeCaptureFromPartner(false);
-            }
-            rebuildTopShortcutPanels();
-            syncTopPanelViewportContent();
-            if (onImeCaptureModeChangedListener != null) {
-                onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, false);
-            }
-        }
         shortcutsStripOnly = enabled;
         removeAllViews();
         updateKeyboard();
@@ -780,56 +973,422 @@ public class CustomKeyboardView extends LinearLayout {
         splitPartner = partner;
     }
 
+    /** KM Pro: host swipe-up modifier locks (injected from {@link com.openterface.fragment.CompositeFragment}). */
+    public void setHoldLockController(@Nullable KmBasicHoldLockController controller) {
+        if (holdLockController != null) {
+            holdLockController.removeListener(proHoldLockListener);
+        }
+        holdLockController = controller;
+        if (holdLockController != null) {
+            holdLockController.addListener(proHoldLockListener);
+        }
+    }
+
+    private void dismissProHoldLockPopup() {
+        if (activeHoldLockPopup != null) {
+            activeHoldLockPopup.dismiss();
+            activeHoldLockPopup = null;
+        }
+        holdLockPopupAnchorView = null;
+        holdLockFingerDown = false;
+    }
+
+    private void onProHoldLockPopupTimeout() {
+        if (holdLockPopupAnchorView == null || !holdLockFingerDown) {
+            return;
+        }
+        activeHoldLockPopup = new BasicHoldLockPopup();
+        activeHoldLockPopup.show(holdLockPopupAnchorView, holdLockGestureRawX, holdLockGestureRawY);
+    }
+
+    private void clearProChordUiPreserveHostForLock() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        proChordSustainBootByView.clear();
+        proChordHostHoldSent = false;
+        proChordActiveExtKey = 0;
+        proChordLongPressAnchorView = null;
+    }
+
+    private void clearProChordAndHoldLockPopupUiState() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+        dismissProHoldLockPopup();
+        if (proChordHostHoldSent || !proChordSustainBootByView.isEmpty()) {
+            sendKeyboardAllKeysReleasedSync();
+        }
+        proChordSustainBootByView.clear();
+        proChordHostHoldSent = false;
+        proChordActiveExtKey = 0;
+        proChordLongPressAnchorView = null;
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(
+                    port, bluetoothService, isServiceBound);
+        }
+    }
+
+    /** Split primary: clear partner ephemeral chord UI (does not clear this side’s host hold-locks). */
+    private void clearPartnerChordStateFromPrimary() {
+        if (splitPartner == null) {
+            return;
+        }
+        splitPartner.clearPartnerChordStateFromRemote();
+    }
+
+    private void clearPartnerChordStateFromRemote() {
+        longPressHandler.removeCallbacks(proChordLongPressRunnable);
+        if (proChordHostHoldSent || !proChordSustainBootByView.isEmpty()) {
+            sendKeyboardAllKeysReleasedSync();
+        }
+        proChordSustainBootByView.clear();
+        proChordHostHoldSent = false;
+        proChordActiveExtKey = 0;
+        proChordLongPressAnchorView = null;
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(
+                    port, bluetoothService, isServiceBound);
+        }
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
+    }
+
+    private void onKmProModifierPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (!isAttachedToWindow()) {
+            return;
+        }
+        if (KmBasicKeyboardPrefs.PREF_CHORD_SUSTAIN_HID.equals(key)) {
+            clearProChordAndHoldLockPopupUiState();
+            refreshVisibleTopPanelButtonStates();
+            post(this::refreshBuiltInModifierKeyCapsFromTree);
+            return;
+        }
+        if (KmBasicKeyboardPrefs.PREF_KEY.equals(key)) {
+            clearProChordAndHoldLockPopupUiState();
+            if (holdLockController != null) {
+                holdLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
+            }
+            isShiftLeftLocked = false;
+            isCtrlLeftLocked = false;
+            isAltLeftLocked = false;
+            isWinLeftLocked = false;
+            isCtrlRightLocked = false;
+            isAltRightLocked = false;
+            isWinRightLocked = false;
+            syncModifierStates();
+            updateKeyboard();
+        }
+    }
+
+    private void onProChordLongPressThreshold() {
+        if (proChordLongPressAnchorView == null) {
+            return;
+        }
+        View anchor = proChordLongPressAnchorView;
+        int boot = proChordLongPressPendingMask;
+        if (boot == 0) {
+            boot = bootModifierMaskForBuiltInExtendedKey(proChordActiveExtKey);
+        }
+        if (boot == 0) {
+            return;
+        }
+        proChordSustainBootByView.put(anchor, boot);
+        Context ctx = getContext();
+        if (ctx != null && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(agg),
+                        0);
+            } else if (proChordActiveExtKey != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(0),
+                        proChordActiveExtKey);
+            }
+            proChordHostHoldSent = true;
+        } else {
+            proChordHostHoldSent = false;
+        }
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
+    }
+
+    private void reassertKeyboardAfterHidRelease() {
+        if (holdLockController != null) {
+            holdLockController.reassertKeyboardModifiersIfNeeded(port, bluetoothService, isServiceBound);
+        }
+        Context ctx = getContext();
+        if (ctx != null
+                && KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)
+                && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)
+                && !proChordSustainBootByView.isEmpty()) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(agg),
+                        0);
+            } else if (proChordActiveExtKey != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(0),
+                        proChordActiveExtKey);
+            }
+            proChordHostHoldSent = true;
+        }
+    }
+
+    private int bootModifierMaskForBuiltInExtendedKey(int extKey) {
+        switch (extKey) {
+            case 0xE0:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
+            case 0xE1:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift"));
+            case 0xE2:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt"));
+            case 0xE3:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("Win"));
+            case 0xE4:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR"));
+            case 0xE5:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("ShiftR"));
+            case 0xE6:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR"));
+            case 0xE7:
+                return parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR"));
+            default:
+                return 0;
+        }
+    }
+
+    private int proChordSustainAggregateBootMaskOr0() {
+        int agg = 0;
+        for (int i = 0; i < proChordSustainBootByView.size(); i++) {
+            agg |= proChordSustainBootByView.valueAt(i);
+        }
+        return agg;
+    }
+
+    private void releaseProChordSustainFingerForView(@Nullable View v) {
+        if (v == null || !proChordSustainBootByView.containsKey(v)) {
+            return;
+        }
+        proChordSustainBootByView.remove(v);
+        if (!proChordHostHoldSent) {
+            refreshVisibleTopPanelButtonStates();
+            post(this::refreshBuiltInModifierKeyCapsFromTree);
+            return;
+        }
+        sendKeyboardAllKeysReleasedSync();
+        if (!proChordSustainBootByView.isEmpty()) {
+            int agg = proChordSustainAggregateBootMaskOr0();
+            if (agg != 0) {
+                KeyboardHidTransport.sendKeyReport(
+                        port,
+                        bluetoothService,
+                        isServiceBound,
+                        mergeHoldLockedBootMask(agg),
+                        0);
+            } else if (holdLockController != null) {
+                holdLockController.reassertKeyboardModifiersIfNeeded(
+                        port, bluetoothService, isServiceBound);
+            }
+            proChordHostHoldSent = true;
+        } else {
+            if (holdLockController != null) {
+                holdLockController.reassertKeyboardModifiersIfNeeded(
+                        port, bluetoothService, isServiceBound);
+            }
+            proChordHostHoldSent = false;
+        }
+        refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
+    }
+
+    private int getHoldLockedBootModMaskOr0() {
+        if (holdLockController == null) {
+            return 0;
+        }
+        return holdLockController.getLockedModMask();
+    }
+
+    private int mergeHoldLockedBootMask(int modifiers) {
+        return modifiers | getHoldLockedBootModMaskOr0();
+    }
+
+    /** ORs chord-held boot modifier bits into HID sends while chord fingers are down (KM Basic parity). */
+    private int mergeChordHeldBootMask(int modifiers) {
+        Context ctx = getContext();
+        if (ctx == null || !KmBasicKeyboardPrefs.isMomentaryChordMode(ctx)) {
+            return modifiers;
+        }
+        return modifiers | proChordSustainAggregateBootMaskOr0();
+    }
+
+    private boolean isProBuiltInModifierTouchKey(Key key) {
+        if (key == null || key.isTopPanelKey) {
+            return false;
+        }
+        if (isFnAlternateHintsToggleKey(key)) {
+            return false;
+        }
+        int c = key.code;
+        if (c == 0xE0 || c == 0xE1 || c == 0xE2 || c == 0xE3) {
+            return true;
+        }
+        // KM Pro no-GUI landscape: right extended modifiers (CtrlR / AltR / WinR).
+        return !showGuiHidKey && (c == 0xE4 || c == 0xE6 || c == 0xE7);
+    }
+
+    private void tapProModifierMomentary(Key key) {
+        if (key == null) {
+            return;
+        }
+        sendKeyData(0, key.code);
+        maybeShowModifierLockHint(key);
+    }
+
+    private void reassertLockedKeyboardAfterAllKeysReleased() {
+        reassertKeyboardAfterHidRelease();
+    }
+
     public void setOnTopModeShortcutListener(OnTopModeShortcutListener listener) {
         onTopModeShortcutListener = listener;
     }
 
-    public void setOnImeCaptureModeChangedListener(OnImeCaptureModeChangedListener listener) {
-        onImeCaptureModeChangedListener = listener;
-    }
-
-    public void setOnImeSubComposeChromeListener(@Nullable OnImeSubComposeChromeListener listener) {
-        onImeSubComposeChromeListener = listener;
-    }
-
-    public boolean isImeSubComposeExpanded() {
-        return imeSubComposeExpanded;
-    }
-
-    public boolean isImeSubComposeDirectHidMode() {
-        return imeSubComposeDirectHidMode;
-    }
-
-    public boolean isSystemImeCaptureMode() {
-        return systemImeCaptureMode;
+    public void setOnKmProSecondaryLayoutToggleListener(
+            @Nullable OnKmProSecondaryLayoutToggleListener listener) {
+        onKmProSecondaryLayoutToggleListener = listener;
     }
 
     /**
-     * Split partner sync: apply the same IME capture flag without firing
-     * {@link OnImeCaptureModeChangedListener} (the originating view already notified).
+     * KM Pro portrait: show or hide only the main letter-key rows while keeping the fixed shortcut strip
+     * (Shortcut Hub row + fixed rows with P1R2C7) visible. {@link View#INVISIBLE} preserves layout weight
+     * for alignment with the IME slot.
      */
-    public void applyImeCaptureFromPartner(boolean enabled) {
-        if (systemImeCaptureMode == enabled) {
-            // Still rebind: partner may have updated shared prefs / strip assets before we mirrored.
-            rebuildTopShortcutPanels();
-            syncTopPanelViewportContent();
-            updateKeyboard();
+    public void setKmProPortraitLetterBodyVisible(boolean visible) {
+        if (kmProLetterKeyboardBody != null) {
+            kmProLetterKeyboardBody.setVisibility(visible ? VISIBLE : INVISIBLE);
+        }
+    }
+
+    /**
+     * Portrait KM Pro full built-in QWERTY: bottom-centered Openterface wordmark below letter rows.
+     * Matches KM Basic portrait touchpad wordmark size/tint/alpha ({@code fragment_basic_touchpad}); margins
+     * from {@link R.dimen#km_pro_keyboard_brand_footer_margin_top} and
+     * {@link R.dimen#km_pro_keyboard_brand_footer_margin_bottom} keep the band compact so
+     * {@link #kmProLetterKeyboardBody} (weight 1) receives more vertical space.
+     */
+    private void maybeAddKmProPortraitKeyboardBrandFooter(@Nullable LinearLayout letterBodyContainer) {
+        if (letterBodyContainer == null
+                || splitPart != SPLIT_NONE
+                || shortcutsStripOnly
+                || showExtraPortraitKeys
+                || isLandscape(getContext())) {
             return;
         }
-        if (!enabled) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        systemImeCaptureMode = enabled;
         Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, enabled)
-                    .apply();
+        if (ctx == null) {
+            return;
         }
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        updateKeyboard();
+        ImageView brand = new ImageView(ctx);
+        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setAdjustViewBounds(true);
+        Resources res = ctx.getResources();
+        int h = res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_height);
+        int maxW = res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_max_width);
+        int topMargin = res.getDimensionPixelSize(R.dimen.km_pro_keyboard_brand_footer_margin_top);
+        int bottomMargin =
+                res.getDimensionPixelSize(R.dimen.km_pro_keyboard_brand_footer_margin_bottom);
+        brand.setMaxWidth(maxW);
+        brand.setPadding(0, 0, 0, 0);
+        brand.setAlpha(0.82f);
+        LayoutParams lp = new LayoutParams(LayoutParams.WRAP_CONTENT, h);
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        lp.topMargin = topMargin;
+        lp.bottomMargin = bottomMargin;
+        brand.setLayoutParams(lp);
+        brand.setColorFilter(
+                ContextCompat.getColor(ctx, R.color.text_secondary), PorterDuff.Mode.SRC_IN);
+        brand.setContentDescription(ctx.getString(R.string.touch_pad_brand_content_description));
+        addView(brand);
+        kmProPortraitBrandFooter = brand;
+    }
+
+    public void setOnImeCaptureModeChangedListener(@Nullable OnImeCaptureModeChangedListener listener) {
+    }
+
+    public void setOnImeSubComposeChromeListener(@Nullable OnImeSubComposeChromeListener listener) {
+    }
+
+    public boolean isImeSubComposeExpanded() {
+        return false;
+    }
+
+    public boolean isImeSubComposeDirectHidMode() {
+        return false;
+    }
+
+    public boolean isSystemImeCaptureMode() {
+        return false;
+    }
+
+    public KmProKeyboardInputMode getKmProKeyboardInputMode() {
+        return KmProKeyboardInputMode.BUILT_IN_QWERTY;
+    }
+
+    public void setPortraitSystemImeVisible(boolean visible) {
+    }
+
+    public void setKmProKeyboardInputModeFromHost(@NonNull KmProKeyboardInputMode target) {
+    }
+
+    public void applyImeCaptureFromPartner(boolean enabled) {
+    }
+
+    public void forceKmProBuiltInKeyboardModeForLandscapeGuard() {
+    }
+
+    public void resyncImeSubComposeDirectHidFromPrefs() {
+    }
+
+    public void cancelDeferredKmProLayoutFinish() {
+    }
+
+    public void bindSplitLandscapeImeComposeRail(
+            @NonNull EditText externalEdit,
+            @Nullable ImageButton railToggle,
+            @Nullable ImageButton railUndo,
+            @Nullable ImageButton railClear,
+            @Nullable ImageButton railSaved,
+            @Nullable ImageButton railSend) {
+    }
+
+    public void clearSplitLandscapeImeComposeRail() {
+    }
+
+    public void onSplitLandscapeImeRailSavedClicked() {
+    }
+
+    public void onSplitLandscapeImeRailModeToggleClicked() {
+    }
+
+    public void onSplitLandscapeImeRailUndoClicked() {
+    }
+
+    public void onSplitLandscapeImeRailClearClicked() {
+    }
+
+    public void onSplitLandscapeImeRailSendClicked() {
     }
 
     /** Rebuild top shortcut panels after PH slot mode prefs change (no full keyboard reload). */
@@ -862,7 +1421,9 @@ public class CustomKeyboardView extends LinearLayout {
             splitPartner.reloadShortcutProfileManagerFromPrefs();
             splitPartner.loadTopShortcutDisplayModeFromPrefs(splitPartner.getContext());
             splitPartner.refreshProfileSlotStrip();
+            splitPartner.refreshProQwertyLetterGridOnlySelf();
         }
+        refreshProQwertyLetterGridOnlySelf();
     }
 
     /** Rebuild fixed strip + scrolling row 1 after profile-slot prefs or active profile change. */
@@ -909,60 +1470,6 @@ public class CustomKeyboardView extends LinearLayout {
         return key != null && topModeSlotIndexFromKeyCode(key.code) > 0;
     }
 
-    private static int topProfileSlotIndexFromKeyCode(int code) {
-        if (code >= KEY_TOP_PROFILE_SLOT_1 && code <= KEY_TOP_PROFILE_SLOT_7) {
-            return code - KEY_TOP_PROFILE_SLOT_1 + 1;
-        }
-        return 0;
-    }
-
-    private static boolean isTopProfileSlotKey(Key key) {
-        return key != null && topProfileSlotIndexFromKeyCode(key.code) > 0;
-    }
-
-    private static int topStripProfileSlotIndexFromKeyCode(int code) {
-        if (code >= KEY_TOP_STRIP_PROFILE_SLOT_1 && code <= KEY_TOP_STRIP_PROFILE_SLOT_6) {
-            return code - KEY_TOP_STRIP_PROFILE_SLOT_1 + 1;
-        }
-        return 0;
-    }
-
-    private static boolean isTopStripProfileSlotKey(Key key) {
-        return key != null && topStripProfileSlotIndexFromKeyCode(key.code) > 0;
-    }
-
-    private boolean isTopStripProfileSlotActive(Key key) {
-        int slot = topStripProfileSlotIndexFromKeyCode(key != null ? key.code : 0);
-        if (slot <= 0) {
-            return false;
-        }
-        Context ctx = getContext();
-        if (ctx == null) {
-            return false;
-        }
-        Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
-        String sid = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(ctx, slot, mgr);
-        if (sid == null || sid.trim().isEmpty()) {
-            return false;
-        }
-        return sid.equals(mgr.getActiveProfileId());
-    }
-
-    private boolean isTopProfileSlotActive(Key key) {
-        int slot = topProfileSlotIndexFromKeyCode(key != null ? key.code : 0);
-        if (slot <= 0) {
-            return false;
-        }
-        Context ctx = getContext();
-        if (ctx == null) {
-            return false;
-        }
-        String slotProfileId = TopShortcutProfileSlotPrefs.getResolvedProfileIdForSlot(
-                ctx, slot, shortcutProfileManager);
-        ShortcutProfileManager.ShortcutProfile active = shortcutProfileManager.getActiveProfile();
-        return active != null && active.id != null && active.id.equals(slotProfileId);
-    }
-
     private static boolean isTopShortcutToggleKey(Key key) {
         return key != null
                 && key.isTopPanelKey
@@ -986,10 +1493,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private static boolean isTopImeToggleKey(Key key) {
-        return key != null
-                && key.isTopPanelKey
-                && "PH1".equals(key.label)
-                && key.code == KEY_IME_TOGGLE;
+        return key != null && key.isTopPanelKey && key.code == KEY_IME_TOGGLE;
     }
 
     private static boolean isTopShortcutActionLabelEligible(Key key) {
@@ -997,9 +1501,6 @@ public class CustomKeyboardView extends LinearLayout {
                 || key.code == KEY_TOP_SHORTCUT_DISPLAY_TOGGLE
                 || key.code == KEY_FIXED_TOP_LOCAL_FN) {
             return false;
-        }
-        if (isTopProfileSlotKey(key) || isTopStripProfileSlotKey(key)) {
-            return true;
         }
         // Fixed strip icon keys use shortcutModifiers == -1; still honor strip display mode (name/icon/chord).
         if (key.code == 0xE1 // Shift
@@ -1020,40 +1521,30 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void loadTopShortcutDisplayModeFromPrefs(Context context) {
-        SharedPreferences sp = context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-        if (!sp.contains(KEY_TOP_SHORTCUT_DISPLAY_MODE)) {
-            boolean legacyOn = sp.getBoolean(KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS, false);
-            int migrated = legacyOn ? DISPLAY_MODE_NAME : DISPLAY_MODE_ICON;
-            sp.edit()
-                    .putInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, migrated)
-                    .remove(KEY_TOP_SHORTCUT_SHOW_ACTION_LABELS)
-                    .apply();
-        }
-        topShortcutDisplayMode = sp.getInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, DISPLAY_MODE_ICON);
+        topShortcutDisplayMode = TopShortcutDisplayModePrefs.readMode(context);
     }
 
     private void setTopShortcutDisplayMode(int mode) {
-        int normalized = mode;
-        if (normalized < DISPLAY_MODE_NAME || normalized > DISPLAY_MODE_CHORD) {
-            normalized = DISPLAY_MODE_ICON;
-        }
+        int normalized = TopShortcutDisplayModePrefs.clamp(mode);
         if (topShortcutDisplayMode == normalized) {
             return;
         }
         topShortcutDisplayMode = normalized;
         Context context = getContext();
         if (context != null) {
-            context.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt(KEY_TOP_SHORTCUT_DISPLAY_MODE, normalized)
-                    .apply();
+            TopShortcutDisplayModePrefs.writeMode(context, normalized);
         }
         rebuildFixedTopRowsPanels();
         rebuildTopShortcutPanels();
         syncTopPanelViewportContent();
         if (splitPartner != null) {
-            splitPartner.setTopShortcutDisplayMode(normalized);
+            splitPartner.syncTopShortcutDisplayModeFromPrimary(normalized);
         }
+        if (context != null && !showGuiHidKey) {
+            applyProQwertyDisplayModePresentation(context);
+        }
+        removeAllViews();
+        updateKeyboard();
     }
 
     private void cycleTopShortcutDisplayMode() {
@@ -1094,18 +1585,6 @@ public class CustomKeyboardView extends LinearLayout {
             return "";
         }
         if (key.code == KEY_IME_TOGGLE) {
-            Context ctx = getContext();
-            if (ctx != null) {
-                return ctx.getString(systemImeCaptureMode
-                        ? R.string.top_shortcut_ime_toggle_system_short
-                        : R.string.top_shortcut_ime_toggle_keymod_short);
-            }
-            return "IME";
-        }
-        if (isTopProfileSlotKey(key)) {
-            if (!TextUtils.isEmpty(key.symbolLabel)) {
-                return key.symbolLabel;
-            }
             return key.label != null ? key.label : "";
         }
         if (key.symbolLabel != null) {
@@ -1240,91 +1719,8 @@ public class CustomKeyboardView extends LinearLayout {
                 .show();
     }
 
-    private void showTopProfileSlotPicker(int slotIndex1Based) {
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (act == null) {
-            return;
-        }
-        reloadShortcutProfileManagerFromPrefs();
-        if (splitPartner != null) {
-            splitPartner.reloadShortcutProfileManagerFromPrefs();
-        }
-        java.util.List<ShortcutProfileManager.ShortcutProfile> profiles =
-                shortcutProfileManager.getProfilesForUiPicking();
-        if (profiles.isEmpty()) {
-            return;
-        }
-        CharSequence[] labels = new CharSequence[profiles.size()];
-        String[] ids = new String[profiles.size()];
-        for (int i = 0; i < profiles.size(); i++) {
-            ShortcutProfileManager.ShortcutProfile p = profiles.get(i);
-            labels[i] = p.name != null ? p.name : p.id;
-            ids[i] = p.id;
-        }
-        Context ctx = act;
-        String current = TopShortcutProfileSlotPrefs.getProfileIdForSlot(ctx, slotIndex1Based);
-        int checked = 0;
-        for (int i = 0; i < ids.length; i++) {
-            if (ids[i].equals(current)) {
-                checked = i;
-                break;
-            }
-        }
-        new AlertDialog.Builder(act)
-                .setTitle(R.string.top_profile_slot_picker_title)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    TopShortcutProfileSlotPrefs.setProfileIdForSlot(
-                            act.getApplicationContext(), slotIndex1Based, ids[which]);
-                    refreshProfileSlotStrip();
-                    dialog.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void showTopStripProfileSlotPicker(int slotIndex1Based) {
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (act == null) {
-            return;
-        }
-        Context appCtx = act.getApplicationContext();
-        Rows23StripProfileManager mgr = new Rows23StripProfileManager(appCtx, shortcutProfileManager);
-        List<Rows23StripProfile> profiles = mgr.getProfiles();
-        if (profiles.isEmpty()) {
-            return;
-        }
-        int n = profiles.size();
-        CharSequence[] labels = new CharSequence[n + 1];
-        String[] ids = new String[n + 1];
-        labels[0] = act.getString(R.string.top_rows23_strip_slot_unassigned);
-        ids[0] = TopRows23StripProfileSlotPrefs.STRIP_PROFILE_SLOT_UNASSIGNED;
-        for (int i = 0; i < n; i++) {
-            Rows23StripProfile p = profiles.get(i);
-            labels[i + 1] = p.name != null ? p.name : (p.id != null ? p.id : "");
-            ids[i + 1] = p.id != null ? p.id : "";
-        }
-        String current = TopRows23StripProfileSlotPrefs.getStripProfileIdForSlot(appCtx, slotIndex1Based);
-        int checked = -1;
-        for (int i = 0; i < ids.length; i++) {
-            if (ids[i].equals(current) || (ids[i].isEmpty() && (current == null || current.trim().isEmpty()))) {
-                checked = i;
-                break;
-            }
-        }
-        new AlertDialog.Builder(act)
-                .setTitle(R.string.top_rows23_strip_slot_picker_title)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    TopRows23StripProfileSlotPrefs.setStripProfileIdForSlot(
-                            appCtx, slotIndex1Based, ids[which]);
-                    refreshProfileSlotStrip();
-                    dialog.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
     /**
-     * Long-press entry for editing rows 2–3 strip layout (import/export and slot overrides in Shortcut Hub).
+     * Long-press entry for editing rows 2–3 strip layout (opens Keyboard and Mouse Pro setup).
      */
     private void showStripLayoutEditionEntry() {
         AppCompatActivity act = unwrapAppCompatActivity(getContext());
@@ -1350,13 +1746,7 @@ public class CustomKeyboardView extends LinearLayout {
         AlertDialog dialog = new AlertDialog.Builder(act)
                 .setTitle(R.string.strip_edition_dialog_title)
                 .setMessage(ctx.getString(R.string.strip_edition_dialog_message, overrideCount))
-                .setPositiveButton(R.string.strip_edition_open_shortcut_hub, (d, which) -> {
-                    if (act instanceof MainActivity) {
-                        ((MainActivity) act).switchToLaunchMode(LaunchPanelActivity.MODE_SHORTCUTS);
-                    }
-                    d.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, (d, which) -> d.dismiss())
+                .setPositiveButton(android.R.string.ok, (d, which) -> d.dismiss())
                 .create();
         dialog.setOnDismissListener(di -> {
             stripLayoutEditionDialogShowing = false;
@@ -1428,6 +1818,9 @@ public class CustomKeyboardView extends LinearLayout {
         splitPartner.isCtrlLeftLocked = isCtrlLeftLocked;
         splitPartner.isAltLeftLocked = isAltLeftLocked;
         splitPartner.isWinLeftLocked = isWinLeftLocked;
+        splitPartner.isCtrlRightLocked = isCtrlRightLocked;
+        splitPartner.isAltRightLocked = isAltRightLocked;
+        splitPartner.isWinRightLocked = isWinRightLocked;
         splitPartner.post(() -> splitPartner.updateKeyboard());
     }
 
@@ -1450,12 +1843,42 @@ public class CustomKeyboardView extends LinearLayout {
         keyboardAlternatesHintsEnabled = !keyboardAlternatesHintsEnabled;
         Context ctx = getContext();
         if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_KEYBOARD_ALTERNATES_HINTS_ENABLED, keyboardAlternatesHintsEnabled)
-                    .apply();
+            KeyboardAlternatesHintsPrefs.write(ctx, keyboardAlternatesHintsEnabled);
         }
         syncKeyboardAlternatesHintsToPartner();
+        updateKeyboard();
+    }
+
+    /** Reload alternate-hints pref from disk and rebuild (e.g. after Keyboard and Mouse Pro setup). */
+    public void reloadKeyboardAlternatesHintsFromPrefs() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(ctx);
+        syncKeyboardAlternatesHintsToPartner();
+        updateKeyboard();
+    }
+
+    /** Reload KM Pro key tap preview pref (Keyboard and Mouse Pro setup); no full layout rebuild. */
+    public void reloadKmProKeyTapPreviewFromPrefs() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        kmProKeyTapPreviewEnabled = KmProKeyTapPreviewPrefs.read(ctx);
+        syncKmProKeyTapPreviewToPartner();
+    }
+
+    private void syncKmProKeyTapPreviewToPartner() {
+        if (splitPartner == null) {
+            return;
+        }
+        splitPartner.kmProKeyTapPreviewEnabled = kmProKeyTapPreviewEnabled;
+    }
+
+    /** Full layout rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
+    public void rebuildKeyboardFromKmProSetup() {
         updateKeyboard();
     }
 
@@ -1638,6 +2061,31 @@ public class CustomKeyboardView extends LinearLayout {
             == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
     }
 
+    /**
+     * KM Pro landscape built-in keyboard (letter grid + shortcut strip): split vertical space between
+     * shortcut strip and letter grid using layout weights
+     * ({@link #KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT} : {@link #KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT})
+     * instead of a fixed strip height.
+     * <p>
+     * Note: {@link CompositeFragment} sets {@code setShowExtraPortraitKeys(false)} for normal Keyboard
+     * submode, including landscape full keyboard; do not gate this on {@code showExtraPortraitKeys}.
+     */
+    private boolean useKmProLandscapeFullShortcutStripHeightWeightRatio() {
+        return isLandscape(getContext()) && splitPart == SPLIT_NONE && !shortcutsStripOnly;
+    }
+
+    /**
+     * KM Pro landscape full keyboard (not split, not shortcut-strip-only): show Openterface wordmark
+     * on the wide Space key instead of the generic space-bar icon. Split halves are excluded by
+     * {@link #useKmProLandscapeFullShortcutStripHeightWeightRatio} and by {@link #KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT}.
+     */
+    private boolean shouldUseOpenterfaceWordmarkOnSpaceKey(@NonNull Key key) {
+        return key.code == 0x2C
+                && key.iconResId != 0
+                && useKmProLandscapeFullShortcutStripHeightWeightRatio()
+                && key.widthPercent >= KM_PRO_LANDSCAPE_WIDE_SPACE_MIN_WIDTH_PERCENT;
+    }
+
     private void bindService(Context context) {
         Intent intent = new Intent(context, BluetoothService.class);
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
@@ -1719,6 +2167,21 @@ public class CustomKeyboardView extends LinearLayout {
         if (TextUtils.isEmpty(alternates)) {
             return Collections.emptyList();
         }
+        int len = alternates.length();
+        // A lone comma is one Up-slot token; naive comma-split would yield two empty segments.
+        if (len == 1) {
+            return Collections.singletonList(alternates);
+        }
+        // Shorthand for comma or period on Up when the next character is not a delimiter comma.
+        if (len == 2) {
+            char c0 = alternates.charAt(0);
+            if (c0 == ',' && alternates.charAt(1) != ',') {
+                return Arrays.asList(",", alternates.substring(1));
+            }
+            if (c0 == '.') {
+                return Arrays.asList(".", alternates.substring(1));
+            }
+        }
         List<String> out = new ArrayList<>();
         int start = 0;
         for (int i = 0; i < alternates.length(); i++) {
@@ -1728,7 +2191,65 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
         out.add(alternates.substring(start).trim());
+        // Legacy ",9,," style: leading comma + digit meant comma on Up and digit on Down (comma is the separator).
+        if (out.size() >= 2 && out.get(0).isEmpty()) {
+            String second = out.get(1);
+            if (second.length() == 1 && Character.isDigit(second.charAt(0))) {
+                String d = second;
+                if (alternates.startsWith("," + d)) {
+                    out.set(0, ",");
+                } else if (alternates.startsWith("." + d)) {
+                    out.set(0, ".");
+                }
+            }
+        }
         return out;
+    }
+
+    /**
+     * {@code @package:string/name} as emitted for some compiled {@code res/xml} attrs (not only
+     * {@code @string/name}). Optional package defaults to the app package.
+     */
+    private static final Pattern KEYBOARD_LAYOUT_STRING_RES =
+            Pattern.compile("^@(?:([^:]+):)?string/(.+)$");
+
+    /**
+     * Resolves string resource references in keyboard layout XML: {@code @string/name},
+     * {@code @package:string/name}, or numeric {@code @12345}. Raw literals are returned unchanged.
+     */
+    private static String resolveKeyboardLayoutStringAttr(Context context, String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        if (!value.startsWith("@")) {
+            return value;
+        }
+        try {
+            if (value.length() > 1) {
+                String idStr = value.substring(1);
+                try {
+                    int resId = Integer.parseInt(idStr);
+                    return context.getResources().getString(resId);
+                } catch (NumberFormatException ignored) {
+                    // fall through
+                }
+            }
+            Matcher m = KEYBOARD_LAYOUT_STRING_RES.matcher(value);
+            if (m.matches()) {
+                String pkg = m.group(1);
+                String name = m.group(2);
+                if (pkg == null || pkg.isEmpty()) {
+                    pkg = context.getPackageName();
+                }
+                int resId = context.getResources().getIdentifier(name, "string", pkg);
+                if (resId != 0) {
+                    return context.getResources().getString(resId);
+                }
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.w(TAG, "resolveKeyboardLayoutStringAttr: not found: " + value, e);
+        }
+        return value;
     }
 
     private List<List<Key>> parseKeyboard(Context context, int resourceId) {
@@ -1795,6 +2316,10 @@ public class CustomKeyboardView extends LinearLayout {
                             cornerHint = "";
                         }
 
+                        symbolLabel = resolveKeyboardLayoutStringAttr(context, symbolLabel);
+                        alternates = resolveKeyboardLayoutStringAttr(context, alternates);
+                        cornerHint = resolveKeyboardLayoutStringAttr(context, cornerHint);
+
                         symbolLabel = decodeKeyboardXmlEntities(symbolLabel);
                         alternates = decodeKeyboardXmlEntities(alternates);
                         cornerHint = decodeKeyboardXmlEntities(cornerHint);
@@ -1858,6 +2383,9 @@ public class CustomKeyboardView extends LinearLayout {
                         } else if (label.equals("BackSpace")) {
                             iconResId = R.drawable.backspace;
                             System.out.println("Hardcoded icon for BackSpace: " + iconResId);
+                        } else if (code == 0x4C) {
+                            // Forward delete (Del): same glyph as backspace, mirrored in ImageButton setup.
+                            iconResId = R.drawable.backspace;
                         } else if (label.equals("Up_arrow")) {
                             iconResId = R.drawable.caret_up_fill;
                             System.out.println("Hardcoded icon for arrow_up: " + iconResId);
@@ -1909,12 +2437,11 @@ public class CustomKeyboardView extends LinearLayout {
      * right keyboards each get a space bar.
      */
     private List<List<Key>> expandSpaceBarForSplitRows(List<List<Key>> rows) {
-        String spaceLabel = getContext().getString(R.string.Space_Button);
         List<List<Key>> result = new ArrayList<>();
         for (List<Key> row : rows) {
             List<Key> newRow = new ArrayList<>();
             for (Key k : row) {
-                if (k != null && k.code == 0x2C && spaceLabel.equals(k.label)) {
+                if (k != null && k.code == 0x2C) {
                     float half = k.widthPercent / 2f;
                     newRow.add(cloneKeyWithWidth(k, half));
                     newRow.add(cloneKeyWithWidth(k, half));
@@ -1925,6 +2452,28 @@ public class CustomKeyboardView extends LinearLayout {
             result.add(newRow);
         }
         return result;
+    }
+
+    /**
+     * Pro no-GUI QWERTY: compact cap size for bottom-row modifiers, Space, Shift, Enter, and Bksp when
+     * shown as text. Tab lives on the letter row and uses {@link #BASE_KEYCAP_TEXT_SP_PORTRAIT} /
+     * {@link #BASE_KEYCAP_TEXT_SP_LANDSCAPE} like other letter keys.
+     */
+    private static boolean isProBottomRowCompactTextKey(Key key, boolean noGuiKeyboard) {
+        return noGuiKeyboard
+                && key != null
+                && (key.code == 0xE0 || key.code == 0xE2 || key.code == 0xE3
+                        || key.code == 0xE4 || key.code == 0xE6 || key.code == 0xE7
+                        || key.code == 0x2C || key.code == 0xE1 || key.code == 0x28 || key.code == 0x2A
+                        || key.code == 0x65);
+    }
+
+    private float baseKeycapTextSpForKey(Key key) {
+        boolean land = isLandscape(getContext());
+        if (isProBottomRowCompactTextKey(key, !showGuiHidKey)) {
+            return land ? PRO_BOTTOM_ROW_TEXT_SP_LANDSCAPE : PRO_BOTTOM_ROW_TEXT_SP_PORTRAIT;
+        }
+        return land ? BASE_KEYCAP_TEXT_SP_LANDSCAPE : BASE_KEYCAP_TEXT_SP_PORTRAIT;
     }
 
     private static Key cloneKeyWithWidth(Key src, float widthPercent) {
@@ -1949,28 +2498,77 @@ public class CustomKeyboardView extends LinearLayout {
         v.setBackgroundResource(R.drawable.key_background);
         if (isFunctionalKey) {
             v.setBackgroundResource(R.drawable.function_button_background);
-        } else if (key.code == 0xE1 && isShiftLeftLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
+        } else if (key.code == 0xE1 && isFnAlternateHintsToggleKey(key)) {
+            if (isShiftLeftLocked) {
+                v.setBackgroundResource(R.drawable.press_button_background);
+            }
             if (v instanceof TextView) {
                 ((TextView) v).setSelected(isShiftLeftLocked);
             } else {
                 v.setSelected(isShiftLeftLocked);
             }
+        } else if (isProBuiltInModifierTouchKey(key)) {
+            boolean on = isProModifierCapVisualOn(key);
+            if (on) {
+                v.setBackgroundResource(R.drawable.press_button_background);
+            }
+            v.setSelected(on);
         } else if (key.code == KEY_MODE_FN && isFnLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
-        } else if (key.code == 0xE0 && isCtrlLeftLocked) {
-            v.setBackgroundResource(R.drawable.press_button_background);
-        } else if (key.code == 0xE2 && isAltLeftLocked) {
             v.setBackgroundResource(R.drawable.press_button_background);
         } else if (key.code == 16) {
             v.setBackgroundResource(R.drawable.key_background);
         }
     }
 
+    private boolean isProModifierCapVisualOn(Key key) {
+        if (key == null) {
+            return false;
+        }
+        int ext = key.code;
+        int boot = bootModifierMaskForBuiltInExtendedKey(ext);
+        boolean latched = isModifierLockedStateForKey(key);
+        boolean held =
+                holdLockController != null && boot != 0 && holdLockController.isModifierLocked(boot);
+        int aggregate = proChordSustainAggregateBootMaskOr0();
+        boolean chordHighlight =
+                (boot != 0 && (aggregate & boot) != 0)
+                        || (boot == 0 && proChordActiveExtKey == ext);
+        return latched || held || chordHighlight;
+    }
+
+    private void refreshBuiltInModifierKeyCapsFromTree() {
+        refreshBuiltInModifierKeyCapsRecursive(this);
+    }
+
+    private void refreshBuiltInModifierKeyCapsRecursive(View v) {
+        if (v == null) {
+            return;
+        }
+        Object tag = v.getTag();
+        if (tag instanceof Key) {
+            Key k = (Key) tag;
+            if (k.isTopPanelKey && isTopModifierLockCandidate(k)) {
+                boolean on = isProModifierCapVisualOn(k);
+                applyTopPanelKeyCapBackground(v, k, on);
+                v.setSelected(on);
+            } else if (isProBuiltInModifierTouchKey(k)) {
+                applyLetterRowKeyFaceBackground(v, k, false);
+            }
+        } else if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                refreshBuiltInModifierKeyCapsRecursive(g.getChildAt(i));
+            }
+        }
+    }
+
     private void updateKeyboard() {
         stopGamingKeyRepeat();
         detachLocalImeFieldQuiet();
+        kmProKeyPreview.dismiss();
         removeAllViews();
+        kmProLetterKeyboardBody = null;
+        kmProPortraitBrandFooter = null;
 
         if (shortcutsStripOnly && splitPart == SPLIT_NONE) {
             addTopFunctionRows();
@@ -1984,6 +2582,8 @@ public class CustomKeyboardView extends LinearLayout {
             currentKeys = expandSpaceBarForSplitRows(currentKeys);
             List<List<Key>> splitKeys = new ArrayList<>();
             for (List<Key> row : currentKeys) {
+                // Even-sized rows split evenly (e.g. KM Pro landscape no-GUI bottom row has 8 keys →
+                // mid 4: left half Fn…LGui, right half Space…RCtrl only; Space is not shared across halves).
                 int mid = (row.size() + 1) / 2; // round up for odd rows
                 List<Key> sideKeys = new ArrayList<>();
                 if (splitPart == SPLIT_LEFT) {
@@ -2044,11 +2644,19 @@ public class CustomKeyboardView extends LinearLayout {
             addTopFunctionRows();
         }
 
-        if (systemImeCaptureMode && !shortcutsStripOnly) {
-            if (splitPart == SPLIT_NONE) {
-                addImeCaptureEditorBelowTopStrip();
-            }
-            return;
+        LinearLayout letterBodyContainer = null;
+        final boolean wrapLetterRows = splitPart == SPLIT_NONE;
+        if (wrapLetterRows) {
+            letterBodyContainer = new LinearLayout(getContext());
+            letterBodyContainer.setOrientation(VERTICAL);
+            float letterBodyWeight =
+                    useKmProLandscapeFullShortcutStripHeightWeightRatio()
+                            ? KM_PRO_LANDSCAPE_LETTER_KEYBOARD_HEIGHT_WEIGHT
+                            : 1f;
+            letterBodyContainer.setLayoutParams(
+                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, letterBodyWeight));
+            kmProLetterKeyboardBody = letterBodyContainer;
+            addView(letterBodyContainer);
         }
 
         String[] functionalKeyCodes = {"46", "47", "48", "49", "4A", "4B", "4C", "4D", "4E", "3B", "3C", "3D", "3E", "3F", "29", "3A", "40", "41", "42", "43", "44", "45", "3D", "3F"};
@@ -2086,42 +2694,139 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                 }
 
-                boolean shouldUseIconButton = key.label.equals("Win")
-                        || key.label.equals("Cmd")
-                        || key.label.equals("Space")
-                        || key.label.equals("BackSpace")
-                        || key.label.equals("Shift")
-                        || key.label.equals("Enter")
+                // Win/Cmd/Super: use ImageButton only when an icon is present (Names mode clears
+                // icon on bottom-row 0xE3 so Cmd/Win/Super render as text).
+                boolean shouldUseIconButton = (key.label.equals("Win") && key.iconResId != 0)
+                        || (key.label.equals("Cmd") && key.iconResId != 0)
+                        || (key.code == 0x2C && key.iconResId != 0)
+                        || (key.code == 0x2A && key.iconResId != 0)
+                        || (key.code == 0x4C && key.iconResId != 0)
+                        || (key.code == 0xE1 && key.iconResId != 0)
+                        || (key.code == 0x28 && key.iconResId != 0)
                         || key.label.equals("Up_arrow")
                         || key.label.equals("Down_arrow")
                         || key.label.equals("Left_arrow")
                         || key.label.equals("Right_arrow")
-                        || (key.label.equals("Super") && key.iconResId != 0);
+                        || (key.label.equals("Super") && key.iconResId != 0)
+                        || (key.code == 0xE3 && key.iconResId != 0)
+                        || (key.code == 0xE7 && key.iconResId != 0)
+                        || (key.code == 0x65 && key.iconResId != 0)
+                        || (key.code == 0x2B && key.iconResId != 0);
                 if (shouldUseIconButton) {
+                    if (shouldUseOpenterfaceWordmarkOnSpaceKey(key)) {
+                        // Match portrait KM Pro footer + touchpad footer (maybeAddKmProPortraitKeyboardBrandFooter,
+                        // fragment_composite touchPadBrandLogo): fixed height, max width, secondary tint, 0.82 alpha.
+                        // Use explicit logoW from drawable aspect so the ImageView cannot measure oversized
+                        // before maxWidth is applied (WRAP_CONTENT + wide vector was still filling the key).
+                        Context ctx = getContext();
+                        FrameLayout brandCell = new FrameLayout(ctx);
+                        applyFlatKeyStyle(brandCell);
+                        brandCell.setLayoutParams(params);
+                        brandCell.setBackgroundResource(R.drawable.key_background);
+                        // Touch + pressed state must live on this cell: key_background is here, not on the
+                        // centered wordmark ImageView (otherwise attachKeyListeners setPressed has no effect).
+                        brandCell.setClickable(true);
+                        brandCell.setFocusable(true);
+                        brandCell.setContentDescription(ctx.getString(R.string.Space_Button));
+
+                        ImageView brand = new ImageView(ctx);
+                        Resources res = ctx.getResources();
+                        int logoH =
+                                res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_height);
+                        int maxLogoW =
+                                res.getDimensionPixelSize(R.dimen.km_basic_touchpad_brand_logo_max_width);
+                        int logoW = maxLogoW;
+                        Drawable wordmark = ContextCompat.getDrawable(ctx, R.drawable.ic_openterface_wordmark);
+                        if (wordmark != null) {
+                            int iw = wordmark.getIntrinsicWidth();
+                            int ih = wordmark.getIntrinsicHeight();
+                            if (iw > 0 && ih > 0) {
+                                logoW = Math.min(maxLogoW, Math.round(logoH * (iw / (float) ih)));
+                            }
+                        }
+                        FrameLayout.LayoutParams logoLp =
+                                new FrameLayout.LayoutParams(logoW, logoH, Gravity.CENTER);
+                        brand.setLayoutParams(logoLp);
+                        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+                        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        brand.setAdjustViewBounds(false);
+                        brand.setAlpha(0.82f);
+                        brand.setColorFilter(
+                                ContextCompat.getColor(ctx, R.color.text_secondary),
+                                PorterDuff.Mode.SRC_IN);
+                        brand.setClickable(false);
+                        brand.setFocusable(false);
+                        brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                        brandCell.addView(brand);
+                        button = brandCell;
+                        listenerTarget = brandCell;
+                    } else {
                     ImageButton imageButton = new ImageButton(getContext());
                     applyFlatKeyStyle(imageButton);
                     imageButton.setLayoutParams(params);
-                    if ((key.code == 0xE3 && isWinLeftLocked) || (key.code == 0xE1 && isShiftLeftLocked)) {
+                    if (key.code == 0x2B && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.key_display_name_tab));
+                    }
+                    if (key.code == 0x4C && key.iconResId != 0) {
+                        imageButton.setContentDescription(getContext().getString(R.string.Delete));
+                    }
+                    if (key.code == 0x2C && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.Space_Button));
+                    }
+                    if (key.code == 0x65 && key.iconResId != 0) {
+                        imageButton.setContentDescription(
+                                getContext().getString(R.string.km_basic_cd_application_key));
+                    }
+                    if ((key.code == 0xE3 && isWinLeftLocked)
+                            || (key.code == 0xE7 && isWinRightLocked)
+                            || (key.code == 0xE1 && isShiftLeftLocked)) {
                         imageButton.setBackgroundResource(R.drawable.press_button_background);
                     } else {
                         imageButton.setBackgroundResource(R.drawable.key_background);
                     }
-                    if (key.iconResId != 0) {
-                        imageButton.setImageResource(key.iconResId);
+                    boolean fnHintsOnMainShift = isFnAlternateHintsToggleKey(key);
+                    if (key.iconResId != 0 || fnHintsOnMainShift) {
+                        int capIconRes =
+                                fnHintsOnMainShift
+                                        ? (keyboardAlternatesHintsEnabled
+                                                ? R.drawable.ic_keyboard_alternate_on
+                                                : R.drawable.ic_keyboard_alternate_off)
+                                        : key.iconResId;
+                        imageButton.setImageResource(capIconRes);
                         imageButton.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
                         if (isBackspaceKey(key)) {
                             imageButton.setScaleX(isFnLocked ? -1f : 1f);
+                        } else if (key.code == 0x4C) {
+                            imageButton.setScaleX(-1f);
                         }
                         if ("Win".equals(key.label) || "Cmd".equals(key.label) || "Super".equals(key.label)
-                                || "BackSpace".equals(key.label) || "Shift".equals(key.label)
-                                || "Enter".equals(key.label) || "Space".equals(key.label)) {
+                                || key.code == 0xE3
+                                || key.code == 0xE7
+                                || key.code == 0x65
+                                || (key.code == 0x2B && key.iconResId != 0)
+                                || key.code == 0x2A
+                                || key.code == 0x4C
+                                || key.code == 0xE1
+                                || key.code == 0x28
+                                || (key.code == 0x2C && key.iconResId != 0)
+                                || fnHintsOnMainShift) {
                             imageButton.setColorFilter(resolveThemeTextColor());
                         }
                     }
-                    int iconPaddingDp = (isBackspaceKey(key) && isLandscape(getContext())) ? 2 : 4;
-                    imageButton.setPadding(dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp), dpToPx(iconPaddingDp));
+                    int iconPaddingDp =
+                            ((isBackspaceKey(key) || key.code == 0x4C) && isLandscape(getContext()))
+                                    ? 2
+                                    : 4;
+                    imageButton.setPadding(
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp),
+                            dpToPx(iconPaddingDp));
                     button = imageButton;
                     listenerTarget = imageButton;
+                    }
                 } else {
                     String fnDisplayLabel = getFnDisplayLabel(key);
                     int fnDisplayIconResId = getFnDisplayIconResId(key);
@@ -2155,9 +2860,7 @@ public class CustomKeyboardView extends LinearLayout {
                     applyFlatKeyStyle(textButton);
                     textButton.setLayoutParams(new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                     textButton.setGravity(Gravity.CENTER);
-                    textButton.setTextSize(isLandscape(getContext())
-                            ? BASE_KEYCAP_TEXT_SP_LANDSCAPE
-                            : BASE_KEYCAP_TEXT_SP_PORTRAIT);
+                    textButton.setTextSize(baseKeycapTextSpForKey(key));
                     textButton.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
                     applyLetterRowKeyFaceBackground(textButton, key, isFunctionalKey);
 
@@ -2166,7 +2869,8 @@ public class CustomKeyboardView extends LinearLayout {
                         textButton.setSingleLine(true);
                         textButton.setMaxLines(1);
                         textButton.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                        textButton.setTextSize(getFnLabelTextSizeSp(fnDisplayLabel));
+                        float fnSp = getFnLabelTextSizeSp(fnDisplayLabel);
+                        textButton.setTextSize(fnSp);
                         textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                         textButton.setTextColor(resolveThemeTextColor());
                     } else if (key.iconResId == 0 && !key.label.isEmpty()) {
@@ -2190,6 +2894,12 @@ public class CustomKeyboardView extends LinearLayout {
                             textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
                             textButton.setTextColor(resolveThemeTextColor());
                         }
+                    }
+
+                    if (isProBottomRowCompactTextKey(key, !showGuiHidKey)) {
+                        textButton.setSingleLine(true);
+                        textButton.setMaxLines(1);
+                        textButton.setEllipsize(TextUtils.TruncateAt.END);
                     }
 
                     if (key.iconResId != 0) {
@@ -2268,32 +2978,160 @@ public class CustomKeyboardView extends LinearLayout {
                 attachKeyListeners(listenerTarget, key);
                 rowLayout.addView(button);
             }
-            addView(rowLayout);
+            if (letterBodyContainer != null) {
+                letterBodyContainer.addView(rowLayout);
+            } else {
+                addView(rowLayout);
+            }
         }
+
+        maybeAddKmProPortraitKeyboardBrandFooter(letterBodyContainer);
 
         if (showExtraPortraitKeys && !isLandscape(getContext())) {
             addExtraPortraitKeys();
         }
     }
 
+    @NonNull
+    private String buildKmProKeyTapPreviewLabel(@Nullable Key key) {
+        if (key == null) {
+            return "";
+        }
+        if (isFnAlternateHintsToggleKey(key)) {
+            return "";
+        }
+        int code = key.code;
+        if (code == KEY_NOOP_PLACEHOLDER
+                || code == KEY_IME_TOGGLE
+                || code == KEY_TOP_SHORTCUT_DISPLAY_TOGGLE
+                || code == KEY_TOP_STRIP_CREATE_SHORTCUT
+                || code == KEY_EXTRA_NUMPAD_FN) {
+            return "";
+        }
+        if (code == KEY_MODE_FN || code == KEY_FIXED_TOP_LOCAL_FN) {
+            return "";
+        }
+        if (code >= KEY_TOP_MODE_SLOT_1 && code <= KEY_TOP_MODE_SLOT_3) {
+            return "";
+        }
+
+        String fnText = getFnDisplayLabel(key);
+        if (isFnLocked && !TextUtils.isEmpty(fnText)) {
+            return fnText.trim();
+        }
+
+        boolean showAlt = isShiftLeftLocked || isSymbolMode;
+        String displayLabel = key.label != null ? key.label : "";
+        String symbolLabel = key.symbolLabel != null ? key.symbolLabel : "";
+        if (displayLabel.contains("\n")) {
+            String[] parts = displayLabel.split("\n");
+            if (parts.length == 2) {
+                symbolLabel = parts[0];
+                displayLabel = parts[1];
+            }
+        }
+
+        if (showAlt && !TextUtils.isEmpty(symbolLabel)) {
+            String s = symbolLabel.trim();
+            if (!s.isEmpty()) {
+                int nl = s.indexOf('\n');
+                return nl >= 0 ? s.substring(0, nl) : s;
+            }
+        }
+
+        displayLabel = displayLabel.trim();
+        if (displayLabel.isEmpty()) {
+            return "";
+        }
+        if (displayLabel.length() == 1) {
+            char c = displayLabel.charAt(0);
+            if (Character.isLetter(c)) {
+                char lower = Character.toLowerCase(c);
+                return showAlt ? String.valueOf(Character.toUpperCase(lower)) : String.valueOf(lower);
+            }
+        }
+        if (displayLabel.length() > 14 || displayLabel.indexOf('\n') >= 0) {
+            return "";
+        }
+        return displayLabel;
+    }
+
+    private void updateKmProKeyTapPreviewForPointer(View v, Key key, MotionEvent event) {
+        if (!kmProKeyTapPreviewEnabled) {
+            return;
+        }
+        if (isAlternatePopupVisible()) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        if (!isTouchInsideViewWithSlop(v, event)) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        String t = buildKmProKeyTapPreviewLabel(key);
+        if (TextUtils.isEmpty(t)) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        kmProKeyPreview.show(v, t);
+    }
+
+    /** Correlated touch/HID timeline for KM Pro; see {@link #TAG_KMPRO_TOUCH}. */
+    private static void logKmProTouch(String message) {
+        if (!BuildConfig.DEBUG && !Log.isLoggable(TAG_KMPRO_TOUCH, Log.DEBUG)) {
+            return;
+        }
+        Log.d(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
+    }
+
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
-        final boolean[] longPressConsumed = new boolean[]{false};
+        if (isProBuiltInModifierTouchKey(key)) {
+            btn.setOnTouchListener(createProMainKeyboardModifierTouchListener(key));
+            return;
+        }
         final boolean[] gamingHoldActive = new boolean[]{false};
         btn.setOnTouchListener((v, event) -> {
             final boolean gamingTouch = !keyboardAlternatesHintsEnabled && keySupportsAlternatesWhenEnabled(key);
             int action = event.getActionMasked();
             switch (action) {
                 case MotionEvent.ACTION_DOWN: {
-                    longPressConsumed[0] = false;
+                    holdRepeatSuppressUpTap = false;
                     gamingHoldActive[0] = false;
                     performKeyHapticFeedback(v);
                     if (gamingTouch) {
                         v.setPressed(true);
                         gamingHoldActive[0] = true;
-                        sendHidKeyDataForKey(key);
-                        startGamingKeyRepeat(key);
+                        setParentDisallowInterceptTouchEvent(v, true);
+                        if (KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+                            logKmProTouch(
+                                    "DOWN gaming sustainedHold key="
+                                            + key.label
+                                            + " code=0x"
+                                            + Integer.toHexString(key.code)
+                                            + " raw="
+                                            + event.getRawX()
+                                            + ","
+                                            + event.getRawY());
+                            sendHidKeyDataForKey(key);
+                        } else {
+                            logKmProTouch(
+                                    "DOWN gaming repeat key="
+                                            + key.label
+                                            + " code=0x"
+                                            + Integer.toHexString(key.code)
+                                            + " raw="
+                                            + event.getRawX()
+                                            + ","
+                                            + event.getRawY());
+                            sendHidKeyTapForGamingRepeat(key);
+                            startGamingKeyRepeat(key);
+                        }
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
+                    }
+                    if (shouldRepeatOnLongPress(key) && getContext() != null) {
+                        startHoldKeyRepeatFromDown(key);
                     }
                     if (shouldEnableAlternates(key)) {
                         alternatesGestureStartRawX = event.getRawX();
@@ -2302,68 +3140,151 @@ public class CustomKeyboardView extends LinearLayout {
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, openAlternates);
                         longPressHandler.postDelayed(openAlternates, ALT_LONG_PRESS_TIMEOUT_MS);
                     }
-                    if (isFnSlashAlternatesToggleKey(key)) {
+                    if (isFnAlternateHintsToggleKey(key)) {
                         v.setPressed(true);
+                        setParentDisallowInterceptTouchEvent(v, true);
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
-                    return false;
+                    // Listener consumes DOWN/MOVE so the framework never applies pressed; drive
+                    // key_background state_pressed explicitly (alternate-hints path).
+                    v.setPressed(true);
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, Boolean.TRUE);
+                    setParentDisallowInterceptTouchEvent(v, true);
+                    updateKmProKeyTapPreviewForPointer(v, key, event);
+                    logKmProTouch(
+                            "DOWN altHintsPath key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " keyboardAltHints="
+                                    + keyboardAlternatesHintsEnabled
+                                    + " enableAlt="
+                                    + shouldEnableAlternates(key)
+                                    + " holdRepeat="
+                                    + shouldRepeatOnLongPress(key)
+                                    + " raw="
+                                    + event.getRawX()
+                                    + ","
+                                    + event.getRawY());
+                    return true;
                 }
                 case MotionEvent.ACTION_MOVE: {
                     if (isAlternatePopupVisible()) {
+                        kmProKeyPreview.dismiss();
                         updateAlternateSelection(event.getRawX(), event.getRawY());
                         return true;
                     }
                     if (v.getTag(R.id.tag_custom_keyboard_pending_alternates) instanceof Runnable) {
                         // Keep the touch on this key until long-press fires; otherwise a parent may
                         // cancel the stream before the alternates popup opens.
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
+                        return true;
+                    }
+                    if (Boolean.TRUE.equals(v.getTag(R.id.tag_custom_keyboard_tap_consume_move))) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
-                    if (isFnSlashAlternatesToggleKey(key)) {
+                    if (holdKeyRepeatActive && holdKeyRepeatKey == key && !isTouchInsideView(v, event)) {
+                        stopRepeatingDelete();
+                    }
+                    if (isFnAlternateHintsToggleKey(key)) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
+                    updateKmProKeyTapPreviewForPointer(v, key, event);
                     return false;
                 }
                 case MotionEvent.ACTION_UP: {
+                    kmProKeyPreview.dismiss();
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
+                    setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingObj = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
-                    if (pendingObj instanceof Runnable) {
+                    final boolean hadPendingAlternatesRunnable = pendingObj instanceof Runnable;
+                    if (hadPendingAlternatesRunnable) {
                         Runnable pending = (Runnable) pendingObj;
                         longPressHandler.removeCallbacks(pending);
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, null);
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
+                        logKmProTouch("UP gamingEnd key=" + key.label);
                         stopGamingKeyRepeat();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         gamingHoldActive[0] = false;
                         return true;
                     }
                     if (isAlternatePopupVisible()) {
+                        logKmProTouch("UP alternatesPopupCommit key=" + key.label);
                         commitCurrentAlternateSelection();
                         dismissAlternatesPopup();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         return true;
                     }
-                    if (shouldRepeatOnLongPress(key)) stopRepeatingDelete();
-                    if (!longPressConsumed[0] && isTouchInsideView(v, event)) {
+                    boolean suppressTapUp = holdRepeatSuppressUpTap;
+                    if (shouldRepeatOnLongPress(key)) {
+                        stopRepeatingDelete();
+                    }
+                    // Short tap on alternates-capable keys: commit even if UP is outside the key
+                    // (e.g. glide K→J — same stream still delivers UP to K with x/y past the cap).
+                    boolean commitShortTapAlternatesKey =
+                            hadPendingAlternatesRunnable && shouldEnableAlternates(key);
+                    boolean insideSlop = isTouchInsideViewSlopForTapUp(v, event);
+                    boolean willHandleKeyPress =
+                            !suppressTapUp && (insideSlop || commitShortTapAlternatesKey);
+                    logKmProTouch(
+                            "UP key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " suppress="
+                                    + suppressTapUp
+                                    + " hadPendingAlt="
+                                    + hadPendingAlternatesRunnable
+                                    + " insideSlop="
+                                    + insideSlop
+                                    + " commitShortTapAlt="
+                                    + commitShortTapAlternatesKey
+                                    + " willHandleKeyPress="
+                                    + willHandleKeyPress
+                                    + " xy="
+                                    + event.getX()
+                                    + ","
+                                    + event.getY()
+                                    + " wh="
+                                    + v.getWidth()
+                                    + "x"
+                                    + v.getHeight()
+                                    + " raw="
+                                    + event.getRawX()
+                                    + ","
+                                    + event.getRawY());
+                    if (willHandleKeyPress) {
                         handleKeyPress(key);
                     }
-                    repeatHandler.postDelayed(this::sendReleaseData, 30);
-                    return false;
+                    holdRepeatSuppressUpTap = false;
+                    scheduleKeyboardTapRelease();
+                    return true;
                 }
                 case MotionEvent.ACTION_CANCEL: {
+                    kmProKeyPreview.dismiss();
+                    v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
+                    setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingCancel = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
-                    if (pendingCancel instanceof Runnable) {
+                    final boolean hadPendingAlternatesOnCancel = pendingCancel instanceof Runnable;
+                    if (hadPendingAlternatesOnCancel) {
                         Runnable pending = (Runnable) pendingCancel;
                         longPressHandler.removeCallbacks(pending);
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, null);
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
                         stopGamingKeyRepeat();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         gamingHoldActive[0] = false;
                         return true;
                     }
@@ -2371,21 +3292,36 @@ public class CustomKeyboardView extends LinearLayout {
                         dismissAlternatesPopup();
                         return true;
                     }
-                    if (shouldRepeatOnLongPress(key)) stopRepeatingDelete();
-                    repeatHandler.postDelayed(this::sendReleaseData, 30);
+                    if (shouldRepeatOnLongPress(key)) {
+                        stopRepeatingDelete();
+                    }
+                    boolean suppressTapCancel = holdRepeatSuppressUpTap;
+                    boolean cancelWillHandle =
+                            !suppressTapCancel
+                                    && hadPendingAlternatesOnCancel
+                                    && shouldEnableAlternates(key);
+                    logKmProTouch(
+                            "CANCEL key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " suppress="
+                                    + suppressTapCancel
+                                    + " hadPendingAlt="
+                                    + hadPendingAlternatesOnCancel
+                                    + " willHandleKeyPress="
+                                    + cancelWillHandle);
+                    if (cancelWillHandle) {
+                        handleKeyPress(key);
+                    }
+                    holdRepeatSuppressUpTap = false;
+                    scheduleKeyboardTapRelease();
                     return false;
                 }
                 default:
                     return false;
             }
         });
-        if (shouldRepeatOnLongPress(key)) {
-            btn.setOnLongClickListener(v -> {
-                longPressConsumed[0] = true;
-                startRepeatingDelete(key);
-                return true;
-            });
-        }
     }
 
     private boolean isTouchInsideView(View view, MotionEvent event) {
@@ -2394,9 +3330,50 @@ public class CustomKeyboardView extends LinearLayout {
         return x >= 0 && x <= view.getWidth() && y >= 0 && y <= view.getHeight();
     }
 
-    /** Fn + slash (0x38): alternates/hints toggle — must own the touch stream (no alternates popup). */
-    private boolean isFnSlashAlternatesToggleKey(Key key) {
-        return isFnLocked && key != null && key.code == 0x38;
+    private static void setParentDisallowInterceptTouchEvent(@Nullable View v, boolean disallow) {
+        if (v == null) {
+            return;
+        }
+        ViewParent parent = v.getParent();
+        if (parent instanceof ViewGroup) {
+            ((ViewGroup) parent).requestDisallowInterceptTouchEvent(disallow);
+        }
+    }
+
+    /**
+     * For ACTION_UP tap commit only: expand hit rect by touch slop so quick lifts slightly outside
+     * the key still send HID (KM Pro built-in vs KM Basic responsiveness).
+     */
+    private static boolean isTouchInsideViewSlopForTapUp(@Nullable View view, @Nullable MotionEvent event) {
+        return isTouchInsideViewWithSlop(view, event);
+    }
+
+    /** Same expanded hit rect as tap-up commit; used for KM Pro tap preview during MOVE to avoid edge flicker. */
+    private static boolean isTouchInsideViewWithSlop(@Nullable View view, @Nullable MotionEvent event) {
+        if (view == null || event == null) {
+            return false;
+        }
+        Context ctx = view.getContext();
+        int slop = ctx != null ? ViewConfiguration.get(ctx).getScaledTouchSlop() : 0;
+        float x = event.getX();
+        float y = event.getY();
+        return x >= -slop && x <= view.getWidth() + slop && y >= -slop && y <= view.getHeight() + slop;
+    }
+
+    /**
+     * Main lower-keyboard left Shift (HID 0xE1): same key as XML row above Fn — not the top shortcut
+     * strip. When {@link #isFnLocked} is true, toggles long-press alternates/hints and must own the
+     * touch stream (no shift-lock tap path on that cap).
+     */
+    private static boolean isMainKeyboardBuiltInShiftLeft(Key key) {
+        return key != null
+                && key.code == 0xE1
+                && !key.isTopPanelKey
+                && key.stripSlotPage < 0;
+    }
+
+    private boolean isFnAlternateHintsToggleKey(Key key) {
+        return isFnLocked && !showGuiHidKey && isMainKeyboardBuiltInShiftLeft(key);
     }
 
     /**
@@ -2411,10 +3388,6 @@ public class CustomKeyboardView extends LinearLayout {
             return false;
         }
         if (extraNumpadFnLocked && resolveExtraNumpadFnMapping(key) != null) {
-            return false;
-        }
-        // Fn + slash (0x38): reserved for alternates/hints toggle — no long-press alternates on this cell.
-        if (isFnLocked && key.code == 0x38) {
             return false;
         }
         if (key.code >= 0xE0 && key.code <= 0xE7) {
@@ -2452,8 +3425,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private String getFnDisplayLabel(Key key) {
-        // Fn + slash: long-press alternates toggle uses icons (see getFnDisplayIconResId).
-        if (isFnLocked && key != null && key.code == 0x38) {
+        if (isFnAlternateHintsToggleKey(key)) {
             return null;
         }
         FnMapping mapping = resolveFnMapping(key);
@@ -2461,7 +3433,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private int getFnDisplayIconResId(Key key) {
-        if (isFnLocked && key != null && key.code == 0x38) {
+        if (isFnAlternateHintsToggleKey(key)) {
             return keyboardAlternatesHintsEnabled
                     ? R.drawable.ic_keyboard_alternate_on
                     : R.drawable.ic_keyboard_alternate_off;
@@ -2477,24 +3449,37 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.code >= 0xE0 && key.code <= 0xE7) {
             return null;
         }
-        if (key.code == KEY_MODE_FN || key.code == 0x2A || key.code == 0x2C || key.code == 0x28 || key.code == 0x2B) {
+        if (key.code == KEY_MODE_FN || key.code == 0x2C || key.code == 0x28) {
             return null;
         }
 
-        // Function-row mapping.
+        // KM Pro lower keyboard (km_pro_keys_layout): Fn+Q–P → digits 1–0; Fn+A–L → F1–F9; Fn+Z,X,C → F10–F12;
+        // Fn+Backspace → Del (see also sendHidKeyDataForKey forward-delete path).
         switch (key.code) {
-            case 0x14: return new FnMapping("F1", 0x3A, 0);  // q
-            case 0x1A: return new FnMapping("F2", 0x3B, 0);  // w
-            case 0x08: return new FnMapping("F3", 0x3C, 0);  // e
-            case 0x15: return new FnMapping("F4", 0x3D, 0);  // r
-            case 0x17: return new FnMapping("F5", 0x3E, 0);  // t
-            case 0x1C: return new FnMapping("F6", 0x3F, 0);  // y
-            case 0x18: return new FnMapping("F7", 0x40, 0);  // u
-            case 0x0C: return new FnMapping("F8", 0x41, 0);  // i
-            case 0x12: return new FnMapping("F9", 0x42, 0);  // o
-            case 0x13: return new FnMapping("F10", 0x43, 0); // p
-            case 0x04: return new FnMapping("F11", 0x44, 0); // a
-            case 0x16: return new FnMapping("F12", 0x45, 0); // s (adjacent to F11)
+            case 0x2B: return new FnMapping("Esc", 0x29, 0); // Tab → Esc when Fn latched
+            case 0x14: return new FnMapping("1", 0x1E, 0);  // q
+            case 0x1A: return new FnMapping("2", 0x1F, 0);  // w
+            case 0x08: return new FnMapping("3", 0x20, 0);  // e
+            case 0x15: return new FnMapping("4", 0x21, 0);  // r
+            case 0x17: return new FnMapping("5", 0x22, 0);  // t
+            case 0x1C: return new FnMapping("6", 0x23, 0);  // y
+            case 0x18: return new FnMapping("7", 0x24, 0);  // u
+            case 0x0C: return new FnMapping("8", 0x25, 0);  // i
+            case 0x12: return new FnMapping("9", 0x26, 0);  // o
+            case 0x13: return new FnMapping("0", 0x27, 0);   // p
+            case 0x04: return new FnMapping("F1", 0x3A, 0);  // a
+            case 0x16: return new FnMapping("F2", 0x3B, 0);  // s
+            case 0x07: return new FnMapping("F3", 0x3C, 0);  // d
+            case 0x09: return new FnMapping("F4", 0x3D, 0);  // f
+            case 0x0A: return new FnMapping("F5", 0x3E, 0);  // g
+            case 0x0B: return new FnMapping("F6", 0x3F, 0);  // h
+            case 0x0D: return new FnMapping("F7", 0x40, 0);  // j
+            case 0x0E: return new FnMapping("F8", 0x41, 0);  // k
+            case 0x0F: return new FnMapping("F9", 0x42, 0);  // l
+            case 0x1D: return new FnMapping("F10", 0x43, 0); // z
+            case 0x1B: return new FnMapping("F11", 0x44, 0); // x
+            case 0x06: return new FnMapping("F12", 0x45, 0); // c
+            case 0x2A: return new FnMapping("Del", 0x4C, 0, R.drawable.backspace_24);
             default: return null;
         }
     }
@@ -2516,7 +3501,23 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private boolean shouldRepeatOnLongPress(Key key) {
-        return key != null && (key.isRepeatable || isArrowKey(key) || isBackspaceKey(key));
+        if (key == null) {
+            return false;
+        }
+        if (key.isRepeatable || isArrowKey(key) || isBackspaceKey(key)) {
+            return true;
+        }
+        // Space (0x2C) and forward-delete (0x4C, e.g. KM Pro fixed-strip DEL) — XML may omit isRepeatable.
+        return key.code == 0x2C || key.code == 0x4C;
+    }
+
+    /** Fixed-strip keys that may use hold-repeat (excludes modifier lock, Fn strip editor, Caps timing). */
+    private boolean fixedStripCellSupportsHoldRepeat(Key key) {
+        return key != null
+                && shouldRepeatOnLongPress(key)
+                && !isMacCapsMomentaryFromTopStripModifier(key)
+                && !isTopModifierLockCandidate(key)
+                && !isFixedTopLocalFnKey(key);
     }
 
     private boolean isArrowKey(Key key) {
@@ -2600,7 +3601,8 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     /**
-     * Ensures {@code /} always offers backslash and pipe on Up / Down when tokens fail to parse.
+     * Ensures {@code /} offers backslash on Up when missing or wrongly set to pipe; adds pipe on
+     * Down only for the classic Up=\ pairing (not when Up is already another glyph such as €).
      */
     private void normalizeSlashKeyAlternates(Key key, AlternateOption[] slots) {
         if (key == null || TextUtils.isEmpty(key.label) || key.label.length() != 1 || key.label.charAt(0) != '/') {
@@ -2610,11 +3612,19 @@ public class CustomKeyboardView extends LinearLayout {
         AlternateOption pipe = mapAsciiAlternate("|");
         if (bs != null) {
             AlternateOption up = slots[AlternatePopupGeometry.SLOT_UP];
-            if (up == null || "|".equals(up.display)) {
+            // Keep explicit "?" on Up (shift-/); do not replace with "\" (KM Pro portrait / key).
+            if (up != null && "?".equals(up.display)) {
+                // leave Up as-is
+            } else if (up == null || "|".equals(up.display)) {
                 slots[AlternatePopupGeometry.SLOT_UP] = bs;
             }
         }
-        if (slots[AlternatePopupGeometry.SLOT_DOWN] == null && pipe != null) {
+        AlternateOption upAfter = slots[AlternatePopupGeometry.SLOT_UP];
+        if (slots[AlternatePopupGeometry.SLOT_DOWN] == null
+                && pipe != null
+                && slots[AlternatePopupGeometry.SLOT_UP_LEFT] == null
+                && upAfter != null
+                && "\\".equals(upAfter.display)) {
             slots[AlternatePopupGeometry.SLOT_DOWN] = pipe;
         }
     }
@@ -2682,10 +3692,13 @@ public class CustomKeyboardView extends LinearLayout {
             return 0;
         }
         int container = MaterialColors.getColor(
-                ctx, com.google.android.material.R.attr.colorPrimaryContainer, 0xFFFFE0B2);
+                ctx,
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                ThemeManager.getColorPrimaryContainer(ctx));
         int popupBg = ContextCompat.getColor(ctx, R.color.background_light);
-        // ~60% primary-container hue: clearly distinct from bare popup, weaker than solid selected pill.
-        return ColorUtils.blendARGB(container, popupBg, 0.40f);
+        // Heavily toward popup base with a faint primary-container tint (opaque blend; translucent
+        // fills can fail on some PopupWindow surfaces).
+        return ColorUtils.blendARGB(container, popupBg, 0.72f);
     }
 
     private static void setAlternateCardinalIdleBackground(TextView tv, int washArgb, float cornerRadiusPx) {
@@ -2952,6 +3965,9 @@ public class CustomKeyboardView extends LinearLayout {
         combinedValue += isShiftLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         if ((option.modifierMask & MOD_CTRL) != 0) {
             combinedValue |= parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
         }
@@ -2984,6 +4000,7 @@ public class CustomKeyboardView extends LinearLayout {
         currentAlternatePopupModel = null;
         currentAlternatePick = AlternatePopupGeometry.RESULT_DEFAULT;
         lastAlternatePickForHaptic = Integer.MIN_VALUE;
+        kmProKeyPreview.dismiss();
     }
 
     private void performKeyHapticFeedback(View view) {
@@ -3213,11 +4230,25 @@ public class CustomKeyboardView extends LinearLayout {
         }
 
         float topStripWeight = TOP_PANEL_TOTAL_WEIGHT;
-        if (systemImeCaptureMode && !shortcutsStripOnly && splitPart == SPLIT_NONE) {
-            topStripWeight = IME_SINGLE_TOP_STRIP_WEIGHT;
-        }
         LinearLayout topStripContainer = new LinearLayout(getContext());
-        topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
+        int portraitShortcutStripHeight =
+                getResources().getDimensionPixelSize(R.dimen.compose_shortcut_strip_height);
+        // KM Pro landscape full keyboard: strip : letter grid matches split column weights (see constants).
+        if (useKmProLandscapeFullShortcutStripHeightWeightRatio()) {
+            topStripContainer.setLayoutParams(
+                    new LayoutParams(
+                            LayoutParams.MATCH_PARENT,
+                            0,
+                            KM_PRO_LANDSCAPE_SHORTCUT_STRIP_HEIGHT_WEIGHT));
+        } else if (!shortcutsStripOnly && splitPart == SPLIT_NONE) {
+            // Portrait + landscape non-full: fixed shortcut-strip height so the letter grid gets the
+            // remainder; fixed height avoids starving QWERTY vs macro rows on small landscape widths.
+            topStripContainer.setLayoutParams(
+                    new LayoutParams(LayoutParams.MATCH_PARENT, portraitShortcutStripHeight, 0f));
+            topStripContainer.setMinimumHeight(portraitShortcutStripHeight);
+        } else {
+            topStripContainer.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, topStripWeight));
+        }
         topStripContainer.setOrientation(VERTICAL);
         FrameLayout viewport = new FrameLayout(getContext());
         viewport.setLayoutParams(new LinearLayout.LayoutParams(
@@ -3512,7 +4543,6 @@ public class CustomKeyboardView extends LinearLayout {
         fixedTopRowsPanels.add(buildFixedTopRowsPage0());
         fixedTopRowsPanels.add(buildFixedTopRowsPage1());
         fixedTopRowsPanels.add(buildFixedTopRowsPage2());
-        fixedTopRowsPanels.add(buildFixedTopRowsPage3());
         if (fixedTopRowsPageIndex < 0 || fixedTopRowsPageIndex >= fixedTopRowsPanels.size()) {
             fixedTopRowsPageIndex = FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX;
         }
@@ -3645,13 +4675,13 @@ public class CustomKeyboardView extends LinearLayout {
         // Row 2: CTRL, ALT, WIN/Command (target-OS aware), TAB(icon), Up, Enter(icon), keyboard (IME) toggle
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE0), 1, 2, 0));
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE2), 1, 2, 1));
+        // GUI (Win/Cmd/Super) always on strip page 1; {@link #showGuiHidKey} only omits it from the main keyboard XML.
         keys.add(fixedStripSlotKey(buildTopPanelModifierKey(0xE3), 1, 2, 2));
         keys.add(fixedStripSlotKey(new Key("TAB", "", 0x2B, "2B", 1f, R.drawable.keyboard_tab_24, 0f, false, false, -1, true), 1, 2, 3));
         keys.add(fixedStripSlotKey(new Key("UP", "", 0x52, "52", 1f, R.drawable.keyboard_arrow_up_24, 0f, false, false, -1, true), 1, 2, 4));
         keys.add(fixedStripSlotKey(new Key("ENTER", "", 0x28, "28", 1f, R.drawable.keyboard_return_24px, 0f, false, false, -1, true), 1, 2, 5));
-        keys.add(markFixedRowKey(new Key("PH1", "", KEY_IME_TOGGLE, "", 1f,
-                systemImeCaptureMode ? R.drawable.ic_keyboard_ime_24 : R.drawable.ic_keyboard_keymod_24,
-                0f, false, false, -1, true)));
+        // Row 2 col 7: secondary layout toggle (portrait BI/IME, landscape Full/Split).
+        keys.add(fixedStripSlotKey(buildKmProSecondaryLayoutToggleKey(), 1, 2, 6));
         // Row 3: ESC, SHIFT, DEL, Left(icon), Down(icon), Right(icon), local Fn toggle
         keys.add(fixedStripSlotKey(new Key("ESC", "", 0x29, "29", 1f, 0, 0f, false, false, -1, true), 1, 3, 0));
         keys.add(fixedStripSlotKey(new Key("SHIFT", "", 0xE1, "E1", 1f, R.drawable.shift_24px, 0f, false, false, -1, true), 1, 3, 1));
@@ -3664,9 +4694,31 @@ public class CustomKeyboardView extends LinearLayout {
         return keys;
     }
 
+    private Key buildKmProSecondaryLayoutToggleKey() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return new Key("BI", "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        if (isLandscape(ctx)) {
+            boolean split = KmProSubmodePrefs.isLandscapeSplit(ctx);
+            String label =
+                    split
+                            ? ctx.getString(R.string.km_pro_secondary_toggle_split_short)
+                            : ctx.getString(R.string.km_pro_secondary_toggle_full_short);
+            return new Key(label, "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        boolean ime = KmProSubmodePrefs.isPortraitImeSurface(ctx);
+        // Action-oriented labels: show "IME" while built-in is visible; show "BI" while system IME is up.
+        String label =
+                ime
+                        ? ctx.getString(R.string.km_pro_secondary_toggle_built_in_short)
+                        : ctx.getString(R.string.km_pro_secondary_toggle_ime_short);
+        return new Key(label, "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+    }
+
     private List<Key> buildFixedTopRowsPage2() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
-        // Page 2 (Shortcut Hub): local Fn swaps row 2/3 punctuation. Row 1 profile toggles live on page 3.
+        // Page 2 (Shortcut Hub): local Fn swaps row 2/3 punctuation.
         if (fixedTopLocalFnLocked) {
             // Fn latched: row 2 cols 1–2 are grave/tilde (strip f-p2r2c1 / f-p2r2c2).
             keys.add(fixedStripSlotKey(buildPage2PunctKey("`", 0x35, false), 2, 2, 0));
@@ -3706,74 +4758,9 @@ public class CustomKeyboardView extends LinearLayout {
         return keys;
     }
 
-    /**
-     * Page 3: dedicated Shortcut Hub toggles (Row 1 app profiles on row 2; Rows 2–3 strip profiles on
-     * row 3). Not edited via Rows 2–3 strip profile slot map — see Shortcut Hub “Page 3” tab.
-     */
-    private List<Key> buildFixedTopRowsPage3() {
-        List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
-        for (int s = 1; s <= 6; s++) {
-            keys.add(fixedStripSlotKey(buildProfileHubSlotKey(s), 3, 2, s - 1));
-        }
-        keys.add(fixedStripSlotKey(buildNoOpFixedPlaceholder(), 3, 2, 6));
-        for (int s = 1; s <= 6; s++) {
-            keys.add(fixedStripSlotKey(buildStripProfileHubSlotKey(s), 3, 3, s - 1));
-        }
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
-        applyStripSlotOverrides(keys);
-        return keys;
-    }
-
     private static Key buildPage2PunctKey(String label, int hidScanCode, boolean requiresShift) {
         String hex = Integer.toHexString(hidScanCode).toUpperCase();
         return new Key(label, "", hidScanCode, hex, 1f, 0, 0f, false, requiresShift, -1, true);
-    }
-
-    private Key buildProfileHubSlotKey(int slotIndex1Based) {
-        Context ctx = getContext();
-        String fullName = "?";
-        if (ctx != null) {
-            String id = TopShortcutProfileSlotPrefs.getResolvedProfileIdForSlot(
-                    ctx, slotIndex1Based, shortcutProfileManager);
-            ShortcutProfileManager.ShortcutProfile profile = shortcutProfileManager.getProfileById(id);
-            if (profile != null && profile.name != null && !profile.name.trim().isEmpty()) {
-                fullName = profile.name.trim();
-            } else {
-                fullName = "?";
-            }
-        }
-        String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
-        int code = KEY_TOP_PROFILE_SLOT_1 + (slotIndex1Based - 1);
-        String codeStr = Integer.toHexString(code).toUpperCase();
-        return markFixedRowKey(new Key(compact, fullName, code, codeStr, 1f, 0, 0f, false, false, -1, true));
-    }
-
-    private Key buildStripProfileHubSlotKey(int slotIndex1Based) {
-        Context ctx = getContext();
-        String fullName = "?";
-        if (ctx != null) {
-            Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
-            String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
-                    ctx, slotIndex1Based, mgr);
-            if (id == null || id.trim().isEmpty()) {
-                fullName = "";
-            } else {
-                Rows23StripProfile p = mgr.getProfileById(id);
-                if (p != null && p.name != null && !p.name.trim().isEmpty()) {
-                    fullName = p.name.trim();
-                } else {
-                    fullName = "?";
-                }
-            }
-        }
-        String compact = fullName.length() > 10 ? fullName.substring(0, 10) : fullName;
-        int code = KEY_TOP_STRIP_PROFILE_SLOT_1 + (slotIndex1Based - 1);
-        String codeStr = Integer.toHexString(code).toUpperCase();
-        return markFixedRowKey(new Key(compact, fullName, code, codeStr, 1f, 0, 0f, false, false, -1, true));
-    }
-
-    private Key buildNoOpFixedPlaceholder() {
-        return markFixedRowKey(new Key("", "", KEY_NOOP_PLACEHOLDER, "", 1f, 0, 0f, false, false, -1, true));
     }
 
     private List<Key> buildFixedTopPanelRows() {
@@ -3875,9 +4862,6 @@ public class CustomKeyboardView extends LinearLayout {
             if (k == null || k.stripSlotPage < 0) {
                 continue;
             }
-            if (k.stripSlotPage == 3) {
-                continue;
-            }
             boolean latchOnLayer = isFixedTopRowsFnDigitStripKey(k);
             if (isPage2Rows23DualLayerStripSlot(k)) {
                 latchOnLayer = fixedTopLocalFnLocked;
@@ -3923,9 +4907,6 @@ public class CustomKeyboardView extends LinearLayout {
     @Nullable
     private FnMapping rows23StripOverlayOverrideMapping(@NonNull Key key) {
         if (key.stripSlotPage < 0) {
-            return null;
-        }
-        if (key.stripSlotPage == 3) {
             return null;
         }
         Context ctx = getContext();
@@ -4043,19 +5024,20 @@ public class CustomKeyboardView extends LinearLayout {
             }
         } else if ("linux".equals(targetOs)) {
             if (code == 0xE0) {
-                label = ctx != null ? ctx.getString(R.string.modifier_ctrl) : "CTRL";
+                label = ctx != null ? ctx.getString(R.string.modifier_control) : "Ctrl";
             } else if (code == 0xE2) {
-                label = ctx != null ? ctx.getString(R.string.modifier_alt) : "ALT";
+                label = ctx != null ? ctx.getString(R.string.Alt) : "Alt";
             } else {
-                label = ctx != null ? ctx.getString(R.string.modifier_sup) : "SUP";
+                label = ctx != null ? ctx.getString(R.string.Super) : "Super";
+                iconResId = R.drawable.ic_os_linux;
             }
         } else {
             if (code == 0xE0) {
-                label = ctx != null ? ctx.getString(R.string.modifier_ctrl) : "CTRL";
+                label = ctx != null ? ctx.getString(R.string.modifier_control) : "Ctrl";
             } else if (code == 0xE2) {
-                label = ctx != null ? ctx.getString(R.string.modifier_alt) : "ALT";
+                label = ctx != null ? ctx.getString(R.string.Alt) : "Alt";
             } else {
-                label = ctx != null ? ctx.getString(R.string.modifier_win) : "WIN";
+                label = ctx != null ? ctx.getString(R.string.Win) : "Win";
                 iconResId = R.drawable.windows;
             }
         }
@@ -4132,193 +5114,96 @@ public class CustomKeyboardView extends LinearLayout {
         return R.drawable.function_button_background;
     }
 
-    /**
-     * Profile hub slot keycaps: base + bottom accent must use {@link ThemeManager} colors — the
-     * keyboard view context often lacks a full Material theme, so {@code ?attr/colorPrimary} in XML
-     * drawables resolves incorrectly (e.g. white strip).
-     */
-    private Drawable buildProfileHubSlotBackground(boolean activeProfileSelected) {
-        Context ctx = getContext();
-        Resources res = ctx.getResources();
-        float cornerPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 9f, res.getDisplayMetrics());
-        int stripH = Math.round(res.getDimension(R.dimen.profile_hub_slot_bottom_accent_height));
-        int container = ThemeManager.getColorPrimaryContainer(ctx);
-        int idle = ContextCompat.getColor(ctx, R.color.key_bg_function);
-        int stripOnContainer = resolveProfileHubStripColor(ctx, container);
-        int stripOnIdle = resolveProfileHubStripColor(ctx, idle);
-        if (activeProfileSelected) {
-            return newProfileHubStackedLayers(container, stripOnContainer, cornerPx, stripH);
-        }
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed},
-                newProfileHubStackedLayers(container, stripOnContainer, cornerPx, stripH));
-        states.addState(StateSet.WILD_CARD, newProfileHubStackedLayers(idle, stripOnIdle, cornerPx, stripH));
-        return states;
-    }
-
-    /**
-     * Softer strip than raw {@link ThemeManager#getColorPrimary} so light keys stay calm; blends
-     * with the key fill so the active (mint) slot still looks cohesive.
-     */
-    private int resolveProfileHubStripColor(Context ctx, int baseFillArgb) {
-        int primary = ThemeManager.getColorPrimary(ctx);
-        int nightMask = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        int toward = (nightMask == Configuration.UI_MODE_NIGHT_YES)
-                ? ColorUtils.blendARGB(baseFillArgb, Color.WHITE, 0.35f)
-                : Color.WHITE;
-        int lightened = ColorUtils.blendARGB(primary, toward, 0.44f);
-        return ColorUtils.blendARGB(lightened, baseFillArgb, 0.2f);
-    }
-
-    private static LayerDrawable newProfileHubStackedLayers(
-            int baseColorArgb, int accentColorArgb, float cornerPx, int stripHeightPx) {
-        GradientDrawable base = new GradientDrawable();
-        base.setShape(GradientDrawable.RECTANGLE);
-        base.setColor(baseColorArgb);
-        base.setCornerRadius(cornerPx);
-        GradientDrawable strip = new GradientDrawable();
-        strip.setShape(GradientDrawable.RECTANGLE);
-        strip.setColor(accentColorArgb);
-        // Bottom strip is a plain rectangle; outer 9dp rounding comes from the base layer and from
-        // {@link #installProfileHubRoundedOutlineClip} so the strip is not double-curved (avoids
-        // corner gaps vs a 3dp-tall layer with 9dp radii).
-        LayerDrawable ld = new LayerDrawable(new Drawable[]{base, strip});
-        ld.setLayerGravity(1, Gravity.BOTTOM);
-        ld.setLayerHeight(1, stripHeightPx);
-        return ld;
-    }
-
-    /**
-     * Rows 2–3 strip profile hub slots (page 3 row 3): base fill + top-right triangular accent
-     * (dog-ear), same theme colors as {@link #newProfileHubStackedLayers}.
-     */
-    private static LayerDrawable newStripProfileHubStackedLayers(
-            int baseColorArgb, int accentColorArgb, float cornerPx, int dogEarLegPx) {
-        GradientDrawable base = new GradientDrawable();
-        base.setShape(GradientDrawable.RECTANGLE);
-        base.setColor(baseColorArgb);
-        base.setCornerRadius(cornerPx);
-        StripProfileHubDogEarDrawable ear = new StripProfileHubDogEarDrawable(accentColorArgb, dogEarLegPx);
-        return new LayerDrawable(new Drawable[]{base, ear});
-    }
-
-    /** Top-right isosceles triangle accent; bounds are the full key so the ear scales with key size. */
-    private static final class StripProfileHubDogEarDrawable extends Drawable {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path path = new Path();
-        private int legPx;
-
-        StripProfileHubDogEarDrawable(int accentColorArgb, int legPx) {
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(accentColorArgb);
-            this.legPx = Math.max(1, legPx);
-        }
-
-        @Override
-        protected void onBoundsChange(Rect bounds) {
-            super.onBoundsChange(bounds);
-            path.reset();
-            int r = bounds.right;
-            int t = bounds.top;
-            int L = Math.min(legPx, Math.min(bounds.width(), bounds.height()));
-            path.moveTo(r, t);
-            path.lineTo(r - L, t);
-            path.lineTo(r, t + L);
-            path.close();
-        }
-
-        @Override
-        public void draw(Canvas canvas) {
-            canvas.drawPath(path, paint);
-        }
-
-        @Override
-        public void setAlpha(int alpha) {
-            paint.setAlpha(alpha);
-        }
-
-        @Override
-        public void setColorFilter(@Nullable ColorFilter colorFilter) {
-            paint.setColorFilter(colorFilter);
-        }
-
-        @Override
-        public int getOpacity() {
-            return PixelFormat.TRANSLUCENT;
-        }
-    }
-
-    /**
-     * Strip profile hub slot keycaps (page 3): base + top-right dog-ear; colors match Row 1 profile slots.
-     */
-    private Drawable buildStripProfileHubSlotBackground(boolean activeProfileSelected) {
-        Context ctx = getContext();
-        Resources res = ctx.getResources();
-        float cornerPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 9f, res.getDisplayMetrics());
-        int dogEarLeg = Math.round(res.getDimension(R.dimen.strip_profile_hub_dog_ear_leg));
-        int container = ThemeManager.getColorPrimaryContainer(ctx);
-        int idle = ContextCompat.getColor(ctx, R.color.key_bg_function);
-        int earOnContainer = resolveProfileHubStripColor(ctx, container);
-        int earOnIdle = resolveProfileHubStripColor(ctx, idle);
-        if (activeProfileSelected) {
-            return newStripProfileHubStackedLayers(container, earOnContainer, cornerPx, dogEarLeg);
-        }
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed},
-                newStripProfileHubStackedLayers(container, earOnContainer, cornerPx, dogEarLeg));
-        states.addState(StateSet.WILD_CARD,
-                newStripProfileHubStackedLayers(idle, earOnIdle, cornerPx, dogEarLeg));
-        return states;
-    }
-
-    /** Clips profile-hub keycaps (base + strip) to the same 9dp round-rect as other function keys. */
-    private void installProfileHubRoundedOutlineClip(View view) {
-        Resources res = getResources();
-        final float cornerPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 9f, res.getDisplayMetrics());
-        view.setOutlineProvider(new ViewOutlineProvider() {
-            @Override
-            public void getOutline(View v, Outline outline) {
-                int w = v.getWidth();
-                int h = v.getHeight();
-                if (w <= 0 || h <= 0) {
-                    outline.setEmpty();
-                    return;
-                }
-                outline.setRoundRect(0, 0, w, h, cornerPx);
-            }
-        });
-        view.setClipToOutline(true);
-    }
-
-    private static void clearProfileHubRoundedOutlineClip(View view) {
-        if (view == null) {
-            return;
-        }
+    private void applyTopPanelKeyCapBackground(View view, Key key, boolean keyLockedVisualState) {
         view.setClipToOutline(false);
         view.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
-    }
-
-    private void applyTopPanelKeyCapBackground(View view, Key key, boolean keyLockedVisualState) {
-        if (isTopStripProfileSlotKey(key)) {
-            view.setBackground(buildStripProfileHubSlotBackground(keyLockedVisualState));
-            view.setBackgroundTintList(null);
-            installProfileHubRoundedOutlineClip(view);
-            return;
-        }
-        if (isTopProfileSlotKey(key)) {
-            view.setBackground(buildProfileHubSlotBackground(keyLockedVisualState));
-            view.setBackgroundTintList(null);
-            installProfileHubRoundedOutlineClip(view);
-            return;
-        }
-        clearProfileHubRoundedOutlineClip(view);
         int bg = keyLockedVisualState
                 ? R.drawable.press_button_background
                 : resolveTopPanelIdleBackgroundRes(key);
         view.setBackgroundResource(bg);
+    }
+
+    /**
+     * BI/IME strip toggle: ring uses {@link ThemeManager#getColorPrimary} so the accent matches the
+     * user's color family even when {@code ?attr/colorPrimary} does not resolve strongly on this view's
+     * context (same rationale as {@link #applyTopImeToggleIconTint}).
+     */
+    private void applyTopPanelImeToggleKeyCapBackground(View view) {
+        view.setClipToOutline(false);
+        view.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+        Context ctx = view.getContext();
+        if (ctx == null) {
+            view.setBackgroundResource(R.drawable.top_strip_ime_toggle_background);
+            return;
+        }
+        int cornerPx = dpToPx(9);
+        int strokePx = dpToPx(2);
+        int primary = ThemeManager.getColorPrimary(ctx);
+        int primaryContainer = ThemeManager.getColorPrimaryContainer(ctx);
+        int fillIdle = ContextCompat.getColor(ctx, R.color.key_bg_function);
+
+        GradientDrawable pressedActivated = new GradientDrawable();
+        pressedActivated.setShape(GradientDrawable.RECTANGLE);
+        pressedActivated.setCornerRadius(cornerPx);
+        pressedActivated.setColor(primary);
+
+        GradientDrawable pressedKeymod = new GradientDrawable();
+        pressedKeymod.setShape(GradientDrawable.RECTANGLE);
+        pressedKeymod.setCornerRadius(cornerPx);
+        pressedKeymod.setColor(primaryContainer);
+
+        GradientDrawable activatedIdle = new GradientDrawable();
+        activatedIdle.setShape(GradientDrawable.RECTANGLE);
+        activatedIdle.setCornerRadius(cornerPx);
+        activatedIdle.setColor(primaryContainer);
+        activatedIdle.setStroke(strokePx, primary);
+
+        GradientDrawable defaultIdle = new GradientDrawable();
+        defaultIdle.setShape(GradientDrawable.RECTANGLE);
+        defaultIdle.setCornerRadius(cornerPx);
+        defaultIdle.setColor(fillIdle);
+        defaultIdle.setStroke(strokePx, primary);
+
+        StateListDrawable sld = new StateListDrawable();
+        sld.addState(
+                new int[] {android.R.attr.state_pressed, android.R.attr.state_activated}, pressedActivated);
+        sld.addState(new int[] {android.R.attr.state_pressed}, pressedKeymod);
+        sld.addState(new int[] {android.R.attr.state_activated}, activatedIdle);
+        sld.addState(StateSet.WILD_CARD, defaultIdle);
+        view.setBackground(sld);
+    }
+
+    private void applyTopImeToggleLabelTypography(TextView tv) {
+        if (tv == null) {
+            return;
+        }
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, TOP_FIXED_ROWS_IME_TOGGLE_TEXT_SP);
+        tv.setTypeface(Typeface.DEFAULT_BOLD);
+    }
+
+    private void applyTopImeToggleIconTint(ImageButton ib) {
+        if (ib == null) {
+            return;
+        }
+        Context ctx = ib.getContext();
+        if (ctx == null) {
+            return;
+        }
+        // Use configured accent directly. MaterialColors harmonization against the light keycap fill
+        // can wash out the tint in light mode (same issue as the text label).
+        ib.setColorFilter(ThemeManager.getColorPrimary(ctx));
+    }
+
+    /** Name/chord strip modes can render PH1 as a {@link Button}; keep accent foreground in sync with icon mode. */
+    private void applyTopImeToggleLabelTextColor(TextView tv) {
+        if (tv == null) {
+            return;
+        }
+        Context ctx = tv.getContext();
+        if (ctx == null) {
+            return;
+        }
+        tv.setTextColor(ThemeManager.getColorPrimary(ctx));
     }
 
     private void addShortcutPanelRows(
@@ -4389,11 +5274,13 @@ public class CustomKeyboardView extends LinearLayout {
                     || (k.code == 0xE2 && isAltLeftLocked)
                     || (k.code == 0xE3 && isWinLeftLocked);
                 // Fn-layer lock only tints the local Fn key — never other keys (modifier locks stay
-                // independent when Fn toggles). Profile hub slots use pressed style when that slot's
-                // profile is the active Shortcut Hub profile.
-                boolean keyLockedVisualState = isFixedTopLocalFnKey(k)
-                        ? fixedTopLocalFnLocked
-                        : (modifierLocked || isTopProfileSlotActive(k) || isTopStripProfileSlotActive(k));
+                // independent when Fn toggles).
+                boolean keyLockedVisualState =
+                        isFixedTopLocalFnKey(k)
+                                ? fixedTopLocalFnLocked
+                                : (isTopModifierLockCandidate(k)
+                                        ? isProModifierCapVisualOn(k)
+                                        : modifierLocked);
                 FnMapping fixedTopLocalFn = fixedRowsSlice
                         ? resolveFixedTopLocalFnMapping(k, fixedTopPageForResolvers)
                         : resolveFixedTopLocalFnMapping(k);
@@ -4430,8 +5317,14 @@ public class CustomKeyboardView extends LinearLayout {
                     ImageButton ib = new ImageButton(getContext());
                     applyFlatKeyStyle(ib);
                     ib.setLayoutParams(p);
-                    applyTopPanelKeyCapBackground(ib, k, keyLockedVisualState);
-                    ib.setSelected(keyLockedVisualState);
+                    if (isTopImeToggleKey(k)) {
+                        applyTopPanelImeToggleKeyCapBackground(ib);
+                        ib.setActivated(false);
+                        ib.setSelected(false);
+                    } else {
+                        applyTopPanelKeyCapBackground(ib, k, keyLockedVisualState);
+                        ib.setSelected(keyLockedVisualState);
+                    }
                     ib.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
                     int iconPad = fixedRowsSlice ? dpToPx(5) : 0;
                     ib.setPadding(iconPad, iconPad, iconPad, iconPad);
@@ -4440,7 +5333,11 @@ public class CustomKeyboardView extends LinearLayout {
                             && (k.code == 0x4C
                             || (fixedTopLocalFn != null && fixedTopLocalFn.keyCode == 0x4C));
                     ib.setScaleX(forwardDelIcon ? -1f : 1f);
-                    ib.setColorFilter(resolveThemeTextColor());
+                    if (isTopImeToggleKey(k)) {
+                        applyTopImeToggleIconTint(ib);
+                    } else {
+                        ib.setColorFilter(resolveThemeTextColor());
+                    }
                     if (isTopModeSlotKey(k)) {
                         Context ctx = getContext();
                         if (ctx != null) {
@@ -4451,9 +5348,7 @@ public class CustomKeyboardView extends LinearLayout {
                     } else if (isTopImeToggleKey(k)) {
                         Context ctx = getContext();
                         if (ctx != null) {
-                            ib.setContentDescription(ctx.getString(systemImeCaptureMode
-                                    ? R.string.top_shortcut_ime_toggle_system
-                                    : R.string.top_shortcut_ime_toggle_keymod));
+                            ib.setContentDescription(ctx.getString(R.string.top_shortcut_km_pro_input_built_in_cd));
                         }
                     } else if (isTopShortcutToggleKey(k)) {
                         Context ctx = getContext();
@@ -4526,33 +5421,19 @@ public class CustomKeyboardView extends LinearLayout {
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.MATCH_PARENT)
                             : p);
-                    applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
-                    b.setSelected(keyLockedVisualState);
-                    boolean row1ProfileHubSlot = isTopProfileSlotKey(k) && fixedRowsSlice;
-                    boolean stripProfileHubSlot = isTopStripProfileSlotKey(k) && fixedRowsSlice;
-                    boolean profileHubSlot = row1ProfileHubSlot || stripProfileHubSlot;
-                    if (!profileHubSlot) {
-                        b.setGravity(Gravity.CENTER);
-                    }
-                    if (row1ProfileHubSlot) {
-                        int stripPx = Math.round(getResources().getDimension(
-                                R.dimen.profile_hub_slot_bottom_accent_height));
-                        // Symmetric vertical padding so CENTER_VERTICAL sits in the full key, not biased
-                        // toward the top (asymmetric pad was: small top, large bottom reserve).
-                        int vPad = stripPx + dpToPx(6);
-                        b.setPadding(dpToPx(4), vPad, dpToPx(4), vPad);
-                    } else if (stripProfileHubSlot) {
-                        int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
-                        int uniform = textPad + dpToPx(2);
-                        b.setPadding(uniform, uniform, uniform, uniform);
+                    if (isTopImeToggleKey(k)) {
+                        applyTopPanelImeToggleKeyCapBackground(b);
+                        b.setActivated(false);
+                        b.setSelected(false);
                     } else {
-                        int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
-                        b.setPadding(textPad, textPad, textPad, textPad);
-                        b.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                                fixedRowsSlice ? TOP_FIXED_ROWS_TEXT_SP : TOP_SHORTCUT_PANEL_TEXT_SP);
+                        applyTopPanelKeyCapBackground(b, k, keyLockedVisualState);
+                        b.setSelected(keyLockedVisualState);
                     }
-                    // Profile hub row-3 slots: symbolLabel holds full name for action-label mode only;
-                    // do not use symbol+newline+label (that path is for real shortcuts: chord + name).
+                    b.setGravity(Gravity.CENTER);
+                    int textPad = fixedRowsSlice ? dpToPx(2) : dpToPx(1);
+                    b.setPadding(textPad, textPad, textPad, textPad);
+                    b.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                            fixedRowsSlice ? TOP_FIXED_ROWS_TEXT_SP : TOP_SHORTCUT_PANEL_TEXT_SP);
                     final String topButtonText;
                     if (fixedTopLocalFn != null) {
                         topButtonText = effectiveTopLabel;
@@ -4568,8 +5449,6 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                     } else if (nameMode || chordMode || (iconMode && effectiveTopIconResId == 0)) {
                         topButtonText = formatTopShortcutActionLabel(k);
-                    } else if (isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
-                        topButtonText = k.label != null ? k.label : "";
                     } else if (k.symbolLabel != null && !k.symbolLabel.isEmpty()) {
                         if (k.label != null && !k.label.trim().isEmpty()) {
                             topButtonText = k.symbolLabel + "\n" + k.label;
@@ -4583,44 +5462,11 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     b.setText(topButtonText);
                     if (renderAsActionLabel) {
-                        if (!profileHubSlot) {
-                            b.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                                    fixedRowsSlice ? TOP_FIXED_ROWS_ACTION_LABEL_SP
-                                            : TOP_SHORTCUT_PANEL_ACTION_LABEL_SP);
-                        }
-                        b.setTypeface(Typeface.DEFAULT_BOLD);
-                    } else if (profileHubSlot) {
+                        b.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                                fixedRowsSlice ? TOP_FIXED_ROWS_ACTION_LABEL_SP
+                                        : TOP_SHORTCUT_PANEL_ACTION_LABEL_SP);
                         b.setTypeface(Typeface.DEFAULT_BOLD);
                     }
-                    if (profileHubSlot) {
-                        b.setIncludeFontPadding(false);
-                        b.setMaxLines(2);
-                        b.setSingleLine(false);
-                        b.setLineSpacing(0f, 0.92f);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            b.setHyphenationFrequency(Layout.HYPHENATION_FREQUENCY_NONE);
-                            b.setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE);
-                        }
-                        int minSp = renderAsActionLabel ? 8 : TOP_PROFILE_HUB_SLOT_TEXT_MIN_SP;
-                        int maxSp = renderAsActionLabel ? 13 : TOP_PROFILE_HUB_SLOT_TEXT_MAX_SP;
-                        TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                                b,
-                                minSp,
-                                maxSp,
-                                TOP_PROFILE_HUB_SLOT_TEXT_STEP_SP,
-                                TypedValue.COMPLEX_UNIT_SP);
-                        if (row1ProfileHubSlot) {
-                            b.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
-                        } else {
-                            b.setGravity(Gravity.CENTER);
-                        }
-                        b.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            b.setFirstBaselineToTopHeight(0);
-                            b.setLastBaselineToBottomHeight(0);
-                        }
-                    }
-                    b.setTextColor(resolveThemeTextColor());
                     b.setAllCaps(false);
                     if ("ESC".equals(k.label)
                             || "CTRL".equals(k.label)
@@ -4633,6 +5479,12 @@ public class CustomKeyboardView extends LinearLayout {
                         b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
                     } else if (fixedRowsSlice && !nameMode) {
                         b.setTypeface(Typeface.DEFAULT_BOLD);
+                    }
+                    if (isTopImeToggleKey(k)) {
+                        applyTopImeToggleLabelTypography(b);
+                        applyTopImeToggleLabelTextColor(b);
+                    } else {
+                        b.setTextColor(resolveThemeTextColor());
                     }
                     b.setTag(k);
                     b.setOnTouchListener(fixedRowsSlice
@@ -4693,6 +5545,9 @@ public class CustomKeyboardView extends LinearLayout {
             case 0xE1: return isShiftLeftLocked;
             case 0xE2: return isAltLeftLocked;
             case 0xE3: return isWinLeftLocked;
+            case 0xE4: return isCtrlRightLocked;
+            case 0xE6: return isAltRightLocked;
+            case 0xE7: return isWinRightLocked;
             default: return false;
         }
     }
@@ -4712,11 +5567,21 @@ public class CustomKeyboardView extends LinearLayout {
             case 0xE3:
                 isWinLeftLocked = locked;
                 break;
+            case 0xE4:
+                isCtrlRightLocked = locked;
+                break;
+            case 0xE6:
+                isAltRightLocked = locked;
+                break;
+            case 0xE7:
+                isWinRightLocked = locked;
+                break;
             default:
                 return;
         }
         syncModifierStates();
         refreshVisibleTopPanelButtonStates();
+        post(this::refreshBuiltInModifierKeyCapsFromTree);
         if (splitPartner != null) {
             splitPartner.refreshVisibleTopPanelButtonStates();
         }
@@ -4734,6 +5599,9 @@ public class CustomKeyboardView extends LinearLayout {
         combinedValue += isShiftLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         if ((fnModifierMask & MOD_CTRL) != 0) {
             combinedValue |= parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"));
         }
@@ -4749,11 +5617,416 @@ public class CustomKeyboardView extends LinearLayout {
         sendKeyData(combinedValue, effectiveKeyCode);
     }
 
+    private boolean isProMomentaryChordMode() {
+        Context ctx = getContext();
+        return ctx != null && KmBasicKeyboardPrefs.isMomentaryChordMode(ctx);
+    }
+
+    /**
+     * Top strip / fixed rows: Ctrl, Shift, Alt, Win (and macOS Fn→Caps on those cells). Sticky +
+     * hold-lock popup matches KM Basic; chord mode matches KM Basic long-press + sustain.
+     *
+     * @param fixedRows {@code true} for fixed rows 2–3 pager; {@code false} for scrolling row-1 strip.
+     */
+    private OnTouchListener createProTopStripModifierTouchListener(Key key, boolean fixedRows) {
+        final boolean[] longPressConsumed = new boolean[1];
+        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
+        final boolean[] macCapsLongFired = new boolean[1];
+        final boolean[] macCapsDownActive = new boolean[1];
+        final long[] macCapsDownTime = new long[1];
+
+        return (v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    macCapsDownActive[0] = false;
+                    longPressConsumed[0] = false;
+                    if (fixedRows) {
+                        cancelFixedTopRowsAnimations();
+                    } else {
+                        cancelTopPanelAnimations();
+                    }
+                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        macCapsLongFired[0] = false;
+                        macCapsDownActive[0] = true;
+                        macCapsDownTime[0] = SystemClock.uptimeMillis();
+                        pendingMacCapsLongPress[0] =
+                                () -> {
+                                    macCapsLongFired[0] = true;
+                                    performKeyHapticFeedback(v);
+                                    pendingMacCapsLongPress[0] = null;
+                                };
+                        longPressHandler.postDelayed(
+                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
+                        sendMomentaryModifierClick(key);
+                    } else if (isProMomentaryChordMode()) {
+                        clearPartnerChordStateFromPrimary();
+                        dismissProHoldLockPopup();
+                        performKeyHapticFeedback(v);
+                        proChordActiveExtKey = key.code;
+                        proChordLongPressAnchorView = v;
+                        proChordLongPressPendingMask = bootModifierMaskForBuiltInExtendedKey(key.code);
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = proChordLongPressPendingMask;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proChordLongPressRunnable,
+                                ALT_LONG_PRESS_TIMEOUT_MS);
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    } else {
+                        dismissProHoldLockPopup();
+                        performKeyHapticFeedback(v);
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = bootModifierMaskForBuiltInExtendedKey(key.code);
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    }
+                    v.setPressed(true);
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
+                        return true;
+                    } else if (isProMomentaryChordMode()) {
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        boolean insideChord = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (insideChord) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideChord);
+                        if (!insideChord) {
+                            longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    } else {
+                        boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        if (insideSticky) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideSticky);
+                        if (!insideSticky) {
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    if (pendingMacCapsLongPress[0] != null) {
+                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
+                        pendingMacCapsLongPress[0] = null;
+                    }
+                    if (macCapsDownActive[0] && isMacCapsMomentaryFromTopStripModifier(key)) {
+                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            dismissProHoldLockPopup();
+                            return true;
+                        }
+                        if (longPressConsumed[0]) {
+                            sendReleaseData();
+                            macCapsDownActive[0] = false;
+                            dismissProHoldLockPopup();
+                            return true;
+                        }
+                        performKeyHapticFeedback(v);
+                        v.performClick();
+                        long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
+                        if (!macCapsLongFired[0]) {
+                            long delay =
+                                    elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
+                                            ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
+                                            : 0;
+                            scheduleKeyboardTapRelease(delay);
+                        } else {
+                            sendReleaseData();
+                        }
+                        macCapsDownActive[0] = false;
+                        dismissProHoldLockPopup();
+                        return true;
+                    }
+                    if (event.getActionMasked() == MotionEvent.ACTION_UP && !longPressConsumed[0]) {
+                        performKeyHapticFeedback(v);
+                        v.performClick();
+                        holdLockFingerDown = false;
+                        MainActivity ma = unwrapMainActivityForHid();
+                        boolean committedLock = false;
+                        if (activeHoldLockPopup != null) {
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            committedLock = activeHoldLockPopup.commitIfLockSelected();
+                        }
+                        dismissProHoldLockPopup();
+                        if (committedLock && holdLockController != null && ma != null) {
+                            setModifierLockedStateForKey(key, false);
+                            holdLockController.lockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound());
+                            clearProChordUiPreserveHostForLock();
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            holdLockPopupAnchorView = null;
+                            scheduleKeyboardTapRelease();
+                            return true;
+                        }
+                        if (isProMomentaryChordMode()) {
+                            if (proChordSustainBootByView.containsKey(v)) {
+                                releaseProChordSustainFingerForView(v);
+                            } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
+                                int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
+                                if (holdLockController != null
+                                        && ma != null
+                                        && holdLockController.isModifierLocked(boot)) {
+                                    holdLockController.unlockModifier(
+                                            boot,
+                                            port,
+                                            ma.getBluetoothService(),
+                                            ma.isBluetoothServiceBound());
+                                } else {
+                                    tapProModifierMomentary(key);
+                                }
+                            }
+                            holdLockPopupAnchorView = null;
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                        } else {
+                            if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
+                                int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
+                                if (holdLockController != null
+                                        && holdLockController.isModifierLocked(boot)) {
+                                    holdLockController.unlockModifier(
+                                            boot,
+                                            port,
+                                            ma.getBluetoothService(),
+                                            ma.isBluetoothServiceBound());
+                                } else {
+                                    setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
+                                }
+                                refreshVisibleTopPanelButtonStates();
+                                post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            }
+                            holdLockPopupAnchorView = null;
+                        }
+                        scheduleKeyboardTapRelease();
+                    } else {
+                        dismissProHoldLockPopup();
+                        if (isProMomentaryChordMode() && proChordSustainBootByView.containsKey(v)) {
+                            releaseProChordSustainFingerForView(v);
+                        }
+                        proChordLongPressAnchorView = null;
+                        holdLockPopupAnchorView = null;
+                        holdLockFingerDown = false;
+                    }
+                    return true;
+                default:
+                    return false;
+            }
+        };
+    }
+
+    @Nullable
+    private MainActivity unwrapMainActivityForHid() {
+        AppCompatActivity act = unwrapAppCompatActivity(getContext());
+        return act instanceof MainActivity ? (MainActivity) act : null;
+    }
+
+    private OnTouchListener createProMainKeyboardModifierTouchListener(Key key) {
+        final int ext = key.code;
+        final int boot = bootModifierMaskForBuiltInExtendedKey(ext);
+        return (v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    clearPartnerChordStateFromPrimary();
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    dismissProHoldLockPopup();
+                    v.setPressed(true);
+                    performKeyHapticFeedback(v);
+                    if (isProMomentaryChordMode()) {
+                        proChordActiveExtKey = ext;
+                        proChordLongPressAnchorView = v;
+                        proChordLongPressPendingMask = boot;
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = boot;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proChordLongPressRunnable, ALT_LONG_PRESS_TIMEOUT_MS);
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    } else {
+                        holdLockPopupAnchorView = v;
+                        holdLockFingerDown = true;
+                        holdLockPendingModMask = boot;
+                        holdLockGestureRawX = event.getRawX();
+                        holdLockGestureRawY = event.getRawY();
+                        longPressHandler.postDelayed(
+                                proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
+                    }
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (isProMomentaryChordMode()) {
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        boolean inside = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (inside) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(inside);
+                        if (!inside) {
+                            longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    } else {
+                        boolean insideSticky = BasicKeyFeedback.isPointerInsideView(v, event);
+                        if (activeHoldLockPopup != null) {
+                            v.setPressed(true);
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                            activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                            return true;
+                        }
+                        if (insideSticky) {
+                            holdLockGestureRawX = event.getRawX();
+                            holdLockGestureRawY = event.getRawY();
+                        }
+                        v.setPressed(insideSticky);
+                        if (!insideSticky) {
+                            longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                            dismissProHoldLockPopup();
+                        }
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    holdLockFingerDown = false;
+                    MainActivity ma = unwrapMainActivityForHid();
+                    if (activeHoldLockPopup != null) {
+                        activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
+                        boolean committedLock = activeHoldLockPopup.commitIfLockSelected();
+                        dismissProHoldLockPopup();
+                        if (committedLock && holdLockController != null && ma != null) {
+                            setModifierLockedStateForKey(key, false);
+                            holdLockController.lockModifier(
+                                    holdLockPendingModMask,
+                                    port,
+                                    ma.getBluetoothService(),
+                                    ma.isBluetoothServiceBound());
+                            clearProChordUiPreserveHostForLock();
+                            refreshVisibleTopPanelButtonStates();
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
+                            holdLockPopupAnchorView = null;
+                            scheduleKeyboardTapRelease();
+                            return true;
+                        }
+                    }
+                    dismissProHoldLockPopup();
+                    if (isProMomentaryChordMode()) {
+                        if (proChordSustainBootByView.containsKey(v)) {
+                            releaseProChordSustainFingerForView(v);
+                        } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
+                            if (holdLockController != null
+                                    && ma != null
+                                    && holdLockController.isModifierLocked(boot)) {
+                                holdLockController.unlockModifier(
+                                        boot,
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                            } else {
+                                tapProModifierMomentary(key);
+                            }
+                        }
+                    } else {
+                        if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
+                            if (holdLockController != null && holdLockController.isModifierLocked(boot)) {
+                                holdLockController.unlockModifier(
+                                        boot,
+                                        port,
+                                        ma.getBluetoothService(),
+                                        ma.isBluetoothServiceBound());
+                            } else {
+                                setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
+                            }
+                        }
+                    }
+                    holdLockPopupAnchorView = null;
+                    proChordLongPressAnchorView = null;
+                    performKeyHapticFeedback(v);
+                    v.performClick();
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    scheduleKeyboardTapRelease();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    v.setPressed(false);
+                    longPressHandler.removeCallbacks(proChordLongPressRunnable);
+                    longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
+                    dismissProHoldLockPopup();
+                    if (isProMomentaryChordMode() && proChordSustainBootByView.containsKey(v)) {
+                        releaseProChordSustainFingerForView(v);
+                    }
+                    proChordLongPressAnchorView = null;
+                    holdLockPopupAnchorView = null;
+                    holdLockFingerDown = false;
+                    refreshVisibleTopPanelButtonStates();
+                    post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    return true;
+                default:
+                    return false;
+            }
+        };
+    }
+
     private void maybeShowModifierLockHint(Key key) {
-        if (key == null || !isTopModifierLockCandidate(key)) {
+        if (key == null) {
             return;
         }
-        if (fixedTopRowsPageIndex != FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX) {
+        if (!isTopModifierLockCandidate(key) && !isProBuiltInModifierTouchKey(key)) {
+            return;
+        }
+        if (isTopModifierLockCandidate(key)
+                && fixedTopRowsPageIndex != FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX) {
             rapidTapModifierCode = -1;
             rapidTapModifierCount = 0;
             rapidTapModifierLastTapMs = 0L;
@@ -4781,23 +6054,20 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTouchListener createTopPanelTouchListener(Key key) {
+        if (key != null && isTopModifierLockCandidate(key)) {
+            return createProTopStripModifierTouchListener(key, false);
+        }
         final float[] startX = new float[1];
         final float[] startY = new float[1];
         final boolean[] isDragging = new boolean[1];
         final boolean[] longPressConsumed = new boolean[1];
         final Runnable[] pendingModeLongPress = new Runnable[1];
-        final Runnable[] pendingModifierLongPress = new Runnable[1];
         final Runnable[] pendingMyFavoritesLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
         final int modeSlotIndex = key != null ? topModeSlotIndexFromKeyCode(key.code) : 0;
         final int myFavoritesSlotIndex = key != null ? key.topStripFavoriteSlotIndex : -1;
-        final boolean canSwipePanel = (key == null || key.allowTopPanelPagingGesture)
-                && !isTopModifierLockCandidate(key);
-        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
-        final boolean[] macCapsLongFired = new boolean[1];
-        final boolean[] macCapsDownActive = new boolean[1];
-        final long[] macCapsDownTime = new long[1];
+        final boolean canSwipePanel = key == null || key.allowTopPanelPagingGesture;
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
@@ -4806,19 +6076,10 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                         pendingModeLongPress[0] = null;
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingMyFavoritesLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
-                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
@@ -4831,28 +6092,6 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingModeLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingModeLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (isMacCapsMomentaryFromTopStripModifier(key)) {
-                        macCapsLongFired[0] = false;
-                        macCapsDownActive[0] = true;
-                        macCapsDownTime[0] = SystemClock.uptimeMillis();
-                        pendingMacCapsLongPress[0] =
-                                () -> {
-                                    macCapsLongFired[0] = true;
-                                    performKeyHapticFeedback(v);
-                                    pendingMacCapsLongPress[0] = null;
-                                };
-                        longPressHandler.postDelayed(
-                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
-                        sendMomentaryModifierClick(key);
-                    } else if (isTopModifierLockCandidate(key)) {
-                        pendingModifierLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            // Option A: local-Fn overlays on these cells still long-press lock the
-                            // underlying modifier state (Ctrl/Shift/Alt/Win).
-                            setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
-                            pendingModifierLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingModifierLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
                     } else if (myFavoritesSlotIndex >= 0) {
                         pendingMyFavoritesLongPress[0] = () -> {
                             longPressConsumed[0] = true;
@@ -4879,21 +6118,9 @@ public class CustomKeyboardView extends LinearLayout {
                             longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                             pendingModeLongPress[0] = null;
                         }
-                        if (pendingModifierLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                            pendingModifierLongPress[0] = null;
-                        }
                         if (pendingMyFavoritesLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                             pendingMyFavoritesLongPress[0] = null;
-                        }
-                        if (pendingMacCapsLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                            pendingMacCapsLongPress[0] = null;
-                        }
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
                         }
                     }
                     if (isDragging[0] && hasAnyTopPanelMode()) {
@@ -4909,69 +6136,20 @@ public class CustomKeyboardView extends LinearLayout {
                         longPressHandler.removeCallbacks(pendingModeLongPress[0]);
                         pendingModeLongPress[0] = null;
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
                     if (pendingMyFavoritesLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingMyFavoritesLongPress[0]);
                         pendingMyFavoritesLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                        }
                         finishTopPanelSwipe(totalDx, swipeThreshold);
                         return true;
-                    }
-                    if (macCapsDownActive[0] && key != null) {
-                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
-                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                            if (longPressConsumed[0]) {
-                                sendReleaseData();
-                                macCapsDownActive[0] = false;
-                                return true;
-                            }
-                            performKeyHapticFeedback(v);
-                            v.performClick();
-                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
-                            if (!macCapsLongFired[0]) {
-                                long delay =
-                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
-                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
-                                                : 0;
-                                repeatHandler.postDelayed(this::sendReleaseData, delay);
-                            } else {
-                                sendReleaseData();
-                            }
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
                     }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);
                         v.performClick();
-                        if (isTopModifierLockCandidate(key)) {
-                            if (isModifierLockedStateForKey(key)) {
-                                setModifierLockedStateForKey(key, false);
-                                return true;
-                            }
-                            sendMomentaryModifierClick(key);
-                            maybeShowModifierLockHint(key);
-                        } else {
-                            handleKeyPress(key);
-                        }
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        handleKeyPress(key);
+                        scheduleKeyboardTapRelease();
                     }
                     return true;
                 default:
@@ -4981,91 +6159,38 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTouchListener createFixedTopRowsTouchListener(Key key) {
+        // Page 1 + local Fn: Ctrl/Alt/Win/Shift cells show SCR LK / PRT SC / etc. and must use the
+        // normal HID path (handleKeyPress → sendHidKeyDataForKey). Keep the modifier listener only
+        // when there is no active Fn overlay, or for macOS Cmd→Caps momentary behavior.
+        if (key != null && isTopModifierLockCandidate(key)
+                && (resolveFixedTopLocalFnMapping(key) == null
+                        || isMacCapsMomentaryFromTopStripModifier(key))) {
+            return createProTopStripModifierTouchListener(key, true);
+        }
         final float[] startX = new float[1];
         final float[] startY = new float[1];
         final boolean[] isDragging = new boolean[1];
         final boolean[] longPressConsumed = new boolean[1];
-        final Runnable[] pendingModifierLongPress = new Runnable[1];
-        final Runnable[] pendingProfileSlotLongPress = new Runnable[1];
-        final Runnable[] pendingStripProfileSlotLongPress = new Runnable[1];
         final Runnable[] pendingFnStripEditLongPress = new Runnable[1];
         final int touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         final int swipeThreshold = dpToPx(56);
-        final boolean canSwipePanel = !isTopModifierLockCandidate(key);
-        final int profileSlotIndex = key != null ? topProfileSlotIndexFromKeyCode(key.code) : 0;
-        final int stripProfileSlotIndex = key != null ? topStripProfileSlotIndexFromKeyCode(key.code) : 0;
+        final boolean canSwipePanel = true;
         final boolean isLocalFnStripKey = isFixedTopLocalFnKey(key);
-        final Runnable[] pendingMacCapsLongPress = new Runnable[1];
-        final boolean[] macCapsLongFired = new boolean[1];
-        final boolean[] macCapsDownActive = new boolean[1];
-        final long[] macCapsDownTime = new long[1];
 
         return (v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
-                    if (pendingProfileSlotLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
-                        pendingProfileSlotLongPress[0] = null;
-                    }
-                    if (pendingStripProfileSlotLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
-                        pendingStripProfileSlotLongPress[0] = null;
-                    }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
-                    macCapsDownActive[0] = false;
                     longPressConsumed[0] = false;
+                    holdRepeatSuppressUpTap = false;
                     startX[0] = event.getRawX();
                     startY[0] = event.getRawY();
                     isDragging[0] = false;
                     cancelFixedTopRowsAnimations();
-                    if (isMacCapsMomentaryFromTopStripModifier(key)) {
-                        macCapsLongFired[0] = false;
-                        macCapsDownActive[0] = true;
-                        macCapsDownTime[0] = SystemClock.uptimeMillis();
-                        pendingMacCapsLongPress[0] =
-                                () -> {
-                                    macCapsLongFired[0] = true;
-                                    performKeyHapticFeedback(v);
-                                    pendingMacCapsLongPress[0] = null;
-                                };
-                        longPressHandler.postDelayed(
-                                pendingMacCapsLongPress[0], MAC_CAPS_LONG_PRESS_MS);
-                        sendMomentaryModifierClick(key);
-                    } else if (isTopModifierLockCandidate(key)) {
-                        pendingModifierLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            // Option A: local-Fn overlays on these cells still long-press lock the
-                            // underlying modifier state (Ctrl/Shift/Alt/Win).
-                            setModifierLockedStateForKey(key, !isModifierLockedStateForKey(key));
-                            pendingModifierLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingModifierLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (profileSlotIndex > 0) {
-                        pendingProfileSlotLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            showTopProfileSlotPicker(profileSlotIndex);
-                            pendingProfileSlotLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingProfileSlotLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (stripProfileSlotIndex > 0) {
-                        pendingStripProfileSlotLongPress[0] = () -> {
-                            longPressConsumed[0] = true;
-                            showTopStripProfileSlotPicker(stripProfileSlotIndex);
-                            pendingStripProfileSlotLongPress[0] = null;
-                        };
-                        longPressHandler.postDelayed(pendingStripProfileSlotLongPress[0], ALT_LONG_PRESS_TIMEOUT_MS);
-                    } else if (isLocalFnStripKey) {
+                    if (isLocalFnStripKey) {
                         pendingFnStripEditLongPress[0] = () -> {
                             longPressConsumed[0] = true;
                             performKeyHapticFeedback(v);
@@ -5073,6 +6198,9 @@ public class CustomKeyboardView extends LinearLayout {
                             pendingFnStripEditLongPress[0] = null;
                         };
                         longPressHandler.postDelayed(pendingFnStripEditLongPress[0], STRIP_EDIT_VIA_FN_MS);
+                    }
+                    if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
+                        startHoldKeyRepeatFromDown(key);
                     }
                     if (key != null) {
                         v.setPressed(true);
@@ -5083,32 +6211,15 @@ public class CustomKeyboardView extends LinearLayout {
                     float dy = event.getRawY() - startY[0];
                     if (canSwipePanel && !isDragging[0] && Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
                         isDragging[0] = true;
+                        if (holdKeyRepeatActive && holdKeyRepeatKey == key) {
+                            stopRepeatingDelete();
+                        }
                         if (key != null) {
                             v.setPressed(false);
-                        }
-                        if (pendingModifierLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                            pendingModifierLongPress[0] = null;
-                        }
-                        if (pendingProfileSlotLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
-                            pendingProfileSlotLongPress[0] = null;
-                        }
-                        if (pendingStripProfileSlotLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
-                            pendingStripProfileSlotLongPress[0] = null;
                         }
                         if (pendingFnStripEditLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                             pendingFnStripEditLongPress[0] = null;
-                        }
-                        if (pendingMacCapsLongPress[0] != null) {
-                            longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                            pendingMacCapsLongPress[0] = null;
-                        }
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
                         }
                     }
                     if (isDragging[0] && hasAnyFixedRowsPagerMode()) {
@@ -5120,77 +6231,30 @@ public class CustomKeyboardView extends LinearLayout {
                     if (key != null) {
                         v.setPressed(false);
                     }
-                    if (pendingModifierLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingModifierLongPress[0]);
-                        pendingModifierLongPress[0] = null;
-                    }
-                    if (pendingProfileSlotLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingProfileSlotLongPress[0]);
-                        pendingProfileSlotLongPress[0] = null;
-                    }
-                    if (pendingStripProfileSlotLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingStripProfileSlotLongPress[0]);
-                        pendingStripProfileSlotLongPress[0] = null;
+                    boolean stripSuppressTapUp = holdRepeatSuppressUpTap;
+                    if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
+                        stopRepeatingDelete();
                     }
                     if (pendingFnStripEditLongPress[0] != null) {
                         longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
                         pendingFnStripEditLongPress[0] = null;
                     }
-                    if (pendingMacCapsLongPress[0] != null) {
-                        longPressHandler.removeCallbacks(pendingMacCapsLongPress[0]);
-                        pendingMacCapsLongPress[0] = null;
-                    }
                     float totalDx = event.getRawX() - startX[0];
                     if (isDragging[0]) {
-                        if (macCapsDownActive[0]) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                        }
                         finishFixedTopRowsSwipe(totalDx, swipeThreshold);
+                        holdRepeatSuppressUpTap = false;
                         return true;
-                    }
-                    if (macCapsDownActive[0] && key != null) {
-                        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                            sendReleaseData();
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
-                        if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-                            if (longPressConsumed[0]) {
-                                sendReleaseData();
-                                macCapsDownActive[0] = false;
-                                return true;
-                            }
-                            performKeyHapticFeedback(v);
-                            v.performClick();
-                            long elapsed = SystemClock.uptimeMillis() - macCapsDownTime[0];
-                            if (!macCapsLongFired[0]) {
-                                long delay =
-                                        elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
-                                                ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
-                                                : 0;
-                                repeatHandler.postDelayed(this::sendReleaseData, delay);
-                            } else {
-                                sendReleaseData();
-                            }
-                            macCapsDownActive[0] = false;
-                            return true;
-                        }
                     }
                     if (event.getActionMasked() == MotionEvent.ACTION_UP && key != null && !longPressConsumed[0]) {
                         performKeyHapticFeedback(v);
                         v.performClick();
-                        if (isTopModifierLockCandidate(key)) {
-                            if (isModifierLockedStateForKey(key)) {
-                                setModifierLockedStateForKey(key, false);
-                                return true;
-                            }
-                            sendMomentaryModifierClick(key);
-                            maybeShowModifierLockHint(key);
-                        } else {
+                        if (!stripSuppressTapUp) {
                             handleKeyPress(key);
                         }
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
+                        holdRepeatSuppressUpTap = false;
+                    } else {
+                        holdRepeatSuppressUpTap = false;
                     }
                     return true;
                 default:
@@ -5755,11 +6819,27 @@ public class CustomKeyboardView extends LinearLayout {
                         || (key.code == 0xE1 && isShiftLeftLocked)
                         || (key.code == 0xE2 && isAltLeftLocked)
                         || (key.code == 0xE3 && isWinLeftLocked);
-                boolean keyLockedVisualState = isFixedTopLocalFnKey(key)
-                        ? fixedTopLocalFnLocked
-                        : (modifierLocked || isTopProfileSlotActive(key) || isTopStripProfileSlotActive(key));
-                applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
-                view.setSelected(keyLockedVisualState);
+                boolean keyLockedVisualState =
+                        isFixedTopLocalFnKey(key)
+                                ? fixedTopLocalFnLocked
+                                : (isTopModifierLockCandidate(key)
+                                        ? isProModifierCapVisualOn(key)
+                                        : modifierLocked);
+                if (isTopImeToggleKey(key)) {
+                    applyTopPanelImeToggleKeyCapBackground(view);
+                    view.setActivated(false);
+                    view.setSelected(false);
+                    if (view instanceof ImageButton) {
+                        applyTopImeToggleIconTint((ImageButton) view);
+                    } else if (view instanceof TextView) {
+                        TextView tv = (TextView) view;
+                        applyTopImeToggleLabelTypography(tv);
+                        applyTopImeToggleLabelTextColor(tv);
+                    }
+                } else {
+                    applyTopPanelKeyCapBackground(view, key, keyLockedVisualState);
+                    view.setSelected(keyLockedVisualState);
+                }
             }
             return;
         }
@@ -5877,6 +6957,10 @@ public class CustomKeyboardView extends LinearLayout {
                 gridLayout.addView(createExtraNumpadSplitPlusCell(params));
                 continue;
             }
+            if (shouldRenderExtraNumpadZeroWordmarkCell(entry)) {
+                gridLayout.addView(createExtraNumpadZeroWordmarkCell(entry, params));
+                continue;
+            }
             if (entry.key.iconResId != 0) {
                 ImageButton iconButton = new ImageButton(getContext());
                 applyFlatKeyStyle(iconButton);
@@ -5902,10 +6986,7 @@ public class CustomKeyboardView extends LinearLayout {
                             performKeyHapticFeedback(v);
                         }
                         if (event.getAction() == MotionEvent.ACTION_UP) {
-                            repeatHandler.postDelayed(() -> {
-                                sendReleaseData();
-                                Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
-                            }, 30);
+                            scheduleKeyboardTapRelease();
                         }
                         return false;
                     });
@@ -5932,10 +7013,7 @@ public class CustomKeyboardView extends LinearLayout {
                             performKeyHapticFeedback(v);
                         }
                         if (event.getAction() == MotionEvent.ACTION_UP) {
-                            repeatHandler.postDelayed(() -> {
-                                sendReleaseData();
-                                Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
-                            }, 30);
+                            scheduleKeyboardTapRelease();
                         }
                         return false;
                     });
@@ -5957,6 +7035,67 @@ public class CustomKeyboardView extends LinearLayout {
                 && entry.col == 6
                 && entry.rowSpan == 1
                 && entry.colSpan == 2;
+    }
+
+    /** Wide numpad 0: match KM Basic {@code fragment_basic_numpad} wordmark on {@code NUMPAD_0}. */
+    private boolean shouldRenderExtraNumpadZeroWordmarkCell(@Nullable ExtraGridKey entry) {
+        return entry != null
+                && entry.key != null
+                && entry.key.code == 0x62
+                && "0".equals(entry.key.label)
+                && entry.colSpan == 4
+                && entry.rowSpan == 1;
+    }
+
+    private View createExtraNumpadZeroWordmarkCell(ExtraGridKey entry, GridLayout.LayoutParams params) {
+        Context ctx = getContext();
+        FrameLayout cell = new FrameLayout(ctx);
+        applyFlatKeyStyle(cell);
+        cell.setLayoutParams(params);
+        cell.setBackgroundResource(R.drawable.function_button_background);
+        cell.setClickable(false);
+
+        ImageView brand = new ImageView(ctx);
+        Resources res = ctx.getResources();
+        int padV = dpToPx(4);
+        // Match fragment_basic_numpad NUMPAD_0 inner image padding (6dp horizontal, 4dp vertical).
+        int padH = dpToPx(6);
+        brand.setPaddingRelative(padH, padV, padH, padV);
+        int maxH = res.getDimensionPixelSize(R.dimen.km_basic_numpad_zero_wordmark_max_height);
+        int maxW = res.getDimensionPixelSize(R.dimen.km_basic_numpad_zero_wordmark_max_width);
+        brand.setMaxWidth(maxW);
+        brand.setMaxHeight(maxH);
+        brand.setAdjustViewBounds(true);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+        brand.setColorFilter(
+                ContextCompat.getColor(ctx, R.color.basic_key_label_color), PorterDuff.Mode.SRC_IN);
+        brand.setContentDescription(ctx.getString(R.string.kb_basic_numpad_zero_desc));
+        brand.setDuplicateParentStateEnabled(true);
+        FrameLayout.LayoutParams logoLp =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER);
+        brand.setLayoutParams(logoLp);
+        brand.setTag(R.id.tag_custom_keyboard_extra_cell_key, entry.key);
+        if (shouldRepeatOnLongPress(entry.key)) {
+            attachKeyListeners(brand, entry.key);
+        } else {
+            brand.setOnClickListener(v -> handleKeyPress(entry.key));
+            brand.setOnTouchListener(
+                    (v, event) -> {
+                        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                            performKeyHapticFeedback(v);
+                        }
+                        if (event.getAction() == MotionEvent.ACTION_UP) {
+                            scheduleKeyboardTapRelease();
+                        }
+                        return false;
+                    });
+        }
+        cell.addView(brand);
+        return cell;
     }
 
     private View createExtraNumpadSplitPlusCell(GridLayout.LayoutParams params) {
@@ -5991,10 +7130,7 @@ public class CustomKeyboardView extends LinearLayout {
                     performKeyHapticFeedback(v);
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
-                    repeatHandler.postDelayed(() -> {
-                        sendReleaseData();
-                        Log.d(TAG, "Sent key release for extra key: " + plusKey.label);
-                    }, 30);
+                    scheduleKeyboardTapRelease();
                 }
                 return false;
             });
@@ -6024,10 +7160,7 @@ public class CustomKeyboardView extends LinearLayout {
                     performKeyHapticFeedback(v);
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
-                    repeatHandler.postDelayed(() -> {
-                        sendReleaseData();
-                        Log.d(TAG, "Sent key release for extra key: " + spaceKey.label);
-                    }, 30);
+                    scheduleKeyboardTapRelease();
                 }
                 return false;
             });
@@ -6219,18 +7352,12 @@ public class CustomKeyboardView extends LinearLayout {
         return (c >= 0x3A && c <= 0x45) || c == 0x2E;
     }
 
-    /** Page 2 (Shortcut Hub) fixed-row keys: profile slots + punctuation grid. */
+    /** Page 2 (Shortcut Hub) fixed-row keys: punctuation grid (and trailing local Fn). */
     private boolean isFixedTopRowsPage2StripKey(Key key) {
         if (key == null) {
             return false;
         }
         int c = key.code;
-        if (c >= KEY_TOP_PROFILE_SLOT_1 && c <= KEY_TOP_PROFILE_SLOT_7) {
-            return true;
-        }
-        if (c >= KEY_TOP_STRIP_PROFILE_SLOT_1 && c <= KEY_TOP_STRIP_PROFILE_SLOT_6) {
-            return true;
-        }
         switch (c) {
             case 0x1F: // @
             case 0x20: // #
@@ -6322,9 +7449,6 @@ public class CustomKeyboardView extends LinearLayout {
         if (key == null || !isFixedTopRowKey(key)
                 || isFixedTopLocalFnKey(key)
                 || isTopModeSlotKey(key)) {
-            return null;
-        }
-        if (key.stripSlotPage == 3) {
             return null;
         }
         FnMapping stripFn = rows23StripOverlayOverrideMapping(key);
@@ -6442,7 +7566,7 @@ public class CustomKeyboardView extends LinearLayout {
             @Nullable FnMapping activeOverlay,
             boolean renderAsActionLabel,
             int panelPageIndex) {
-        if (k == null || isFixedTopLocalFnKey(k) || isTopProfileSlotKey(k) || isTopStripProfileSlotKey(k)) {
+        if (k == null || isFixedTopLocalFnKey(k)) {
             return null;
         }
         int effectivePage = (k.stripSlotPage >= 0) ? k.stripSlotPage : panelPageIndex;
@@ -6656,6 +7780,9 @@ public class CustomKeyboardView extends LinearLayout {
 
     public void setPort(UsbSerialPort port) {
         this.port = port;
+        if (port == null) {
+            clearProChordAndHoldLockPopupUiState();
+        }
         Log.d(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
     }
 
@@ -6664,28 +7791,34 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public void sendReleaseData() {
-        new Thread(() -> {
-            String releaseSendMSData = "57AB00020800000000000000000C";
-            if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                try {
-                    byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                    Thread.sleep(10);
-                    bluetoothService.sendData(releaseSendKBDataBytes);
-                    Log.d(TAG, "Sent Bluetooth release data");
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
-                }
-            } else if (port != null) {
-                try {
-                    byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                    Thread.sleep(10);
-                    port.write(releaseSendKBDataBytes, 20);
-                    Log.d(TAG, "Sent USB release data");
-                } catch (IOException | InterruptedException e) {
-                    Log.e(TAG, "Error sending USB release data: " + e.getMessage());
-                }
-            }
-        }).start();
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        logKmProTouch(
+                "sendReleaseData usbPort="
+                        + (port != null)
+                        + " btBound="
+                        + isServiceBound
+                        + " btConn="
+                        + (bluetoothService != null && bluetoothService.isConnected()));
+        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
+        Log.d(TAG, "Sent keyboard release (all keys)");
+        post(this::reassertKeyboardAfterHidRelease);
+    }
+
+    /** Same as {@link #scheduleKeyboardTapRelease(long)} with the default post-tap delay. */
+    private void scheduleKeyboardTapRelease() {
+        scheduleKeyboardTapRelease(30L);
+    }
+
+    /**
+     * Cancels any pending coalesced or gaming delayed release, then schedules one all-keys-released
+     * (mirrors KM Basic {@code scheduleReleaseAfterPhysicalKey}).
+     */
+    private void scheduleKeyboardTapRelease(long delayMs) {
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        logKmProTouch("scheduleKeyboardTapRelease delayMs=" + delayMs);
+        repeatHandler.postDelayed(keyboardTapReleaseRunnable, delayMs);
     }
 
     private int parseHex(String hex) {
@@ -6704,6 +7837,11 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void handleKeyPress(Key key) {
         Log.d(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
+        logKmProTouch(
+                "handleKeyPress enter label="
+                        + (key != null ? key.label : "null")
+                        + " code=0x"
+                        + (key != null ? Integer.toHexString(key.code) : "0"));
 
         int topSlot = topModeSlotIndexFromKeyCode(key.code);
         if (topSlot > 0) {
@@ -6715,46 +7853,15 @@ public class CustomKeyboardView extends LinearLayout {
             return;
         }
 
-        int stripProfileSlot = topStripProfileSlotIndexFromKeyCode(key.code);
-        if (stripProfileSlot > 0) {
-            Context ctx = getContext();
-            if (ctx != null) {
-                Rows23StripProfileManager mgr = new Rows23StripProfileManager(ctx, shortcutProfileManager);
-                String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
-                        ctx, stripProfileSlot, mgr);
-                if (id != null && !id.trim().isEmpty() && mgr.getProfileById(id) != null) {
-                    mgr.setActiveProfileId(id);
-                }
-                refreshProfileSlotStrip();
-            }
-            return;
-        }
-
-        int profileSlot = topProfileSlotIndexFromKeyCode(key.code);
-        if (profileSlot > 0) {
-            Context ctx = getContext();
-            if (ctx != null) {
-                reloadShortcutProfileManagerFromPrefs();
-                if (splitPartner != null) {
-                    splitPartner.reloadShortcutProfileManagerFromPrefs();
-                }
-                String id = TopShortcutProfileSlotPrefs.getResolvedProfileIdForSlot(
-                        ctx, profileSlot, shortcutProfileManager);
-                if (shortcutProfileManager.getProfileById(id) != null) {
-                    shortcutProfileManager.setActiveProfile(id);
-                }
-                refreshProfileSlotStrip();
-            }
-            return;
-        }
-
-        if (isTopImeToggleKey(key)) {
-            toggleSystemImeCaptureFromUser();
-            return;
-        }
-
         if (isTopShortcutToggleKey(key)) {
             cycleTopShortcutDisplayMode();
+            return;
+        }
+
+        if (key.code == KEY_IME_TOGGLE) {
+            if (onKmProSecondaryLayoutToggleListener != null) {
+                onKmProSecondaryLayoutToggleListener.onRequestToggle(this);
+            }
             return;
         }
 
@@ -6805,9 +7912,14 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
 
-        // Fn + slash: toggles long-press alternates/hints (must run before generic shortcut send path).
-        if (isFnLocked && key.code == 0x38) {
+        // Fn latched: main keyboard left Shift toggles long-press alternates/hints (before shortcut path).
+        if (isFnAlternateHintsToggleKey(key)) {
             toggleKeyboardAlternatesHintsFromUser();
+            return;
+        }
+
+        // QWERTY-row Ctrl/Shift/Alt/Win: dedicated touch listener (sticky / chord + hold-lock).
+        if (isProBuiltInModifierTouchKey(key)) {
             return;
         }
 
@@ -6873,12 +7985,14 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
 
-        if (key.code == KEY_MODE_FN
-            || key.code == 0xE0
-            || key.code == 0xE1
-            || key.code == 0xE2
-            || key.code == 0xE3) {
+        if (key.code == KEY_MODE_FN) {
             return;
+        }
+        if (key.code == 0xE0 || key.code == 0xE1 || key.code == 0xE2 || key.code == 0xE3) {
+            FnMapping stripFnOverlay = resolveFixedTopLocalFnMapping(key);
+            if (stripFnOverlay == null || isMacCapsMomentaryFromTopStripModifier(key)) {
+                return;
+            }
         }
 
         sendHidKeyDataForKey(key);
@@ -6888,6 +8002,23 @@ public class CustomKeyboardView extends LinearLayout {
      * Sends one HID keyboard report for {@code key} (Fn layers, locked modifiers, extra numpad),
      * with no profile/mode/UI side effects.
      */
+    /**
+     * One logical keystroke for gaming repeat: HID key report then all-keys-released after a short delay.
+     * Without the release, repeated {@link #sendHidKeyDataForKey} calls keep the same key down and the
+     * host does not see separate presses (unlike KM Basic {@code tapKey}).
+     */
+    private void sendHidKeyTapForGamingRepeat(Key key) {
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        logKmProTouch(
+                "sendHidKeyTapForGamingRepeat key="
+                        + (key != null ? key.label : "null")
+                        + " code=0x"
+                        + (key != null ? Integer.toHexString(key.code) : "0"));
+        sendHidKeyDataForKey(key);
+        repeatHandler.postDelayed(gamingTapReleaseRunnable, 30);
+    }
+
     private void sendHidKeyDataForKey(Key key) {
         if (key == null) {
             return;
@@ -6898,18 +8029,22 @@ public class CustomKeyboardView extends LinearLayout {
                 ? fixedTopLocalFn
                 : (extraNumpadFn != null ? extraNumpadFn : resolveFnMapping(key));
         int effectiveKeyCode = fnMapping != null ? fnMapping.keyCode : key.code;
-        boolean effectiveShiftLocked = isShiftLeftLocked;
         int fnModifierMask = fnMapping != null ? fnMapping.modifierMask : 0;
-        if (isBackspaceKey(key) && isFnLocked) {
-            // Fn+Backspace switches to forward delete behavior.
+        // Forward delete: Fn+Backspace (layout overlay) or Shift+Backspace (shift cap shows Del).
+        boolean backspaceForwardDelete = isBackspaceKey(key) && (isFnLocked || isShiftLeftLocked);
+        if (backspaceForwardDelete) {
             effectiveKeyCode = 0x4C;
         }
+        boolean effectiveShiftLocked = isShiftLeftLocked && !backspaceForwardDelete;
 
         int combinedValue = 0;
         combinedValue += isCtrlLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl")) : 0;
         combinedValue += effectiveShiftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
         combinedValue += isAltLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt")) : 0;
         combinedValue += isWinLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win")) : 0;
+        combinedValue += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        combinedValue += isAltRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR")) : 0;
+        combinedValue += isWinRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR")) : 0;
         // Extra numpad Fn mapping replaces the keycap meaning (e.g. Tab→Save); do not add base requiresShift
         // or we would send Shift+Tab instead of Tab, Shift+# alongside Fn modifiers, etc.
         if (key.requiresShift && extraNumpadFn == null) {
@@ -6957,7 +8092,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (!gamingRepeatActive || gamingRepeatKey != key) {
                         return;
                     }
-                    sendHidKeyDataForKey(key);
+                    sendHidKeyTapForGamingRepeat(key);
                     repeatHandler.postDelayed(this, repeatDelay);
                 }
             };
@@ -6977,6 +8112,7 @@ public class CustomKeyboardView extends LinearLayout {
             repeatHandler.removeCallbacks(gamingRepeatRunnable);
             gamingRepeatRunnable = null;
         }
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
     }
 
     /** Fn-layer numpad 0 → three keypad-zero presses (with release between each). */
@@ -7050,31 +8186,77 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyData(int modifiers, int keyCode) {
-        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, modifiers, keyCode);
+        int m = mergeHoldLockedBootMask(modifiers);
+        m = mergeChordHeldBootMask(m);
+        logKmProTouch(
+                "sendKeyData mod=0x"
+                        + Integer.toHexString(m)
+                        + " key=0x"
+                        + Integer.toHexString(keyCode)
+                        + " usb="
+                        + (port != null)
+                        + " btBound="
+                        + isServiceBound
+                        + " btConn="
+                        + (bluetoothService != null && bluetoothService.isConnected()));
+        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, m, keyCode);
     }
 
-    private void startRepeatingDelete(Key key) {
-        if (isRepeating) return;
-        isRepeating = true;
-
-        repeatRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isRepeating) {
-                    handleKeyPress(key);
-                    repeatHandler.postDelayed(this, 10);
-                }
+    /**
+     * Begins hold-to-repeat using system key-repeat timing; each tick sends a tap-like HID pair
+     * so the host sees distinct presses (same idea as {@link #sendHidKeyTapForGamingRepeat}).
+     */
+    private void startHoldKeyRepeatFromDown(Key key) {
+        Context ctx = getContext();
+        if (key == null || ctx == null) {
+            return;
+        }
+        stopGamingKeyRepeat();
+        stopHoldKeyRepeatOnly();
+        holdKeyRepeatKey = key;
+        holdKeyRepeatActive = true;
+        holdRepeatSuppressUpTap = false;
+        ViewConfiguration vc = ViewConfiguration.get(ctx);
+        final int initialDelay = vc.getKeyRepeatTimeout();
+        final int repeatDelay = Math.max(vc.getKeyRepeatDelay(), 50);
+        holdKeyRepeatStarterRunnable = () -> {
+            if (!holdKeyRepeatActive || holdKeyRepeatKey != key) {
+                return;
             }
+            holdKeyRepeatStarterRunnable = null;
+            holdKeyRepeatRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (!holdKeyRepeatActive || holdKeyRepeatKey != key) {
+                        return;
+                    }
+                    sendHidKeyTapForGamingRepeat(key);
+                    holdRepeatSuppressUpTap = true;
+                    repeatHandler.postDelayed(this, repeatDelay);
+                }
+            };
+            repeatHandler.post(holdKeyRepeatRunnable);
         };
+        repeatHandler.postDelayed(holdKeyRepeatStarterRunnable, initialDelay);
+    }
 
-        repeatHandler.post(repeatRunnable);
+    /** Stops hold-repeat runnables without clearing {@link #holdRepeatSuppressUpTap} (caller reads it first on UP). */
+    private void stopHoldKeyRepeatOnly() {
+        holdKeyRepeatActive = false;
+        holdKeyRepeatKey = null;
+        if (holdKeyRepeatStarterRunnable != null) {
+            repeatHandler.removeCallbacks(holdKeyRepeatStarterRunnable);
+            holdKeyRepeatStarterRunnable = null;
+        }
+        if (holdKeyRepeatRunnable != null) {
+            repeatHandler.removeCallbacks(holdKeyRepeatRunnable);
+            holdKeyRepeatRunnable = null;
+        }
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
     }
 
     private void stopRepeatingDelete() {
-        isRepeating = false;
-        if (repeatRunnable != null) {
-            repeatHandler.removeCallbacks(repeatRunnable);
-        }
+        stopHoldKeyRepeatOnly();
     }
 
     private int dpToPx(int dp) {
@@ -7094,740 +8276,14 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private int resolveThemeTextColor() {
-        int nightMode = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        return nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES ? 0xFFFFFFFF : 0xFF000000;
-    }
-
-    private void toggleSystemImeCaptureFromUser() {
-        boolean next = !systemImeCaptureMode;
-        if (!next) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        systemImeCaptureMode = next;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_SYSTEM_IME_CAPTURE, next)
-                    .apply();
-        }
-        // Landscape split: the visible top strip is bound from the partner (left) view.
-        if (splitPartner != null) {
-            splitPartner.applyImeCaptureFromPartner(next);
-        }
-        rebuildTopShortcutPanels();
-        syncTopPanelViewportContent();
-        updateKeyboard();
-        if (onImeCaptureModeChangedListener != null) {
-            onImeCaptureModeChangedListener.onImeCaptureModeChanged(this, next);
-        }
-        if (splitPart == SPLIT_NONE && next) {
-            postShowLocalImeSoftKeyboard();
-        }
-    }
-
-    private void postShowLocalImeSoftKeyboard() {
-        removeCallbacks(showLocalImeSoftKeyboardMainRunnable);
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        post(showLocalImeSoftKeyboardMainRunnable);
-    }
-
-    private void runShowLocalImeSoftKeyboardMain() {
-        if (imeCaptureEdit == null || getContext() == null) {
-            return;
-        }
-        imeCaptureEdit.requestFocus();
-        InputMethodManager imm =
-                (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(imeCaptureEdit, InputMethodManager.SHOW_IMPLICIT);
-        }
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        postDelayed(showLocalImeSoftKeyboardRetryRunnable, SHOW_LOCAL_IME_RETRY_DELAY_MS);
-    }
-
-    private void runShowLocalImeSoftKeyboardRetry() {
-        if (imeCaptureEdit == null || getContext() == null) {
-            return;
-        }
-        InputMethodManager imm =
-                (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(imeCaptureEdit, InputMethodManager.SHOW_IMPLICIT);
-        }
-    }
-
-    /** Dismiss system IME using this view's window token (compose field may already be detached). */
-    private void hideSoftInputUsingKeyboardWindowToken() {
         Context ctx = getContext();
         if (ctx == null) {
-            return;
+            return 0xFF212121;
         }
-        android.os.IBinder token = getWindowToken();
-        if (token == null) {
-            return;
-        }
-        InputMethodManager imm =
-                (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.hideSoftInputFromWindow(token, 0);
-        }
+        return ContextCompat.getColor(ctx, R.color.text_primary);
     }
 
-    private void detachLocalImeFieldQuiet() {
-        removeCallbacks(showLocalImeSoftKeyboardMainRunnable);
-        removeCallbacks(showLocalImeSoftKeyboardRetryRunnable);
-        boolean wasExpanded = imeSubComposeExpanded;
-        imeSubComposeCancelSend.set(true);
-        if (imeCaptureEdit != null && getContext() != null) {
-            InputMethodManager imm =
-                    (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(imeCaptureEdit.getWindowToken(), 0);
-            }
-            ImeTextForwarder.detach(imeCaptureEdit);
-            imeCaptureEdit = null;
-        }
-        imeCaptureEditorRow = null;
-        imeSubComposeExpandButton = null;
-        imeCaptureToolbar = null;
-        imeCaptureUndoButton = null;
-        imeCaptureClearButton = null;
-        imeCaptureUndoSnapshot = null;
-        imeCaptureTouchpadButton = null;
-        imeSubComposeModeToggle = null;
-        imeCaptureSendButton = null;
-        imeCaptureDirectModeHint = null;
-        imeCaptureAccentDivider = null;
-        imeSubComposeExpanded = false;
-        if (wasExpanded && onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, false);
-        }
-    }
 
-    private boolean isImeSubComposePortraitContext() {
-        Context ctx = getContext();
-        return ctx != null
-                && splitPart == SPLIT_NONE
-                && ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
-    }
-
-    private void collapseImeSubComposePersistedForChrome() {
-        if (!imeSubComposeExpanded) {
-            return;
-        }
-        imeSubComposeExpanded = false;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false)
-                    .apply();
-        }
-        if (onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, false);
-        }
-    }
-
-    private void applyImeTopStripVisibilityForSubCompose() {
-        if (topPanelRootContainer == null && topPanelViewport == null) {
-            return;
-        }
-        View target = topPanelRootContainer != null ? topPanelRootContainer : topPanelViewport;
-        if (!(target.getLayoutParams() instanceof LayoutParams)) {
-            return;
-        }
-        LayoutParams lp = (LayoutParams) target.getLayoutParams();
-        if (imeSubComposeExpanded) {
-            target.setVisibility(GONE);
-            lp.height = 0;
-            lp.weight = 0f;
-        } else {
-            target.setVisibility(VISIBLE);
-            lp.height = 0;
-            lp.weight = IME_SINGLE_TOP_STRIP_WEIGHT;
-        }
-        target.setLayoutParams(lp);
-    }
-
-    private void persistImeSubComposeExpanded(boolean expanded) {
-        imeSubComposeExpanded = expanded;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, expanded)
-                    .apply();
-        }
-    }
-
-    private void onImeSubComposeExpandToggleClicked() {
-        if (!isImeSubComposePortraitContext()) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            return;
-        }
-        boolean next = !imeSubComposeExpanded;
-        persistImeSubComposeExpanded(next);
-        applyImeTopStripVisibilityForSubCompose();
-        refreshImeSubComposeEditorRowWeight();
-        refreshImeSubComposeExpandIcon();
-        updateImeCaptureToolbarState();
-        if (onImeSubComposeChromeListener != null) {
-            onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(this, next);
-        }
-    }
-
-    private void refreshImeSubComposeEditorRowWeight() {
-        if (imeCaptureEditorRow == null) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            imeCaptureEditorRow.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(1), 0f));
-            refreshImeSubComposeToolbarRowWeight();
-            return;
-        }
-        LayoutParams lp = (LayoutParams) imeCaptureEditorRow.getLayoutParams();
-        lp.height = 0;
-        lp.weight = imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
-        imeCaptureEditorRow.setLayoutParams(lp);
-        refreshImeSubComposeToolbarRowWeight();
-    }
-
-    private void refreshImeSubComposeToolbarRowWeight() {
-        if (imeCaptureToolbar == null) {
-            return;
-        }
-        if (isImeSubComposePortraitContext()) {
-            LayoutParams lp = (LayoutParams) imeCaptureToolbar.getLayoutParams();
-            lp.height = dpToPx(IME_COMPOSE_TOOLBAR_ROW_FIXED_HEIGHT_DP);
-            lp.weight = 0f;
-            imeCaptureToolbar.setLayoutParams(lp);
-            return;
-        }
-        float w = IME_COMPOSE_TOOLBAR_ROW_WEIGHT;
-        if (!imeSubComposeDirectHidMode && imeSubComposeExpanded) {
-            w = IME_COMPOSE_TOOLBAR_ROW_WEIGHT_EXPANDED;
-        }
-        LayoutParams lp = (LayoutParams) imeCaptureToolbar.getLayoutParams();
-        lp.height = 0;
-        lp.weight = w;
-        imeCaptureToolbar.setLayoutParams(lp);
-    }
-
-    private void refreshImeSubComposeExpandIcon() {
-        if (imeSubComposeExpandButton == null || getContext() == null) {
-            return;
-        }
-        if (imeSubComposeExpanded) {
-            imeSubComposeExpandButton.setImageResource(R.drawable.ic_ime_sub_compose_collapse_24);
-            imeSubComposeExpandButton.setContentDescription(getContext().getString(R.string.ime_sub_compose_collapse));
-        } else {
-            imeSubComposeExpandButton.setImageResource(R.drawable.ic_ime_sub_compose_expand_24);
-            imeSubComposeExpandButton.setContentDescription(getContext().getString(R.string.ime_sub_compose_expand));
-        }
-        imeSubComposeExpandButton.setColorFilter(resolveThemeTextColor());
-    }
-
-    private void persistImeSubComposeDirectHid(boolean direct) {
-        imeSubComposeDirectHidMode = direct;
-        Context ctx = getContext();
-        if (ctx != null) {
-            ctx.getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit()
-                    .putBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, direct)
-                    .apply();
-        }
-    }
-
-    private void notifyImeSubComposeDirectHidModeChanged() {
-        if (onImeSubComposeChromeListener == null || !isImeSubComposePortraitContext()) {
-            return;
-        }
-        onImeSubComposeChromeListener.onImeSubComposeDirectHidModeChanged(this, imeSubComposeDirectHidMode);
-    }
-
-    private void onImeSubComposeModeToggleClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending) {
-            return;
-        }
-        boolean next = !imeSubComposeDirectHidMode;
-        if (next) {
-            collapseImeSubComposePersistedForChrome();
-        }
-        persistImeSubComposeDirectHid(next);
-        ImeTextForwarder.detach(imeCaptureEdit);
-        imeCaptureEdit.setText("");
-        if (next) {
-            ImeTextForwarder.attach(
-                    imeCaptureEdit,
-                    this::peekConnectionManager,
-                    this::getTargetOs,
-                    imeTextExecutor);
-        }
-        applyImeSubComposeDirectHidUi();
-        updateImeCaptureToolbarState();
-        post(this::notifyImeSubComposeDirectHidModeChanged);
-        if (next) {
-            post(this::postShowLocalImeSoftKeyboard);
-        }
-    }
-
-    private void refreshImeSubComposeModeToggleIcon() {
-        if (imeSubComposeModeToggle == null || getContext() == null) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_direct_hid_road_24);
-            imeSubComposeModeToggle.setContentDescription(
-                    getContext().getString(R.string.ime_sub_compose_mode_toggle_compose));
-        } else {
-            imeSubComposeModeToggle.setImageResource(R.drawable.ic_ime_compose_mode_note_24);
-            imeSubComposeModeToggle.setContentDescription(
-                    getContext().getString(R.string.ime_sub_compose_mode_toggle_direct));
-        }
-        imeSubComposeModeToggle.setColorFilter(resolveThemeTextColor());
-    }
-
-    private void setImeToolbarCellWeight(View v, int keyMargin, float weight) {
-        if (v == null) {
-            return;
-        }
-        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) v.getLayoutParams();
-        lp.width = 0;
-        lp.height = LayoutParams.MATCH_PARENT;
-        lp.weight = weight;
-        lp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-        v.setLayoutParams(lp);
-    }
-
-    private void applyImeSubComposeDirectHidUi() {
-        if (!isImeSubComposePortraitContext() || imeCaptureToolbar == null || imeCaptureEdit == null) {
-            return;
-        }
-        int keyMargin = dpToPx(KEY_OUTER_MARGIN_DP);
-        if (imeSubComposeDirectHidMode) {
-            collapseImeSubComposePersistedForChrome();
-            applyImeTopStripVisibilityForSubCompose();
-
-            // Stay VISIBLE so InputMethodManager can show the soft keyboard (INVISIBLE often blocks IME).
-            // The editor row is ~1dp tall in Direct HID; toolbar hint carries user-facing copy.
-            imeCaptureEdit.setHint("");
-            imeCaptureEdit.setVisibility(VISIBLE);
-            if (imeSubComposeExpandButton != null) {
-                imeSubComposeExpandButton.setVisibility(GONE);
-            }
-            if (imeCaptureAccentDivider != null) {
-                imeCaptureAccentDivider.setVisibility(GONE);
-            }
-
-            imeCaptureUndoButton.setVisibility(GONE);
-            imeCaptureClearButton.setVisibility(GONE);
-            imeCaptureSendButton.setVisibility(GONE);
-            imeCaptureDirectModeHint.setVisibility(VISIBLE);
-
-            setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 5f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 0f);
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 0f);
-        } else {
-            applyImeTopStripVisibilityForSubCompose();
-            imeCaptureEdit.setHint(R.string.ime_capture_hint);
-            imeCaptureEdit.setVisibility(VISIBLE);
-            if (imeSubComposeExpandButton != null) {
-                imeSubComposeExpandButton.setVisibility(VISIBLE);
-            }
-            if (imeCaptureAccentDivider != null) {
-                imeCaptureAccentDivider.setVisibility(VISIBLE);
-            }
-
-            imeCaptureUndoButton.setVisibility(VISIBLE);
-            imeCaptureClearButton.setVisibility(VISIBLE);
-            imeCaptureSendButton.setVisibility(VISIBLE);
-            imeCaptureDirectModeHint.setVisibility(GONE);
-
-            setImeToolbarCellWeight(imeCaptureTouchpadButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeSubComposeModeToggle, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureUndoButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureClearButton, keyMargin, 1f);
-            setImeToolbarCellWeight(imeCaptureSendButton, keyMargin, 3f);
-            setImeToolbarCellWeight(imeCaptureDirectModeHint, keyMargin, 0f);
-        }
-        refreshImeSubComposeEditorRowWeight();
-        refreshImeSubComposeModeToggleIcon();
-        imeCaptureToolbar.requestLayout();
-    }
-
-    @Nullable
-    private Integer resolveImeCaptureSendBlockedReason(
-            @Nullable ConnectionManager connectionManager,
-            String text) {
-        return ImeComposeSendGate.resolveSendBlockedReasonResId(connectionManager, text);
-    }
-
-    private void updateImeCaptureToolbarState() {
-        if (imeCaptureEdit == null || imeCaptureClearButton == null || imeCaptureSendButton == null) {
-            return;
-        }
-        if (imeSubComposeDirectHidMode) {
-            ConnectionManager cm0 = peekConnectionManager();
-            boolean connected0 = cm0 != null && cm0.isConnected();
-            if (imeCaptureTouchpadButton != null) {
-                imeCaptureTouchpadButton.setEnabled(!imeSubComposeSending && connected0);
-                imeCaptureTouchpadButton.setAlpha(imeCaptureTouchpadButton.isEnabled() ? 1f : 0.45f);
-            }
-            if (imeSubComposeModeToggle != null) {
-                imeSubComposeModeToggle.setEnabled(!imeSubComposeSending);
-                imeSubComposeModeToggle.setAlpha(imeSubComposeModeToggle.isEnabled() ? 1f : 0.45f);
-            }
-            return;
-        }
-        String t = imeCaptureEdit.getText() != null ? imeCaptureEdit.getText().toString() : "";
-        ConnectionManager cm = peekConnectionManager();
-        Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, t);
-
-        if (imeCaptureUndoButton != null) {
-            boolean canUndo =
-                    !imeSubComposeSending && imeCaptureUndoSnapshot != null && !imeCaptureUndoSnapshot.isEmpty();
-            imeCaptureUndoButton.setEnabled(canUndo);
-            imeCaptureUndoButton.setAlpha(canUndo ? 1f : 0.45f);
-        }
-
-        boolean canClear = !imeSubComposeSending && !t.isEmpty();
-        imeCaptureClearButton.setEnabled(canClear);
-        imeCaptureClearButton.setAlpha(canClear ? 1f : 0.45f);
-
-        if (imeSubComposeSending) {
-            imeCaptureSendButton.setImageResource(R.drawable.ic_compose_stop_24);
-            imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
-            imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_stop));
-            imeCaptureSendButton.setEnabled(true);
-            imeCaptureSendButton.setAlpha(1f);
-        } else {
-            imeCaptureSendButton.setImageResource(R.drawable.ic_compose_send_24);
-            imeCaptureSendButton.setColorFilter(resolveThemeTextColor());
-            imeCaptureSendButton.setContentDescription(getContext().getString(R.string.compose_send));
-            boolean canSend = blockedReasonResId == null;
-            // Keep Send tappable even when blocked so we can explain why sending is not allowed.
-            imeCaptureSendButton.setEnabled(true);
-            imeCaptureSendButton.setAlpha(canSend ? 1f : 0.45f);
-        }
-    }
-
-    private void onImeCaptureClearClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending) {
-            return;
-        }
-        CharSequence cur = imeCaptureEdit.getText();
-        if (cur != null && cur.length() > 0) {
-            imeCaptureUndoSnapshot = cur.toString();
-        }
-        imeCaptureEdit.setText("");
-        updateImeCaptureToolbarState();
-    }
-
-    private void onImeCaptureUndoClicked() {
-        if (imeCaptureEdit == null || imeSubComposeSending || imeCaptureUndoSnapshot == null) {
-            return;
-        }
-        imeCaptureEdit.setText(imeCaptureUndoSnapshot);
-        imeCaptureUndoSnapshot = null;
-        updateImeCaptureToolbarState();
-    }
-
-    private void onImeCaptureSendClicked() {
-        if (imeCaptureEdit == null) {
-            return;
-        }
-        if (imeSubComposeSending) {
-            imeSubComposeCancelSend.set(true);
-            return;
-        }
-        AppCompatActivity act = unwrapAppCompatActivity(getContext());
-        if (!(act instanceof MainActivity)) {
-            return;
-        }
-        MainActivity ma = (MainActivity) act;
-        ConnectionManager cm = ma.getConnectionManager();
-        String text = imeCaptureEdit.getText() != null ? imeCaptureEdit.getText().toString() : "";
-        Integer blockedReasonResId = resolveImeCaptureSendBlockedReason(cm, text);
-        if (blockedReasonResId != null) {
-            int duration = blockedReasonResId == R.string.compose_ascii_warning
-                    ? Toast.LENGTH_LONG
-                    : Toast.LENGTH_SHORT;
-            Toast.makeText(getContext(), blockedReasonResId, duration).show();
-            return;
-        }
-
-        imeSubComposeCancelSend.set(false);
-        imeSubComposeSending = true;
-        imeCaptureEdit.setEnabled(false);
-        setImeCaptureToolbarEnabledWhileSending(false);
-        updateImeCaptureToolbarState();
-
-        final String targetOs = ma.getTargetOs();
-        final int sentLen = text.length();
-
-        imeSubComposeSendExecutor.execute(() -> {
-            HidTextKeystrokeSender.Result result;
-            try {
-                result = HidTextKeystrokeSender.send(text, cm, targetOs, false, imeSubComposeCancelSend);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                result = HidTextKeystrokeSender.Result.CANCELLED;
-            }
-            HidTextKeystrokeSender.Result finalResult = result;
-            imeSubComposeMainHandler.post(() -> {
-                imeSubComposeSending = false;
-                if (imeCaptureEdit != null) {
-                    imeCaptureEdit.setEnabled(true);
-                }
-                setImeCaptureToolbarEnabledWhileSending(true);
-                updateImeCaptureToolbarState();
-                if (getContext() == null) {
-                    return;
-                }
-                if (finalResult == HidTextKeystrokeSender.Result.CANCELLED) {
-                    Toast.makeText(getContext(), R.string.compose_cancelled, Toast.LENGTH_SHORT).show();
-                } else {
-                    imeCaptureUndoSnapshot = null;
-                    String msg = getContext().getString(R.string.compose_sent, sentLen);
-                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
-    }
-
-    private void setImeCaptureToolbarEnabledWhileSending(boolean enabled) {
-        if (imeCaptureUndoButton != null) {
-            imeCaptureUndoButton.setEnabled(
-                    enabled
-                            && imeCaptureUndoSnapshot != null
-                            && !imeCaptureUndoSnapshot.isEmpty());
-            imeCaptureUndoButton.setAlpha(imeCaptureUndoButton.isEnabled() ? 1f : 0.45f);
-        }
-        if (imeCaptureClearButton != null) {
-            imeCaptureClearButton.setEnabled(enabled && imeCaptureEdit != null
-                    && imeCaptureEdit.getText() != null
-                    && imeCaptureEdit.getText().length() > 0);
-        }
-        if (imeCaptureTouchpadButton != null) {
-            imeCaptureTouchpadButton.setEnabled(enabled);
-            imeCaptureTouchpadButton.setAlpha(enabled ? 1f : 0.45f);
-        }
-        if (imeSubComposeModeToggle != null) {
-            imeSubComposeModeToggle.setEnabled(enabled);
-            imeSubComposeModeToggle.setAlpha(enabled ? 1f : 0.45f);
-        }
-    }
-
-    private void addImeCaptureEditorBelowTopStrip() {
-        if (isImeSubComposePortraitContext()) {
-            SharedPreferences portraitImePrefs =
-                    getContext().getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE);
-            imeSubComposeExpanded = portraitImePrefs.getBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false);
-            imeSubComposeDirectHidMode = portraitImePrefs.getBoolean(KEY_IME_SUB_COMPOSE_DIRECT_HID, false);
-            if (imeSubComposeDirectHidMode) {
-                imeSubComposeExpanded = false;
-                portraitImePrefs.edit().putBoolean(KEY_IME_SUB_COMPOSE_EXPANDED, false).apply();
-            }
-            applyImeTopStripVisibilityForSubCompose();
-
-            imeCaptureEditorRow = new LinearLayout(getContext());
-            imeCaptureEditorRow.setOrientation(HORIZONTAL);
-            float editorRowWeight =
-                    imeSubComposeExpanded ? IME_SUB_COMPOSE_EDITOR_WEIGHT_EXPANDED : IME_SINGLE_TEXT_WEIGHT;
-            imeCaptureEditorRow.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, editorRowWeight));
-
-            EditText et = new EditText(getContext());
-            imeCaptureEdit = et;
-            LinearLayout.LayoutParams etLp =
-                    new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            et.setLayoutParams(etLp);
-            et.setFocusable(true);
-            et.setFocusableInTouchMode(true);
-            et.setClickable(true);
-            et.setGravity(Gravity.TOP | Gravity.START);
-            et.setHint(R.string.ime_capture_hint);
-            et.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-            et.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                    | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                    | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-            et.setFilters(new InputFilter[]{new InputFilter.LengthFilter(IME_CAPTURE_MAX_TEXT_LEN)});
-            int pad = dpToPx(8);
-            et.setPadding(pad, pad, pad, pad);
-            et.setTextColor(resolveThemeTextColor());
-            et.setHintTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-            et.setBackground(null);
-            imeCaptureEditorRow.addView(et);
-
-            imeSubComposeExpandButton = new ImageButton(getContext());
-            int btnPx = dpToPx(48);
-            LinearLayout.LayoutParams expLp = new LinearLayout.LayoutParams(btnPx, LayoutParams.WRAP_CONTENT);
-            expLp.gravity = Gravity.BOTTOM;
-            imeSubComposeExpandButton.setLayoutParams(expLp);
-            imeSubComposeExpandButton.setMinimumHeight(btnPx);
-            imeSubComposeExpandButton.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
-            imeSubComposeExpandButton.setBackgroundResource(R.drawable.key_background);
-            applyFlatKeyStyle(imeSubComposeExpandButton);
-            imeSubComposeExpandButton.setOnClickListener(v -> onImeSubComposeExpandToggleClicked());
-            refreshImeSubComposeExpandIcon();
-            imeCaptureEditorRow.addView(imeSubComposeExpandButton);
-
-            addView(imeCaptureEditorRow);
-
-            imeCaptureAccentDivider = new View(getContext());
-            imeCaptureAccentDivider.setLayoutParams(
-                    new LayoutParams(LayoutParams.MATCH_PARENT, dpToPx(2)));
-            imeCaptureAccentDivider.setBackgroundColor(ThemeManager.getColorPrimary(getContext()));
-            addView(imeCaptureAccentDivider);
-
-            imeCaptureToolbar = new LinearLayout(getContext());
-            imeCaptureToolbar.setOrientation(HORIZONTAL);
-            imeCaptureToolbar.setLayoutParams(
-                    new LayoutParams(LayoutParams.MATCH_PARENT, 0, IME_COMPOSE_TOOLBAR_ROW_WEIGHT));
-            imeCaptureToolbar.setGravity(Gravity.CENTER_VERTICAL);
-            imeCaptureToolbar.setPadding(0, 0, 0, 0);
-            int keyMargin = dpToPx(KEY_OUTER_MARGIN_DP);
-
-            imeCaptureTouchpadButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureTouchpadButton, R.drawable.ic_compose_touchpad_24, R.string.compose_touchpad);
-            imeCaptureTouchpadButton.setOnClickListener(v -> {
-                if (onImeSubComposeChromeListener != null) {
-                    onImeSubComposeChromeListener.onImeToolbarPopOutTouchpadRequested(CustomKeyboardView.this);
-                }
-            });
-            LinearLayout.LayoutParams tpLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            tpLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureTouchpadButton.setLayoutParams(tpLp);
-
-            imeSubComposeModeToggle = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeSubComposeModeToggle,
-                    R.drawable.ic_ime_compose_mode_note_24,
-                    R.string.ime_sub_compose_mode_toggle_direct);
-            imeSubComposeModeToggle.setOnClickListener(v -> onImeSubComposeModeToggleClicked());
-            LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            modeLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeSubComposeModeToggle.setLayoutParams(modeLp);
-
-            imeCaptureDirectModeHint = new TextView(getContext());
-            imeCaptureDirectModeHint.setText(R.string.ime_sub_compose_direct_hid_hint);
-            imeCaptureDirectModeHint.setTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            imeCaptureDirectModeHint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-            imeCaptureDirectModeHint.setMaxLines(2);
-            imeCaptureDirectModeHint.setEllipsize(TextUtils.TruncateAt.END);
-            imeCaptureDirectModeHint.setGravity(Gravity.CENTER);
-            imeCaptureDirectModeHint.setTextAlignment(TEXT_ALIGNMENT_CENTER);
-            LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            hintLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureDirectModeHint.setLayoutParams(hintLp);
-
-            imeCaptureUndoButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureUndoButton, R.drawable.ic_compose_undo_24, R.string.compose_undo);
-            imeCaptureUndoButton.setOnClickListener(v -> onImeCaptureUndoClicked());
-            LinearLayout.LayoutParams undoLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            undoLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureUndoButton.setLayoutParams(undoLp);
-
-            imeCaptureClearButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureClearButton, R.drawable.ic_compose_clear_24, R.string.compose_clear);
-            imeCaptureClearButton.setOnClickListener(v -> onImeCaptureClearClicked());
-            LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-            clearLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureClearButton.setLayoutParams(clearLp);
-
-            imeCaptureSendButton = new ImageButton(getContext());
-            styleImeToolbarLikeTopShortcutIconButton(
-                    imeCaptureSendButton, R.drawable.ic_compose_send_24, R.string.compose_send);
-            imeCaptureSendButton.setOnClickListener(v -> onImeCaptureSendClicked());
-            LinearLayout.LayoutParams sendLp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 3f);
-            sendLp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
-            imeCaptureSendButton.setLayoutParams(sendLp);
-
-            imeCaptureToolbar.addView(imeCaptureTouchpadButton);
-            imeCaptureToolbar.addView(imeSubComposeModeToggle);
-            imeCaptureToolbar.addView(imeCaptureDirectModeHint);
-            imeCaptureToolbar.addView(imeCaptureUndoButton);
-            imeCaptureToolbar.addView(imeCaptureClearButton);
-            imeCaptureToolbar.addView(imeCaptureSendButton);
-            addView(imeCaptureToolbar);
-
-            et.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                    updateImeCaptureToolbarState();
-                }
-            });
-
-            if (imeSubComposeDirectHidMode) {
-                ImeTextForwarder.attach(
-                        et,
-                        this::peekConnectionManager,
-                        this::getTargetOs,
-                        imeTextExecutor);
-            } else {
-                ImeTextForwarder.detach(et);
-            }
-            refreshImeSubComposeModeToggleIcon();
-            applyImeSubComposeDirectHidUi();
-            updateImeCaptureToolbarState();
-            post(this::notifyImeSubComposeDirectHidModeChanged);
-            if (imeSubComposeExpanded && onImeSubComposeChromeListener != null) {
-                post(() ->
-                        onImeSubComposeChromeListener.onImeSubComposeExpandedChanged(CustomKeyboardView.this, true));
-            }
-        } else {
-            EditText et = new EditText(getContext());
-            imeCaptureEdit = et;
-            et.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, 0, IME_SINGLE_TEXT_WEIGHT));
-            et.setFocusable(true);
-            et.setFocusableInTouchMode(true);
-            et.setClickable(true);
-            et.setGravity(Gravity.TOP | Gravity.START);
-            et.setHint(R.string.ime_capture_hint);
-            et.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-            et.setInputType(android.text.InputType.TYPE_CLASS_TEXT
-                    | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                    | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-            int pad = dpToPx(8);
-            et.setPadding(pad, pad, pad, pad);
-            et.setTextColor(resolveThemeTextColor());
-            et.setHintTextColor(ContextCompat.getColor(getContext(), R.color.text_secondary));
-            et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-            addView(et);
-            ImeTextForwarder.attach(
-                    et,
-                    this::peekConnectionManager,
-                    this::getTargetOs,
-                    imeTextExecutor);
-        }
-        post(this::postShowLocalImeSoftKeyboard);
-    }
-
-    /** Match {@link #addShortcutPanelRows} icon keys: function face, flat elevation, theme tint. */
-    private void styleImeToolbarLikeTopShortcutIconButton(ImageButton ib, int imageRes, int labelRes) {
-        applyFlatKeyStyle(ib);
-        ib.setBackgroundResource(R.drawable.function_button_background);
-        ib.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
-        ib.setPadding(0, 0, 0, 0);
-        ib.setImageResource(imageRes);
-        ib.setColorFilter(resolveThemeTextColor());
-        ib.setContentDescription(getContext().getString(labelRes));
-    }
 
     @Nullable
     private ConnectionManager peekConnectionManager() {
@@ -7838,14 +8294,36 @@ public class CustomKeyboardView extends LinearLayout {
         return null;
     }
 
+    private void detachLocalImeFieldQuiet() {
+        // KM Pro IME capture removed; no-op for layout lifecycle.
+    }
+
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        Context ctx = getContext();
+        if (ctx != null) {
+            PreferenceManager.getDefaultSharedPreferences(ctx)
+                    .registerOnSharedPreferenceChangeListener(kmProModifierPrefListener);
+        }
+    }
+
     @Override
     protected void onDetachedFromWindow() {
+        cancelDeferredKmProLayoutFinish();
+        Context ctx = getContext();
+        if (ctx != null) {
+            PreferenceManager.getDefaultSharedPreferences(ctx)
+                    .unregisterOnSharedPreferenceChangeListener(kmProModifierPrefListener);
+        }
         super.onDetachedFromWindow();
-        imeSubComposeSendExecutor.shutdownNow();
+        clearSplitLandscapeImeComposeRail();
         detachLocalImeFieldQuiet();
         longPressHandler.removeCallbacksAndMessages(null);
         stopRepeatingDelete();
         dismissAlternatesPopup();
+        kmProKeyPreview.dismiss();
         if (isServiceBound) {
             getContext().unbindService(serviceConnection);
             isServiceBound = false;

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="4dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="4dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="3dp"
+        app:strokeColor="@color/divider"
+        app:strokeWidth="1dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="96dp">
+
+            <ImageView
+                android:id="@+id/reorder_drag_handle"
+                android:layout_width="36dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="start|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/hub_card_drag_handle_cd"
+                android:focusable="false"
+                android:paddingStart="4dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_drag_handle_24"
+                android:tint="@color/text_secondary" />
+
+            <include
+                android:id="@+id/reorder_row_content"
+                layout="@layout/dialog_row_shortcut_hub_card_cell"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginStart="36dp"
+                android:layout_marginEnd="44dp" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/hub_card_overflow"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/hub_card_overflow_cd"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                app:srcCompat="@drawable/three_dots"
+                app:tint="@color/text_secondary" />
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

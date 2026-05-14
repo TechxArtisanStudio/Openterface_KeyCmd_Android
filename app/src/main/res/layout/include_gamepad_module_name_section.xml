@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/gamepad_module_name_color_title"
-        android:textAppearance="@style/TextAppearance.KeyMod.GamepadConfig.Section"
+        android:textAppearance="@style/TextAppearance.KeyCmd.GamepadConfig.Section"
         android:layout_marginBottom="6dp" />
 
     <LinearLayout

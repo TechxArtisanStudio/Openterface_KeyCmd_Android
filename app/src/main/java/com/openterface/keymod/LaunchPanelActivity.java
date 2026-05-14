@@ -279,7 +279,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
             return KeyboardMouseFragment.SUBMODE_NUMPAD;
         }
         if (MODE_COMPOSE.equals(selectedMode)) {
-            return KeyboardMouseFragment.SUBMODE_COMPOSE;
+            return null;
         }
         return null;
     }

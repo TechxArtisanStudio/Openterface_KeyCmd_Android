@@ -9,6 +9,10 @@
         <item>Français</item>
         <item>Deutsch</item>
         <item>日本語</item>
+        <item>한국어</item>
+        <item>Italiano</item>
+        <item>Русский</item>
+        <item>Português (Brasil)</item>
     </string-array>
 
     <string-array name="language_codes">
@@ -19,6 +23,10 @@
         <item>fr</item>
         <item>de</item>
         <item>ja</item>
+        <item>ko</item>
+        <item>it</item>
+        <item>ru</item>
+        <item>pt-BR</item>
     </string-array>
 
     <!-- Voice Language Arrays -->

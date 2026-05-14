@@ -33,7 +33,7 @@ public class StripSlotMapStoreTest {
     }
 
     @Test
-    public void slotKey_page3_row2_column5_isCanonical() {
+    public void slotKey_stripPageIndex3_row2_column5_isCanonical() {
         Assert.assertEquals("b-p3r2c5", StripSlotMapStore.slotKey(3, 2, 4, false));
         Assert.assertEquals("f-p3r3c7", StripSlotMapStore.slotKey(3, 3, 6, true));
     }

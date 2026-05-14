@@ -2,6 +2,9 @@ package com.openterface.keymod;
 
 import android.app.Activity;
 import android.content.Context;
+import android.view.inputmethod.InputMethodManager;
+
+import androidx.annotation.Nullable;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -23,7 +26,7 @@ import androidx.cardview.widget.CardView;
 public class TutorialOverlay extends FrameLayout {
 
     public static final String PREFS_NAME = "TutorialPrefs";
-    public static final String KEY_TUTORIAL_SHOWN = "tutorial_shown_v1";
+    public static final String KEY_TUTORIAL_SHOWN = "tutorial_shown_v2";
 
     private final View dimView;
     private final HighlightView highlightView;
@@ -35,6 +38,10 @@ public class TutorialOverlay extends FrameLayout {
 
     private Step[] steps;
     private int currentStep = 0;
+    /** When false, {@link #dismiss()} does not set {@link #KEY_TUTORIAL_SHOWN} (used for non-Basic mode tours). */
+    private boolean markBasicQuickStartPrefOnDismiss = true;
+    @Nullable
+    private Runnable onDismissExtra;
 
     public static boolean isShown(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -137,7 +144,21 @@ public class TutorialOverlay extends FrameLayout {
     public void setSteps(Step[] steps) {
         this.steps = steps;
         this.currentStep = 0;
+        hideImeForOverlay();
         showCurrentStep();
+    }
+
+    /**
+     * Default true (KM Basic quick start). Set false for per-mode guides so completing them does not
+     * mark the Basic tutorial pref.
+     */
+    public void setMarkBasicQuickStartPrefOnDismiss(boolean mark) {
+        this.markBasicQuickStartPrefOnDismiss = mark;
+    }
+
+    /** Runs once when the overlay is removed (Done, Skip, or last step finished). */
+    public void setOnDismissExtra(@Nullable Runnable onDismissExtra) {
+        this.onDismissExtra = onDismissExtra;
     }
 
     private void showCurrentStep() {
@@ -145,6 +166,8 @@ public class TutorialOverlay extends FrameLayout {
             dismiss();
             return;
         }
+
+        hideImeForOverlay();
 
         Step step = steps[currentStep];
         step.onShow(getContext());
@@ -169,23 +192,29 @@ public class TutorialOverlay extends FrameLayout {
         final int delay = step.delayMs();
         final int insetTop = dpToPx(step.insetTopDp());
         final int insetBottom = dpToPx(step.insetBottomDp());
-        postDelayed(() -> {
-            if (finalTarget != null) {
-                int[] overlayPos = new int[2];
-                getLocationOnScreen(overlayPos);
-                int[] targetPos = new int[2];
-                finalTarget.getLocationOnScreen(targetPos);
+        postDelayed(
+                () -> {
+                    hideImeForOverlay();
+                    if (finalTarget != null) {
+                        int[] overlayPos = new int[2];
+                        getLocationOnScreen(overlayPos);
+                        int[] targetPos = new int[2];
+                        finalTarget.getLocationOnScreen(targetPos);
 
-                highlightRect.set(
-                        targetPos[0] - overlayPos[0] - insetTop,
-                        targetPos[1] - overlayPos[1] - insetTop,
-                        targetPos[0] - overlayPos[0] + finalTarget.getWidth() + insetTop,
-                        targetPos[1] - overlayPos[1] + finalTarget.getHeight() + insetBottom
-                );
-                highlightView.setHighlightRect(highlightRect);
-                positionTooltip(finalTarget);
-            }
-        }, delay);
+                        highlightRect.set(
+                                targetPos[0] - overlayPos[0] - insetTop,
+                                targetPos[1] - overlayPos[1] - insetTop,
+                                targetPos[0] - overlayPos[0] + finalTarget.getWidth() + insetTop,
+                                targetPos[1] - overlayPos[1] + finalTarget.getHeight() + insetBottom);
+                        highlightView.setHighlightRect(highlightRect);
+                        positionTooltip(finalTarget);
+                    } else {
+                        highlightRect.setEmpty();
+                        highlightView.setHighlightRect(highlightRect);
+                        positionTooltipFallback();
+                    }
+                },
+                delay);
     }
 
     private void positionTooltip(View targetView) {
@@ -207,6 +236,43 @@ public class TutorialOverlay extends FrameLayout {
         tooltipCard.setLayoutParams(params);
     }
 
+    /** When no highlight target is visible (e.g. wrong submode), keep the card readable at the bottom. */
+    private void positionTooltipFallback() {
+        LayoutParams params = (LayoutParams) tooltipCard.getLayoutParams();
+        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        params.topMargin = 0;
+        params.bottomMargin = dpToPx(24);
+        tooltipCard.setLayoutParams(params);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        hideImeForOverlay();
+    }
+
+    /**
+     * Dismisses the soft keyboard so it does not cover the tooltip or highlights in Keyboard &amp; Mouse
+     * modes (Compose, IME surfaces, etc.).
+     */
+    private void hideImeForOverlay() {
+        Context c = getContext();
+        if (!(c instanceof Activity)) {
+            return;
+        }
+        Activity activity = (Activity) c;
+        android.view.Window window = activity.getWindow();
+        if (window == null) {
+            return;
+        }
+        View decor = window.getDecorView();
+        InputMethodManager imm =
+                (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(decor.getWindowToken(), 0);
+        }
+    }
+
     private void advance() {
         if (currentStep < steps.length - 1) {
             currentStep++;
@@ -217,7 +283,14 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     private void dismiss() {
-        markShown(getContext());
+        if (markBasicQuickStartPrefOnDismiss) {
+            markShown(getContext());
+        }
+        if (onDismissExtra != null) {
+            Runnable r = onDismissExtra;
+            onDismissExtra = null;
+            r.run();
+        }
         ViewGroup parent = (ViewGroup) getParent();
         if (parent != null) {
             parent.removeView(this);

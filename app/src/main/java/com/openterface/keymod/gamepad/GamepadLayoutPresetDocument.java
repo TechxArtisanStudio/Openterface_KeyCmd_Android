@@ -14,6 +14,14 @@ import java.util.Set;
 
 /**
  * Gson document for gamepad layout presets (shareable JSON).
+ * <p><b>Field intent:</b> Most {@link LayoutGlobals} and {@link GamepadModule} fields are
+ * <em>runtime-effective</em> (loaded into prefs / {@link com.openterface.keymod.GamepadView}).
+ * Exceptions called out in {@link LayoutGlobals} / {@link GamepadModule} JavaDoc:
+ * {@code layout.stickLayoutTemplate} (geometry hint only; not applied automatically at runtime),
+ * {@code layout.faceButtonTemplate} (hint; positions live in {@code modules}),
+ * and {@code layout.backgroundImageEncoding} / {@code backgroundImageMediaType} /
+ * {@code backgroundImageData} (portable interchange; cleared after import — see
+ * {@link GamepadLayoutPresetBackgroundCodec#prepareForPersistence}).
  */
 @SuppressWarnings("unused")
 public class GamepadLayoutPresetDocument {
@@ -95,27 +103,51 @@ public class GamepadLayoutPresetDocument {
         public float backgroundOffsetX;
         public float backgroundOffsetY;
         /**
-         * Portable interchange only: encoding for {@link #backgroundImageData}
+         * <b>Interchange only</b> (share/import): encoding for {@link #backgroundImageData}
          * (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_EMBED_ENCODING_BASE64}).
          * Cleared after the image is written to {@link #backgroundImageFile} so layout JSON in prefs stays small.
          */
         @Nullable public String backgroundImageEncoding;
-        /** Declared media type; must match decoded bytes (e.g. {@link GamepadLayoutPresetConstants#BACKGROUND_MEDIA_TYPE_PNG}). */
+        /**
+         * <b>Interchange only</b> — declared media type; must match decoded bytes (e.g.
+         * {@link GamepadLayoutPresetConstants#BACKGROUND_MEDIA_TYPE_PNG}). Cleared with other embed fields after import.
+         */
         @Nullable public String backgroundImageMediaType;
-        /** Raw base64 body (no {@code data:} URL prefix). */
+        /** <b>Interchange only</b> — raw base64 body (no {@code data:} URL prefix). Cleared after import. */
         @Nullable public String backgroundImageData;
         /**
          * Optional preset geometry hint: {@link GamepadLayoutPresetConstants#STICK_LAYOUT_SYMMETRICAL},
          * {@link GamepadLayoutPresetConstants#STICK_LAYOUT_OFFSET}, or {@link GamepadLayoutPresetConstants#STICK_LAYOUT_PARALLEL}.
+         * <p><b>Metadata only</b> — validated but not consumed to reposition modules at runtime; authors
+         * and UIs may use it for labels or future layout assist.
          */
         @Nullable public String stickLayoutTemplate;
         /**
          * Optional face cluster hint (Nintendo / Xbox / PlayStation anchors); see
-         * {@link GamepadFaceButtonTemplates}.
+         * {@link GamepadFaceButtonTemplates}. <b>Metadata / template driver</b> — actual cap positions and
+         * keys are defined by {@code modules}; this string is kept for export and tooling.
          */
         @Nullable public String faceButtonTemplate;
         /** When true, device tilt can drive relative pointer movement (see gamepad screen + USER_GUIDE). */
         @Nullable public Boolean gyroEnabled;
+        /**
+         * Optional override (ms): finger must stay down at least this long before a diagonal hold/turbo
+         * gesture can commit on lift. Range {@code [0, 1000]} when set. {@code null} = use app default from
+         * preferences (see {@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#GESTURE_LOCK_MIN_PRESS_MS}).
+         */
+        @Nullable public Integer gestureLockMinPressMs;
+        /**
+         * Optional override: multiplier on diagonal gesture min/cancel radii (larger = need a longer stroke).
+         * Range {@code [0.5, 3.0]} when set. {@code null} = use app default from preferences
+         * ({@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#GESTURE_LOCK_DIAGONAL_RADIUS_SCALE}).
+         */
+        @Nullable public Float gestureLockDiagonalRadiusScale;
+        /**
+         * Optional override (ms): delay between turbo on/off half-steps when latched. Range {@code [25, 300]} when set.
+         * {@code null} = use app default from preferences
+         * ({@link com.openterface.keymod.gamepad.GamepadPreferenceKeys#TURBO_PULSE_PERIOD_MS}).
+         */
+        @Nullable public Integer turboPulsePeriodMs;
         /**
          * Custom canvas fill when no {@link #backgroundImageFile} (packed ARGB). Null = use built-in default gradient
          * unless only {@link #backgroundPattern} is set (pattern over default gradient).
@@ -147,7 +179,7 @@ public class GamepadLayoutPresetDocument {
      * One drawable plus touch target on the gamepad canvas.
      * <p><b>Layers:</b> {@code id} is <em>which</em> control (e.g. {@code stick_left}, {@code stick_right}).
      * {@code type} is <em>what the host receives</em>
-     * ({@code STICK_KEY}, {@code STICK_MOUSE}, {@code DPAD}, {@code BUTTON}, …). Fields such as
+     * ({@code STICK_KEY}, {@code STICK_MOUSE}, {@code DPAD}, {@code BUTTON}, {@code SCROLL_STRIP}, …). Fields such as
      * {@code dpadVariant}, {@code dpadSplitGapRatio}, {@code stickMouseSensitivity}, and
      * {@code stickVisualVariant} are <em>parameters</em> on that same module, not separate module types.
      * See {@code docs/USER_GUIDE.md} (Gamepad module model) and {@code .cursor/plans/gamepad_module_taxonomy.plan.md}
@@ -218,9 +250,10 @@ public class GamepadLayoutPresetDocument {
          */
         @Nullable public Boolean mappedKeyLabelVisible;
         /**
-         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, swipe hold-lock gesture is enabled
-         * (legacy: vertical up/down only when {@link #gestureLock} is absent or has no non-{@code none}
-         * actions). {@code null} or {@code false} = off unless {@link #gestureLock} supplies actions.
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: when {@code true}, hold/turbo gestures are enabled.
+         * With {@link #gestureLock} absent or all {@code none}, defaults apply on pointer-up diagonals:
+         * up-right → {@code hold_lock}, up-left → {@code turbo} (see {@link GamepadGestureLock}).
+         * {@code null} or {@code false} = off unless {@link #gestureLock} supplies a non-{@code none} action.
          */
         @Nullable public Boolean keyboardHoldLock;
         /**
@@ -229,6 +262,21 @@ public class GamepadLayoutPresetDocument {
          * applies if {@link #keyboardHoldLock} is true.
          */
         @Nullable public GestureLockConfig gestureLock;
+        /**
+         * BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON: optional per-module override for minimum press (ms) before a
+         * diagonal hold/turbo gesture commits; {@code null} inherits {@link LayoutGlobals#gestureLockMinPressMs} then prefs.
+         */
+        @Nullable public Integer gestureLockMinPressMs;
+        /**
+         * Per-module override for diagonal min/cancel radius scale; {@code null} inherits
+         * {@link LayoutGlobals#gestureLockDiagonalRadiusScale} then prefs.
+         */
+        @Nullable public Float gestureLockDiagonalRadiusScale;
+        /**
+         * Per-module override for turbo half-step period (ms); {@code null} inherits {@link LayoutGlobals#turboPulsePeriodMs}
+         * then prefs.
+         */
+        @Nullable public Integer turboPulsePeriodMs;
 
         /**
          * BUTTON: shape from square ({@code 0}) to circle ({@code 1}); see
@@ -249,7 +297,7 @@ public class GamepadLayoutPresetDocument {
         @Nullable public Float buttonRotationDeg;
         /** MOUSE_BUTTON: 1 = left, 2 = middle, 3 = right (same convention as {@code sendMouseClick}). */
         @Nullable public Integer mouseButton;
-        /** TRIGGER: reserved for future analog simulation; false = digital edge on {@code hidKey}. */
+        /** TRIGGER: reserved for future analog simulation; <b>not read</b> by current rendering/input — metadata only. */
         @Nullable public Boolean triggerAnalog;
         /** TRIGGER: {@link GamepadLayoutPresetConstants#TRIGGER_VARIANT_DIGITAL} and siblings (UI / future use). */
         @Nullable public String triggerVariant;
@@ -268,6 +316,12 @@ public class GamepadLayoutPresetDocument {
          * Use {@code 1} (left), {@code 2} (right), or {@code 4} (middle); null defaults to left ({@code 1}).
          */
         @Nullable public Integer stickPointerCenterMouseMask;
+        /**
+         * SCROLL_STRIP only: wheel rate multiplier when null defaults to {@code 1.0}; valid range {@code [0.25, 4]}.
+         */
+        @Nullable public Float scrollStripSensitivity;
+        /** SCROLL_STRIP only: when {@code true}, flip vertical wheel sign vs finger motion. */
+        @Nullable public Boolean scrollStripInvertY;
         /**
          * Optional per-module accent (ARGB). Null = theme default for sticks/D-pad and template colors for face
          * buttons; see {@link GamepadModuleAccent}.
@@ -302,6 +356,27 @@ public class GamepadLayoutPresetDocument {
         return new GsonBuilder().setPrettyPrinting().create().toJson(doc);
     }
 
+    private static void requireValidHidUsageKey(
+            @NonNull String moduleId, @NonNull Integer hidKey, @NonNull String fieldLabel) {
+        requireValidHidUsageKey(moduleId, hidKey.intValue(), fieldLabel);
+    }
+
+    private static void requireValidHidUsageKey(
+            @NonNull String moduleId, int code, @NonNull String fieldLabel) {
+        if (!GamepadLayoutPresetConstants.isValidHidUsageKey(code)) {
+            throw new IllegalArgumentException(
+                    "Module "
+                            + moduleId
+                            + ": "
+                            + fieldLabel
+                            + " must be in ["
+                            + GamepadLayoutPresetConstants.HID_USAGE_KEYCODE_MIN
+                            + ", "
+                            + GamepadLayoutPresetConstants.HID_USAGE_KEYCODE_MAX
+                            + "]");
+        }
+    }
+
     public static void validateOrThrow(GamepadLayoutPresetDocument d) throws IllegalArgumentException {
         if (d == null) {
             throw new IllegalArgumentException("null document");
@@ -328,6 +403,30 @@ public class GamepadLayoutPresetDocument {
                 throw new IllegalArgumentException("layout.touchpadMouseButtonScale must be in [0.5, 2]");
             }
         }
+        if (d.layout.gestureLockMinPressMs != null) {
+            int g = d.layout.gestureLockMinPressMs;
+            if (g < 0 || g > 1000) {
+                throw new IllegalArgumentException("layout.gestureLockMinPressMs must be in [0, 1000]");
+            }
+        }
+        if (d.layout.gestureLockDiagonalRadiusScale != null) {
+            float s = d.layout.gestureLockDiagonalRadiusScale;
+            if (s < 0.5f || s > 3.0f || Float.isNaN(s) || Float.isInfinite(s)) {
+                throw new IllegalArgumentException("layout.gestureLockDiagonalRadiusScale must be in [0.5, 3]");
+            }
+        }
+        if (d.layout.turboPulsePeriodMs != null) {
+            int t = d.layout.turboPulsePeriodMs;
+            if (t < GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                    || t > GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX) {
+                throw new IllegalArgumentException(
+                        "layout.turboPulsePeriodMs must be in ["
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                                + ", "
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX
+                                + "]");
+            }
+        }
         validateBackgroundEmbed(d.layout);
         validateBackgroundFillAndPattern(d.layout);
         validateMetaCreator(d.meta);
@@ -336,6 +435,7 @@ public class GamepadLayoutPresetDocument {
         }
         GamepadLayoutPresetUpgrader.upgradeToLatest(d);
         GamepadLayoutPresetUpgrader.normalizeBundledMouseButtonModuleScales(d);
+        GamepadLayoutDocEditor.normalizeModuleZOrder(d);
         if (d.schemaVersion != GamepadLayoutPresetConstants.SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported schemaVersion after upgrade: " + d.schemaVersion);
         }
@@ -365,6 +465,7 @@ public class GamepadLayoutPresetDocument {
             if (btnA.hidKey == null) {
                 throw new IllegalArgumentException("button_a missing hidKey");
             }
+            requireValidHidUsageKey(btnA.id, btnA.hidKey, "hidKey");
         }
         if (d.layout.showTwoButtons) {
             if (btnA == null) {
@@ -375,8 +476,10 @@ public class GamepadLayoutPresetDocument {
                     || btnB.hidKey == null) {
                 throw new IllegalArgumentException("showTwoButtons requires BUTTON module id=button_b with hidKey");
             }
+            requireValidHidUsageKey(btnB.id, btnB.hidKey, "hidKey");
         }
         int mouseButtonCount = 0;
+        int scrollStripCount = 0;
         int shoulderCount = 0;
         int triggerCount = 0;
         Set<String> seenModuleIds = new HashSet<>();
@@ -412,6 +515,14 @@ public class GamepadLayoutPresetDocument {
                 if (a < 64) {
                     throw new IllegalArgumentException("Module " + m.id + ": displayLabelColorArgb alpha must be >= 64");
                 }
+            }
+            if (m.scrollStripSensitivity != null
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": scrollStripSensitivity only on SCROLL_STRIP");
+            }
+            if (m.scrollStripInvertY != null
+                    && !GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                throw new IllegalArgumentException("Module " + m.id + ": scrollStripInvertY only on SCROLL_STRIP");
             }
             if (m.stickVisualVariant != null) {
                 String sv = m.stickVisualVariant.trim();
@@ -511,24 +622,25 @@ public class GamepadLayoutPresetDocument {
                         || m.stickDownKey == null || m.stickRightKey == null)) {
                     throw new IllegalArgumentException("Module " + m.id + ": STICK_KEY/DPAD needs four direction keys");
                 }
+                if (GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
+                        || GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
+                    requireValidHidUsageKey(m.id, m.stickUpKey, "stickUpKey");
+                    requireValidHidUsageKey(m.id, m.stickLeftKey, "stickLeftKey");
+                    requireValidHidUsageKey(m.id, m.stickDownKey, "stickDownKey");
+                    requireValidHidUsageKey(m.id, m.stickRightKey, "stickRightKey");
+                }
                 if (m.stickCenterKey != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_KEY.equals(m.type)
                             && !GamepadLayoutPresetConstants.MODULE_TYPE_DPAD.equals(m.type)) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey only on STICK_KEY/DPAD");
                     }
-                    int c = m.stickCenterKey;
-                    if (c < 1 || c > 255) {
-                        throw new IllegalArgumentException("Module " + m.id + ": stickCenterKey out of range");
-                    }
+                    requireValidHidUsageKey(m.id, m.stickCenterKey, "stickCenterKey");
                 }
                 if (m.stickPointerCenterKey != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
                         throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey only on STICK_MOUSE");
                     }
-                    int pk = m.stickPointerCenterKey;
-                    if (pk < 1 || pk > 255) {
-                        throw new IllegalArgumentException("Module " + m.id + ": stickPointerCenterKey out of range");
-                    }
+                    requireValidHidUsageKey(m.id, m.stickPointerCenterKey, "stickPointerCenterKey");
                 }
                 if (m.stickPointerCenterMouseMask != null) {
                     if (!GamepadLayoutPresetConstants.MODULE_TYPE_STICK_MOUSE.equals(m.type)) {
@@ -545,6 +657,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": BUTTON needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!m.id.matches("button_[a-z0-9]+")) {
                     throw new IllegalArgumentException("Invalid button id: " + m.id);
                 }
@@ -591,6 +704,21 @@ public class GamepadLayoutPresetDocument {
                         || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
                     throw new IllegalArgumentException("Module " + m.id + ": TOUCHPAD needs widthNorm/heightNorm in (0,1]");
                 }
+            } else if (GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP.equals(m.type)) {
+                scrollStripCount++;
+                if (!GamepadLayoutPresetConstants.isScrollStripModuleId(m.id)) {
+                    throw new IllegalArgumentException("Invalid SCROLL_STRIP id (expected scroll_strip_<n>): " + m.id);
+                }
+                if (m.widthNorm == null || m.heightNorm == null
+                        || m.widthNorm <= 0 || m.widthNorm > 1 || m.heightNorm <= 0 || m.heightNorm > 1) {
+                    throw new IllegalArgumentException("Module " + m.id + ": SCROLL_STRIP needs widthNorm/heightNorm in (0,1]");
+                }
+                if (m.scrollStripSensitivity != null) {
+                    float s = m.scrollStripSensitivity;
+                    if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.25f || s > 4.0f) {
+                        throw new IllegalArgumentException("Module " + m.id + ": scrollStripSensitivity must be in [0.25, 4]");
+                    }
+                }
             } else if (GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON.equals(m.type)) {
                 mouseButtonCount++;
                 boolean canonicalMouseBtn = GamepadLayoutPresetConstants.MOUSE_BTN_LEFT_ID.equals(m.id)
@@ -614,6 +742,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": SHOULDER needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!GamepadLayoutPresetConstants.SHOULDER_L_ID.equals(m.id)
                         && !GamepadLayoutPresetConstants.SHOULDER_R_ID.equals(m.id)) {
                     throw new IllegalArgumentException("SHOULDER id must be shoulder_l or shoulder_r");
@@ -623,6 +752,7 @@ public class GamepadLayoutPresetDocument {
                 if (m.hidKey == null) {
                     throw new IllegalArgumentException("Module " + m.id + ": TRIGGER needs hidKey");
                 }
+                requireValidHidUsageKey(m.id, m.hidKey, "hidKey");
                 if (!GamepadLayoutPresetConstants.TRIGGER_L_ID.equals(m.id)
                         && !GamepadLayoutPresetConstants.TRIGGER_R_ID.equals(m.id)) {
                     throw new IllegalArgumentException("TRIGGER id must be trigger_l or trigger_r");
@@ -642,10 +772,15 @@ public class GamepadLayoutPresetDocument {
                 }
             }
             GamepadGestureLock.validateGestureLockOnModule(m);
+            validateModuleGestureTimingFields(m);
         }
         if (mouseButtonCount > GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES) {
             throw new IllegalArgumentException("Too many MOUSE_BUTTON modules (max "
                     + GamepadLayoutPresetConstants.MAX_MOUSE_BUTTON_MODULES + ")");
+        }
+        if (scrollStripCount > GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES) {
+            throw new IllegalArgumentException("Too many SCROLL_STRIP modules (max "
+                    + GamepadLayoutPresetConstants.MAX_SCROLL_STRIP_MODULES + ")");
         }
         if (shoulderCount > GamepadLayoutPresetConstants.MAX_SHOULDER_MODULES) {
             throw new IllegalArgumentException("Too many SHOULDER modules (max "
@@ -660,6 +795,49 @@ public class GamepadLayoutPresetDocument {
     /** ARGB packed int; JVM-safe (no {@code android.graphics.Color} stub needed in unit tests). */
     private static int argbAlphaFromPackedInt(int colorArgb) {
         return (colorArgb >>> 24) & 0xFF;
+    }
+
+    private static void validateModuleGestureTimingFields(@NonNull GamepadModule m) throws IllegalArgumentException {
+        boolean hasAny = m.gestureLockMinPressMs != null
+                || m.gestureLockDiagonalRadiusScale != null
+                || m.turboPulsePeriodMs != null;
+        if (!hasAny) {
+            return;
+        }
+        if (!GamepadGestureLock.gesturesAllowedModuleType(m.type)) {
+            throw new IllegalArgumentException(
+                    "Module "
+                            + m.id
+                            + ": gestureLockMinPressMs / gestureLockDiagonalRadiusScale / turboPulsePeriodMs are only valid for BUTTON, SHOULDER, TRIGGER, or MOUSE_BUTTON");
+        }
+        if (m.gestureLockMinPressMs != null) {
+            int g = m.gestureLockMinPressMs;
+            if (g < 0 || g > 1000) {
+                throw new IllegalArgumentException(
+                        "Module " + m.id + ": gestureLockMinPressMs must be in [0, 1000] when set");
+            }
+        }
+        if (m.gestureLockDiagonalRadiusScale != null) {
+            float s = m.gestureLockDiagonalRadiusScale;
+            if (Float.isNaN(s) || Float.isInfinite(s) || s < 0.5f || s > 3.0f) {
+                throw new IllegalArgumentException(
+                        "Module " + m.id + ": gestureLockDiagonalRadiusScale must be in [0.5, 3] when set");
+            }
+        }
+        if (m.turboPulsePeriodMs != null) {
+            int t = m.turboPulsePeriodMs;
+            if (t < GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                    || t > GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX) {
+                throw new IllegalArgumentException(
+                        "Module "
+                                + m.id
+                                + ": turboPulsePeriodMs must be in ["
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN
+                                + ", "
+                                + GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX
+                                + "] when set");
+            }
+        }
     }
 
     private static void validateMetaCreator(@Nullable Meta meta) throws IllegalArgumentException {

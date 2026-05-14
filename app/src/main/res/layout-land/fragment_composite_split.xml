@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -13,7 +14,7 @@
         android:layout_weight="1"
         android:orientation="horizontal">
 
-        <!-- Left column: top shortcuts + left keyboard -->
+        <!-- Left column: top shortcuts + left keyboard (strip : keyboard = CustomKeyboardView KM_PRO_* weights) -->
         <LinearLayout
             android:id="@+id/split_left_column"
             android:layout_width="0dp"
@@ -25,17 +26,18 @@
                 android:id="@+id/split_top_left"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="10" />
+                android:layout_weight="1" />
 
             <com.openterface.keymod.CustomKeyboardView
                 android:id="@+id/keyboard_view_left"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="22"
+                android:layout_weight="2.2"
                 android:paddingTop="@dimen/keyboard_outer_padding_top"
                 android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
                 android:keyBackground="@drawable/key_background"
-                android:theme="@style/ButtonTheme"/>
+                android:theme="@style/ButtonTheme"
+                app:showGuiHidKey="false"/>
         </LinearLayout>
 
         <!-- Touchpad column stays full-height to remove center top blank strip -->
@@ -46,112 +48,162 @@
             android:layout_weight="1.2"
             android:orientation="horizontal">
 
-            <FrameLayout
+            <LinearLayout
+                android:id="@+id/pro_touchpad_chrome_root"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@color/touchpad_background">
+                android:orientation="vertical">
 
-                <com.openterface.keymod.TouchPadView
-                    android:id="@+id/touchPad"
+                <FrameLayout
+                    android:id="@+id/touchpad_pad_host"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"/>
+                    android:layout_height="0dp"
+                    android:layout_weight="1">
 
-                <LinearLayout
-                    android:id="@+id/touchPadFooter"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|center_horizontal"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="8dp"
-                    android:background="@android:color/transparent">
+                    <LinearLayout
+                        android:id="@+id/touchpad_pad_and_strip"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false">
+
+                    <FrameLayout
+                        android:id="@+id/touchpad_pad_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0"
+                        android:background="@color/touchpad_background">
+
+                    <com.openterface.keymod.TouchPadView
+                        android:id="@+id/touchPad"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"/>
+
+                    <LinearLayout
+                        android:id="@+id/touchPadFooter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|center_horizontal"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:visibility="gone"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp"
+                        android:background="@android:color/transparent">
+
+                        <ImageView
+                            android:id="@+id/touchPadBrandLogo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="12dp"
+                            android:layout_marginTop="2dp"
+                            android:maxWidth="200dp"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"
+                            android:alpha="0.82"
+                            android:src="@drawable/ic_openterface_wordmark"
+                            android:tint="@color/text_secondary"
+                            android:visibility="gone"
+                            android:contentDescription="@string/touch_pad_brand_content_description"
+                            android:importantForAccessibility="yes"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/touchPadHelpOverlay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:translationY="@dimen/touchpad_help_overlay_shift_up"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:maxWidth="@dimen/touchpad_help_overlay_max_width_split"
+                        android:visibility="gone"
+                        android:alpha="0"
+                        android:gravity="center_horizontal"
+                        android:padding="8dp"
+                        android:background="@android:color/transparent"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:letterSpacing="0.01"
+                        android:lineSpacingMultiplier="1.22"
+                        android:scrollbars="none" />
+
+                    <ImageButton
+                        android:id="@+id/touchPadInfo"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="top|start"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginStart="2dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/touch_pad_info_content_description"
+                        android:padding="12dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_touchpad_info_24" />
+
+                    </FrameLayout>
+
+                    <com.openterface.keymod.basic.BasicPortraitScrollStripView
+                        android:id="@+id/pro_touchpad_scroll_strip"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0"
+                        android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
+                        android:visibility="gone"
+                        android:background="@color/touchpad_background"
+                        android:contentDescription="@string/km_pro_touchpad_scroll_strip_a11y" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/touchPadTips"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_gravity="top|center_horizontal"
                         android:gravity="center_horizontal"
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp"
-                        android:paddingTop="6dp"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="8dp"
                         android:paddingBottom="4dp"
                         android:background="@android:color/transparent"
-                        android:text="@string/touch_pad_compact_initial"/>
+                        android:text="@string/touch_pad_compact_initial"
+                        android:clickable="false"
+                        android:focusable="false" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/pro_touchpad_mouse_column"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <include layout="@layout/include_pro_touchpad_mouse_keys" />
 
                     <ImageView
-                        android:id="@+id/touchPadBrandLogo"
+                        android:id="@+id/pro_touchpad_split_brand_logo"
                         android:layout_width="wrap_content"
-                        android:layout_height="12dp"
-                        android:layout_marginTop="2dp"
-                        android:maxWidth="200dp"
+                        android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginBottom="@dimen/km_basic_touchpad_brand_logo_margin_bottom"
+                        android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:alpha="0.82"
                         android:src="@drawable/ic_openterface_wordmark"
                         android:tint="@color/text_secondary"
+                        android:visibility="gone"
                         android:contentDescription="@string/touch_pad_brand_content_description"
-                        android:importantForAccessibility="yes"/>
+                        android:importantForAccessibility="yes" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/touchPadHelpOverlay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:translationY="@dimen/touchpad_help_overlay_shift_up"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="12dp"
-                    android:maxWidth="@dimen/touchpad_help_overlay_max_width_split"
-                    android:visibility="gone"
-                    android:alpha="0"
-                    android:gravity="center_horizontal"
-                    android:padding="8dp"
-                    android:background="@android:color/transparent"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:letterSpacing="0.01"
-                    android:lineSpacingMultiplier="1.22"
-                    android:scrollbars="none" />
-
-                <ImageButton
-                    android:id="@+id/touchPadInfo"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_gravity="top|end"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/touch_pad_info_content_description"
-                    android:padding="12dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_touchpad_info_24" />
-
-            </FrameLayout>
-
-            <!-- Toggle Handle (right side) -->
-            <LinearLayout
-                android:id="@+id/toggle_handle"
-                android:layout_width="@dimen/toggle_handle_width_landscape"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:background="@color/background_light"
-                android:clickable="true"
-                android:focusable="true">
-
-                <View
-                    android:id="@+id/toggle_handle_pill"
-                    android:layout_width="4dp"
-                    android:layout_height="40dp"
-                    android:background="@drawable/toggle_handle_pill"/>
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Right column: top shortcuts + right keyboard -->
+        <!-- Right column: top shortcuts + right keyboard (same strip : keyboard weights as left) -->
         <LinearLayout
             android:id="@+id/split_right_column"
             android:layout_width="0dp"
@@ -163,54 +215,19 @@
                 android:id="@+id/split_top_right"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="10" />
+                android:layout_weight="1" />
 
             <com.openterface.keymod.CustomKeyboardView
                 android:id="@+id/keyboard_view_right"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="22"
+                android:layout_weight="2.2"
                 android:paddingTop="@dimen/keyboard_outer_padding_top"
                 android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
                 android:keyBackground="@drawable/key_background"
-                android:theme="@style/ButtonTheme"/>
+                android:theme="@style/ButtonTheme"
+                app:showGuiHidKey="false"/>
         </LinearLayout>
 
-    </LinearLayout>
-
-    <!-- IME stack: shortcut strips + capture field; fragment root uses IME bottom padding like Compose mode -->
-    <LinearLayout
-        android:id="@+id/composite_split_ime_host"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0"
-        android:orientation="vertical"
-        android:visibility="gone"
-        android:descendantFocusability="afterDescendants">
-
-        <LinearLayout
-            android:id="@+id/split_ime_shortcuts_row"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:orientation="horizontal"
-            android:visibility="gone" />
-
-        <EditText
-            android:id="@+id/composite_split_ime_edit"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clickable="true"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:gravity="top|start"
-            android:hint="@string/ime_capture_hint"
-            android:importantForAutofill="no"
-            android:inputType="text|textCapSentences|textMultiLine"
-            android:padding="8dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
-            android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>

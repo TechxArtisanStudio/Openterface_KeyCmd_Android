@@ -50,7 +50,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/rows23_slot_editor_persistence_label"
-                    android:textAppearance="@style/TextAppearance.KeyMod.SectionCaption" />
+                    android:textAppearance="@style/TextAppearance.KeyCmd.SectionCaption" />
 
                 <TextView
                     android:id="@+id/rows23_slot_editor_persistence_value"
@@ -77,7 +77,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:text="@string/rows23_slot_editor_factory_cap"
-                    android:textAppearance="@style/TextAppearance.KeyMod.SectionCaption" />
+                    android:textAppearance="@style/TextAppearance.KeyCmd.SectionCaption" />
 
                 <TextView
                     android:id="@+id/rows23_slot_editor_factory_cap"
@@ -93,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/rows23_slot_editor_factory_event"
-                    android:textAppearance="@style/TextAppearance.KeyMod.SectionCaption" />
+                    android:textAppearance="@style/TextAppearance.KeyCmd.SectionCaption" />
 
                 <TextView
                     android:id="@+id/rows23_slot_editor_factory_event"
@@ -106,7 +106,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/rows23_slot_editor_reset"
-                    style="@style/Widget.KeyMod.Favorites.Action.Tertiary"
+                    style="@style/Widget.KeyCmd.Favorites.Action.Tertiary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
@@ -144,7 +144,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/rows23_slot_editor_icon_section"
-                android:textAppearance="@style/TextAppearance.KeyMod.SectionCaption" />
+                android:textAppearance="@style/TextAppearance.KeyCmd.SectionCaption" />
 
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/rows23_slot_editor_icon_chips"
@@ -159,7 +159,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/rows23_icon_chip_emoji"
-                    style="@style/Widget.KeyMod.CreateShortcut.Chip.Small"
+                    style="@style/Widget.KeyCmd.CreateShortcut.Chip.Small"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checkable="true"
@@ -167,7 +167,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/rows23_icon_chip_vector"
-                    style="@style/Widget.KeyMod.CreateShortcut.Chip.Small"
+                    style="@style/Widget.KeyCmd.CreateShortcut.Chip.Small"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checkable="true"
@@ -175,7 +175,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/rows23_icon_chip_none"
-                    style="@style/Widget.KeyMod.CreateShortcut.Chip.Small"
+                    style="@style/Widget.KeyCmd.CreateShortcut.Chip.Small"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:checkable="true"
@@ -202,7 +202,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/rows23_slot_editor_key_section"
-                android:textAppearance="@style/TextAppearance.KeyMod.SectionCaption" />
+                android:textAppearance="@style/TextAppearance.KeyCmd.SectionCaption" />
 
             <TextView
                 android:id="@+id/rows23_slot_editor_key_preview"

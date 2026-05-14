@@ -20,27 +20,48 @@
         android:layout_height="0dp"
         android:layout_weight="5">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:background="@drawable/km_basic_touchpad_surface"
+            android:clipToOutline="true">
 
-            <com.openterface.keymod.TouchPadView
-                android:id="@+id/basic_touch_pad"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="5"
-                android:background="@color/background_light" />
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
-            <com.openterface.keymod.basic.BasicPortraitScrollStripView
-                android:id="@+id/basic_touchpad_scroll_strip"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@color/background_light"
-                android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
-        </LinearLayout>
+                <com.openterface.keymod.TouchPadView
+                    android:id="@+id/basic_touch_pad"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="5" />
+
+                <com.openterface.keymod.basic.BasicPortraitScrollStripView
+                    android:id="@+id/basic_touchpad_scroll_strip"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:minWidth="@dimen/pro_touchpad_scroll_strip_min_width"
+                    android:contentDescription="@string/kb_basic_touchpad_scroll_area_a11y" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/basic_touchpad_brand_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="@dimen/km_basic_touchpad_brand_logo_margin_bottom"
+                android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
+                android:adjustViewBounds="true"
+                android:scaleType="fitCenter"
+                android:alpha="0.82"
+                android:src="@drawable/ic_openterface_wordmark"
+                android:tint="@color/text_secondary"
+                android:contentDescription="@string/touch_pad_brand_content_description"
+                android:importantForAccessibility="yes" />
+        </FrameLayout>
     </FrameLayout>
 
     <LinearLayout
@@ -51,11 +72,13 @@
         android:baselineAligned="false"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingTop="8dp">
+        android:paddingTop="8dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp">
 
         <TextView
             android:id="@+id/basic_touchpad_btn_left"
-            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            style="@style/Widget.KeyCmd.BasicTouchpadMouseButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
@@ -64,7 +87,7 @@
 
         <TextView
             android:id="@+id/basic_touchpad_btn_middle"
-            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            style="@style/Widget.KeyCmd.BasicTouchpadMouseButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginStart="8dp"
@@ -74,7 +97,7 @@
 
         <TextView
             android:id="@+id/basic_touchpad_btn_right"
-            style="@style/Widget.KeyMod.BasicTouchpadMouseButton"
+            style="@style/Widget.KeyCmd.BasicTouchpadMouseButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginStart="8dp"

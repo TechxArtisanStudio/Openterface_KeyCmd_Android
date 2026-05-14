@@ -6,12 +6,43 @@
     <dimen name="spacing_medium">16dp</dimen>
     <dimen name="spacing_large">24dp</dimen>
     <dimen name="spacing_xlarge">32dp</dimen>
-    
+
+    <dimen name="compose_send_warning_tab_body_height">264dp</dimen>
+    <!-- Tabbed send-risk dialog: scroll area for ASCII details + expandable Unicode section -->
+    <dimen name="compose_send_warning_tabbed_scroll_height">280dp</dimen>
+    <!-- Tabbed "Review send risks": keep total horizontal inset modest (gutter + card margin + contentPadding only). -->
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_h">10dp</dimen>
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_top">8dp</dimen>
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_bottom">12dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_margin_h">6dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_margin_v">4dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_h">20dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_top">18dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_bottom">22dp</dimen>
+    <dimen name="compose_send_warning_tabbed_inner_padding_h">0dp</dimen>
+    <!-- Non-tabbed: outer gutter + body padding (same order of magnitude as tabbed). -->
+    <dimen name="compose_send_warning_dialog_body_padding_h">20dp</dimen>
+    <dimen name="compose_send_warning_dialog_body_padding_top">16dp</dimen>
+    <dimen name="compose_send_warning_dialog_body_padding_bottom">20dp</dimen>
+    <dimen name="compose_send_warning_tabbed_title_body_gap">16dp</dimen>
+    <dimen name="compose_send_warning_tabbed_block_gap">16dp</dimen>
+    <dimen name="compose_send_warning_tabbed_body_line_spacing_extra">4dp</dimen>
+
     <!-- Header -->
     <dimen name="header_height">56dp</dimen>
     <dimen name="header_padding">8dp</dimen>
     <dimen name="header_elevation">4dp</dimen>
     <dimen name="header_icon_size">40dp</dimen>
+    <!-- Trailing cluster (target OS, mode guide, setup, connection): tighter than menu / title row. -->
+    <dimen name="header_right_cluster_icon_size">36dp</dimen>
+    <dimen name="header_right_cluster_icon_padding">8dp</dimen>
+    <dimen name="header_right_cluster_button_gap">0dp</dimen>
+    <dimen name="header_right_cluster_connection_padding">2dp</dimen>
+    <!-- Bluetooth / connection glyph inside header_right_cluster (KM Pro + KM Basic chrome). -->
+    <dimen name="header_connection_icon_size">18dp</dimen>
+    <!-- KM Pro header submode tabs: slightly smaller than header_right_cluster icons for density. -->
+    <dimen name="km_pro_submode_tab_icon_size">32dp</dimen>
+    <dimen name="km_pro_submode_tab_icon_padding">2dp</dimen>
     <dimen name="header_title_size">18sp</dimen>
     
     <!-- Buttons -->
@@ -32,10 +63,14 @@
     <dimen name="fragment_padding">8dp</dimen>
     <dimen name="fragment_margin">8dp</dimen>
 
+    <!-- KM Basic embedded chrome row: same fixed height as Pro `header_layout` (portrait/landscape follow @dimen/header_height). -->
+    <dimen name="km_basic_chrome_row_height">@dimen/header_height</dimen>
     <!-- KM Basic: keep tab chrome clear of status bar / cutout (used with WindowInsets; floor when insets are 0). -->
     <dimen name="km_basic_chrome_min_top_padding">12dp</dimen>
     <!-- KM Basic compose: min editor height in portrait (NestedScrollView allows shrinking when IME shows). -->
     <dimen name="basic_compose_editor_min_height">120dp</dimen>
+    <!-- Cancels basic_compose_root horizontal padding so KM Pro embedded shortcut strip is full device width. -->
+    <dimen name="basic_compose_km_pro_shortcut_strip_horizontal_outdent">-12dp</dimen>
 
     <!-- Gamepad toolbar -->
     <!-- Full-width fade behind chrome + centered toggle (same vertical band); not a solid bar. -->
@@ -57,6 +92,8 @@
     <dimen name="gamepad_presets_recycler_max_height_land">360dp</dimen>
     <dimen name="gamepad_presets_bottom_sheet_max_width">360dp</dimen>
     <dimen name="gamepad_presets_bottom_sheet_min_width">252dp</dimen>
+    <!-- Layouts grid dialog (landscape-first card picker). -->
+    <dimen name="gamepad_preset_card_preview_height">96dp</dimen>
     <!-- Vertical breathing room around full keyboard blocks -->
     <dimen name="keyboard_outer_padding_top">6dp</dimen>
     <dimen name="keyboard_outer_padding_bottom">8dp</dimen>
@@ -68,10 +105,29 @@
     <dimen name="basic_keyboard_content_inset_bottom">12dp</dimen>
     <!-- KM Basic touchpad: comfort gap under L/M/R; combined with nav insets in code (see fragment). -->
     <dimen name="basic_touchpad_content_inset_bottom">10dp</dimen>
+    <!-- KM Pro composite touchpad: mouse row min height; compact layout uses same row with vertical orientation in code. -->
+    <dimen name="pro_touchpad_mouse_row_min_height">76dp</dimen>
+    <!-- When touchpad_section height is at or below this, use compact (pad | vertical L/M/R) layout. -->
+    <dimen name="pro_touchpad_section_compact_height_threshold">232dp</dimen>
+    <!-- KM Pro mouse-keys row: vertical padding (also used after resetting programmatic strip insets). -->
+    <dimen name="pro_touchpad_mouse_keys_padding_top">6dp</dimen>
+    <dimen name="pro_touchpad_mouse_keys_padding_bottom">4dp</dimen>
+    <!-- Portrait NumPad + strip: horizontal inset for L/M/R column beside the pad. -->
+    <dimen name="pro_touchpad_mouse_keys_strip_padding_horizontal">8dp</dimen>
+    <!-- Landscape split + strip: extra inset before L and after R when L/M/R is a horizontal row. -->
+    <dimen name="pro_touchpad_mouse_keys_split_horizontal_edge_inset">10dp</dimen>
+    <!-- KM Pro composite: vertical wheel strip beside pad (split / NumPad narrow columns). -->
+    <dimen name="pro_touchpad_scroll_strip_min_width">30dp</dimen>
+    <!-- KM Basic / Pro: horizontal inset inside the mouse-key column (beside touchpad, portrait). -->
+    <dimen name="basic_touchpad_mouse_column_horizontal_padding">10dp</dimen>
     <!-- Per-key margins (inflateKey sets LayoutParams); adjacent keys sum to horizontal/vertical gap. -->
     <dimen name="basic_keyboard_key_margin_h">1dp</dimen>
     <dimen name="basic_keyboard_key_margin_v">2dp</dimen>
     <dimen name="basic_keyboard_arrow_icon_size">22dp</dimen>
+    <!-- KM Basic NumPad 0 (openterface wordmark): cap size for portrait/landscape parity; slightly under
+         Compose toolbar icon size (24dp) so the key stays readable. -->
+    <dimen name="km_basic_numpad_zero_wordmark_max_height">20dp</dimen>
+    <dimen name="km_basic_numpad_zero_wordmark_max_width">168dp</dimen>
     <!-- KM Basic: floating label above/below key on press -->
     <dimen name="basic_key_preview_corner_radius">9dp</dimen>
     <dimen name="basic_key_preview_padding_h">16dp</dimen>
@@ -86,9 +142,24 @@
     <!-- F-row: nudge preview further above the key when shown above (thumb clearance). -->
     <dimen name="basic_key_preview_f_row_extra_up">12dp</dimen>
     <!-- Compose: top shortcut strip only (~same share of keyboard as Keyboard+Mouse portrait: 2.4 / (2.4 + 4 letter rows) of keyboard band) -->
-    <dimen name="compose_shortcut_strip_height">120dp</dimen>
-    
+    <dimen name="compose_shortcut_strip_height">132dp</dimen>
+    <!-- KM Pro portrait IME host: thin strip below CustomKeyboardView (must not overlay shortcut rows). -->
+    <dimen name="km_pro_ime_host_height">2dp</dimen>
+    <!-- KM Pro portrait Keyboard: reserve bottom space inside CustomKeyboardView (BI + IME) so shortcut rows align and clear Gboard. -->
+    <dimen name="km_pro_portrait_keyboard_bottom_reserve">32dp</dimen>
+    <!-- KM Basic space bar + KM Pro portrait QWERTY footer: same Openterface wordmark scale. -->
+    <dimen name="km_openterface_wordmark_keyboard_height">13dp</dimen>
+    <dimen name="km_openterface_wordmark_keyboard_padding_horizontal">8dp</dimen>
+    <!-- KM Basic touchpad bottom wordmark (fragment_basic_touchpad); KM Pro QWERTY footer matches. -->
+    <dimen name="km_basic_touchpad_brand_logo_height">12dp</dimen>
+    <dimen name="km_basic_touchpad_brand_logo_max_width">200dp</dimen>
+    <dimen name="km_basic_touchpad_brand_logo_margin_bottom">8dp</dimen>
+    <!-- KM Pro QWERTY footer only: tight gaps so letter rows keep more height; shortcut strip stays fixed. -->
+    <dimen name="km_pro_keyboard_brand_footer_margin_top">6dp</dimen>
+    <dimen name="km_pro_keyboard_brand_footer_margin_bottom">2dp</dimen>
+
     <!-- Touchpad -->
+    <dimen name="basic_touchpad_area_corner_radius">10dp</dimen>
     <dimen name="touchpad_corner_radius">12dp</dimen>
     <dimen name="touchpad_elevation">2dp</dimen>
     <dimen name="touchpad_help_overlay_shift_up">-28dp</dimen>
@@ -99,13 +170,13 @@
     <!-- Toggle handle between touchpad and keyboard (portrait = height, landscape = narrow axis) -->
     <dimen name="toggle_handle_height">28dp</dimen>
     <dimen name="toggle_handle_width_landscape">24dp</dimen>
+
+    <!-- KM Pro split landscape IME compose: vertical action rail width clamps (~9:1 target vs parent). -->
+    <dimen name="split_compose_ime_rail_min_width">52dp</dimen>
+    <dimen name="split_compose_ime_rail_max_width">96dp</dimen>
     
     <!-- Card -->
     <dimen name="card_corner_radius">12dp</dimen>
     <dimen name="card_elevation">3dp</dimen>
 
-    <!-- Shortcut Hub Row 1 profile slots (fixed strip page 3 row 2): bottom accent bar height -->
-    <dimen name="profile_hub_slot_bottom_accent_height">3dp</dimen>
-    <!-- Rows 2–3 strip profile slots (page 3 row 3): top-right dog-ear isosceles leg length -->
-    <dimen name="strip_profile_hub_dog_ear_leg">12dp</dimen>
 </resources>

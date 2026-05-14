@@ -9,9 +9,11 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.openterface.keymod.prefs.ShortcutHubDetailUiPrefs;
 import com.openterface.keymod.util.ShortcutFavoriteRowViews;
 
 import java.util.List;
@@ -20,6 +22,11 @@ import java.util.List;
  * Vertical list of My shortcuts with drag-handle reordering (keyboard sheet + Shortcut Hub).
  */
 public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsReorderAdapter.VH> {
+
+    /** RecyclerView must not recycle card rows as list rows (and vice versa) when toggling layout. */
+    private static final int VIEW_TYPE_COMPACT_LIST = 0;
+    private static final int VIEW_TYPE_HUB_LIST = 1;
+    private static final int VIEW_TYPE_HUB_CARD = 2;
 
     public interface RowInteraction {
         void onRowClick(ShortcutProfileManager.Shortcut shortcut, @NonNull View rowContent);
@@ -31,13 +38,28 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
         void onEditClick(@NonNull ShortcutProfileManager.Shortcut shortcut);
     }
 
-    private final String targetOs;
+    /** Card layout: overflow menu (edit / remove from favorites). */
+    public interface HubCardOverflowMenuRequestListener {
+        void onHubCardOverflowRequested(
+                @NonNull ShortcutProfileManager.Shortcut shortcut,
+                @NonNull View anchor);
+    }
+
+    @NonNull
+    private String targetOs;
     private final List<ShortcutProfileManager.Shortcut> items;
     private ItemTouchHelper dragHelper;
     private RowInteraction rowInteraction;
     private OnRemoveFavoriteClickListener removeFavoriteClickListener;
     @Nullable
     private OnEditShortcutClickListener editShortcutClickListener;
+    @Nullable
+    private HubCardOverflowMenuRequestListener hubCardOverflowMenuRequestListener;
+
+    /** When false, always compact list row + strip binding (keyboard reorder sheet). */
+    private boolean shortcutHubDetailEnabled;
+    private boolean shortcutHubCardLayout;
+    private int shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.DISPLAY_NAME;
 
     public interface OnRemoveFavoriteClickListener {
         void onRemoveFavoriteClick(@NonNull ShortcutProfileManager.Shortcut shortcut, int position);
@@ -47,6 +69,34 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             List<ShortcutProfileManager.Shortcut> items) {
         this.targetOs = targetOs != null ? targetOs : "macos";
         this.items = items;
+    }
+
+    /**
+     * Updates host OS used for modifier/chord labels in row binding. Call when {@code AppPrefs}
+     * {@code target_os} changes without recreating the adapter.
+     */
+    public void setTargetOs(@Nullable String os) {
+        String next = os != null ? os : "macos";
+        if (next.equals(targetOs)) {
+            return;
+        }
+        this.targetOs = next;
+        notifyDataSetChanged();
+    }
+
+    public void setHubCardOverflowMenuRequestListener(
+            @Nullable HubCardOverflowMenuRequestListener listener) {
+        this.hubCardOverflowMenuRequestListener = listener;
+    }
+
+    /**
+     * Shortcut Hub profile detail: list vs card and row display. Ignored when {@code enabled} is false.
+     */
+    public void setShortcutHubDetailPresentation(boolean enabled, boolean cardLayout, int displayMode) {
+        shortcutHubDetailEnabled = enabled;
+        shortcutHubCardLayout = cardLayout;
+        shortcutHubDisplayMode = ShortcutHubDetailUiPrefs.clampDisplay(displayMode);
+        notifyDataSetChanged();
     }
 
     public void setDragHelper(ItemTouchHelper helper) {
@@ -86,19 +136,85 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
         notifyItemMoved(fromPosition, toPosition);
     }
 
+    @Override
+    public int getItemViewType(int position) {
+        if (!shortcutHubDetailEnabled) {
+            return VIEW_TYPE_COMPACT_LIST;
+        }
+        return shortcutHubCardLayout ? VIEW_TYPE_HUB_CARD : VIEW_TYPE_HUB_LIST;
+    }
+
     @NonNull
     @Override
     public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_my_shortcuts_reorder_row_compact, parent, false);
+        int layout;
+        if (viewType == VIEW_TYPE_HUB_CARD) {
+            layout = R.layout.item_my_shortcuts_reorder_row_card;
+        } else {
+            layout = R.layout.item_my_shortcuts_reorder_row_compact;
+        }
+        View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
         return new VH(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull VH holder, int position) {
         ShortcutProfileManager.Shortcut shortcut = items.get(position);
-        ShortcutFavoriteRowViews.bindFavoriteStripRow(
-                holder.itemView.getContext(), holder.content, shortcut, targetOs);
+        if (shortcutHubDetailEnabled) {
+            ShortcutFavoriteRowViews.bindShortcutHubDetailRow(
+                    holder.itemView.getContext(),
+                    holder.content,
+                    shortcut,
+                    targetOs,
+                    shortcutHubDisplayMode,
+                    shortcutHubCardLayout);
+        } else {
+            ShortcutFavoriteRowViews.bindFavoriteStripRow(
+                    holder.itemView.getContext(), holder.content, shortcut, targetOs);
+        }
+
+        boolean hubCardChrome = shortcutHubDetailEnabled && shortcutHubCardLayout;
+        if (hubCardChrome) {
+            if (holder.editShortcut != null) {
+                holder.editShortcut.setVisibility(View.GONE);
+                holder.editShortcut.setOnClickListener(null);
+            }
+            if (holder.removeFavorite != null) {
+                holder.removeFavorite.setVisibility(View.GONE);
+                holder.removeFavorite.setOnClickListener(null);
+            }
+            if (holder.hubOverflow != null) {
+                holder.hubOverflow.setVisibility(
+                        hubCardOverflowMenuRequestListener != null ? View.VISIBLE : View.GONE);
+                holder.hubOverflow.setOnClickListener(v -> {
+                    if (hubCardOverflowMenuRequestListener != null) {
+                        hubCardOverflowMenuRequestListener.onHubCardOverflowRequested(shortcut, v);
+                    }
+                });
+            }
+        } else {
+            if (holder.hubOverflow != null) {
+                holder.hubOverflow.setVisibility(View.GONE);
+                holder.hubOverflow.setOnClickListener(null);
+            }
+            if (editShortcutClickListener != null && holder.editShortcut != null) {
+                holder.editShortcut.setVisibility(View.VISIBLE);
+                holder.editShortcut.setOnClickListener(v -> editShortcutClickListener.onEditClick(shortcut));
+            } else if (holder.editShortcut != null) {
+                holder.editShortcut.setVisibility(View.GONE);
+                holder.editShortcut.setOnClickListener(null);
+            }
+            if (removeFavoriteClickListener != null && holder.removeFavorite != null) {
+                holder.removeFavorite.setVisibility(View.VISIBLE);
+                holder.removeFavorite.setOnClickListener(v ->
+                        removeFavoriteClickListener.onRemoveFavoriteClick(
+                                shortcut, holder.getBindingAdapterPosition()));
+            } else if (holder.removeFavorite != null) {
+                holder.removeFavorite.setVisibility(View.GONE);
+                holder.removeFavorite.setOnClickListener(null);
+            }
+        }
+
         if (dragHelper != null) {
             holder.dragHandle.setOnTouchListener((v, event) -> {
                 if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
@@ -121,21 +237,6 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             }
             return false;
         });
-        if (editShortcutClickListener != null) {
-            holder.editShortcut.setVisibility(View.VISIBLE);
-            holder.editShortcut.setOnClickListener(v -> editShortcutClickListener.onEditClick(shortcut));
-        } else {
-            holder.editShortcut.setVisibility(View.GONE);
-            holder.editShortcut.setOnClickListener(null);
-        }
-        if (removeFavoriteClickListener != null) {
-            holder.removeFavorite.setVisibility(View.VISIBLE);
-            holder.removeFavorite.setOnClickListener(v ->
-                    removeFavoriteClickListener.onRemoveFavoriteClick(shortcut, holder.getBindingAdapterPosition()));
-        } else {
-            holder.removeFavorite.setVisibility(View.GONE);
-            holder.removeFavorite.setOnClickListener(null);
-        }
     }
 
     @Override
@@ -146,8 +247,12 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
     static final class VH extends RecyclerView.ViewHolder {
         final ImageView dragHandle;
         final View content;
+        @Nullable
         final ImageView editShortcut;
+        @Nullable
         final ImageView removeFavorite;
+        @Nullable
+        final AppCompatImageButton hubOverflow;
 
         VH(@NonNull View itemView) {
             super(itemView);
@@ -155,6 +260,7 @@ public class MyShortcutsReorderAdapter extends RecyclerView.Adapter<MyShortcutsR
             content = itemView.findViewById(R.id.reorder_row_content);
             editShortcut = itemView.findViewById(R.id.reorder_edit_shortcut);
             removeFavorite = itemView.findViewById(R.id.reorder_remove_favorite);
+            hubOverflow = itemView.findViewById(R.id.hub_card_overflow);
         }
     }
 }

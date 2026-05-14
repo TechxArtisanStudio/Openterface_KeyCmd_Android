@@ -32,6 +32,7 @@ public final class GamepadDynamicLayoutRegistry {
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_DPAD, GamepadView::drawDynamicDpadModule);
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON, GamepadView::drawDynamicButtonModule);
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_TOUCHPAD, GamepadView::drawDynamicTouchpadModule);
+        DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_SCROLL_STRIP, GamepadView::drawDynamicScrollStripModule);
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_MOUSE_BUTTON, GamepadView::drawDynamicMouseButtonModule);
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER, GamepadView::drawDynamicShoulderOrTriggerModule);
         DRAWERS.put(GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER, GamepadView::drawDynamicShoulderOrTriggerModule);

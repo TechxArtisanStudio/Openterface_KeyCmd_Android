@@ -85,6 +85,7 @@ public class RepoRootDefaultGamepadJsonTest {
         assertNotNull(find(doc, "touchpad_1"));
         assertNotNull(find(doc, "mouse_btn_l"));
         assertNotNull(find(doc, "mouse_btn_r"));
+        assertNotNull(find(doc, "scroll_strip_1"));
         GamepadLayoutPresetDocument.GamepadModule sneak = find(doc, "button_x");
         assertNotNull(sneak);
         assertTrue(Boolean.TRUE.equals(sneak.keyboardHoldLock));
@@ -103,6 +104,24 @@ public class RepoRootDefaultGamepadJsonTest {
                         GamepadGestureLock.slotForKey(
                                 jump.gestureLock,
                                 GamepadLayoutPresetConstants.GESTURE_LOCK_SLOT_DOWN_LEFT)));
+    }
+
+    @Test
+    public void repoRootAllGamepadJsonFiles_loadAndValidate() throws Exception {
+        File appDir = new File(System.getProperty("user.dir"));
+        File repoRoot = appDir.getName().equals("app") ? appDir.getParentFile() : appDir;
+        File gamepadDir = new File(repoRoot, "gamepad");
+        assertTrue("Expected gamepad/ under " + repoRoot, gamepadDir.isDirectory());
+        File[] files = gamepadDir.listFiles((d, name) -> name != null && name.endsWith(".json"));
+        assertNotNull(files);
+        assertTrue("Expected at least one gamepad/*.json", files.length >= 1);
+        for (File f : files) {
+            String json = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+            GamepadLayoutPresetDocument doc = GamepadLayoutPresetDocument.parseOrNull(json);
+            assertNotNull(f.getName(), doc);
+            GamepadLayoutPresetDocument.validateOrThrow(doc);
+            assertEquals(f.getName(), GamepadLayoutPresetConstants.SCHEMA_VERSION, doc.schemaVersion);
+        }
     }
 
     private static GamepadLayoutPresetDocument.GamepadModule find(

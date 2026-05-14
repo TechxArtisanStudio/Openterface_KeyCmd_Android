@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="voice_language_names">
+        <item>Автоопределение</item>
+        <item>Английский</item>
+        <item>Китайский</item>
+        <item>Испанский</item>
+        <item>Французский</item>
+        <item>Немецкий</item>
+        <item>Итальянский</item>
+        <item>Японский</item>
+        <item>Корейский</item>
+        <item>Португальский</item>
+        <item>Русский</item>
+        <item>Арабский</item>
+        <item>Хинди</item>
+    </string-array>
+</resources>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/compose_send_preview_scroll"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fadeScrollbars="false"
+    android:fillViewport="false"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:id="@+id/compose_send_preview_inner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/compose_send_preview_summary_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/compose_send_preview_summary_title"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/compose_send_preview_summary_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="?attr/colorOutlineVariant" />
+
+        <TextView
+            android:id="@+id/compose_send_preview_payload_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/compose_send_preview_payload_title"
+            android:textColor="?attr/colorOnSurface"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/compose_send_preview_payload_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="2dp"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="13sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

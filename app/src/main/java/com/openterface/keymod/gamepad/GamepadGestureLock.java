@@ -53,9 +53,13 @@ public final class GamepadGestureLock {
     }
 
     /**
-     * When true, {@link com.openterface.keymod.GamepadView} commits hold/turbo via
-     * {@link #classifyDiagonalSlot} on pointer-up instead of {@code BasicHoldLockPopup}. Same as
-     * {@link #moduleGesturesEnabled}: {@code keyboardHoldLock} and/or explicit {@code gestureLock} actions.
+     * When true, {@link com.openterface.keymod.GamepadView} uses diagonal classification on pointer-up
+     * ({@link #classifyDiagonalSlot}) rather than the radial {@link com.openterface.keymod.basic.BasicHoldLockPopup}.
+     * <p>This matches {@link #moduleGesturesEnabled}: any enabled hold/turbo gestures (including
+     * {@code keyboardHoldLock} defaults on up-left / up-right) require the diagonal path so both
+     * {@code hold_lock} and {@code turbo} defaults stay available. The gamepad-tuned {@code BasicHoldLockPopup}
+     * constructor remains for a vertical-only flow that is not wired for modules with
+     * {@link #moduleGesturesEnabled} true.
      */
     public static boolean moduleUsesDiagonalGestureCommit(@Nullable GamepadLayoutPresetDocument.GamepadModule m) {
         return moduleGesturesEnabled(m);
@@ -106,9 +110,20 @@ public final class GamepadGestureLock {
      */
     @Nullable
     public static String classifyDiagonalSlot(float dx, float dy, float density) {
+        return classifyDiagonalSlot(
+                dx, dy, density, DIAGONAL_R_MIN_DP, DIAGONAL_R_CANCEL_DP);
+    }
+
+    /**
+     * Like {@link #classifyDiagonalSlot(float, float, float)} but with effective min / cancel radii in dp
+     * (multiplied by {@code density} to px). Use {@code radiusScale} ≥ 1 to require a longer stroke.
+     */
+    @Nullable
+    public static String classifyDiagonalSlot(
+            float dx, float dy, float density, float rMinDp, float rCancelDp) {
         double r = Math.hypot(dx, dy);
-        float rMin = DIAGONAL_R_MIN_DP * density;
-        float rCancel = DIAGONAL_R_CANCEL_DP * density;
+        float rMin = rMinDp * density;
+        float rCancel = rCancelDp * density;
         if (r <= rMin) {
             return null;
         }

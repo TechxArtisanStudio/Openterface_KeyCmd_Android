@@ -9,4 +9,9 @@
         <attr name="keyAlternates" format="string" />
         <attr name="keyCornerHint" format="string" />
     </declare-styleable>
+
+    <declare-styleable name="CustomKeyboardView">
+        <!-- When false (e.g. KM Pro): omit HID GUI key from main keyboard and fixed strip page 1. -->
+        <attr name="showGuiHidKey" format="boolean" />
+    </declare-styleable>
 </resources>

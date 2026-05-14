@@ -720,7 +720,7 @@ public class BluetoothDialogFragment extends DialogFragment {
             mainHandler.post(() -> scanButton.setEnabled(false));
         }
 
-        Log.d(TAG, LOG_PREFIX + "Starting BLE scan for Openterface / KeyMod devices...");
+        Log.d(TAG, LOG_PREFIX + "Starting BLE scan for Openterface / KeyCmd devices...");
         showToast(getString(R.string.bt_toast_scanning_started));
 
         rssiByMac.clear();

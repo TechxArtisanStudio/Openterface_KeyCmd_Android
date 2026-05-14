@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
@@ -15,6 +16,7 @@ import android.graphics.drawable.Drawable;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,6 +24,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.annotation.SuppressLint;
 import android.view.View;
@@ -51,6 +54,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.core.widget.ImageViewCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -58,23 +62,27 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.openterface.fragment.CompositeFragment;
 import com.openterface.fragment.GamepadFragment;
+import com.openterface.fragment.ImeSavedTextFragment;
 import com.openterface.fragment.KeyboardFragment;
 import com.openterface.fragment.KeyboardMouseFragment;
+import com.openterface.fragment.KmProSettingsFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329HostLockQuery;
 import com.openterface.keymod.hid.Ch9329InboundParser;
 import com.openterface.keymod.hid.HostKeyboardLockLeds;
-import com.openterface.keymod.util.TopModeShortcutPrefs;
 import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.color.MaterialColors;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
@@ -91,6 +99,9 @@ import android.app.PendingIntent;
 public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
 
     private static final String TAG = "MainActivity";
+    /** Google Form: bug reports (opened from nav drawer). */
+    private static final String BUG_REPORT_FORM_URL =
+            "https://docs.google.com/forms/d/e/1FAIpQLScTnJF_Pj_iIMvu8tBPaY_-n45-ffADUFAr8Ws-f6_TckWVTQ/viewform?usp=publish-editor";
     private int appliedThemeResId;
     private UsbSerialPort port;
     private boolean isReading = false;
@@ -163,10 +174,33 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navVoice;
     private LinearLayout navPresentation;
     private ImageButton targetOsHeaderButton;
-    private HorizontalScrollView headerEndScroll;
     @Nullable
     private View headerRightCluster;
-    private final ImageButton[] headerModeSlotButtons = new ImageButton[3];
+    @Nullable
+    private View headerEndPullSpacer;
+    @Nullable
+    private View kmProSettingsOverlay;
+    @Nullable
+    private View imeSavedTextOverlay;
+    @Nullable
+    private ImeSavedTextFragment.Host imeSavedTextHost;
+    @Nullable
+    private ImageButton kmProSetupHeaderButton;
+    @Nullable
+    private ImageButton modeGuideHeaderButton;
+    private final Handler modeGuideHandler = new Handler(Looper.getMainLooper());
+    @Nullable
+    private Runnable pendingModeGuideRunnable;
+    @Nullable
+    private HorizontalScrollView kmProHeaderTabsScroll;
+    @Nullable
+    private View kmProHeaderTabsSpacer;
+    @Nullable
+    private ImageButton kmProHeaderTabKeyboard;
+    @Nullable
+    private ImageButton kmProHeaderTabNumpad;
+    @Nullable
+    private ImageButton kmProHeaderTabCompose;
     private final ConnectionManager.ConnectionStateListener connectionStateListener =
             new ConnectionManager.ConnectionStateListener() {
                 @Override
@@ -381,7 +415,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         super.onCreate(savedInstanceState);
         Intent launchIntent = getIntent();
         String earlyLaunchMode = launchIntent.getStringExtra("launch_mode");
-        String earlyKbSub = launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        String earlyKbSub =
+                KeyboardMouseFragment.normalizeKmBasicSubmode(
+                        launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
         if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
@@ -412,7 +448,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
 
         // Handle launch mode from LaunchPanelActivity
-        pendingKbMouseSubmode = getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        pendingKbMouseSubmode =
+                KeyboardMouseFragment.normalizeKmBasicSubmode(
+                        getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
         String launchMode = getIntent().getStringExtra("launch_mode");
         if (launchMode != null) {
             handleLaunchMode(launchMode);
@@ -429,8 +467,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             }
         }, 500);
 
-        // Show beginner tutorial on first launch
-        if (!TutorialOverlay.isShown(this)) {
+        // Show beginner tutorial on first launch (Basic Keyboard & Mouse only; steps target that UI)
+        if (!TutorialOverlay.isShown(this)
+                && LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(currentNavMode)) {
             new Handler().postDelayed(this::showTutorial, 800);
         }
     }
@@ -447,7 +486,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         // Don't auto-setup USB here, ConnectionManager handles it
         
         applyAppChromeForHostFragment();
-        refreshHeaderModeSlotButtons();
     }
     
     @Override
@@ -516,6 +554,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     protected void onDestroy() {
         getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(chromeFragmentCallbacks);
+        modeGuideHandler.removeCallbacksAndMessages(null);
         stopHostLockPolling();
         if (connectionManager != null) {
             connectionManager.removeConnectionStateListener(connectionStateListener);
@@ -563,15 +602,21 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         setupDrawerImeBehavior();
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
-        headerEndScroll = findViewById(R.id.header_end_scroll);
         headerRightCluster = findViewById(R.id.header_right_cluster);
+        headerEndPullSpacer = findViewById(R.id.header_end_pull_spacer);
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
             updateTargetOsHeaderIcon();
         }
+        kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
+        imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
+        kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
+        modeGuideHeaderButton = findViewById(R.id.mode_guide_header_button);
+        if (modeGuideHeaderButton != null) {
+            modeGuideHeaderButton.setOnClickListener(v -> openModeGuideSheet());
+        }
         applyHeaderRightClusterNavInsets();
-        applyHeaderEndScrollLayoutForOrientation();
-        setupHeaderModeSlotButtons();
+        setupKmProHeaderSubmodeTabs();
 
         // Display app version in sidebar footer
         TextView versionText = findViewById(R.id.version_text);
@@ -596,6 +641,18 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         setupButtonListeners();
     }
 
+    /**
+     * Hide the weighted {@code app_title} so top mode shortcut icons stay leading-aligned (same as
+     * Keyboard & Mouse Pro). Brand remains in drawer / in-mode chrome where applicable.
+     */
+    private static boolean hideHeaderAppTitleForFragment(@Nullable Fragment f) {
+        return f instanceof CompositeFragment
+                || f instanceof PresentationFragment
+                || f instanceof ShortcutHubFragment
+                || f instanceof MacrosFragment
+                || f instanceof VoiceInputFragment;
+    }
+
     private void applyAppChromeForHostFragment() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         boolean hideAppHeader = f instanceof KeyboardMouseFragment || f instanceof GamepadFragment;
@@ -607,19 +664,356 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             if (hideAppHeader) {
                 appTitle.setVisibility(View.VISIBLE);
             } else {
-                // Keyboard & Mouse Pro: brand lives on the touchpad footer; keep header uncluttered.
-                appTitle.setVisibility(f instanceof CompositeFragment ? View.GONE : View.VISIBLE);
+                appTitle.setVisibility(hideHeaderAppTitleForFragment(f) ? View.GONE : View.VISIBLE);
             }
         }
         updateImmersiveForTopFragment();
         applyWindowSystemBarAppearanceForHostFragment(f);
         if (drawerLayout != null) {
+            // Pro + gamepad: lock edge swipe so left-edge typing / gestures do not open the drawer;
+            // hamburger and programmatic openDrawer() still work.
             int lockMode =
-                    f instanceof GamepadFragment
+                    (f instanceof GamepadFragment || f instanceof CompositeFragment)
                             ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                             : DrawerLayout.LOCK_MODE_UNLOCKED;
             drawerLayout.setDrawerLockMode(lockMode, GravityCompat.START);
         }
+        if (!(f instanceof CompositeFragment)
+                && kmProSettingsOverlay != null
+                && kmProSettingsOverlay.getVisibility() == View.VISIBLE) {
+            hideKmProSettingsOverlay();
+        } else {
+            updateKmProHeaderSetupChrome();
+        }
+        if (!(f instanceof CompositeFragment)
+                && imeSavedTextOverlay != null
+                && imeSavedTextOverlay.getVisibility() == View.VISIBLE) {
+            hideImeSavedTextOverlay();
+        }
+        applyKmProHeaderSubmodeChrome(f);
+        updateModeGuideHeaderVisibility(f);
+        scheduleDeferredModeGuideCheck(f);
+    }
+
+    private void setupKmProHeaderSubmodeTabs() {
+        kmProHeaderTabsScroll = findViewById(R.id.km_pro_header_tabs_scroll);
+        kmProHeaderTabsSpacer = findViewById(R.id.km_pro_header_tabs_spacer);
+        kmProHeaderTabKeyboard = findViewById(R.id.km_pro_header_tab_keyboard);
+        kmProHeaderTabNumpad = findViewById(R.id.km_pro_header_tab_numpad);
+        kmProHeaderTabCompose = findViewById(R.id.km_pro_header_tab_compose);
+        if (kmProHeaderTabKeyboard != null) {
+            kmProHeaderTabKeyboard.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_KEYBOARD));
+        }
+        if (kmProHeaderTabNumpad != null) {
+            kmProHeaderTabNumpad.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_NUMPAD));
+        }
+        if (kmProHeaderTabCompose != null) {
+            kmProHeaderTabCompose.setOnClickListener(
+                    v -> onKmProHeaderSubmodeTabClicked(KmProSubmodePrefs.SUBMODE_COMPOSE));
+        }
+        applyKmProHeaderTabsScrollInsets();
+    }
+
+    /**
+     * Keeps KM Pro submode icon tabs clear of display cutouts: uses {@link WindowInsetsCompat.Type#displayCutout()}
+     * left/right. Portrait + top-center cutout with no lateral inset: adds a small inset on the
+     * <strong>trailing</strong> edge only so tabs stay close to the menu. Does not apply cutout top
+     * padding on this view (would clip tab backgrounds inside the fixed header height).
+     */
+    private void applyKmProHeaderTabsScrollInsets() {
+        if (kmProHeaderTabsScroll == null) {
+            return;
+        }
+        final int baseStart = ViewCompat.getPaddingStart(kmProHeaderTabsScroll);
+        final int baseTop = kmProHeaderTabsScroll.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(kmProHeaderTabsScroll);
+        final int baseBottom = kmProHeaderTabsScroll.getPaddingBottom();
+        final float density = getResources().getDisplayMetrics().density;
+        // Light lateral inset when portrait has a top-center cutout but no reported side cutout.
+        // Keep modest so tabs stay nearer the menu; avoid large symmetric padding on both edges.
+        final int lateralGuardForTopCenterHolePx = Math.round(6f * density);
+        ViewCompat.setOnApplyWindowInsetsListener(
+                kmProHeaderTabsScroll,
+                (v, windowInsets) -> {
+                    Insets cut =
+                            windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                    boolean portrait =
+                            getResources().getConfiguration().orientation
+                                    == Configuration.ORIENTATION_PORTRAIT;
+                    int padStart = baseStart + cut.left;
+                    int padEnd = baseEnd + cut.right;
+                    if (portrait
+                            && cut.top >= lateralGuardForTopCenterHolePx
+                            && cut.left == 0
+                            && cut.right == 0) {
+                        padEnd += lateralGuardForTopCenterHolePx;
+                    }
+                    int padTop = baseTop;
+                    ViewCompat.setPaddingRelative(v, padStart, padTop, padEnd, baseBottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(kmProHeaderTabsScroll);
+    }
+
+    private void onKmProHeaderSubmodeTabClicked(@NonNull String submodeKey) {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).applyKmProSubmodeFromHost(submodeKey);
+        }
+        syncKmProHeaderTabSelectionUi();
+    }
+
+    /** Updates selected state for KM Pro header tabs from {@link KmProSubmodePrefs}. */
+    public void syncKmProHeaderTabSelectionUi() {
+        if (kmProHeaderTabKeyboard == null) {
+            return;
+        }
+        String sub = KmProSubmodePrefs.getSubmode(this);
+        kmProHeaderTabKeyboard.setSelected(KmProSubmodePrefs.SUBMODE_KEYBOARD.equals(sub));
+        if (kmProHeaderTabNumpad != null) {
+            kmProHeaderTabNumpad.setSelected(KmProSubmodePrefs.SUBMODE_NUMPAD.equals(sub));
+        }
+        if (kmProHeaderTabCompose != null) {
+            kmProHeaderTabCompose.setSelected(KmProSubmodePrefs.SUBMODE_COMPOSE.equals(sub));
+        }
+    }
+
+    private void applyKmProHeaderSubmodeChrome(@Nullable Fragment f) {
+        boolean show = f instanceof CompositeFragment;
+        if (kmProHeaderTabsScroll != null) {
+            kmProHeaderTabsScroll.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        if (show) {
+            syncKmProHeaderTabSelectionUi();
+        }
+        syncKmProHeaderTabsSpacerVisibility();
+    }
+
+    /**
+     * When KM Pro icon tabs replace the weighted title, a dedicated {@code Space} absorbs flex
+     * between the tab strip and the right cluster. Otherwise the scroll view would grow to
+     * {@code layout_weight} width and leave a dead band beside the icons.
+     */
+    private void syncKmProHeaderTabsSpacerVisibility() {
+        if (kmProHeaderTabsSpacer != null) {
+            TextView appTitle = findViewById(R.id.app_title);
+            boolean headerShown = headerLayout == null || headerLayout.getVisibility() == View.VISIBLE;
+            boolean showSpacer =
+                    headerShown
+                            && kmProHeaderTabsScroll != null
+                            && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE
+                            && appTitle != null
+                            && appTitle.getVisibility() != View.VISIBLE;
+            kmProHeaderTabsSpacer.setVisibility(showSpacer ? View.VISIBLE : View.GONE);
+        }
+        syncHeaderEndPullSpacerVisibility();
+    }
+
+    /**
+     * When the weighted app title and KM Pro tab strip are both hidden, the header row would
+     * otherwise leave the right cluster immediately after the menu. A weighted spacer pulls
+     * target OS / mode setup / connection to the trailing edge (Presentation, Shortcut Hub, etc.).
+     */
+    private void syncHeaderEndPullSpacerVisibility() {
+        if (headerEndPullSpacer == null) {
+            return;
+        }
+        if (headerLayout == null || headerLayout.getVisibility() != View.VISIBLE) {
+            headerEndPullSpacer.setVisibility(View.GONE);
+            return;
+        }
+        TextView appTitle = findViewById(R.id.app_title);
+        boolean titleVisible = appTitle != null && appTitle.getVisibility() == View.VISIBLE;
+        boolean proTabsVisible =
+                kmProHeaderTabsScroll != null
+                        && kmProHeaderTabsScroll.getVisibility() == View.VISIBLE;
+        headerEndPullSpacer.setVisibility(!titleVisible && !proTabsVisible ? View.VISIBLE : View.GONE);
+    }
+
+    private void toggleKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        if (kmProSettingsOverlay.getVisibility() == View.VISIBLE) {
+            hideKmProSettingsOverlay();
+        } else {
+            showKmProSettingsOverlay();
+        }
+    }
+
+    /** Opens full-screen KM Pro settings (strip display, alternate hints, active Shortcut Hub profile). */
+    public void showKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+            }
+        }
+        kmProSettingsOverlay.setVisibility(View.VISIBLE);
+        FragmentManager fm = getSupportFragmentManager();
+        try {
+            fm.executePendingTransactions();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "executePendingTransactions before KM Pro settings show", e);
+        }
+        FragmentTransaction showTx =
+                fm.beginTransaction().replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment());
+        try {
+            if (!fm.isStateSaved()) {
+                showTx.commitNow();
+            } else {
+                showTx.commitAllowingStateLoss();
+            }
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "KM Pro settings show: commitNow failed, retrying with commitAllowingStateLoss", e);
+            fm.beginTransaction()
+                    .replace(R.id.km_pro_settings_overlay, new KmProSettingsFragment())
+                    .commitAllowingStateLoss();
+        }
+        updateKmProHeaderSetupChrome();
+    }
+
+    /** Called from {@link KmProSettingsFragment} when closing setup. */
+    public void hideKmProSettingsOverlay() {
+        if (kmProSettingsOverlay == null) {
+            return;
+        }
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment existing = fm.findFragmentById(R.id.km_pro_settings_overlay);
+        if (existing != null) {
+            FragmentTransaction hideTx = fm.beginTransaction().remove(existing);
+            try {
+                if (!fm.isStateSaved()) {
+                    hideTx.commitNow();
+                } else {
+                    hideTx.commitAllowingStateLoss();
+                }
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "KM Pro settings hide: commitNow failed, retrying with commitAllowingStateLoss", e);
+                fm.beginTransaction().remove(existing).commitAllowingStateLoss();
+            }
+        }
+        kmProSettingsOverlay.setVisibility(View.GONE);
+        refreshOpenKeyboardShortcutStripFromPrefs();
+        updateKmProHeaderSetupChrome();
+    }
+
+    /** Full-screen overlay for IME saved compose texts library. */
+    public void showImeSavedTextOverlay(@NonNull ImeSavedTextFragment.Host host) {
+        if (imeSavedTextOverlay == null) {
+            return;
+        }
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+            }
+        }
+        imeSavedTextHost = host;
+        imeSavedTextOverlay.setVisibility(View.VISIBLE);
+        FragmentManager fm = getSupportFragmentManager();
+        try {
+            fm.executePendingTransactions();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "executePendingTransactions before IME saved texts show", e);
+        }
+        FragmentTransaction showTx =
+                fm.beginTransaction().replace(R.id.ime_saved_text_overlay, new ImeSavedTextFragment());
+        try {
+            if (!fm.isStateSaved()) {
+                showTx.commitNow();
+            } else {
+                showTx.commitAllowingStateLoss();
+            }
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "IME saved texts show: commitNow failed, retrying with commitAllowingStateLoss", e);
+            fm.beginTransaction()
+                    .replace(R.id.ime_saved_text_overlay, new ImeSavedTextFragment())
+                    .commitAllowingStateLoss();
+        }
+    }
+
+    @Nullable
+    public ImeSavedTextFragment.Host getImeSavedTextHost() {
+        return imeSavedTextHost;
+    }
+
+    public void hideImeSavedTextOverlay() {
+        if (imeSavedTextOverlay == null) {
+            return;
+        }
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment existing = fm.findFragmentById(R.id.ime_saved_text_overlay);
+        if (existing != null) {
+            FragmentTransaction hideTx = fm.beginTransaction().remove(existing);
+            try {
+                if (!fm.isStateSaved()) {
+                    hideTx.commitNow();
+                } else {
+                    hideTx.commitAllowingStateLoss();
+                }
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "IME saved texts hide: commitNow failed, retrying with commitAllowingStateLoss", e);
+                fm.beginTransaction().remove(existing).commitAllowingStateLoss();
+            }
+        }
+        imeSavedTextOverlay.setVisibility(View.GONE);
+        imeSavedTextHost = null;
+    }
+
+    /**
+     * Header gear between Target OS and connection: KM Pro setup overlay on Pro mode, or Shortcut Hub
+     * per-profile display settings when a profile detail is open.
+     */
+    public void refreshHeaderSetupGearChrome() {
+        updateKmProHeaderSetupChrome();
+        updateModeGuideHeaderVisibility(
+                getSupportFragmentManager().findFragmentById(R.id.fragment_container));
+    }
+
+    private void updateKmProHeaderSetupChrome() {
+        if (kmProSetupHeaderButton == null) {
+            return;
+        }
+        Fragment host = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        boolean kmProOverlayOpen =
+                kmProSettingsOverlay != null && kmProSettingsOverlay.getVisibility() == View.VISIBLE;
+
+        if (host instanceof CompositeFragment) {
+            kmProSetupHeaderButton.setVisibility(View.VISIBLE);
+            kmProSetupHeaderButton.setOnClickListener(v -> toggleKmProSettingsOverlay());
+            kmProSetupHeaderButton.setContentDescription(getString(R.string.km_pro_setup_button_cd));
+            int tint =
+                    kmProOverlayOpen
+                            ? ThemeManager.getColorPrimary(this)
+                            : ContextCompat.getColor(this, R.color.text_secondary);
+            kmProSetupHeaderButton.setImageTintList(ColorStateList.valueOf(tint));
+            return;
+        }
+
+        if (host instanceof ShortcutHubFragment) {
+            ShortcutHubFragment hub = (ShortcutHubFragment) host;
+            if (hub.isShortcutHubProfileDetailShowing()) {
+                kmProSetupHeaderButton.setVisibility(View.VISIBLE);
+                kmProSetupHeaderButton.setOnClickListener(v -> hub.openHubDetailSettingsFromHost());
+                kmProSetupHeaderButton.setContentDescription(getString(R.string.shortcut_hub_detail_settings_cd));
+                kmProSetupHeaderButton.setImageTintList(
+                        ColorStateList.valueOf(ContextCompat.getColor(this, R.color.text_secondary)));
+                return;
+            }
+        }
+
+        kmProSetupHeaderButton.setVisibility(View.GONE);
+        kmProSetupHeaderButton.setOnClickListener(null);
     }
 
     /**
@@ -725,14 +1119,20 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             return;
         }
         icon.setImageResource(connectionHeaderIconRes(type, state));
-        icon.setColorFilter(headerConnectionClusterTint(state), PorterDuff.Mode.SRC_IN);
+        icon.setColorFilter(headerConnectionClusterTint(type, state), PorterDuff.Mode.SRC_IN);
         int cdRes;
         switch (type) {
             case USB:
                 cdRes = R.string.connection_medium_usb;
                 break;
             case BLUETOOTH:
-                cdRes = R.string.connection_medium_bluetooth;
+                if (state == ConnectionManager.ConnectionState.CONNECTING) {
+                    cdRes = R.string.connection_header_bluetooth_searching;
+                } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
+                    cdRes = R.string.connection_header_bluetooth_connected;
+                } else {
+                    cdRes = R.string.connection_medium_bluetooth;
+                }
                 break;
             default:
                 cdRes = R.string.connection;
@@ -842,24 +1242,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
-    private void applyHeaderEndScrollLayoutForOrientation() {
-        if (headerEndScroll == null) {
-            return;
-        }
-        ViewGroup.LayoutParams lp = headerEndScroll.getLayoutParams();
-        if (lp != null && lp.width != ViewGroup.LayoutParams.WRAP_CONTENT) {
-            lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            headerEndScroll.setLayoutParams(lp);
-        }
-        headerEndScroll.post(() -> {
-            boolean isLandscape =
-                    getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-            // Landscape target: show all header buttons by default.
-            // Portrait target: keep right-side actions visible first.
-            headerEndScroll.fullScroll(isLandscape ? View.FOCUS_LEFT : View.FOCUS_RIGHT);
-        });
-    }
-
     /**
      * In landscape, 3-button nav can sit on the physical end; pad the Target OS + connection cluster
      * so it stays clear of system bars (same max merge as {@link com.openterface.fragment.BasicComposeFragment}).
@@ -895,73 +1277,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        applyHeaderEndScrollLayoutForOrientation();
         if (headerRightCluster != null) {
             ViewCompat.requestApplyInsets(headerRightCluster);
+        }
+        if (kmProHeaderTabsScroll != null) {
+            ViewCompat.requestApplyInsets(kmProHeaderTabsScroll);
         }
         applyAppChromeForHostFragment();
     }
 
-    private void setupHeaderModeSlotButtons() {
-        headerModeSlotButtons[0] = findViewById(R.id.header_mode_slot_1);
-        headerModeSlotButtons[1] = findViewById(R.id.header_mode_slot_2);
-        headerModeSlotButtons[2] = findViewById(R.id.header_mode_slot_3);
-        for (int i = 0; i < headerModeSlotButtons.length; i++) {
-            ImageButton button = headerModeSlotButtons[i];
-            if (button == null) {
-                continue;
-            }
-            final int slotIndex = i + 1;
-            button.setOnClickListener(v -> {
-                String mode = TopModeShortcutPrefs.getModeForSlot(MainActivity.this, slotIndex);
-                switchToLaunchMode(mode);
-            });
-            button.setOnLongClickListener(v -> {
-                showHeaderModeSlotPicker(slotIndex);
-                return true;
-            });
-        }
-        refreshHeaderModeSlotButtons();
-    }
-
-    private void showHeaderModeSlotPicker(int slotIndex1Based) {
-        String[] modes = TopModeShortcutPrefs.getSelectableModes();
-        CharSequence[] labels = TopModeShortcutPrefs.getModeLabels(this);
-        String current = TopModeShortcutPrefs.getModeForSlot(this, slotIndex1Based);
-        int checked = 0;
-        for (int i = 0; i < modes.length; i++) {
-            if (modes[i].equals(current)) {
-                checked = i;
-                break;
-            }
-        }
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.top_mode_slot_picker_title)
-                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
-                    TopModeShortcutPrefs.setModeForSlot(getApplicationContext(), slotIndex1Based, modes[which]);
-                    refreshHeaderModeSlotButtons();
-                    dialog.dismiss();
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void refreshHeaderModeSlotButtons() {
-        int tint = headerNeutralActionTint();
-        for (int i = 0; i < headerModeSlotButtons.length; i++) {
-            ImageButton button = headerModeSlotButtons[i];
-            if (button == null) {
-                continue;
-            }
-            int slotIndex = i + 1;
-            String mode = TopModeShortcutPrefs.getModeForSlot(this, slotIndex);
-            int iconRes = TopModeShortcutPrefs.iconResForMode(mode);
-            button.setImageResource(iconRes);
-            button.setContentDescription(getString(TopModeShortcutPrefs.labelResForMode(mode)));
-            button.setColorFilter(tint, PorterDuff.Mode.SRC_IN);
-        }
-    }
-    
     private void setupConnectionStateListener() {
         connectionManager.addConnectionStateListener(connectionStateListener);
     }
@@ -1048,12 +1372,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }, 1000); // 1 second delay
     }
     
-    /** Same tint as the header Bluetooth icon for a given connection state. */
-    private int headerConnectionClusterTint(ConnectionManager.ConnectionState state) {
+    /**
+     * Header connection icon tint: theme primary when connected; green while Bluetooth is
+     * connecting/searching; orange while USB is connecting; idle grey otherwise.
+     */
+    private int headerConnectionClusterTint(
+            ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         switch (state) {
             case CONNECTED:
                 return ThemeManager.getColorPrimary(this);
             case CONNECTING:
+                if (type == ConnectionManager.ConnectionType.BLUETOOTH) {
+                    return ContextCompat.getColor(this, R.color.connected);
+                }
                 return ContextCompat.getColor(this, R.color.connecting);
             default:
                 return ContextCompat.getColor(this, R.color.header_connection_idle);
@@ -1082,17 +1413,17 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 if (state == ConnectionManager.ConnectionState.CONNECTED) {
                     return R.drawable.bluetooth_connected_24px;
                 }
-                return R.drawable.bluetooth_24px;
+                return R.drawable.ic_bluetooth;
             case NONE:
             default:
-                return R.drawable.bluetooth_24px;
+                return R.drawable.ic_bluetooth;
         }
     }
 
     private void updateConnectionButton(ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         if (connectionButton == null) return;
 
-        int connectionTint = headerConnectionClusterTint(state);
+        int connectionTint = headerConnectionClusterTint(type, state);
         int neutralTint = headerNeutralActionTint();
         connectionButton.setImageResource(connectionHeaderIconRes(type, state));
         connectionButton.setColorFilter(connectionTint, PorterDuff.Mode.SRC_IN);
@@ -1102,7 +1433,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 cdRes = R.string.connection_medium_usb;
                 break;
             case BLUETOOTH:
-                cdRes = R.string.connection_medium_bluetooth;
+                if (state == ConnectionManager.ConnectionState.CONNECTING) {
+                    cdRes = R.string.connection_header_bluetooth_searching;
+                } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
+                    cdRes = R.string.connection_header_bluetooth_connected;
+                } else {
+                    cdRes = R.string.connection_medium_bluetooth;
+                }
                 break;
             default:
                 cdRes = R.string.connection;
@@ -1111,11 +1448,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         connectionButton.setContentDescription(getString(cdRes));
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setColorFilter(neutralTint, PorterDuff.Mode.SRC_IN);
-        }
-        for (ImageButton slotButton : headerModeSlotButtons) {
-            if (slotButton != null) {
-                slotButton.setColorFilter(neutralTint, PorterDuff.Mode.SRC_IN);
-            }
         }
 
         switch (state) {
@@ -1141,6 +1473,16 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         dialog.setRxBleClient(rxBleClient);
         dialog.setConnectionDialogListener((type, state) -> updateConnectionButton(type, state));
         dialog.show(getSupportFragmentManager(), "ConnectionDialog");
+    }
+
+    /** Opens the bug-report Google Form in the user’s browser (or shows a toast if none). */
+    private void openBugReportForm() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(BUG_REPORT_FORM_URL));
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivity(intent);
+        } else {
+            Toast.makeText(this, R.string.report_bug_no_browser_toast, Toast.LENGTH_LONG).show();
+        }
     }
 
     private void startScan() {
@@ -1286,6 +1628,17 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             });
         }
 
+        View reportBugRow = findViewById(R.id.nav_report_bug);
+        if (reportBugRow != null) {
+            reportBugRow.setOnClickListener(v -> {
+                markDrawerCloseAsNavigation();
+                if (drawerLayout != null) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                }
+                openBugReportForm();
+            });
+        }
+
         if (keyBoard != null) {
             setOnClickListener(keyBoard, keyBoardDrawable, this::showKeyboardFragment);
         }
@@ -1379,16 +1732,28 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     private void updateNavSelection() {
         if (navKeyboardMouse != null) {
-            navKeyboardMouse.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE));
+            navKeyboardMouse.setSelected(
+                    LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(currentNavMode));
         }
         if (navKeyboardMousePro != null) {
-            navKeyboardMousePro.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO));
+            navKeyboardMousePro.setSelected(
+                    LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO.equals(currentNavMode));
         }
-        if (navGamepad != null) navGamepad.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_GAMEPAD));
-        if (navShortcuts != null) navShortcuts.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_SHORTCUTS));
-        if (navMacros != null) navMacros.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_MACROS));
-        if (navVoice != null) navVoice.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_VOICE));
-        if (navPresentation != null) navPresentation.setSelected(currentNavMode.equals(LaunchPanelActivity.MODE_PRESENTATION));
+        if (navGamepad != null) {
+            navGamepad.setSelected(LaunchPanelActivity.MODE_GAMEPAD.equals(currentNavMode));
+        }
+        if (navShortcuts != null) {
+            navShortcuts.setSelected(LaunchPanelActivity.MODE_SHORTCUTS.equals(currentNavMode));
+        }
+        if (navMacros != null) {
+            navMacros.setSelected(LaunchPanelActivity.MODE_MACROS.equals(currentNavMode));
+        }
+        if (navVoice != null) {
+            navVoice.setSelected(LaunchPanelActivity.MODE_VOICE.equals(currentNavMode));
+        }
+        if (navPresentation != null) {
+            navPresentation.setSelected(LaunchPanelActivity.MODE_PRESENTATION.equals(currentNavMode));
+        }
     }
 
     private void updateTargetOsHeaderIcon() {
@@ -1441,7 +1806,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (getTheme().resolveAttribute(attrId, value, true)) {
             return value.data;
         }
-        return getColor(R.color.primary);
+        return ThemeManager.getColorPrimary(this);
     }
 
     private void showKeyboardFragment() {
@@ -1465,13 +1830,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     /**
      * {@code launch_mode == null} matches the onCreate branch that defaults to KM Basic; extras can
-     * still request numpad/compose without {@code launch_mode}.
+     * still request numpad, touchpad, or settings without {@code launch_mode}. Legacy compose extra is
+     * normalized to keyboard before this runs.
      */
     private static boolean shouldLockLandscapeForKmBasicKeyboardIntent(
             @Nullable String launchMode, @Nullable String kbInitialSubmode) {
         if (LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(launchMode)) {
             return !KeyboardMouseFragment.SUBMODE_NUMPAD.equals(kbInitialSubmode)
                     && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode)
+                    && !KeyboardMouseFragment.SUBMODE_TOUCHPAD.equals(kbInitialSubmode)
                     && !KeyboardMouseFragment.SUBMODE_SETTINGS.equals(kbInitialSubmode);
         }
         if (launchMode == null) {
@@ -1535,11 +1902,43 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         transaction.commit();
     }
 
-    /** Call after Shortcut Hub imports a profile or strip preset so the keyboard strip reloads from prefs. */
+    /** Reloads strip data from prefs after profile/strip imports or when closing Pro setup. */
     public void refreshOpenKeyboardShortcutStripFromPrefs() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (f instanceof CompositeFragment) {
             ((CompositeFragment) f).refreshKeyboardShortcutStripFromExternalHub();
+        }
+    }
+
+    /** Reload alternate-hints pref into the composite keyboard after Pro setup or equivalent. */
+    public void refreshKeyboardAlternatesHintsFromPrefs() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshKeyboardAlternatesHintsFromPrefs();
+        }
+    }
+
+    /** Reload KM Pro key tap preview pref into the composite keyboard after Pro setup. */
+    public void refreshKmProKeyTapPreviewFromPrefs() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshKmProKeyTapPreviewFromPrefs();
+        }
+    }
+
+    /** Rebuild composite keyboard views after KM Pro setup (long-press behavior, etc.). */
+    public void refreshCompositeKeyboardLayoutFromKmProSetup() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshCompositeKeyboardLayoutFromKmProSetup();
+        }
+    }
+
+    /** Apply KM Pro touchpad mouse-key strip / hybrid prefs to the composite touchpad chrome. */
+    public void refreshCompositeTouchpadChromeFromKmProSetup() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshProTouchpadChromeFromKmProSetup();
         }
     }
 
@@ -1566,6 +1965,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * Handle launch mode from LaunchPanelActivity
      */
     private void handleLaunchMode(String mode) {
+        if (mode == null) {
+            mode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
+        }
         if (LaunchPanelActivity.MODE_NUMPAD.equals(mode)) {
             currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
             updateNavSelection();
@@ -1577,7 +1979,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
             updateNavSelection();
             consumePendingKbMouseSubmode();
-            showKeyboardMouseFragment(KeyboardMouseFragment.SUBMODE_COMPOSE);
+            showKeyboardMouseFragment(null);
             return;
         }
 
@@ -1630,12 +2032,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 keyboardView.setPort(newPort);
             }
         } else if (currentFragment instanceof CompositeFragment) {
-            ((CompositeFragment) currentFragment).port = newPort;
-            CustomKeyboardView keyboardView = currentFragment.getView() != null ?
-                    currentFragment.getView().findViewById(R.id.keyboard_view) : null;
-            if (keyboardView != null) {
-                keyboardView.setPort(newPort);
-            }
+            ((CompositeFragment) currentFragment).applyHostPortToKeyboardViews(newPort);
         } else if (currentFragment instanceof KeyboardMouseFragment) {
             ((KeyboardMouseFragment) currentFragment).onPortChanged(newPort);
         } else if (currentFragment instanceof MouseFragment) {
@@ -1791,75 +2188,291 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return bluetoothService;
     }
 
-    private void showTutorial() {
-        TutorialOverlay overlay = new TutorialOverlay(this);
+    /**
+     * Switches the top {@link CompositeFragment} KM Pro tab (keyboard / compose / numpad). Used by the
+     * KM Pro mode tour so Compose UI exists before highlight measurement.
+     */
+    public void ensureKmProFragmentSubmode(@NonNull String submodeKey) {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).applyKmProSubmodeFromHost(submodeKey);
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
 
-        overlay.setSteps(new TutorialOverlay.Step[]{
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.menu_button, R.id.basic_km_menu_button};
-                }
-                public String description() { return getString(R.string.tutorial_desc_menu); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.connection_container, R.id.basic_km_connection};
-                }
-                public String description() { return getString(R.string.tutorial_desc_bluetooth_header); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.nav_keyboard_mouse}; }
-                public String description() { return getString(R.string.tutorial_desc_drawer_modes); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null) drawer.openDrawer(android.view.Gravity.START);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.target_os_header_button, R.id.basic_km_target_os};
-                }
-                public String description() { return getString(R.string.tutorial_desc_target_os); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) {
-                        drawer.closeDrawer(android.view.Gravity.START);
+    /** Switches KM Basic to the full keyboard submode for the quick-start tour highlight. */
+    public void ensureKmBasicKeyboardSubmodeForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof KeyboardMouseFragment) {
+            ((KeyboardMouseFragment) f).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
+    /** Opens Default profile detail inside Shortcut Hub for the mode tour. */
+    public void ensureShortcutHubDefaultProfileForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof ShortcutHubFragment) {
+            ((ShortcutHubFragment) f).openDefaultProfileDetailForTour();
+            getSupportFragmentManager().executePendingTransactions();
+            refreshHeaderSetupGearChrome();
+        }
+    }
+
+    /** Switches Hub profile detail to the first category tab for the mode tour. */
+    public void ensureShortcutHubBrowseFirstCategoryForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof ShortcutHubFragment) {
+            ((ShortcutHubFragment) f).selectFirstBrowseCategoryForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
+    /** Turns on Gamepad Customize so the tour can highlight move mode and the pad surface. */
+    public void ensureGamepadEditModeForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof GamepadFragment) {
+            ((GamepadFragment) f).enterEditModeForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
+    /** Returns Gamepad to play mode after a tour step that temporarily enabled Customize. */
+    public void ensureGamepadEditModeExitForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof GamepadFragment) {
+            ((GamepadFragment) f).exitEditModeForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
+    public void openModeGuideSheet() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(f);
+        if (mode == null) {
+            return;
+        }
+        BottomSheetDialog sheet = new BottomSheetDialog(this);
+        sheet.setContentView(R.layout.bottom_sheet_mode_guide);
+        TextView title = sheet.findViewById(R.id.mode_guide_sheet_title);
+        if (title != null) {
+            title.setText(modeGuideSheetTitleFor(mode));
+        }
+        View replay = sheet.findViewById(R.id.mode_guide_replay_button);
+        if (replay != null) {
+            replay.setOnClickListener(
+                    v -> {
+                        sheet.dismiss();
+                        showModeTutorialOverlay(mode, false);
+                    });
+        }
+        View close = sheet.findViewById(R.id.mode_guide_close_button);
+        if (close != null) {
+            close.setOnClickListener(v -> sheet.dismiss());
+        }
+        sheet.setOnShowListener(
+                d -> {
+                    BottomSheetDialog dialog = (BottomSheetDialog) d;
+                    View decor = dialog.getWindow() != null ? dialog.getWindow().getDecorView() : null;
+                    if (decor != null) {
+                        decor.post(() -> applyModeGuideBottomSheetLayout(dialog));
+                    } else {
+                        applyModeGuideBottomSheetLayout(dialog);
                     }
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.keyboard_view, R.id.keyboard_view_left}; }
-                public String description() { return getString(R.string.tutorial_desc_keyboard_modes); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) drawer.closeDrawer(android.view.Gravity.START);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.keyboard_view}; }
-                public String description() { return getString(R.string.tutorial_desc_shortcut_row); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public int insetTopDp() { return 0; }
-                public int insetBottomDp() { return -200; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.touchPad}; }
-                public String description() { return getString(R.string.tutorial_desc_touchpad); }
-                public String buttonText() { return getString(R.string.tutorial_done); }
-            }
-        });
+                });
+        sheet.show();
+    }
 
-        // Add overlay to activity root so it appears above both content and drawer
+    /**
+     * {@link BottomSheetDialog} can anchor to the wrong edge and use a portrait-narrow max width when
+     * the activity uses {@code configChanges} for orientation and Basic keyboard forces landscape
+     * ({@code SENSOR_LANDSCAPE}). Force full activity width, bottom gravity, and expanded behavior.
+     */
+    private void applyModeGuideBottomSheetLayout(@NonNull BottomSheetDialog dialog) {
+        View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        if (bottom == null) {
+            return;
+        }
+        int targetWidth = resolveActivityContentWidthPx();
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
+        behavior.setFitToContents(true);
+        behavior.setSkipCollapsed(true);
+        behavior.setMaxWidth(targetWidth);
+        ViewGroup.LayoutParams lp = bottom.getLayoutParams();
+        if (lp != null) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            bottom.setLayoutParams(lp);
+        }
+        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            WindowManager.LayoutParams wlp = window.getAttributes();
+            wlp.width = WindowManager.LayoutParams.MATCH_PARENT;
+            wlp.gravity = Gravity.BOTTOM;
+            window.setAttributes(wlp);
+        }
+    }
+
+    private int resolveActivityContentWidthPx() {
+        Window w = getWindow();
+        if (w != null) {
+            View decor = w.getDecorView();
+            int dw = decor.getWidth();
+            if (dw > 0) {
+                return dw;
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return getWindowManager().getCurrentWindowMetrics().getBounds().width();
+        }
+        return getResources().getDisplayMetrics().widthPixels;
+    }
+
+    /** Called from KM Basic / Gamepad embedded chrome (activity header hidden there). */
+    public void openModeGuideFromEmbeddedChrome() {
+        openModeGuideSheet();
+    }
+
+    private CharSequence modeGuideSheetTitleFor(ModeGuidePrefs.GuideHostMode mode) {
+        switch (mode) {
+            case KM_BASIC:
+                return getString(R.string.mode_guide_sheet_title_basic);
+            case KM_PRO:
+                return getString(R.string.mode_guide_sheet_title_pro);
+            case PRESENTATION:
+                return getString(R.string.mode_guide_sheet_title_presentation);
+            case GAMEPAD:
+                return getString(R.string.mode_guide_sheet_title_gamepad);
+            case SHORTCUT_HUB:
+                return getString(R.string.mode_guide_sheet_title_shortcut_hub);
+            default:
+                return getString(R.string.app_name);
+        }
+    }
+
+    private void updateModeGuideHeaderVisibility(@Nullable Fragment host) {
+        if (modeGuideHeaderButton == null) {
+            return;
+        }
+        boolean show = ModeGuidePrefs.supportsHeaderModeGuideButton(host);
+        modeGuideHeaderButton.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void scheduleDeferredModeGuideCheck(@Nullable final Fragment host) {
+        if (pendingModeGuideRunnable != null) {
+            modeGuideHandler.removeCallbacks(pendingModeGuideRunnable);
+        }
+        pendingModeGuideRunnable =
+                () -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    Fragment current = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                    if (current != host) {
+                        return;
+                    }
+                    tryAutoShowFirstRunModeGuide(current);
+                };
+        modeGuideHandler.postDelayed(pendingModeGuideRunnable, 650);
+    }
+
+    private boolean isTutorialOverlayShowing() {
         ViewGroup root = findViewById(android.R.id.content);
-        root.addView(overlay, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (root == null) {
+            return false;
+        }
+        for (int i = 0; i < root.getChildCount(); i++) {
+            if (root.getChildAt(i) instanceof TutorialOverlay) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void tryAutoShowFirstRunModeGuide(@NonNull Fragment host) {
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(host);
+        if (mode == null || mode == ModeGuidePrefs.GuideHostMode.KM_BASIC) {
+            return;
+        }
+        if (ModeGuidePrefs.isModeGuideCompleted(this, mode)) {
+            return;
+        }
+        showModeTutorialOverlay(mode, true);
+    }
+
+    /**
+     * @param markCompletionOnDismiss when true (first auto-run), marks this mode’s guide pref when
+     *     the overlay is dismissed or completed.
+     */
+    public void showModeTutorialOverlay(
+            @NonNull ModeGuidePrefs.GuideHostMode mode, boolean markCompletionOnDismiss) {
+        if (mode == ModeGuidePrefs.GuideHostMode.KM_BASIC) {
+            showKmBasicQuickStartOverlay(markCompletionOnDismiss);
+            return;
+        }
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        TutorialOverlay overlay = new TutorialOverlay(this);
+        overlay.setMarkBasicQuickStartPrefOnDismiss(false);
+        if (markCompletionOnDismiss) {
+            overlay.setOnDismissExtra(() -> ModeGuidePrefs.markModeGuideCompleted(MainActivity.this, mode));
+        }
+        TutorialOverlay.Step[] steps;
+        switch (mode) {
+            case KM_PRO:
+                steps = ModeTutorialSteps.kmProGuide(this);
+                break;
+            case PRESENTATION:
+                steps = ModeTutorialSteps.presentationGuide(this);
+                break;
+            case GAMEPAD:
+                steps = ModeTutorialSteps.gamepadGuide(this);
+                break;
+            case SHORTCUT_HUB:
+                steps = ModeTutorialSteps.shortcutHubGuide(this);
+                break;
+            default:
+                return;
+        }
+        overlay.setSteps(steps);
+        ViewGroup root = findViewById(android.R.id.content);
+        root.addView(
+                overlay,
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void showKmBasicQuickStartOverlay(boolean markBasicPrefOnDismiss) {
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        TutorialOverlay overlay = new TutorialOverlay(this);
+        overlay.setMarkBasicQuickStartPrefOnDismiss(markBasicPrefOnDismiss);
+        overlay.setSteps(ModeTutorialSteps.kmBasicQuickStart(this));
+        ViewGroup root = findViewById(android.R.id.content);
+        root.addView(
+                overlay,
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    public static void closeDrawerIfOpen(android.content.Context context) {
+        if (!(context instanceof android.app.Activity)) {
+            return;
+        }
+        androidx.drawerlayout.widget.DrawerLayout drawer =
+                ((android.app.Activity) context).findViewById(R.id.drawer_layout);
+        if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) {
+            drawer.closeDrawer(android.view.Gravity.START);
+        }
+    }
+
+    private void showTutorial() {
+        showKmBasicQuickStartOverlay(true);
     }
 }

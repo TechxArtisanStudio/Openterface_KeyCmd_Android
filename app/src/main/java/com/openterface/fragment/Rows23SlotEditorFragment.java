@@ -292,7 +292,7 @@ public class Rows23SlotEditorFragment extends Fragment {
             }
 
             TextView title = new TextView(requireContext());
-            TextViewCompat.setTextAppearance(title, R.style.TextAppearance_KeyMod_SectionCaption);
+            TextViewCompat.setTextAppearance(title, R.style.TextAppearance_KeyCmd_SectionCaption);
             title.setText(section.titleRes);
             title.setPadding(0, dp(i == 0 ? 4 : 0), 0, dp(10));
             keySectionsLayout.addView(title);
@@ -431,8 +431,8 @@ public class Rows23SlotEditorFragment extends Fragment {
 
     private void notifyHostChanged() {
         Fragment p = getParentFragment();
-        if (p instanceof ShortcutHubFragment) {
-            ((ShortcutHubFragment) p).onRows23SlotEditorFinished();
+        if (p instanceof Rows23SlotEditorHost) {
+            ((Rows23SlotEditorHost) p).onRows23SlotEditorFinished();
         }
     }
 

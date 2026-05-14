@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.AlternatePopupGeometry;
 import com.openterface.keymod.R;
+import com.openterface.keymod.ThemeManager;
 
 /**
  * Minimal 3×3 gesture popup for KM Basic hold-lock: only the {@link AlternatePopupGeometry#SLOT_UP}
@@ -327,7 +328,7 @@ public final class BasicHoldLockPopup {
                 MaterialColors.getColor(
                         lockIconView,
                         com.google.android.material.R.attr.colorPrimary,
-                        ContextCompat.getColor(ctx, R.color.primary));
+                        ThemeManager.getColorPrimary(ctx));
         int onPrimary =
                 MaterialColors.getColor(
                         lockIconView,

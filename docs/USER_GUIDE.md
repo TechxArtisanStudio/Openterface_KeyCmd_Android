@@ -1,6 +1,6 @@
-# KeyMod Android - User Guide
+# KeyCmd Android - User Guide
 
-> **KeyMod** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
+> **KeyCmd** is the companion Android app for [Openterface](https://openterface.com/) — KVM-style hardware that bridges your phone to a host computer over **USB** or **Bluetooth**. Source code: [Openterface_KeyMod_Android](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) on GitHub.
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### 2. Choose Your Connection
 
-KeyMod supports two connection methods:
+KeyCmd supports two connection methods:
 
 | Method | How | Notes |
 |--------|-----|-------|
@@ -29,13 +29,15 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 
 | Mode | What It Does |
 |------|-------------|
-| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad / **Setup**, target OS, connection). **No** Shortcut Hub strip rows 1–3 here. |
-| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, IME workflows) in one surface—same as the advanced keyboard + touchpad experience. |
+| ⌨️ **Keyboard & Mouse** | **Basic** tier: full-screen keyboard without the app’s top header; physical-style layout with row-1 controls (menu, Touchpad / Compose & Send / Num pad, target OS, **Setup** gear icon, connection). **No** Shortcut Hub strip rows 1–3 here. |
+| ⌨️ **Keyboard & Mouse Pro** | **Pro** tier: the full composite experience (strips, split layouts, **IME** workflows—the same type-then-send buffering as **Compose & Send** in Basic, with Pro’s layout and strips) in one surface—same as the advanced keyboard + touchpad experience. Uses the app header: tap the **Setup** gear **between** the global **target OS** icon and the **connection** cluster to open **Keyboard & Mouse Pro setup** (strip layouts, General preferences). Active Row 1 profile and Rows 2–3 strip profile are chosen there and in **Shortcut Hub**, not from an extra strip swipe page. |
 | 🎮 **Gamepad** | Game controller with analog sticks + buttons |
 | 📋 **Macros** | Programmable macro sequences |
-| ⚡ **Shortcuts** | Pre-built keyboard shortcuts (Ctrl+C, Win+L, etc.) |
+| ⚡ **Shortcuts** | **Shortcut Hub:** manage shortcut **profiles** (Default, KiCAD, …), Favorites, and imports. Rows 2–3 strip layouts are edited from **Keyboard & Mouse Pro** setup (header **Setup** gear) and the hub’s **Rows 2–3 · Strip** flows. |
 | 🎤 **Voice** | Voice-to-keyboard input with AI |
 | 🖥️ **Presentation** | Slide/presenter controls for decks |
+
+**Terminology — Compose & Send vs IME:** In **Keyboard & Mouse (Basic)**, the tab is labeled **Compose & Send** for buffering text, then tapping **Send** to deliver it to the host. **Keyboard & Mouse Pro** uses **IME** wording for the same workflow (edit in the capture area, then **Send**). Different labels, same behavior.
 
 ---
 
@@ -44,35 +46,44 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 ### USB Connection
 
 1. Connect your phone to your Openterface hardware via USB-C cable
-2. Open the app → tap the **connection icon** (top-right) or go to **Settings → General**
-3. Tap **USB Connection**
-4. Accept the USB permission dialog when prompted
-5. Status changes to ✅ **Connected**
+2. Open the app → tap the **connection** control in the app header (top-right cluster in most modes; on **Keyboard & Mouse (Basic)** it is in the keyboard’s top row)
+3. In the connection sheet, choose **USB** and accept the USB permission dialog when prompted
+4. Status changes to ✅ **Connected**
 
 ### Bluetooth Connection
 
 1. Turn on Bluetooth on your phone
-2. Open the app → tap the **connection icon**
-3. Tap **Bluetooth Connection**
-4. Select your Openterface hardware from the scan results
-5. Status changes to ✅ **Connected**
+2. Open the app → tap the **connection** control
+3. In the connection sheet, choose **Bluetooth** and select your Openterface hardware from the scan results
+4. Status changes to ✅ **Connected**
 
 ### Auto-Connect
 
-Enable **Auto-connect on startup** in the connection dialog to automatically reconnect to your last-used device when the app launches.
+Enable **Auto-connect on startup** in **Settings → General** (first tab), or from the same toggle inside the connection sheet when available, so the app reconnects to your last-used device on launch.
 
 ---
 
 ## ⌨️ Keyboard Mode
 
-### KM Basic modifier behavior (Setup tab)
+### Keyboard & Mouse Basic setup (modifiers)
 
-In **Keyboard & Mouse (Basic)**, open the **Setup** tab (next to NumPad) to choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the full keyboard:
+In **Keyboard & Mouse (Basic)**, tap the **Setup** gear icon (to the right of the target OS control in the top row) to open **Keyboard & Mouse Basic setup** and choose how **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** behave on the full keyboard:
 
 - **Momentary and long-press chord (default):** A short tap sends that modifier once to the target computer. **Long-press** a modifier and keep your finger on it, then tap other keys to chord (for example long-press **Shift** and tap `1` for `!`). Release the modifier key to stop chording. With **Hold modifier on target while chording** (on by default), the app sends a sustained modifier-down to the target and reapplies it after each chorded key; turn it off in the same settings screen only if the host misbehaves.
 - **Sticky modifiers:** Tap a modifier once to latch it (highlighted keys show what is on). Tap again to turn off. Tap **Shift**, then a number or symbol key, for characters such as `!` and `@`.
 
 Changing this setting rebuilds the Basic keyboard; any latched modifiers are cleared.
+
+### Keyboard & Mouse Pro setup (modifiers)
+
+**Keyboard & Mouse Pro** uses the **same modifier preferences** as Basic (**Sticky** vs **Momentary and long-press chord**, and **Hold modifier on target while chording** when chord mode is on). Configure them from **Keyboard & Mouse (Basic)** setup or from **Keyboard & Mouse Pro** setup (header **Setup** gear → **Modifiers**).
+
+On the **Pro** letter keyboard and on **top strip / fixed-row** **Ctrl**, **Shift**, **Alt/Option**, and **Win/Cmd** cells:
+
+- **Sticky:** tap toggles the modifier latch; **press and hold ~1 second**, then **swipe up** on the lock affordance to apply a **host-side** swipe lock (same swipe-up lock flow as Basic).
+- **Chord:** short tap sends a momentary modifier; **long-press** keeps chording until you release. Optional **sustain** matches Basic.
+
+Changing the modifier mode or chord-sustain switch **rebuilds** the Pro keyboard and **clears** latched modifiers and ephemeral chord state. **Swipe-locked** modifiers from the hold gesture are cleared when you **leave Keyboard & Mouse Pro** or when the **USB / Bluetooth** connection used for HID is lost.
 
 ### Layout
 
@@ -104,7 +115,7 @@ The virtual keyboard provides a **full QWERTY layout** with these sections:
 
 - Hold **modifier keys** (Ctrl, Alt, Win) then tap a letter for combos like `Ctrl+C`
 - Tap **Shift** for uppercase or top-row symbols
-- Tap **Fn** to access F1-F12 keys
+- Tap **Fn** to latch the function layer on the main keyboard. In **Keyboard & Mouse Pro**, with Fn on: **Q–P** send digits **1–0**; **A–L** send **F1–F9**; **Z**, **X**, and **C** send **F10–F12**; the main keyboard **Shift** key (left of **Z**, same row as **Z**) toggles long‑press **alternate hints**; **Backspace** sends **Delete** (with **Shift** locked, the Backspace cap shows **Del** and also sends Delete).
 - Tap **?123** to switch to number/symbol layout
 
 ### Fixed Shortcut Strip (Top Rows)
@@ -124,7 +135,7 @@ On **Page 1** of the fixed strip (ESC / navigation page), when **local Fn** (row
 
 - **Row 2** sends **Scroll Lock**, **PrtSc**, **Caps Lock**, **Pause/Break**, **Home**, **PgUp**; the IME toggle key is unchanged.
 - **Row 3** sends **Space**, **Bksp**, **Del**, **Insert**, **End**, **PgDn**.  
-  Ctrl/Alt/Win positions still support **long‑press** modifier lock using the underlying modifier keys.
+  Ctrl/Alt/Win cells follow the **same modifier mode** as the main Pro keyboard (sticky vs chord, hold-then-swipe-up lock, and optional chord sustain)—not a separate “strip-only” long‑press latch.
 
 On **Page 2** of the fixed strip (**Shortcut Hub**), **local Fn** toggles two full punctuation rows (strip display modes use the row‑1 DISPLAY key after Create, not the fixed strip).
 
@@ -157,14 +168,14 @@ Virtual game controller with:
 Presets are a list of **modules**. Each module is one on-screen control (draw + touch). Think in three layers so “sub-modules” do not feel like mystery types:
 
 1. **Slot / identity (`id`)** — *which* control on the canvas. Thumb modules use the fixed slots **`stick_left`** and **`stick_right`** (plus other module kinds such as buttons and touchpads with their own ids).
-2. **Behavior (`type`)** — *what the host receives*: **`STICK_KEY`** (direction keys from a thumb ring), **`STICK_MOUSE`** (relative pointer / “mouse” deltas), **`DPAD`** (digital pad with a **`dpadVariant`** such as cross or split), **`BUTTON`**, **`TOUCHPAD`**, etc. The in-app “mode” choices for sticks map to these types (and for the left slot, D-pad is `DPAD`, not a parallel stick type).
+2. **Behavior (`type`)** — *what the host receives*: **`STICK_KEY`** (direction keys from a thumb ring), **`STICK_MOUSE`** (relative pointer / “mouse” deltas), **`DPAD`** (digital pad with a **`dpadVariant`** such as cross or split), **`BUTTON`**, **`TOUCHPAD`** (relative pointer motion on the host), **`SCROLL_STRIP`** (vertical drag → HID **mouse wheel** for hotbars, zoom, lists), etc. The in-app “mode” choices for sticks map to these types (and for the left slot, D-pad is `DPAD`, not a parallel stick type).
 3. **Parameters** — tuning on the **same** module: `dpadVariant`, split gap sliders, `stickMouseSensitivity`, `stickVisualVariant` (mostly look), accent color, size. These are **fields**, not separate module kinds.
 
 The **right** stick can use **`stickMouseSensitivity`** when its type is **STICK_MOUSE** (pointer speed tuning in Configure control).
 
 ### Cross-device sizing (share / import)
 
-Positions use normalized **`anchorX`** / **`anchorY`** (0–1 of the gamepad **content** rectangle, after system-bar safe area). **Button**, **stick**, **D-pad**, **touchpad L/M/R**, and **shoulder/trigger** **on-screen sizes** also scale with the **smaller content edge** so the same preset JSON is less likely to overlap or clip on a narrower or shorter phone than the one it was edited on. **Touchpads** still use **`widthNorm`** and **`heightNorm`** (fractions of content width/height). There is **no** per-export “designed at this resolution” field today—authors should still sanity-check dense layouts (e.g. many face buttons) on the **smallest target device** they care about.
+Positions use normalized **`anchorX`** / **`anchorY`** (0–1 of the gamepad **content** rectangle, after system-bar safe area). **Button**, **stick**, **D-pad**, **touchpad L/M/R**, and **shoulder/trigger** **on-screen sizes** also scale with the **smaller content edge** so the same preset JSON is less likely to overlap or clip on a narrower or shorter phone than the one it was edited on. **Touchpads** and **`SCROLL_STRIP`** modules use **`widthNorm`** and **`heightNorm`** (fractions of content width/height). There is **no** per-export “designed at this resolution” field today—authors should still sanity-check dense layouts (e.g. many face buttons) on the **smallest target device** they care about.
 
 ```mermaid
 flowchart TB
@@ -188,17 +199,29 @@ flowchart TB
 
 ### Preset vocabulary (schema)
 
-Shareable layouts use JSON with a **`schemaVersion`** field (see the file you export—currently **v8** in bundled presets). Useful terms:
+Shareable layouts use JSON with a **`schemaVersion`** field (bundled repo presets are **v10** as of the current app). The string **`format`** is always **`openterface.gamepad.layout.v1`** (document family); **`schemaVersion`** is the evolving revision. Per-module **`zIndex`** is draw order (lower = behind); **`validateOrThrow`** normalizes **`zIndex`** to contiguous **0…n−1** (stable draw order), and the editor does the same on save/export. A partial machine-readable overview lives in **[`docs/gamepad_layout_preset.schema.json`](gamepad_layout_preset.schema.json)** (JSON Schema); the **canonical** contract is still **`GamepadLayoutPresetDocument.validateOrThrow`** in the app plus unit tests on bundled JSON.
+
+Useful terms:
 
 | Everyday term | In presets / code |
 |---------------|---------------------|
 | D-pad, directional pad | Module type **DPAD** on the left slot; **`dpadVariant`** selects cross, split segments, disc, pivot, floating look, or clicky haptics |
 | Analog stick / thumbstick | **STICK_KEY** (digital ring) or **STICK_MOUSE** (relative pointer) on **`stick_left`** or **`stick_right`**; optional **`stickVisualVariant`** for cap look (concave, convex, low-profile, C-stick); “Hall effect” is cosmetic only on phone |
 | Face / ABXY / symbol buttons | **BUTTON** modules; optional **`layout.faceButtonTemplate`** (`nintendo_diamond`, `xbox_abxy`, `playstation_symbols`) sets anchors and labels |
-| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents analog vs digital vs hair vs adaptive (adaptive is UI copy only here) |
+| HID usage codes (keyboard) | Integers **1–255** for **`hidKey`**, STICK_KEY/DPAD **direction keys** (`stickUpKey` …), optional **`stickCenterKey`**, STICK_MOUSE **`stickPointerCenterKey`**, and gesture-lock **`key_hold` / `key_turbo`** slots — invalid values are rejected on load |
+| Bumpers / triggers | **SHOULDER** and **TRIGGER** modules (ids `shoulder_l` / `shoulder_r`, `trigger_l` / `trigger_r`) with **`hidKey`**; **`triggerVariant`** documents digital vs hair vs adaptive (adaptive is UI copy only here); **`triggerAnalog`** is reserved / not used by runtime yet |
 | Symmetrical vs offset stick layout | **`layout.stickLayoutTemplate`** (`symmetrical`, `offset`, `parallel`) — template metadata, not a drawn control |
 | Gyro / tilt aim | Set **`layout.gyroEnabled`** to `true` in the preset: when you are on the gamepad screen and connected, device **gyroscope** samples move the host pointer (small deltas). Disable when not needed to save battery |
 | Canvas background (portable JSON) | **`layout.backgroundImageEncoding`** (`base64`), **`layout.backgroundImageMediaType`** (`image/png` / `image/jpeg` / `image/webp`), and **`layout.backgroundImageData`** (raw base64, no `data:` URL). Used when **sharing** a preset so the image travels in one file; after **import**, bytes are saved under app files dir as **`layout.backgroundImageFile`** and embed fields are cleared. Max decoded size about **6 MiB** |
+| Hold-lock / turbo gesture tuning (optional) | **Resolution order everywhere:** optional fields on a **BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON** module, else **`layout`** globals, else app **preferences**, else built-in defaults. Field names (Gson): **`gestureLockMinPressMs`** (0–1000, ms dwell before a diagonal gesture can commit on lift; 0 = legacy), **`gestureLockDiagonalRadiusScale`** (0.5–3, diagonal stroke strictness), **`turboPulsePeriodMs`** (25–300, ms between turbo on/off half-steps per latched module). The same three names under **`layout`** apply preset-wide. The toolbar **tune** icon (next to the preset name) opens **Hold-lock / turbo gestures** and saves those three values on the **current preset’s `layout`**; module config can add optional **This control** sliders for per-module JSON overrides |
+
+### Hold-lock, turbo, and gesture sensitivity
+
+On **BUTTON**, **SHOULDER**, **TRIGGER**, and **MOUSE_BUTTON** modules you can enable **`keyboardHoldLock`** and/or a per-module **`gestureLock`** object with four diagonal slots (`upLeft`, `upRight`, `downLeft`, `downRight`). Each slot’s **`action`** is one of: `none`, `hold_lock` (keep the mapped key or mouse button down), `turbo` (repeat pulse), `key_hold`, or `key_turbo` (alternate HID key; not allowed on **MOUSE_BUTTON**). If **`keyboardHoldLock`** is true and slots are omitted, defaults are **up-right → hold_lock** and **up-left → turbo**.
+
+**While latched**, tap the same control again and release to clear the latch (badge disappears). **Turbo** repeats on a configurable interval (default 70 ms per on/off half-step) until you unlock; each latched module can use its own period when **`turboPulsePeriodMs`** is set on that module or inherited from layout/prefs. The toolbar dialog writes **`layout.*`** for the active preset; optional per-module JSON or **This control** sliders override for that control only.
+
+**Accidental latches:** use the toolbar **tune** icon (next to the preset name), or **Preset-wide timing…** at the bottom of the gesture section, or the **This button only** sliders in **Button / Shoulder / Trigger / Mouse button** module configuration (per-control overrides). If any module sets per-module timing in JSON, the toolbar dialog shows a short note that those controls ignore preset-wide layout timing.
 
 **Engineering synonyms (no extra modules):** hat switch (HID jargon for a D-pad–like switch), silicone dome / tact switch, gimbal, housing — these describe physical hardware, not separate on-screen modules.
 
@@ -267,13 +290,12 @@ Go to **Settings → AI Settings** to configure AI model connections for voice-t
 
 ## ⚙️ Settings
 
-Access via the **⚙️ gear icon** on the main screen. Four tabs:
+Open the **side navigation** (menu icon), then tap **Settings** — the row with the **⚙️ gear** icon at the bottom of the drawer. Four tabs:
 
 ### General
-- Connection type (USB / Bluetooth)
-- Auto-connect toggle
-- Input mode preferences
-- Screen orientation settings
+- **Auto-connect on startup** (same preference as in the connection sheet)
+- Display: keep screen on, optional landscape orientation lock, touchpad scroll sensitivity
+- Language and **theme** (accent family, light/dark / follow system)
 
 ### Voice Input
 - Voice recognition configuration
@@ -294,7 +316,7 @@ Access via the **⚙️ gear icon** on the main screen. Four tabs:
 
 ## 📐 Orientation
 
-KeyMod supports both portrait and landscape modes:
+KeyCmd supports both portrait and landscape modes:
 - **Portrait** (2×3 grid) — thumb-friendly for phones
 - **Landscape** (3×2 grid) — desktop-style for tablets
 
@@ -310,7 +332,7 @@ The app auto-rotates when you turn your device.
 - For Bluetooth: ensure device is discoverable
 
 ### USB permission denied
-- Go to Android **Settings → Apps → KeyMod → Permissions**
+- Go to Android **Settings → Apps → KeyCmd → Permissions**
 - Enable USB access
 - Re-launch the app
 
@@ -333,14 +355,14 @@ The app auto-rotates when you turn your device.
 git clone https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android.git
 cd Openterface_KeyMod_Android
 
-# Build (requires Java 21, Android SDK 35)
+# Build (JDK 17+ recommended; Android SDK / compileSdk 35)
 ./gradlew assembleDebug
 
 # APK output
-ls app/build/outputs/apk/debug/KeyMod-debug.apk
+ls app/build/outputs/apk/debug/KeyCmd-debug.apk
 
 # Install on device
-adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
+adb install -r app/build/outputs/apk/debug/KeyCmd-debug.apk
 ```
 
 ---
@@ -352,7 +374,7 @@ adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
 | **Package** | `com.openterface.keymod` |
 | **Min SDK** | Android 8.0 (API 26) |
 | **Target SDK** | Android 15 (API 35) |
-| **Version** | 1.0 (code 1) |
+| **Version** | See `versionName` / `versionCode` in `app/build.gradle` (e.g. **0.17** / **17** at time of writing) |
 | **HID Protocol** | CH9329 UART |
 | **USB Serial** | usb-serial-for-android |
 | **Bluetooth** | RxAndroidBle 1.19.0 |
@@ -360,7 +382,7 @@ adb install -r app/build/outputs/apk/debug/KeyMod-debug.apk
 
 ### HID Protocol (CH9329)
 
-KeyMod communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
+KeyCmd communicates with the target computer using the **CH9329 protocol** over USB serial or BLE:
 
 - **Keyboard**: 5-byte header + 8-byte data + 1-byte checksum (14 bytes total)
 - **Mouse**: 5-byte header + 5-byte data + 1-byte checksum (11 bytes total)
@@ -383,4 +405,4 @@ Open source. See the project repository for details.
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-05-14*

@@ -41,7 +41,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/edit_mode_button"
-            style="@style/Widget.KeyMod.HubHeaderButton"
+            style="@style/Widget.KeyCmd.HubHeaderButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"

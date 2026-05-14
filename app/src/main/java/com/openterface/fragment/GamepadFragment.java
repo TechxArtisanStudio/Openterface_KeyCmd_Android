@@ -1,13 +1,13 @@
 package com.openterface.fragment;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.view.ContextThemeWrapper;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.graphics.Canvas;
@@ -38,6 +38,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.MeasureSpec;
@@ -60,14 +61,11 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.app.Activity;
 import android.app.Dialog;
 
-import androidx.appcompat.app.AppCompatDialog;
-import androidx.appcompat.widget.PopupMenu;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -97,11 +95,13 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.R;
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
@@ -113,6 +113,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutDocumentStore;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetBackgroundCodec;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetApplier;
 import com.openterface.keymod.gamepad.GamepadGestureLock;
+import com.openterface.keymod.gamepad.GamepadGestureLockSensitivity;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetRepository;
@@ -120,7 +121,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetExportCreator;
-import com.openterface.keymod.gamepad.GamepadPresetListAdapter;
+import com.openterface.keymod.gamepad.GamepadLayoutPreviewCache;
 import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
 import com.openterface.keymod.GamepadView.DpadStateListener;
@@ -131,7 +132,6 @@ import com.openterface.keymod.GamepadView.DpadStateListener;
 public class GamepadFragment extends Fragment {
 
     private static final String TAG = "GamepadFragment";
-    private static final long TURBO_PULSE_PERIOD_MS = 70L;
 
     // Stick modes
     private static final String MODE_ANALOG = "analog";
@@ -263,8 +263,12 @@ public class GamepadFragment extends Fragment {
     private final java.util.Map<String, int[]> gestureHoldAlternateHid = new java.util.HashMap<>();
     /** When latched key_turbo: HID key [0] and modifier mask [1] for pulse output. */
     private final java.util.Map<String, int[]> gestureTurboAlternateHid = new java.util.HashMap<>();
+    private static final long TURBO_PULSE_TICK_MS = GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN;
     private final android.os.Handler turboHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private boolean turboPulsePhaseHigh = false;
+    /** Per latched turbo module: square-wave high phase for HID keys and mouse button mask. */
+    private final Map<String, Boolean> turboPulsePhaseHighByModuleId = new HashMap<>();
+    /** Last phase toggle uptime (ms) per turbo module; period from {@link GamepadGestureLockSensitivity#resolveTurboPulsePeriodMs}. */
+    private final Map<String, Long> turboPulseLastToggleUptimeMsByModuleId = new HashMap<>();
     private final Runnable turboPulseStep =
             new Runnable() {
                 @Override
@@ -273,17 +277,47 @@ public class GamepadFragment extends Fragment {
                         return;
                     }
                     if (turboLockedModuleIds.isEmpty()) {
-                        turboPulsePhaseHigh = false;
+                        turboPulsePhaseHighByModuleId.clear();
+                        turboPulseLastToggleUptimeMsByModuleId.clear();
                         return;
                     }
-                    turboPulsePhaseHigh = !turboPulsePhaseHigh;
+                    long now = SystemClock.uptimeMillis();
+                    for (String tid : new ArrayList<>(turboLockedModuleIds)) {
+                        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(tid);
+                        int period =
+                                GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, m);
+                        Long last = turboPulseLastToggleUptimeMsByModuleId.get(tid);
+                        if (last == null) {
+                            turboPulsePhaseHighByModuleId.put(tid, true);
+                            turboPulseLastToggleUptimeMsByModuleId.put(tid, now);
+                            continue;
+                        }
+                        if (now - last < period) {
+                            continue;
+                        }
+                        boolean cur = Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(tid));
+                        long nextLast = last;
+                        boolean phase = cur;
+                        while (now - nextLast >= period) {
+                            phase = !phase;
+                            nextLast += period;
+                        }
+                        turboPulsePhaseHighByModuleId.put(tid, phase);
+                        turboPulseLastToggleUptimeMsByModuleId.put(tid, nextLast);
+                    }
                     applyTurboMousePulsePhase();
                     sendCombinedKeyReport();
-                    turboHandler.postDelayed(this, TURBO_PULSE_PERIOD_MS);
+                    turboHandler.postDelayed(this, TURBO_PULSE_TICK_MS);
                 }
             };
     /** Finger-down on a latched module: release completes unlock (no momentary press). */
     private final Set<String> pendingKeyboardHoldUnlockTap = new HashSet<>();
+    /**
+     * Refcounts per HID rel-mouse button bit (1=left, 2=right, 4=middle) for {@code MOUSE_BUTTON}
+     * modules held by finger. Relative-move packets must OR this with
+     * {@link #keyboardHoldLatchedMouseButtonMask()} so the host does not see a spurious release.
+     */
+    private final int[] gamepadMouseButtonFingerHoldRefByHidBit = new int[8];
     private boolean keyRUpPressed;
     private boolean keyRLeftPressed;
     private boolean keyRDownPressed;
@@ -297,6 +331,8 @@ public class GamepadFragment extends Fragment {
     private float stickPointerMouseSensitivity = 1.0f;
 
     private GamepadLayoutPresetRepository presetRepository;
+    @Nullable
+    private GamepadLayoutPreviewCache gamepadLayoutPreviewCache;
     private ActivityResultLauncher<String[]> importPresetLauncher;
     /** Preset id whose JSON is written when {@link #savePresetCreateDocumentLauncher} completes. */
     @Nullable
@@ -328,6 +364,9 @@ public class GamepadFragment extends Fragment {
     @Nullable
     private MaterialButton gamepadExportCreatorChip;
 
+    private final FragmentManager.OnBackStackChangedListener gamepadLayoutsBackStackChangedListener =
+            () -> syncGamepadLayoutsOverlayVisibility();
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -343,6 +382,9 @@ public class GamepadFragment extends Fragment {
                     String err = presetRepository.importFromUri(uri, true);
                     if (err == null) {
                         reloadFromPrefsAndApplyView();
+                        if (isAdded()) {
+                            previewCache().invalidateAll();
+                        }
                         Toast.makeText(requireContext(), R.string.gamepad_presets_import_ok, Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(requireContext(),
@@ -408,12 +450,17 @@ public class GamepadFragment extends Fragment {
 
         activePresetChipButton = view.findViewById(R.id.gamepad_active_preset_chip);
         if (activePresetChipButton != null) {
-            activePresetChipButton.setOnClickListener(v -> showGamepadPresetsBottomSheet());
+            activePresetChipButton.setOnClickListener(v -> openGamepadLayoutsPicker());
         }
 
         gamepadPresetsToolbarButton = view.findViewById(R.id.gamepad_presets_btn);
         if (gamepadPresetsToolbarButton != null) {
             gamepadPresetsToolbarButton.setOnClickListener(v -> cycleToNextPreset());
+        }
+
+        MaterialButton gamepadGestureSensitivityBtn = view.findViewById(R.id.gamepad_gesture_sensitivity_btn);
+        if (gamepadGestureSensitivityBtn != null) {
+            gamepadGestureSensitivityBtn.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
         }
 
         gamepadMappingHintsToolbarButton = view.findViewById(R.id.gamepad_mapping_hints_toggle);
@@ -467,11 +514,6 @@ public class GamepadFragment extends Fragment {
             gamepadExportCreatorChip.setOnClickListener(v -> showEditExportCreatorDialog());
         }
 
-        MaterialButton sessionDone = view.findViewById(R.id.gamepad_edit_session_done);
-        if (sessionDone != null) {
-            sessionDone.setOnClickListener(v -> exitLayoutEditSession());
-        }
-
         wireGamepadEmbeddedChrome(view);
         applyGamepadToolbarTopInsets(view);
         updateGamepadToolbarScrimForBackground();
@@ -479,6 +521,9 @@ public class GamepadFragment extends Fragment {
         setupListeners();
         updateActivePresetNameUi();
         applyGamepadEditTouchPreferences();
+
+        getChildFragmentManager().addOnBackStackChangedListener(gamepadLayoutsBackStackChangedListener);
+        syncGamepadLayoutsOverlayVisibility(view);
 
         return view;
     }
@@ -490,6 +535,7 @@ public class GamepadFragment extends Fragment {
         requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         updateGyroListenerRegistration();
         applyGamepadEditTouchPreferences();
+        applyGestureLockSensitivityToGamepadView();
         refreshGamepadEmbeddedChrome();
     }
 
@@ -500,6 +546,34 @@ public class GamepadFragment extends Fragment {
         }
         super.onPause();
         requireActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+    }
+
+    @Override
+    public void onDestroyView() {
+        getChildFragmentManager().removeOnBackStackChangedListener(gamepadLayoutsBackStackChangedListener);
+        super.onDestroyView();
+    }
+
+    /** Enables Customize for {@link com.openterface.keymod.MainActivity#ensureGamepadEditModeForGuide()} (mode tour). */
+    public void enterEditModeForTour() {
+        if (!isAdded() || editModeMaterialButton == null) {
+            return;
+        }
+        if (!editModeMaterialButton.isChecked()) {
+            editModeMaterialButton.setChecked(true);
+        } else {
+            setEditModeToolbarExtrasVisible(true);
+        }
+    }
+
+    /** Restores play mode after {@link com.openterface.keymod.MainActivity#ensureGamepadEditModeExitForGuide()}. */
+    public void exitEditModeForTour() {
+        if (!isAdded() || editModeMaterialButton == null) {
+            return;
+        }
+        if (editModeMaterialButton.isChecked()) {
+            editModeMaterialButton.setChecked(false);
+        }
     }
 
     private void wireGamepadEmbeddedChrome(@NonNull View root) {
@@ -524,13 +598,22 @@ public class GamepadFragment extends Fragment {
                         }
                     });
         }
+        ImageButton modeGuide = root.findViewById(R.id.gamepad_mode_guide);
+        if (modeGuide != null) {
+            modeGuide.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openModeGuideFromEmbeddedChrome();
+                        }
+                    });
+        }
         refreshGamepadEmbeddedChrome();
     }
 
     private void applyGamepadToolbarTopInsets(@NonNull View root) {
         View chromeBar = root.findViewById(R.id.gamepad_chrome_bar);
         View toggleRow = root.findViewById(R.id.toggle_row);
-        View editBar = root.findViewById(R.id.gamepad_edit_session_bar);
         ViewCompat.setOnApplyWindowInsetsListener(
                 root,
                 (v, windowInsets) -> {
@@ -544,7 +627,6 @@ public class GamepadFragment extends Fragment {
                     refreshGamepadToolbarScrimHeight();
                     setFrameLayoutTopMargin(chromeBar, top);
                     setFrameLayoutTopMargin(toggleRow, top);
-                    setFrameLayoutTopMargin(editBar, top);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(root);
@@ -630,12 +712,55 @@ public class GamepadFragment extends Fragment {
         return getActivity() instanceof MainActivity ? (MainActivity) getActivity() : null;
     }
 
+    void openGamepadLayoutsPicker() {
+        if (!isAdded() || getView() == null) {
+            return;
+        }
+        getChildFragmentManager()
+                .beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(R.id.gamepad_layouts_overlay, new GamepadLayoutsFragment())
+                .addToBackStack("gamepad_layouts")
+                .commit();
+    }
+
+    private void syncGamepadLayoutsOverlayVisibility() {
+        View root = getView();
+        if (root == null) {
+            return;
+        }
+        syncGamepadLayoutsOverlayVisibility(root);
+    }
+
+    private void syncGamepadLayoutsOverlayVisibility(@NonNull View root) {
+        View overlay = root.findViewById(R.id.gamepad_layouts_overlay);
+        if (overlay == null) {
+            return;
+        }
+        Fragment f = getChildFragmentManager().findFragmentById(R.id.gamepad_layouts_overlay);
+        overlay.setVisibility(f != null && f.isAdded() ? View.VISIBLE : View.GONE);
+    }
+
+    @NonNull
+    GamepadLayoutPresetRepository getPresetRepository() {
+        return presetRepository;
+    }
+
+    void launchGamepadPresetImport() {
+        importPresetLauncher.launch(new String[]{"application/json"});
+    }
+
+    void launchGamepadPresetSaveToDocument(@NonNull String presetId, @NonNull String suggestedFileName) {
+        pendingSavePresetIdForDocument = presetId;
+        savePresetCreateDocumentLauncher.launch(suggestedFileName);
+    }
+
     /**
      * Themed context for gamepad-only dark UI (see {@code fragment_gamepad} root {@code android:theme}).
      * Used for sheets/dialogs opened from this fragment so they match the gamepad chrome.
      */
     @NonNull
-    private Context gamepadUiContext() {
+    Context gamepadUiContext() {
         View root = getView();
         return root != null ? root.getContext() : requireContext();
     }
@@ -709,6 +834,7 @@ public class GamepadFragment extends Fragment {
                         }
                         if (GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_TURBO.equalsIgnoreCase(a)) {
                             turboLockedModuleIds.add(moduleId);
+                            initTurboPulseStateForModule(moduleId);
                             gestureTurboAlternateHid.remove(moduleId);
                             syncKeyboardHoldLockVisuals();
                             startTurboRepeatingIfNeeded();
@@ -721,6 +847,7 @@ public class GamepadFragment extends Fragment {
                                 return;
                             }
                             turboLockedModuleIds.add(moduleId);
+                            initTurboPulseStateForModule(moduleId);
                             gestureTurboAlternateHid.put(
                                     moduleId,
                                     new int[] {hidKeyOverride, intOr(modifierMaskOverride, 0)});
@@ -765,7 +892,9 @@ public class GamepadFragment extends Fragment {
             }
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), true);
+                int hid = semanticMouseButtonToHidMask(mouseBtn);
+                gamepadMouseButtonFingerHoldAddHidMask(hid);
+                sendMouseClick(hid, true);
                 return;
             }
             if (keyCode == 1001 || keyCode == 1002) {
@@ -795,9 +924,11 @@ public class GamepadFragment extends Fragment {
                 turboLockedModuleIds.remove(buttonId);
                 gestureHoldAlternateHid.remove(buttonId);
                 gestureTurboAlternateHid.remove(buttonId);
+                removeTurboPulseStateForModule(buttonId);
                 if (turboLockedModuleIds.isEmpty()) {
                     turboHandler.removeCallbacks(turboPulseStep);
-                    turboPulsePhaseHigh = false;
+                    turboPulsePhaseHighByModuleId.clear();
+                    turboPulseLastToggleUptimeMsByModuleId.clear();
                 } else {
                     startTurboRepeatingIfNeeded();
                 }
@@ -805,7 +936,9 @@ public class GamepadFragment extends Fragment {
                 clearFacePressStateForPresetToggleId(buttonId);
                 Integer unlockMouse = mouseButtonForComponentId(buttonId);
                 if (unlockMouse != null) {
-                    sendMouseClick(semanticMouseButtonToHidMask(unlockMouse), false);
+                    int hid = semanticMouseButtonToHidMask(unlockMouse);
+                    gamepadMouseButtonFingerHoldRemoveHidMask(hid);
+                    sendMouseClick(hid, false);
                 } else {
                     sendCombinedKeyReport();
                 }
@@ -813,7 +946,9 @@ public class GamepadFragment extends Fragment {
             }
             Integer mouseBtn = mouseButtonForComponentId(buttonId);
             if (mouseBtn != null) {
-                sendMouseClick(semanticMouseButtonToHidMask(mouseBtn), false);
+                int hid = semanticMouseButtonToHidMask(mouseBtn);
+                gamepadMouseButtonFingerHoldRemoveHidMask(hid);
+                sendMouseClick(hid, false);
                 return;
             }
             if (isPresetKeyboardHoldToggleId(buttonId)) {
@@ -1023,15 +1158,51 @@ public class GamepadFragment extends Fragment {
                 mask |= semanticMouseButtonToHidMask(mb);
             }
         }
-        if (turboPulsePhaseHigh) {
-            for (String moduleId : turboLockedModuleIds) {
-                Integer mb = mouseButtonForComponentId(moduleId);
-                if (mb != null) {
-                    mask |= semanticMouseButtonToHidMask(mb);
-                }
+        for (String moduleId : turboLockedModuleIds) {
+            if (!Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(moduleId))) {
+                continue;
+            }
+            Integer mb = mouseButtonForComponentId(moduleId);
+            if (mb != null) {
+                mask |= semanticMouseButtonToHidMask(mb);
             }
         }
         return mask;
+    }
+
+    private void gamepadMouseButtonFingerHoldAddHidMask(int hidMask) {
+        for (int bit : new int[] {1, 2, 4}) {
+            if ((hidMask & bit) != 0) {
+                gamepadMouseButtonFingerHoldRefByHidBit[bit]++;
+            }
+        }
+    }
+
+    private void gamepadMouseButtonFingerHoldRemoveHidMask(int hidMask) {
+        for (int bit : new int[] {1, 2, 4}) {
+            if ((hidMask & bit) != 0 && gamepadMouseButtonFingerHoldRefByHidBit[bit] > 0) {
+                gamepadMouseButtonFingerHoldRefByHidBit[bit]--;
+            }
+        }
+    }
+
+    private int fingerHeldMouseButtonHidMask() {
+        int m = 0;
+        if (gamepadMouseButtonFingerHoldRefByHidBit[1] > 0) {
+            m |= 1;
+        }
+        if (gamepadMouseButtonFingerHoldRefByHidBit[2] > 0) {
+            m |= 2;
+        }
+        if (gamepadMouseButtonFingerHoldRefByHidBit[4] > 0) {
+            m |= 4;
+        }
+        return m;
+    }
+
+    /** HID button bits for relative mouse move reports (touchpad, stick-mouse, gyro). */
+    private int mouseButtonMaskForRelativeMouseMoves() {
+        return keyboardHoldLatchedMouseButtonMask() | fingerHeldMouseButtonHidMask();
     }
 
     private void applyTurboMousePulsePhase() {
@@ -1048,17 +1219,34 @@ public class GamepadFragment extends Fragment {
                 continue;
             }
             int hidMask = semanticMouseButtonToHidMask(mb);
-            sendMouseClick(hidMask, turboPulsePhaseHigh);
+            sendMouseClick(hidMask, Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(moduleId)));
         }
+    }
+
+    private void initTurboPulseStateForModule(@NonNull String moduleId) {
+        turboPulsePhaseHighByModuleId.put(moduleId, true);
+        turboPulseLastToggleUptimeMsByModuleId.put(moduleId, SystemClock.uptimeMillis());
+    }
+
+    private void removeTurboPulseStateForModule(@NonNull String moduleId) {
+        turboPulsePhaseHighByModuleId.remove(moduleId);
+        turboPulseLastToggleUptimeMsByModuleId.remove(moduleId);
     }
 
     private void startTurboRepeatingIfNeeded() {
         turboHandler.removeCallbacks(turboPulseStep);
         if (turboLockedModuleIds.isEmpty()) {
-            turboPulsePhaseHigh = false;
+            turboPulsePhaseHighByModuleId.clear();
+            turboPulseLastToggleUptimeMsByModuleId.clear();
             return;
         }
-        turboPulsePhaseHigh = false;
+        long now = SystemClock.uptimeMillis();
+        for (String tid : turboLockedModuleIds) {
+            if (!turboPulseLastToggleUptimeMsByModuleId.containsKey(tid)) {
+                turboPulsePhaseHighByModuleId.put(tid, true);
+                turboPulseLastToggleUptimeMsByModuleId.put(tid, now);
+            }
+        }
         turboHandler.post(turboPulseStep);
     }
 
@@ -1264,6 +1452,7 @@ public class GamepadFragment extends Fragment {
         gamepadView.setLayoutDocument(layoutDoc);
         gamepadView.setKeyCodeProvider(this::hidKeyFromLayoutDoc);
         gamepadView.setTouchpadDeltaListener(this::onTouchpadPixelDelta);
+        gamepadView.setScrollStripWheelListener(this::onScrollStripWheel);
         gamepadView.setButtonAKeyCode(buttonAKey);
         gamepadView.setShowTwoButtons(twoButtonMode);
         boolean presetModules = layoutDoc != null && layoutDoc.modules != null;
@@ -1284,6 +1473,7 @@ public class GamepadFragment extends Fragment {
         updateGyroListenerRegistration();
         applyCanvasBackgroundStyleFromPrefsAndDoc();
         syncKeyboardHoldLockVisuals();
+        applyGestureLockSensitivityToGamepadView();
     }
 
     private void updateGyroListenerRegistration() {
@@ -1327,7 +1517,7 @@ public class GamepadFragment extends Fragment {
         int mx = (int) Math.max(-127, Math.min(127, -gy * k));
         int my = (int) Math.max(-127, Math.min(127, gx * k));
         if (mx != 0 || my != 0) {
-            cm.sendMouseMovement(mx, my, keyboardHoldLatchedMouseButtonMask());
+            cm.sendMouseMovement(mx, my, mouseButtonMaskForRelativeMouseMoves());
         }
     }
 
@@ -1355,7 +1545,23 @@ public class GamepadFragment extends Fragment {
         int cdx = (int) Math.max(-127, Math.min(127, dx * s));
         int cdy = (int) Math.max(-127, Math.min(127, dy * s));
         if (cdx != 0 || cdy != 0) {
-            cm.sendMouseMovement(cdx, cdy, keyboardHoldLatchedMouseButtonMask());
+            cm.sendMouseMovement(cdx, cdy, mouseButtonMaskForRelativeMouseMoves());
+        }
+    }
+
+    private void onScrollStripWheel(String moduleId, int deltaX, int deltaY) {
+        if (deltaX != 0 || deltaY != 0) {
+            vibrateGamepadTick();
+        }
+        if (!(getActivity() instanceof MainActivity)) {
+            return;
+        }
+        ConnectionManager cm = ((MainActivity) getActivity()).getConnectionManager();
+        if (cm == null || !cm.isConnected()) {
+            return;
+        }
+        if (deltaX != 0 || deltaY != 0) {
+            cm.sendScroll(deltaX, deltaY);
         }
     }
 
@@ -1389,7 +1595,8 @@ public class GamepadFragment extends Fragment {
         gestureHoldAlternateHid.clear();
         gestureTurboAlternateHid.clear();
         turboHandler.removeCallbacks(turboPulseStep);
-        turboPulsePhaseHigh = false;
+        turboPulsePhaseHighByModuleId.clear();
+        turboPulseLastToggleUptimeMsByModuleId.clear();
         pendingKeyboardHoldUnlockTap.clear();
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
@@ -1429,7 +1636,7 @@ public class GamepadFragment extends Fragment {
     }
 
     /** Updates the toolbar label showing the active gamepad preset display name. */
-    private void updateActivePresetNameUi() {
+    void updateActivePresetNameUi() {
         if (activePresetChipButton == null || presetRepository == null) {
             return;
         }
@@ -1439,7 +1646,7 @@ public class GamepadFragment extends Fragment {
 
     /** Display label for a preset id (falls back to id). */
     @NonNull
-    private String presetDisplayName(@Nullable String presetId) {
+    String presetDisplayName(@Nullable String presetId) {
         if (presetRepository == null || presetId == null) {
             return "";
         }
@@ -1471,6 +1678,313 @@ public class GamepadFragment extends Fragment {
         gamepadView.setEditLongPressConfig(ms, movePx);
     }
 
+    /** Supplies prefs to {@link GamepadView} for per-module gesture dwell + diagonal scale resolution. */
+    private void applyGestureLockSensitivityToGamepadView() {
+        if (gamepadView == null) {
+            return;
+        }
+        gamepadView.setGestureLockSensitivityPrefs(prefs);
+    }
+
+    private static boolean moduleHasGestureTimingOverride(@Nullable GamepadLayoutPresetDocument.GamepadModule m) {
+        if (m == null) {
+            return false;
+        }
+        return m.gestureLockMinPressMs != null
+                || m.gestureLockDiagonalRadiusScale != null
+                || m.turboPulsePeriodMs != null;
+    }
+
+    private boolean presetHasPerModuleGestureTimingOverride() {
+        if (layoutDoc == null || layoutDoc.modules == null) {
+            return false;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDoc.modules) {
+            if (moduleHasGestureTimingOverride(m)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Optional per-module gesture dwell, diagonal scale, and turbo period (see plan: module → layout → prefs).
+     *
+     * @return runnable that refreshes slider positions from {@code m} (e.g. after dialog Reset).
+     */
+    @NonNull
+    private Runnable attachModuleGestureTimingOverrideSection(
+            @NonNull Context ctx,
+            @NonNull LinearLayout parent,
+            @NonNull GamepadLayoutPresetDocument.GamepadModule m) {
+        parent.removeAllViews();
+        if (!GamepadGestureLock.gesturesAllowedModuleType(m.type)) {
+            parent.setVisibility(View.GONE);
+            return () -> {};
+        }
+        parent.setVisibility(View.VISIBLE);
+        int gap = dp(12);
+        TextView sectionTitle = new TextView(ctx);
+        sectionTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        sectionTitle.setText(R.string.gamepad_module_gesture_timing_title);
+        parent.addView(sectionTitle);
+
+        MaterialButton resetBtn = new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        resetBtn.setText(R.string.gamepad_module_gesture_timing_reset);
+        resetBtn.setAllCaps(false);
+        LinearLayout.LayoutParams resetLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        resetLp.bottomMargin = gap;
+        resetBtn.setLayoutParams(resetLp);
+        parent.addView(resetBtn);
+
+        TextView dwellLabel = new TextView(ctx);
+        dwellLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
+        dwellLabel.setText(R.string.gamepad_gesture_sensitivity_min_press_label);
+        parent.addView(dwellLabel);
+        Slider dwellSlider = new Slider(ctx);
+        dwellSlider.setValueFrom(0f);
+        dwellSlider.setValueTo((float) GamepadGestureLockSensitivity.MIN_PRESS_MS_MAX);
+        dwellSlider.setStepSize(1f);
+        LinearLayout.LayoutParams dwellLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dwellLp.bottomMargin = gap;
+        dwellSlider.setLayoutParams(dwellLp);
+        parent.addView(dwellSlider);
+
+        TextView scaleLabel = new TextView(ctx);
+        scaleLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
+        scaleLabel.setText(R.string.gamepad_gesture_sensitivity_radius_scale_label);
+        parent.addView(scaleLabel);
+        Slider scaleSlider = new Slider(ctx);
+        scaleSlider.setValueFrom(GamepadGestureLockSensitivity.RADIUS_SCALE_MIN);
+        scaleSlider.setValueTo(GamepadGestureLockSensitivity.RADIUS_SCALE_MAX);
+        scaleSlider.setStepSize(0.05f);
+        LinearLayout.LayoutParams scaleLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        scaleLp.bottomMargin = gap;
+        scaleSlider.setLayoutParams(scaleLp);
+        parent.addView(scaleSlider);
+
+        TextView turboLabel = new TextView(ctx);
+        turboLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
+        turboLabel.setText(R.string.gamepad_gesture_sensitivity_turbo_period_label);
+        parent.addView(turboLabel);
+        Slider turboSlider = new Slider(ctx);
+        turboSlider.setValueFrom((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN);
+        turboSlider.setValueTo((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX);
+        turboSlider.setStepSize(1f);
+        turboSlider.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        parent.addView(turboSlider);
+
+        Runnable refreshSlidersFromModule =
+                () -> {
+                    int inhD = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+                    dwellSlider.setValue(
+                            m.gestureLockMinPressMs != null ? m.gestureLockMinPressMs : inhD);
+                    float inhS = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
+                    scaleSlider.setValue(
+                            m.gestureLockDiagonalRadiusScale != null
+                                    ? m.gestureLockDiagonalRadiusScale
+                                    : inhS);
+                    int inhT = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
+                    turboSlider.setValue(
+                            m.turboPulsePeriodMs != null ? m.turboPulsePeriodMs : inhT);
+                };
+        refreshSlidersFromModule.run();
+
+        resetBtn.setOnClickListener(
+                v -> {
+                    m.gestureLockMinPressMs = null;
+                    m.gestureLockDiagonalRadiusScale = null;
+                    m.turboPulsePeriodMs = null;
+                    refreshSlidersFromModule.run();
+                    syncGamepadViewFromDoc();
+                });
+
+        dwellSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        int v = Math.round(slider.getValue());
+                        int inh = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+                        m.gestureLockMinPressMs = (v == inh) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        scaleSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        float v = slider.getValue();
+                        float inh = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
+                        m.gestureLockDiagonalRadiusScale =
+                                (Math.abs(v - inh) < 0.03f) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        turboSlider.addOnSliderTouchListener(
+                new Slider.OnSliderTouchListener() {
+                    @Override
+                    public void onStartTrackingTouch(@NonNull Slider slider) {}
+
+                    @Override
+                    public void onStopTrackingTouch(@NonNull Slider slider) {
+                        int v = Math.round(slider.getValue());
+                        int inh = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
+                        m.turboPulsePeriodMs = (v == inh) ? null : v;
+                        syncGamepadViewFromDoc();
+                    }
+                });
+        return refreshSlidersFromModule;
+    }
+
+    private void showGamepadGestureSensitivityDialog() {
+        if (layoutDoc == null || layoutDoc.layout == null) {
+            Toast.makeText(requireContext(), R.string.gamepad_gesture_sensitivity_need_layout, Toast.LENGTH_SHORT)
+                    .show();
+            return;
+        }
+        Context ctx = requireContext();
+        float density = ctx.getResources().getDisplayMetrics().density;
+        int pad = (int) (20f * density + 0.5f);
+        int gap = (int) (12f * density + 0.5f);
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        if (presetHasPerModuleGestureTimingOverride()) {
+            TextView note = new TextView(ctx);
+            note.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+            note.setText(R.string.gamepad_gesture_sensitivity_preset_override_note);
+            LinearLayout.LayoutParams nlp =
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            nlp.bottomMargin = gap;
+            note.setLayoutParams(nlp);
+            root.addView(note);
+        }
+        int dwellInit = GamepadGestureLockSensitivity.resolveMinPressMs(layoutDoc, prefs, null);
+        float scaleInit = GamepadGestureLockSensitivity.resolveRadiusScale(layoutDoc, prefs, null);
+
+        TextView dwellLabel = new TextView(ctx);
+        dwellLabel.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        dwellLabel.setText(R.string.gamepad_gesture_sensitivity_min_press_label);
+        root.addView(dwellLabel);
+        Slider dwellSlider = new Slider(ctx);
+        dwellSlider.setValueFrom(0f);
+        dwellSlider.setValueTo((float) GamepadGestureLockSensitivity.MIN_PRESS_MS_MAX);
+        dwellSlider.setStepSize(1f);
+        dwellSlider.setValue((float) dwellInit);
+        dwellSlider.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams dlp =
+                (LinearLayout.LayoutParams) dwellSlider.getLayoutParams();
+        dlp.bottomMargin = gap;
+        dwellSlider.setLayoutParams(dlp);
+        root.addView(dwellSlider);
+
+        TextView scaleLabel = new TextView(ctx);
+        scaleLabel.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        scaleLabel.setText(R.string.gamepad_gesture_sensitivity_radius_scale_label);
+        root.addView(scaleLabel);
+        Slider scaleSlider = new Slider(ctx);
+        scaleSlider.setValueFrom(GamepadGestureLockSensitivity.RADIUS_SCALE_MIN);
+        scaleSlider.setValueTo(GamepadGestureLockSensitivity.RADIUS_SCALE_MAX);
+        scaleSlider.setStepSize(0.05f);
+        scaleSlider.setValue(scaleInit);
+        scaleSlider.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scaleSlider);
+
+        int turboInit = GamepadGestureLockSensitivity.resolveTurboPulsePeriodMs(layoutDoc, prefs, null);
+        TextView turboLabel = new TextView(ctx);
+        turboLabel.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        turboLabel.setText(R.string.gamepad_gesture_sensitivity_turbo_period_label);
+        LinearLayout.LayoutParams tll =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tll.topMargin = gap;
+        turboLabel.setLayoutParams(tll);
+        root.addView(turboLabel);
+        TextView turboHint = new TextView(ctx);
+        turboHint.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        turboHint.setText(R.string.gamepad_gesture_sensitivity_turbo_period_hint);
+        turboHint.setTextColor(
+                MaterialColors.getColor(
+                        ctx,
+                        com.google.android.material.R.attr.colorOnSurfaceVariant,
+                        ContextCompat.getColor(ctx, R.color.gray_600)));
+        LinearLayout.LayoutParams thlp =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        thlp.bottomMargin = gap / 2;
+        turboHint.setLayoutParams(thlp);
+        root.addView(turboHint);
+        Slider turboSlider = new Slider(ctx);
+        turboSlider.setValueFrom((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MIN);
+        turboSlider.setValueTo((float) GamepadGestureLockSensitivity.TURBO_PULSE_PERIOD_MS_MAX);
+        turboSlider.setStepSize(1f);
+        turboSlider.setValue((float) turboInit);
+        turboSlider.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(turboSlider);
+
+        NestedScrollView scroll = new NestedScrollView(ctx);
+        scroll.addView(
+                root, new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.gamepad_gesture_sensitivity_dialog_title)
+                .setView(scroll)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(
+                        R.string.gamepad_gesture_sensitivity_clear_preset_timing,
+                        (d, w) -> {
+                            layoutDoc.layout.gestureLockMinPressMs = null;
+                            layoutDoc.layout.gestureLockDiagonalRadiusScale = null;
+                            layoutDoc.layout.turboPulsePeriodMs = null;
+                            applyLayoutDocFromMemory();
+                            applyGestureLockSensitivityToGamepadView();
+                            Toast.makeText(ctx, R.string.gamepad_gesture_sensitivity_cleared, Toast.LENGTH_SHORT)
+                                    .show();
+                        })
+                .setPositiveButton(
+                        R.string.gamepad_key_picker_save,
+                        (d, w) -> {
+                            int ms =
+                                    GamepadGestureLockSensitivity.clampMinPressMs(
+                                            Math.round(dwellSlider.getValue()));
+                            float sc = GamepadGestureLockSensitivity.clampRadiusScale(scaleSlider.getValue());
+                            int turboMs =
+                                    GamepadGestureLockSensitivity.clampTurboPulsePeriodMs(
+                                            Math.round(turboSlider.getValue()));
+                            layoutDoc.layout.gestureLockMinPressMs = ms;
+                            layoutDoc.layout.gestureLockDiagonalRadiusScale = sc;
+                            layoutDoc.layout.turboPulsePeriodMs = turboMs;
+                            applyLayoutDocFromMemory();
+                            applyGestureLockSensitivityToGamepadView();
+                            Toast.makeText(ctx, R.string.gamepad_gesture_sensitivity_saved, Toast.LENGTH_SHORT)
+                                    .show();
+                        })
+                .show();
+    }
+
     private void mergeViewPositionsIntoLayoutDoc(Map<String, GamepadConfigManager.ComponentPosition> positions) {
         if (layoutDoc == null || layoutDoc.modules == null || positions == null) {
             return;
@@ -1484,7 +1998,7 @@ public class GamepadFragment extends Fragment {
         }
     }
 
-    private void reloadFromPrefsAndApplyView() {
+    void reloadFromPrefsAndApplyView() {
         loadSavedSensitivity();
         layoutDoc = GamepadLayoutDocumentStore.loadOrCreate(requireContext());
         clearRuntimeKeyboardHoldLocksForLayoutChange();
@@ -1683,290 +2197,15 @@ public class GamepadFragment extends Fragment {
         updateGamepadToolbarScrimForBackground();
     }
 
-    private void showGamepadPresetsBottomSheet() {
-        // AppCompatDialog (not BottomSheetDialog): avoids CoordinatorLayout/BottomSheetBehavior
-        // stealing vertical gestures so the preset RecyclerView scrolls reliably; no second settle pass.
-        Context dlgCtx = new ContextThemeWrapper(
-                gamepadUiContext(), R.style.Theme_KeyMod_GamepadPresetPickerDialog);
-        AppCompatDialog dialog = new AppCompatDialog(dlgCtx);
-        View sheet = LayoutInflater.from(dlgCtx).inflate(R.layout.bottom_sheet_gamepad_presets, null, false);
-        dialog.setContentView(sheet);
-        Window dw = dialog.getWindow();
-        if (dw != null) {
-            dw.setWindowAnimations(0);
-            dw.setBackgroundDrawableResource(android.R.color.transparent);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                dw.setEnterTransition(null);
-                dw.setExitTransition(null);
-            }
-            applyGamepadPresetsPickerWindowLayout(dw, dlgCtx);
-            dw.setFlags(
-                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
-                    WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+    @NonNull
+    GamepadLayoutPreviewCache previewCache() {
+        if (gamepadLayoutPreviewCache == null) {
+            gamepadLayoutPreviewCache = new GamepadLayoutPreviewCache(requireContext(), presetRepository);
         }
-
-        RecyclerView recycler = sheet.findViewById(R.id.gamepad_presets_recycler);
-        recycler.setHasFixedSize(true);
-        recycler.setItemAnimator(null);
-        recycler.setNestedScrollingEnabled(true);
-        recycler.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
-        MaterialButton newLayoutBtn = sheet.findViewById(R.id.gamepad_presets_new_layout);
-        MaterialButton resetShippedBtn = sheet.findViewById(R.id.gamepad_presets_reset_shipped_btn);
-        MaterialButton importBtn = sheet.findViewById(R.id.gamepad_presets_import_btn);
-
-        final GamepadPresetListAdapter[] presetListAdapterRef = new GamepadPresetListAdapter[1];
-        presetListAdapterRef[0] = new GamepadPresetListAdapter(new GamepadPresetListAdapter.Listener() {
-            @Override
-            public void onPresetReorderFinished() {
-                List<String> ids = presetListAdapterRef[0].consumePendingReorderIds();
-                if (ids != null) {
-                    String err = presetRepository.reorderPresets(ids);
-                    if (err != null) {
-                        refreshPresetSheetAdapter(presetListAdapterRef[0]);
-                        Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
-
-            @Override
-            public void onActivatePreset(@NonNull String id) {
-                presetRepository.persistActiveSnapshot();
-                String err = presetRepository.activateAndApply(id);
-                if (err == null) {
-                    reloadFromPrefsAndApplyView();
-                    Toast.makeText(dlgCtx, R.string.gamepad_presets_activated, Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                } else {
-                    Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
-                }
-            }
-
-            @Override
-            public void onSavePreset(@NonNull String id) {
-                ensureExportCreatorNameThen(() -> {
-                    pendingSavePresetIdForDocument = id;
-                    String displayName = presetDisplayName(id);
-                    String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-                    String base = !safe.isEmpty() ? safe : id;
-                    savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
-                });
-            }
-
-            @Override
-            public void onSharePreset(@NonNull String id) {
-                ensureExportCreatorNameThen(() -> {
-                    dialog.dismiss();
-                    sharePresetJson(id);
-                });
-            }
-
-            @Override
-            public void onDeletePreset(@NonNull String id) {
-                confirmDeletePreset(id, dialog, presetListAdapterRef[0]);
-            }
-
-            @Override
-            public void onOverflow(@NonNull String id, @NonNull View anchor) {
-                showPresetOverflowMenu(id, anchor, dialog, presetListAdapterRef[0]);
-            }
-        });
-        GamepadPresetListAdapter adapter = presetListAdapterRef[0];
-        recycler.setLayoutManager(new LinearLayoutManager(dlgCtx));
-        recycler.setAdapter(adapter);
-        adapter.setReorderHandlesEnabled(true);
-        refreshPresetSheetAdapter(adapter);
-
-        if (newLayoutBtn != null) {
-            newLayoutBtn.setOnClickListener(v -> {
-                dialog.dismiss();
-                promptNewUserPreset();
-            });
-        }
-        if (resetShippedBtn != null) {
-            resetShippedBtn.setOnClickListener(v -> new AlertDialog.Builder(dlgCtx)
-                    .setTitle(R.string.gamepad_presets_reset_shipped_title)
-                    .setMessage(R.string.gamepad_presets_reset_shipped_message)
-                    .setPositiveButton(R.string.gamepad_presets_reset_shipped_confirm, (d, w) -> {
-                        String err = presetRepository.resetAllShippedGamepadLayoutsFromAssets();
-                        if (err != null) {
-                            Toast.makeText(dlgCtx, err, Toast.LENGTH_LONG).show();
-                        } else {
-                            Toast.makeText(dlgCtx, R.string.gamepad_presets_reset_shipped_done,
-                                            Toast.LENGTH_SHORT)
-                                    .show();
-                            refreshPresetSheetAdapterAndResetListPresentation(
-                                    recycler, sheet, presetListAdapterRef[0], dialog);
-                            reloadFromPrefsAndApplyView();
-                            updateActivePresetNameUi();
-                        }
-                    })
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show());
-        }
-        if (importBtn != null) {
-            importBtn.setOnClickListener(v -> {
-                dialog.dismiss();
-                importPresetLauncher.launch(new String[]{"application/json"});
-            });
-        }
-
-        dialog.show();
-        recycler.post(() -> {
-            if (recycler.isAttachedToWindow()) {
-                recycler.requestFocus();
-            }
-        });
+        return gamepadLayoutPreviewCache;
     }
 
-    private void refreshPresetSheetAdapter(@NonNull GamepadPresetListAdapter adapter) {
-        adapter.setData(presetRepository.listPresets(), presetRepository.getActivePresetId());
-    }
-
-    /**
-     * Refreshes preset rows then resets scroll and forces a layout pass on the sheet root.
-     * Needed after bulk list changes (e.g. reset shipped layouts) so the list presents correctly.
-     */
-    private void refreshPresetSheetAdapterAndResetListPresentation(
-            @NonNull RecyclerView recycler,
-            @NonNull View sheetRoot,
-            @NonNull GamepadPresetListAdapter adapter,
-            @NonNull Dialog presetSheetDialog) {
-        refreshPresetSheetAdapter(adapter);
-        // Two posts: first runs after the current frame; second runs after DiffUtil + child layout
-        // so scroll/remeasure see the updated item count and heights.
-        recycler.post(() -> recycler.post(() -> {
-            recycler.stopScroll();
-            RecyclerView.LayoutManager lm = recycler.getLayoutManager();
-            if (lm instanceof LinearLayoutManager) {
-                ((LinearLayoutManager) lm).scrollToPositionWithOffset(0, 0);
-            } else {
-                recycler.scrollToPosition(0);
-            }
-            recycler.requestLayout();
-            sheetRoot.requestLayout();
-            Window w = presetSheetDialog.getWindow();
-            if (w != null) {
-                w.getDecorView().requestLayout();
-            }
-        }));
-    }
-
-    private void confirmDeletePreset(
-            @NonNull String presetId,
-            @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
-        if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
-            return;
-        }
-        Context ctx = hostDialog.getContext();
-        new AlertDialog.Builder(ctx)
-                .setTitle(R.string.gamepad_preset_delete_title)
-                .setMessage(R.string.gamepad_preset_delete_message)
-                .setPositiveButton(R.string.gamepad_preset_delete_confirm, (d, w) -> {
-                    String err = presetRepository.deletePreset(presetId);
-                    if (err != null) {
-                        Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
-                        refreshPresetSheetAdapter(adapter);
-                    } else {
-                        hostDialog.dismiss();
-                        reloadFromPrefsAndApplyView();
-                        updateActivePresetNameUi();
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void confirmResetDefaultPreset(
-            @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
-        Context ctx = hostDialog.getContext();
-        new AlertDialog.Builder(ctx)
-                .setTitle(R.string.gamepad_preset_reset_title)
-                .setMessage(R.string.gamepad_preset_reset_message)
-                .setPositiveButton(R.string.gamepad_preset_reset_confirm, (d, w) -> {
-                    String err = presetRepository.resetDefaultPresetFromBundled();
-                    if (err != null) {
-                        Toast.makeText(ctx, err, Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(ctx, R.string.gamepad_preset_reset_done, Toast.LENGTH_SHORT).show();
-                        refreshPresetSheetAdapter(adapter);
-                        if (GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(
-                                presetRepository.getActivePresetId())) {
-                            reloadFromPrefsAndApplyView();
-                            updateActivePresetNameUi();
-                        }
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void showPresetOverflowMenu(
-            @NonNull String presetId,
-            @NonNull View anchor,
-            @NonNull Dialog hostDialog,
-            @NonNull GamepadPresetListAdapter adapter) {
-        PopupMenu pm = new PopupMenu(anchor.getContext(), anchor);
-        pm.getMenuInflater().inflate(R.menu.menu_gamepad_preset_row, pm.getMenu());
-        if (GamepadLayoutPresetConstants.isPresetDeletionProtected(presetId)) {
-            pm.getMenu().findItem(R.id.gamepad_preset_delete).setVisible(false);
-        }
-        if (!GamepadLayoutPresetConstants.DEFAULT_PRESET_ID.equals(presetId)) {
-            pm.getMenu().findItem(R.id.gamepad_preset_reset_layout).setVisible(false);
-        }
-        pm.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.gamepad_preset_rename) {
-                promptRenamePreset(presetId, () -> {
-                    refreshPresetSheetAdapter(adapter);
-                    updateActivePresetNameUi();
-                });
-                return true;
-            }
-            if (id == R.id.gamepad_preset_duplicate) {
-                GamepadLayoutPresetRepository.DuplicateResult dup = presetRepository.duplicatePreset(presetId);
-                if (dup.isSuccess()) {
-                    Toast.makeText(requireContext(), R.string.gamepad_preset_duplicated, Toast.LENGTH_SHORT).show();
-                    refreshPresetSheetAdapter(adapter);
-                } else {
-                    Toast.makeText(requireContext(),
-                            dup.error != null ? dup.error : getString(R.string.gamepad_preset_action_failed),
-                            Toast.LENGTH_LONG).show();
-                }
-                return true;
-            }
-            if (id == R.id.gamepad_preset_reset_layout) {
-                confirmResetDefaultPreset(hostDialog, adapter);
-                return true;
-            }
-            if (id == R.id.gamepad_preset_save_file) {
-                ensureExportCreatorNameThen(() -> {
-                    pendingSavePresetIdForDocument = presetId;
-                    String displayName = presetDisplayName(presetId);
-                    String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-                    String base = !safe.isEmpty() ? safe : presetId;
-                    savePresetCreateDocumentLauncher.launch("KeyMod_gamepad_" + base + ".json");
-                });
-                return true;
-            }
-            if (id == R.id.gamepad_preset_share) {
-                ensureExportCreatorNameThen(() -> {
-                    hostDialog.dismiss();
-                    sharePresetJson(presetId);
-                });
-                return true;
-            }
-            if (id == R.id.gamepad_preset_delete) {
-                confirmDeletePreset(presetId, hostDialog, adapter);
-                return true;
-            }
-            return false;
-        });
-        pm.show();
-    }
-
-    private void promptRenamePreset(@NonNull String presetId, @NonNull Runnable onOk) {
+    void promptRenamePreset(@NonNull String presetId, @NonNull Runnable onOk) {
         Context ctx = gamepadUiContext();
         View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
         TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
@@ -1990,7 +2229,7 @@ public class GamepadFragment extends Fragment {
                 .show();
     }
 
-    private void promptNewUserPreset() {
+    void promptNewUserPreset() {
         Context ctx = gamepadUiContext();
         View wrap = LayoutInflater.from(ctx).inflate(R.layout.dialog_gamepad_text_field, null, false);
         TextInputLayout til = wrap.findViewById(R.id.gamepad_text_input_layout);
@@ -2042,12 +2281,15 @@ public class GamepadFragment extends Fragment {
                 .setTitle(R.string.gamepad_add_module_title)
                 .setItems(new String[]{
                         getString(R.string.gamepad_add_touchpad),
+                        getString(R.string.gamepad_add_scroll_strip),
                         getString(R.string.gamepad_add_dpad_cross_left),
                         getString(R.string.gamepad_add_extra_button),
                 }, (d, which) -> {
                     if (which == 0) {
                         GamepadLayoutDocEditor.addTouchpad(layoutDoc);
                     } else if (which == 1) {
+                        GamepadLayoutDocEditor.addScrollStrip(layoutDoc);
+                    } else if (which == 2) {
                         GamepadLayoutDocEditor.addLeftDpadStickModule(layoutDoc);
                     } else {
                         GamepadLayoutDocEditor.addButton(layoutDoc);
@@ -2100,6 +2342,7 @@ public class GamepadFragment extends Fragment {
                 bgBasename = prefs.getString(GamepadPreferenceKeys.BG_IMAGE, null);
             }
             GamepadLayoutPresetBackgroundCodec.injectEmbedForExport(requireContext(), shareDoc, bgBasename);
+            GamepadLayoutDocEditor.normalizeModuleZOrder(shareDoc);
             return GamepadLayoutPresetDocument.toJsonPretty(shareDoc);
         } catch (Exception e) {
             Log.e(TAG, "build preset export json", e);
@@ -2108,7 +2351,7 @@ public class GamepadFragment extends Fragment {
     }
 
     /** Share JSON for the given preset (active = live prefs snapshot; others = file on disk). */
-    private void sharePresetJson(@Nullable String presetId) {
+    void sharePresetJson(@Nullable String presetId) {
         if (presetRepository == null) {
             return;
         }
@@ -2129,7 +2372,7 @@ public class GamepadFragment extends Fragment {
                 return;
             }
             String safe = displayName.replaceAll("[^a-zA-Z0-9_-]", "_");
-            File outFile = new File(shareDir, "keymod_gamepad_" + safe + "_" + System.currentTimeMillis() + ".json");
+            File outFile = new File(shareDir, "keycmd_gamepad_" + safe + "_" + System.currentTimeMillis() + ".json");
             try (FileOutputStream fos = new FileOutputStream(outFile)) {
                 fos.write(json.getBytes(StandardCharsets.UTF_8));
             }
@@ -2306,7 +2549,7 @@ public class GamepadFragment extends Fragment {
 
             if (layoutDoc != null && layoutDoc.modules != null) {
                 for (String tid : turboLockedModuleIds) {
-                    if (!turboPulsePhaseHigh) {
+                    if (!Boolean.TRUE.equals(turboPulsePhaseHighByModuleId.get(tid))) {
                         continue;
                     }
                     GamepadLayoutPresetDocument.GamepadModule m = findModuleById(tid);
@@ -2406,6 +2649,7 @@ public class GamepadFragment extends Fragment {
                     faceButtonPressed.remove(moduleId);
                     keyboardHoldLockedModuleIds.remove(moduleId);
                     turboLockedModuleIds.remove(moduleId);
+                    removeTurboPulseStateForModule(moduleId);
                     gestureHoldAlternateHid.remove(moduleId);
                     gestureTurboAlternateHid.remove(moduleId);
                     if (turboLockedModuleIds.isEmpty()) {
@@ -2435,7 +2679,7 @@ public class GamepadFragment extends Fragment {
             @NonNull List<View> swatchViews,
             @NonNull Context ctx) {
         int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
@@ -2529,7 +2773,7 @@ public class GamepadFragment extends Fragment {
             @NonNull List<View> swatchViews,
             @NonNull Context ctx) {
         int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
@@ -2774,14 +3018,14 @@ public class GamepadFragment extends Fragment {
                 ? GamepadModuleAccent.toOpaqueArgb(module.moduleAccentArgb)
                 : GamepadModuleAccent.toOpaqueArgb(MaterialColors.getColor(ctx,
                         com.google.android.material.R.attr.colorPrimary,
-                        ContextCompat.getColor(ctx, R.color.primary)));
+                        ThemeManager.getColorPrimary(ctx)));
         int r0 = Color.red(cur);
         int g0 = Color.green(cur);
         int b0 = Color.blue(cur);
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int errorColor = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ContextCompat.getColor(ctx, R.color.holo_red_light));
 
         LinearLayout shell = new LinearLayout(ctx);
         shell.setOrientation(LinearLayout.VERTICAL);
@@ -2837,7 +3081,7 @@ public class GamepadFragment extends Fragment {
 
         TextView hexLabel = new TextView(ctx);
         hexLabel.setText(R.string.gamepad_module_color_hex_label);
-        hexLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        hexLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         LinearLayout.LayoutParams hexLabelLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         hexLabelLp.topMargin = dp(12);
@@ -2995,7 +3239,7 @@ public class GamepadFragment extends Fragment {
         row.setPadding(0, vPad, 0, vPad);
         TextView lab = new TextView(ctx);
         lab.setText(label);
-        lab.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        lab.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         lab.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams labLp = new LinearLayout.LayoutParams(
                 dpForContext(ctx, 28), LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -3007,6 +3251,64 @@ public class GamepadFragment extends Fragment {
                 dpForContext(ctx, 40), LinearLayout.LayoutParams.WRAP_CONTENT);
         row.addView(valueTv, valLp);
         return row;
+    }
+
+    /**
+     * Optional “Bring to front” / “Send to back” row for module sheets (dynamic layout, 2+ modules).
+     */
+    private void appendGamepadModuleLayerRow(
+            @NonNull Context ctx, @NonNull LinearLayout verticalSheet, @NonNull String moduleId) {
+        if (layoutDoc == null || !GamepadLayoutDocEditor.canReorderLayers(layoutDoc) || findModuleById(moduleId) == null) {
+            return;
+        }
+        TextView layerTitle = new TextView(ctx);
+        layerTitle.setText(R.string.gamepad_layer_order_title);
+        layerTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleLp.topMargin = dp(12);
+        verticalSheet.addView(layerTitle, titleLp);
+
+        LinearLayout row = new LinearLayout(ctx);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        int gap = dp(8);
+        MaterialButton front = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        front.setText(R.string.gamepad_menu_bring_to_front);
+        front.setAllCaps(false);
+        LinearLayout.LayoutParams frontLp =
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        frontLp.setMarginEnd(gap);
+        front.setLayoutParams(frontLp);
+        front.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            if (GamepadLayoutDocEditor.bringModuleToFront(layoutDoc, moduleId)) {
+                applyLayoutDocFromMemory();
+            } else {
+                Toast.makeText(ctx, R.string.gamepad_layer_already_front, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(front);
+
+        MaterialButton back = new MaterialButton(ctx, null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        back.setText(R.string.gamepad_menu_send_to_back);
+        back.setAllCaps(false);
+        back.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        back.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            if (GamepadLayoutDocEditor.sendModuleToBack(layoutDoc, moduleId)) {
+                applyLayoutDocFromMemory();
+            } else {
+                Toast.makeText(ctx, R.string.gamepad_layer_already_back, Toast.LENGTH_SHORT).show();
+            }
+        });
+        row.addView(back);
+
+        verticalSheet.addView(row);
     }
 
     /**
@@ -3036,7 +3338,7 @@ public class GamepadFragment extends Fragment {
         verticalSheet.addView(footer, footLp);
 
         int err = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ContextCompat.getColor(ctx, R.color.holo_red_light));
         MaterialButton removeBtn = new MaterialButton(ctx, null,
                 com.google.android.material.R.attr.materialButtonOutlinedStyle);
         removeBtn.setText(R.string.gamepad_menu_remove);
@@ -3177,6 +3479,24 @@ public class GamepadFragment extends Fragment {
             showConfigDialog(moduleId);
         } else if (choice.equals(getString(R.string.gamepad_menu_edit_keys)) && hasKeyMapping) {
             showConfigDialog(moduleId);
+        } else if (choice.equals(getString(R.string.gamepad_menu_bring_to_front))) {
+            if (getView() != null) {
+                getView().performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            }
+            if (!GamepadLayoutDocEditor.bringModuleToFront(layoutDoc, moduleId)) {
+                Toast.makeText(requireContext(), R.string.gamepad_layer_already_front, Toast.LENGTH_SHORT).show();
+            } else {
+                applyLayoutDocFromMemory();
+            }
+        } else if (choice.equals(getString(R.string.gamepad_menu_send_to_back))) {
+            if (getView() != null) {
+                getView().performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            }
+            if (!GamepadLayoutDocEditor.sendModuleToBack(layoutDoc, moduleId)) {
+                Toast.makeText(requireContext(), R.string.gamepad_layer_already_back, Toast.LENGTH_SHORT).show();
+            } else {
+                applyLayoutDocFromMemory();
+            }
         } else if (choice.equals(getString(R.string.gamepad_menu_remove))) {
             GamepadLayoutDocEditor.removeModule(layoutDoc, moduleId);
             faceButtonPressed.remove(moduleId);
@@ -3188,6 +3508,10 @@ public class GamepadFragment extends Fragment {
         final String moduleId = resolveLongPressMenuModuleId(componentId);
         if (mouseButtonForComponentId(componentId) != null) {
             showMouseButtonModuleConfigSheet(componentId);
+            return;
+        }
+        if (componentId != null && GamepadLayoutPresetConstants.isScrollStripModuleId(componentId)) {
+            showScrollStripModuleConfigSheet(componentId);
             return;
         }
         String componentName;
@@ -3264,6 +3588,11 @@ public class GamepadFragment extends Fragment {
                 opts.add(getString(R.string.gamepad_menu_edit_keys));
             }
         }
+        if (GamepadLayoutDocEditor.canReorderLayers(layoutDoc) && moduleId != null
+                && findModuleById(moduleId) != null) {
+            opts.add(getString(R.string.gamepad_menu_bring_to_front));
+            opts.add(getString(R.string.gamepad_menu_send_to_back));
+        }
         if (GamepadLayoutDocEditor.canRemove(moduleId)) {
             opts.add(getString(R.string.gamepad_menu_remove));
         }
@@ -3327,12 +3656,14 @@ public class GamepadFragment extends Fragment {
         int hp = Math.round((tp.heightNorm != null ? tp.heightNorm : GamepadLayoutDocEditor.TOUCHPAD_DEFAULT_SIZE_NORM) * 100f);
         hSeek.setProgress(Math.max(10, Math.min(65, hp)));
 
-        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
-        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         root.addView(wTitle);
         root.addView(wSeek);
         root.addView(hTitle);
         root.addView(hSeek);
+
+        appendGamepadModuleLayerRow(ctx, root, touchpadModuleId);
 
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
@@ -3382,6 +3713,143 @@ public class GamepadFragment extends Fragment {
         dialog.show();
     }
 
+    /**
+     * Single scrollable sheet for a {@code SCROLL_STRIP} module: name, accent color, size, wheel tuning,
+     * Remove / Reset / Duplicate / Done (same pattern as {@link #showMouseButtonModuleConfigSheet}).
+     */
+    private void showScrollStripModuleConfigSheet(String componentId) {
+        if (componentId == null || !GamepadLayoutPresetConstants.isScrollStripModuleId(componentId)) {
+            return;
+        }
+        GamepadLayoutPresetDocument.GamepadModule m = findModuleById(componentId);
+        if (m == null || layoutDoc == null) {
+            return;
+        }
+        Context ctx = requireContext();
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(16);
+        root.setPadding(pad, pad, pad, pad);
+
+        root.addView(createGamepadModuleIdTextViewForSheet(ctx, m.id));
+
+        LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_name_section, root, true);
+        bindGamepadModuleNameSection(root, m);
+
+        LayoutInflater.from(ctx).inflate(R.layout.include_gamepad_module_color_section, root, true);
+        View colorSection = root.findViewById(R.id.module_color_section);
+        if (colorSection != null) {
+            bindGamepadModuleColorSection(colorSection, m);
+        }
+
+        TextView wTitle = new TextView(ctx);
+        wTitle.setText(R.string.gamepad_touchpad_width_pct);
+        wTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        android.widget.SeekBar wSeek = new android.widget.SeekBar(ctx);
+        wSeek.setMax(65);
+        int wp = Math.round((m.widthNorm != null ? m.widthNorm
+                : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_WIDTH_NORM) * 100f);
+        wSeek.setProgress(Math.max(10, Math.min(65, wp)));
+
+        TextView hTitle = new TextView(ctx);
+        hTitle.setText(R.string.gamepad_touchpad_height_pct);
+        hTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        android.widget.SeekBar hSeek = new android.widget.SeekBar(ctx);
+        hSeek.setMax(65);
+        int hp = Math.round((m.heightNorm != null ? m.heightNorm
+                : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_HEIGHT_NORM) * 100f);
+        hSeek.setProgress(Math.max(10, Math.min(65, hp)));
+
+        root.addView(wTitle);
+        root.addView(wSeek);
+        root.addView(hTitle);
+        root.addView(hSeek);
+
+        TextView sensTitle = new TextView(ctx);
+        sensTitle.setText(R.string.gamepad_scroll_strip_sensitivity_pct);
+        sensTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
+        android.widget.SeekBar sensSeek = new android.widget.SeekBar(ctx);
+        sensSeek.setMax(375);
+        float sens = m.scrollStripSensitivity != null ? m.scrollStripSensitivity : 1f;
+        sens = Math.max(0.25f, Math.min(4f, sens));
+        int prog = Math.round((sens - 0.25f) / 3.75f * 375f);
+        sensSeek.setProgress(Math.max(0, Math.min(375, prog)));
+
+        android.widget.CheckBox invertCb = new android.widget.CheckBox(ctx);
+        invertCb.setText(R.string.gamepad_scroll_strip_invert_y);
+        invertCb.setChecked(Boolean.TRUE.equals(m.scrollStripInvertY));
+
+        root.addView(sensTitle);
+        root.addView(sensSeek);
+        root.addView(invertCb);
+
+        appendGamepadModuleLayerRow(ctx, root, m.id);
+
+        applyGamepadModuleConfigSheetSurface(root);
+        FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
+        MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.gamepad_component_scroll_strip)
+                .setView(wrapGamepadModuleConfigSheetInScroll(sheetWrapped));
+        AlertDialog dialog = b.create();
+
+        Runnable syncSeeksFromModule = () -> {
+            int wp2 = Math.round((m.widthNorm != null ? m.widthNorm
+                    : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_WIDTH_NORM) * 100f);
+            wSeek.setProgress(Math.max(10, Math.min(65, wp2)));
+            int hp2 = Math.round((m.heightNorm != null ? m.heightNorm
+                    : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_HEIGHT_NORM) * 100f);
+            hSeek.setProgress(Math.max(10, Math.min(65, hp2)));
+            float s = m.scrollStripSensitivity != null ? m.scrollStripSensitivity : 1f;
+            s = Math.max(0.25f, Math.min(4f, s));
+            sensSeek.setProgress(Math.max(0, Math.min(375, Math.round((s - 0.25f) / 3.75f * 375f))));
+            invertCb.setChecked(Boolean.TRUE.equals(m.scrollStripInvertY));
+        };
+
+        Runnable commitEditsFromControls = () -> {
+            commitModuleDisplayLabelFromEdit(root.findViewById(R.id.module_name_edit), m);
+            m.widthNorm = wSeek.getProgress() / 100f;
+            m.heightNorm = hSeek.getProgress() / 100f;
+            float s = 0.25f + (sensSeek.getProgress() / 375f) * 3.75f;
+            m.scrollStripSensitivity = Math.abs(s - 1f) < 0.02f ? null : s;
+            m.scrollStripInvertY = invertCb.isChecked() ? Boolean.TRUE : null;
+        };
+
+        appendGamepadModuleSheetFooter(ctx, root, m.id,
+                () -> {
+                    m.widthNorm = GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_WIDTH_NORM;
+                    m.heightNorm = GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_HEIGHT_NORM;
+                    m.moduleAccentArgb = null;
+                    m.displayLabel = null;
+                    m.displayLabelColorArgb = null;
+                    m.scrollStripSensitivity = null;
+                    m.scrollStripInvertY = null;
+                    syncSeeksFromModule.run();
+                    TextInputEditText nameEdit = root.findViewById(R.id.module_name_edit);
+                    if (nameEdit != null) {
+                        nameEdit.setText("");
+                    }
+                    bindModuleDisplayLabelColorRow(root, m);
+                    if (colorSection != null) {
+                        bindGamepadModuleColorSection(colorSection, m);
+                    }
+                    syncGamepadViewFromDoc();
+                },
+                GamepadLayoutDocEditor.canDuplicateModule(m.id, layoutDoc)
+                        ? () -> {
+                            commitEditsFromControls.run();
+                            applyGamepadModuleDuplicateResult(
+                                    GamepadLayoutDocEditor.duplicateModule(layoutDoc, m.id), dialog);
+                        }
+                        : null,
+                () -> {
+                    commitEditsFromControls.run();
+                    applyLayoutDocFromMemory();
+                    dialog.dismiss();
+                },
+                dialog);
+        dialog.show();
+    }
+
     /** Layout-level scale for all touchpad L/M/R mouse buttons (50%–200%). */
     private void showTouchpadMouseButtonsLayoutSizeDialog() {
         if (layoutDoc == null || layoutDoc.layout == null) {
@@ -3395,7 +3863,7 @@ public class GamepadFragment extends Fragment {
 
         TextView title = new TextView(ctx);
         title.setText(R.string.gamepad_mouse_btn_size_pct);
-        title.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        title.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar seek = new android.widget.SeekBar(ctx);
         seek.setMax(150);
         float cur = layoutDoc.layout.touchpadMouseButtonScale != null
@@ -3455,7 +3923,7 @@ public class GamepadFragment extends Fragment {
 
         TextView moduleSizeTitle = new TextView(ctx);
         moduleSizeTitle.setText(R.string.gamepad_mouse_btn_size_pct);
-        moduleSizeTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        moduleSizeTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         android.widget.SeekBar moduleScaleSeek = new android.widget.SeekBar(ctx);
         moduleScaleSeek.setMax(150);
         moduleScaleSeek.setProgress(Math.max(0, Math.min(150, Math.round(m.scale * 100f) - 50)));
@@ -3467,7 +3935,7 @@ public class GamepadFragment extends Fragment {
         if (GamepadLayoutDocEditor.hasTouchpad(layoutDoc)) {
             TextView globalTitle = new TextView(ctx);
             globalTitle.setText(R.string.gamepad_touchpad_mouse_btn_size_title);
-            globalTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+            globalTitle.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
             root.addView(globalTitle);
 
             android.widget.SeekBar globalSeek = new android.widget.SeekBar(ctx);
@@ -3504,6 +3972,40 @@ public class GamepadFragment extends Fragment {
         final android.widget.Spinner[] gestureSpinnersMouse =
                 bindGestureLockSpinnerRows(ctx, gestureMouseBox, m);
 
+        TextView gestureSensHint = new TextView(ctx);
+        gestureSensHint.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
+        int onSurfaceVar = MaterialColors.getColor(
+                ctx,
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ContextCompat.getColor(ctx, R.color.gray_600));
+        gestureSensHint.setTextColor(onSurfaceVar);
+        gestureSensHint.setText(R.string.gamepad_module_config_gesture_sensitivity_hint);
+        LinearLayout.LayoutParams sensHintLp =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        sensHintLp.bottomMargin = dp(8);
+        gestureSensHint.setLayoutParams(sensHintLp);
+        root.addView(gestureSensHint);
+
+        LinearLayout mouseGestureTiming = new LinearLayout(ctx);
+        mouseGestureTiming.setOrientation(LinearLayout.VERTICAL);
+        mouseGestureTiming.setLayoutParams(
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(mouseGestureTiming);
+        Runnable refreshMouseGestureTimingSliders =
+                attachModuleGestureTimingOverrideSection(ctx, mouseGestureTiming, m);
+
+        MaterialButton gestureSensOpen =
+                new MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        gestureSensOpen.setText(R.string.gamepad_module_config_gesture_sensitivity_open);
+        gestureSensOpen.setAllCaps(false);
+        gestureSensOpen.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
+        gestureSensOpen.setLayoutParams(hlp);
+        root.addView(gestureSensOpen);
+
+        appendGamepadModuleLayerRow(ctx, root, m.id);
+
         applyGamepadModuleConfigSheetSurface(root);
         FrameLayout sheetWrapped = wrapGamepadModuleConfigSheetMargins(root);
         MaterialAlertDialogBuilder b = new MaterialAlertDialogBuilder(ctx)
@@ -3530,6 +4032,10 @@ public class GamepadFragment extends Fragment {
                     m.displayLabelColorArgb = null;
                     m.keyboardHoldLock = null;
                     m.gestureLock = null;
+                    m.gestureLockMinPressMs = null;
+                    m.gestureLockDiagonalRadiusScale = null;
+                    m.turboPulsePeriodMs = null;
+                    refreshMouseGestureTimingSliders.run();
                     resetGestureLockSpinners(gestureSpinnersMouse);
                     holdLockSwitch.setChecked(false);
                     moduleScaleSeek.setProgress(50);
@@ -3561,20 +4067,6 @@ public class GamepadFragment extends Fragment {
                 },
                 dialog);
         dialog.show();
-    }
-
-    private void exitLayoutEditSession() {
-        if (editModeMaterialButton != null) {
-            editModeMaterialButton.setChecked(false);
-        }
-        View v = getView();
-        if (v != null) {
-            View sessionBar = v.findViewById(R.id.gamepad_edit_session_bar);
-            if (sessionBar != null) {
-                sessionBar.setVisibility(View.GONE);
-            }
-        }
-        Log.d(TAG, "Exited layout edit / move session");
     }
 
     private void showConfigDialog(String componentId) {
@@ -4136,7 +4628,7 @@ public class GamepadFragment extends Fragment {
         container.removeAllViews();
         TextView section = new TextView(ctx);
         section.setText(R.string.gamepad_gesture_lock_section);
-        section.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Section);
+        section.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Section);
         container.addView(section);
         int[] labelIds = {
             R.string.gamepad_gesture_slot_up_left,
@@ -4165,7 +4657,7 @@ public class GamepadFragment extends Fragment {
         for (int i = 0; i < 4; i++) {
             TextView rowLabel = new TextView(ctx);
             rowLabel.setText(labelIds[i]);
-            rowLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+            rowLabel.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
             container.addView(rowLabel);
             android.widget.Spinner sp = new android.widget.Spinner(ctx);
             sp.setAdapter(ad);
@@ -4341,6 +4833,16 @@ public class GamepadFragment extends Fragment {
                 gestureLockContainer != null
                         ? bindGestureLockSpinnerRows(requireContext(), gestureLockContainer, m)
                         : null;
+        MaterialButton gestureSensitivityOpenBtn = dialogView.findViewById(R.id.button_gesture_sensitivity_open_btn);
+        if (gestureSensitivityOpenBtn != null) {
+            gestureSensitivityOpenBtn.setOnClickListener(v -> showGamepadGestureSensitivityDialog());
+        }
+        LinearLayout gestureTimingContainer = dialogView.findViewById(R.id.button_module_gesture_timing_container);
+        Runnable refreshModuleGestureTimingSliders =
+                gestureTimingContainer != null
+                        ? attachModuleGestureTimingOverrideSection(
+                                gamepadUiContext(), gestureTimingContainer, m)
+                        : null;
 
         android.widget.SeekBar sizeSeekbar = dialogView.findViewById(R.id.button_size_seekbar);
         sizeSeekbar.setProgress((int) (buttonSizeScale * 100));
@@ -4488,6 +4990,12 @@ public class GamepadFragment extends Fragment {
             m.displayLabelColorArgb = null;
             m.keyboardHoldLock = null;
             m.gestureLock = null;
+            m.gestureLockMinPressMs = null;
+            m.gestureLockDiagonalRadiusScale = null;
+            m.turboPulsePeriodMs = null;
+            if (refreshModuleGestureTimingSliders != null) {
+                refreshModuleGestureTimingSliders.run();
+            }
             resetGestureLockSpinners(gestureSpinners);
             if (keyboardHoldLockSwitch != null) {
                 keyboardHoldLockSwitch.setChecked(false);
@@ -4589,15 +5097,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void updateButtonLabel(Button label, int key, int modifiers) {
-        StringBuilder sb = new StringBuilder(keyCodeToLabel(key));
-        if (modifiers != 0) {
-            sb.insert(0, "+");
-            if ((modifiers & 0x01) != 0) sb.insert(0, "Ctrl");
-            if ((modifiers & 0x02) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Shift"); }
-            if ((modifiers & 0x04) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Alt"); }
-            if ((modifiers & 0x08) != 0) { if (sb.length() > 1) sb.insert(0, "+"); sb.insert(0, "Fn"); }
-        }
-        label.setText(sb.toString());
+        label.setText(formatKeyWithModifiers(key, modifiers));
     }
 
     private void showKeyPicker(Button displayButton, int currentKeyCode, java.util.function.IntConsumer listener) {
@@ -4618,7 +5118,7 @@ public class GamepadFragment extends Fragment {
     private void buildKeyPickerDialog(int initialKeyCode, int initialModifiers, final KeySelectedListener listener) {
         android.content.Context ctx = requireContext();
         final int colorPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         final int colorUnsel = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         final int colorOnPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnPrimary,
@@ -4628,7 +5128,7 @@ public class GamepadFragment extends Fragment {
         final int colorTextSecondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.text_secondary));
         final int colorStrokeAccent = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimaryContainer,
-                ContextCompat.getColor(ctx, R.color.theme_accent_orange_container));
+                ThemeManager.getColorPrimaryContainer(ctx));
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
 
@@ -4649,7 +5149,7 @@ public class GamepadFragment extends Fragment {
 
         TextView pickerTitle = new TextView(requireContext());
         pickerTitle.setText(R.string.gamepad_key_picker_title);
-        pickerTitle.setTextAppearance(requireContext(), R.style.TextAppearance_KeyMod_GamepadConfig_Title);
+        pickerTitle.setTextAppearance(requireContext(), R.style.TextAppearance_KeyCmd_GamepadConfig_Title);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         titleLp.bottomMargin = dp(10);
@@ -5013,7 +5513,7 @@ public class GamepadFragment extends Fragment {
     private TextView createGamepadModuleIdTextViewForSheet(@NonNull Context ctx, @NonNull String layoutModuleId) {
         TextView tv = new TextView(ctx);
         tv.setId(R.id.gamepad_module_id_text);
-        tv.setTextAppearance(ctx, R.style.TextAppearance_KeyMod_GamepadConfig_Caption);
+        tv.setTextAppearance(ctx, R.style.TextAppearance_KeyCmd_GamepadConfig_Caption);
         int secondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         tv.setTextColor(secondary);
@@ -5414,13 +5914,49 @@ public class GamepadFragment extends Fragment {
     }
 
     private String buildFullLabel(int key, int modifiers) {
-        StringBuilder sb = new StringBuilder();
-        if ((modifiers & 0x02) != 0) sb.append("Shift+");
-        if ((modifiers & 0x01) != 0) sb.append("Ctrl+");
-        if ((modifiers & 0x04) != 0) sb.append("Alt+");
-        if ((modifiers & 0x08) != 0) sb.append("Fn+");
-        sb.append(keyCodeToLabel(key));
-        return sb.toString();
+        return formatKeyWithModifiers(key, modifiers);
+    }
+
+    /**
+     * Human-readable chord for config UI and mapping hints: modifier bitmask + key, with no raw HID
+     * for standard modifiers. When {@code hidKey} is a modifier (224–231) and the same side is already
+     * set in {@code modifiers}, the key is omitted (e.g. Sneak Shift+225 preset shows {@code Shift}).
+     */
+    private String formatKeyWithModifiers(int key, int modifiers) {
+        java.util.ArrayList<String> parts = new java.util.ArrayList<>();
+        if ((modifiers & 0x01) != 0) {
+            parts.add("Ctrl");
+        }
+        if ((modifiers & 0x02) != 0) {
+            parts.add("Shift");
+        }
+        if ((modifiers & 0x04) != 0) {
+            parts.add("Alt");
+        }
+        if ((modifiers & 0x08) != 0) {
+            parts.add("Fn");
+        }
+        if ((modifiers & 0x10) != 0) {
+            parts.add("RCtrl");
+        }
+        if ((modifiers & 0x20) != 0) {
+            parts.add("RShift");
+        }
+        if ((modifiers & 0x40) != 0) {
+            parts.add("RAlt");
+        }
+        if ((modifiers & 0x80) != 0) {
+            parts.add("RGui");
+        }
+        if (isModifierKey(key)) {
+            int bit = modifierBit(key);
+            if (bit == 0 || (modifiers & bit) == 0) {
+                parts.add(keyCodeToLabel(key));
+            }
+        } else {
+            parts.add(keyCodeToLabel(key));
+        }
+        return String.join("+", parts);
     }
 
     // ── Input handling ──────────────────────────────────────────────
@@ -5730,7 +6266,7 @@ public class GamepadFragment extends Fragment {
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
         cm.sendMouseMovement(
-                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
+                (int) (xAdj * 127), (int) (yAdj * 127), mouseButtonMaskForRelativeMouseMoves());
     }
 
     private void sendLeftStickMouse(ConnectionManager cm, float x, float y) {
@@ -5769,7 +6305,7 @@ public class GamepadFragment extends Fragment {
         yAdj = Math.max(-1.0f, Math.min(1.0f, yAdj));
 
         cm.sendMouseMovement(
-                (int) (xAdj * 127), (int) (yAdj * 127), keyboardHoldLatchedMouseButtonMask());
+                (int) (xAdj * 127), (int) (yAdj * 127), mouseButtonMaskForRelativeMouseMoves());
     }
 
     private void sendLeftStickKeys(ConnectionManager cm, float x, float y, boolean isConnected) {
@@ -6192,7 +6728,8 @@ public class GamepadFragment extends Fragment {
             }
         }
         turboHandler.removeCallbacks(turboPulseStep);
-        turboPulsePhaseHigh = false;
+        turboPulsePhaseHighByModuleId.clear();
+        turboPulseLastToggleUptimeMsByModuleId.clear();
         turboLockedModuleIds.clear();
         gestureHoldAlternateHid.clear();
         gestureTurboAlternateHid.clear();
@@ -6221,6 +6758,7 @@ public class GamepadFragment extends Fragment {
         faceButtonPressed.clear();
         keyboardHoldLockedModuleIds.clear();
         pendingKeyboardHoldUnlockTap.clear();
+        java.util.Arrays.fill(gamepadMouseButtonFingerHoldRefByHidBit, 0);
         if (gamepadView != null) {
             gamepadView.cancelAllKeyboardHoldLockTracking();
             gamepadView.setGestureLatchBadges(Collections.emptyMap());
@@ -6237,6 +6775,27 @@ public class GamepadFragment extends Fragment {
     private String keyCodeToLabel(int keyCode) {
         for (String[] opt : KEY_OPTIONS) {
             if (Integer.parseInt(opt[1]) == keyCode) return opt[0];
+        }
+        // HID keyboard modifier keys (usage page 0x07); left matches MODIFIER_KEYS, right disambiguated.
+        if (keyCode >= 224 && keyCode <= 231) {
+            switch (keyCode) {
+                case 224:
+                    return "Ctrl";
+                case 225:
+                    return "Shift";
+                case 226:
+                    return "Alt";
+                case 227:
+                    return "Fn";
+                case 228:
+                    return "RCtrl";
+                case 229:
+                    return "RShift";
+                case 230:
+                    return "RAlt";
+                case 231:
+                    return "RGui";
+            }
         }
         // Normal digits 1-9 (HID 30-38)
         if (keyCode >= 30 && keyCode <= 38) return String.valueOf(keyCode - 29);
@@ -6389,7 +6948,7 @@ public class GamepadFragment extends Fragment {
         return true;
     }
 
-    private void ensureExportCreatorNameThen(@NonNull Runnable onReady) {
+    void ensureExportCreatorNameThen(@NonNull Runnable onReady) {
         if (prefs == null || !isAdded()) {
             return;
         }
@@ -6460,7 +7019,7 @@ public class GamepadFragment extends Fragment {
         dlg.show();
     }
 
-    /** TalkBack: distinguish customize (off) vs editing (on). */
+    /** TalkBack: customize (off) vs editing (on); when on, string states tap again to exit. */
     private void applyEditModeToggleContentDescription() {
         if (editModeMaterialButton == null) {
             return;
@@ -6941,31 +7500,6 @@ public class GamepadFragment extends Fragment {
 
     private interface DualKeyModSelectedListener {
         void accept(int key, int modifiers);
-    }
-
-    /**
-     * Positions the Layouts picker like the old bottom sheet: bottom-centered; landscape uses the
-     * same width band as {@code gamepad_presets_bottom_sheet_* } dimens.
-     */
-    private static void applyGamepadPresetsPickerWindowLayout(@Nullable Window window, @NonNull Context ctx) {
-        if (window == null) {
-            return;
-        }
-        WindowManager.LayoutParams lp = window.getAttributes();
-        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
-        int screenW = dm.widthPixels;
-        if (ctx.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            int maxW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_max_width);
-            int minW = ctx.getResources().getDimensionPixelSize(R.dimen.gamepad_presets_bottom_sheet_min_width);
-            int targetW = Math.min(Math.max(Math.round(screenW * 0.38f), minW), maxW);
-            targetW = Math.min(targetW, screenW);
-            lp.width = targetW > 0 ? targetW : WindowManager.LayoutParams.MATCH_PARENT;
-        } else {
-            lp.width = WindowManager.LayoutParams.MATCH_PARENT;
-        }
-        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        window.setAttributes(lp);
     }
 
     private static class KeyInfo {

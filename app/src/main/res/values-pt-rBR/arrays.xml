@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="voice_language_names">
+        <item>Detecção automática</item>
+        <item>Inglês</item>
+        <item>Chinês</item>
+        <item>Espanhol</item>
+        <item>Francês</item>
+        <item>Alemão</item>
+        <item>Italiano</item>
+        <item>Japonês</item>
+        <item>Coreano</item>
+        <item>Português</item>
+        <item>Russo</item>
+        <item>Árabe</item>
+        <item>Hindi</item>
+    </string-array>
+</resources>

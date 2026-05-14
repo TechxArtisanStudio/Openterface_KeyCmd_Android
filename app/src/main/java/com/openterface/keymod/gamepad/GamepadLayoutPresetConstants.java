@@ -7,6 +7,10 @@ public final class GamepadLayoutPresetConstants {
 
     private GamepadLayoutPresetConstants() {}
 
+    /**
+     * Gson {@code format} string for all preset versions. The integer {@link #SCHEMA_VERSION} (and per-file
+     * {@code schemaVersion} in JSON) tracks document evolution within this format family.
+     */
     public static final String DOCUMENT_FORMAT = "openterface.gamepad.layout.v1";
     public static final int SCHEMA_VERSION_V1 = 1;
     public static final int SCHEMA_VERSION_V2 = 2;
@@ -26,19 +30,33 @@ public final class GamepadLayoutPresetConstants {
      * swipe actions: hold lock, turbo, optional alternate key).
      */
     public static final int SCHEMA_VERSION_V8 = 8;
+    /**
+     * v9 adds optional {@code SCROLL_STRIP} modules (vertical drag → HID mouse wheel).
+     */
+    public static final int SCHEMA_VERSION_V9 = 9;
+    /**
+     * v10: canonical {@link GamepadLayoutPresetDocument.GamepadModule#zIndex} values (0..n-1 by draw order) on upgrade
+     * and when persisting/exporting; in-app layer ordering controls (no new JSON fields).
+     */
+    public static final int SCHEMA_VERSION_V10 = 10;
     /** Current preset schema. */
-    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V8;
+    public static final int SCHEMA_VERSION = SCHEMA_VERSION_V10;
 
     /**
-     * Dynamic layout (BUTTON, STICK_*, DPAD, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by
+     * Dynamic layout (BUTTON, STICK_*, DPAD, TOUCHPAD, SCROLL_STRIP, MOUSE_BUTTON, SHOULDER/TRIGGER) scales module draw sizes by
      * {@code min(contentW, contentH) / REFERENCE} so presets stay usable across phones and aspect ratios.
      * Legacy fixed-pixel bases (100 / 180) matched roughly this reference on a typical landscape phone.
      */
     public static final int DYNAMIC_LAYOUT_REFERENCE_MIN_EDGE_PX = 800;
     /** Lower clamp for {@link #contentMinEdgeScaleFactor(int, int)} (very small windows). */
     public static final float DYNAMIC_LAYOUT_SCALE_MIN = 0.35f;
-    /** Upper clamp so tablets do not inflate controls without bound. */
-    public static final float DYNAMIC_LAYOUT_SCALE_MAX = 2.5f;
+    /**
+     * Upper clamp for {@link #contentMinEdgeScaleFactor(int, int)}. Large emulators and tablets
+     * have a high min-edge in px; without a modest cap, {@code minEdge/800} inflates every module
+     * (buttons, sticks, mouse rings) far beyond what preset JSON {@code scale} can compensate for,
+     * so presets look unchanged after editing sizes. Keep growth bounded so JSON scales stay meaningful.
+     */
+    public static final float DYNAMIC_LAYOUT_SCALE_MAX = 1.35f;
 
     /**
      * Scale factor for preset module sizes given the gamepad <em>content</em> width and height (after insets).
@@ -60,6 +78,19 @@ public final class GamepadLayoutPresetConstants {
 
     /** Max length for {@link GamepadLayoutPresetDocument.Meta#creator} after trim. */
     public static final int META_CREATOR_MAX_CHARS = 64;
+
+    /**
+     * Inclusive range for HID keyboard usage codes stored on modules (direction keys, {@code hidKey},
+     * gesture-lock {@code key_hold}/{@code key_turbo}, etc.). Matches validation in
+     * {@link GamepadLayoutPresetDocument#validateOrThrow}.
+     */
+    public static final int HID_USAGE_KEYCODE_MIN = 1;
+    public static final int HID_USAGE_KEYCODE_MAX = 255;
+
+    /** @return true if {@code code} is a valid HID usage key for preset JSON. */
+    public static boolean isValidHidUsageKey(int code) {
+        return code >= HID_USAGE_KEYCODE_MIN && code <= HID_USAGE_KEYCODE_MAX;
+    }
 
     /** JSON / Gson field names on {@link GamepadLayoutPresetDocument.GestureLockConfig}. */
     public static final String GESTURE_LOCK_SLOT_UP_LEFT = "upLeft";
@@ -144,6 +175,11 @@ public final class GamepadLayoutPresetConstants {
     public static final String MODULE_TYPE_STICK_MOUSE = "STICK_MOUSE";
     public static final String MODULE_TYPE_BUTTON = "BUTTON";
     public static final String MODULE_TYPE_TOUCHPAD = "TOUCHPAD";
+    /**
+     * Vertical scroll strip: finger drag along the module sends relative mouse wheel (not pointer motion).
+     * Ids {@code scroll_strip_1}, {@code scroll_strip_2}, …
+     */
+    public static final String MODULE_TYPE_SCROLL_STRIP = "SCROLL_STRIP";
     /** Physical mouse buttons (HID mouse report), not keyboard keys. */
     public static final String MODULE_TYPE_MOUSE_BUTTON = "MOUSE_BUTTON";
     /** Digital shoulder / bumper (e.g. L1/R1); uses {@code hidKey}. */
@@ -223,6 +259,14 @@ public final class GamepadLayoutPresetConstants {
     public static boolean isTouchpadModuleId(@Nullable String id) {
         return id != null && id.matches("touchpad_[0-9]+");
     }
+
+    /** Preset scroll-strip modules use ids {@code scroll_strip_1}, {@code scroll_strip_2}, … */
+    public static boolean isScrollStripModuleId(@Nullable String id) {
+        return id != null && id.matches("scroll_strip_[0-9]+");
+    }
+
+    /** Max {@link #MODULE_TYPE_SCROLL_STRIP} modules per layout (arbitrary cap). */
+    public static final int MAX_SCROLL_STRIP_MODULES = 8;
 
     /** {@code true} for ids {@code mouse_btn_copy_}<em>n</em> with positive integer {@code n}. */
     public static boolean isMouseButtonCopyModuleId(@Nullable String id) {

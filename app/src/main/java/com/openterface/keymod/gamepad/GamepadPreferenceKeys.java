@@ -63,4 +63,24 @@ public final class GamepadPreferenceKeys {
 
     /** Trimmed display name stamped into exported preset JSON as {@code meta.creator}. */
     public static final String PRESET_EXPORT_CREATOR_NAME = "gamepad_preset_export_creator_name";
+
+    /**
+     * Minimum time (ms) the finger must stay down before a diagonal hold/turbo gesture can commit on lift.
+     * Clamped to {@code [0, 1000]}; {@code 0} matches legacy behavior. Overridable per preset via
+     * {@code layout.gestureLockMinPressMs}.
+     */
+    public static final String GESTURE_LOCK_MIN_PRESS_MS = "gamepad_gesture_lock_min_press_ms";
+
+    /**
+     * Multiplier on diagonal min/cancel radii (larger = longer stroke). Clamped to {@code [0.5, 3]}.
+     * Overridable per preset via {@code layout.gestureLockDiagonalRadiusScale}.
+     */
+    public static final String GESTURE_LOCK_DIAGONAL_RADIUS_SCALE = "gamepad_gesture_lock_diagonal_radius_scale";
+
+    /**
+     * Delay (ms) between turbo on/off half-steps when latched. Clamped to
+     * {@link GamepadGestureLockSensitivity#TURBO_PULSE_PERIOD_MS_MIN}–{@link GamepadGestureLockSensitivity#TURBO_PULSE_PERIOD_MS_MAX}.
+     * Overridable per preset via {@code layout.turboPulsePeriodMs}.
+     */
+    public static final String TURBO_PULSE_PERIOD_MS = "gamepad_turbo_pulse_period_ms";
 }

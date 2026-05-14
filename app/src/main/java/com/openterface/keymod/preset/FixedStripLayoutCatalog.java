@@ -8,8 +8,6 @@ import androidx.annotation.Nullable;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.util.KeyParser;
-import com.openterface.keymod.util.TopRows23StripProfileSlotPrefs;
-import com.openterface.keymod.util.TopShortcutProfileSlotPrefs;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Read-only description of fixed strip rows 2–3 for pages 0–3, aligned with
+ * Read-only description of fixed strip rows 2–3 for pages 0–2, aligned with
  * {@link com.openterface.keymod.CustomKeyboardView#buildFixedTopRowsPage0()} and siblings.
  * Used by Shortcut Hub to show what each physical slot does (base + Fn overlay where applicable).
  */
@@ -290,8 +288,7 @@ public final class FixedStripLayoutCatalog {
     }
 
     /**
-     * Builds catalog rows (sections + slots). Hub profile slot cells resolve names using {@code pm} when
-     * {@link Row#profileSlot1Based} is 1 or 2.
+     * Builds catalog rows (sections + slots) for fixed strip pages 0–2. {@code pm} is used for page 2 display.
      */
     @NonNull
     public static List<Row> build(@NonNull Context context, @NonNull ShortcutProfileManager pm) {
@@ -318,53 +315,11 @@ public final class FixedStripLayoutCatalog {
         addPage(out, 1, "Page 1 — Modifiers & nav", p1sub, p1r2, p1r3, p1r2c, p1r2s, p1r3c, p1r3s, noSlot, noSlot);
 
         out.add(Row.section("Page 2 — Hub & symbols",
-                "Row content swaps when local Fn is on (latch). Row 1 profile toggles are on page 3."));
+                "Row content swaps when local Fn is on (latch). Active app profile and Rows 2–3 strip profile are set in Keyboard & Mouse Pro setup and Shortcut Hub."));
         addPage2Variant(context, out, false, pm);
         addPage2Variant(context, out, true, pm);
 
-        out.add(Row.section("Page 3 — Shortcut Hub toggles",
-                "Row 2: Row 1 app profiles. Row 3: Rows 2–3 strip profiles. Long-press a slot to reassign."));
-        addPage3Static(context, out, pm);
-
         return out;
-    }
-
-    private static void addPage3Static(
-            @NonNull Context context,
-            List<Row> out,
-            @NonNull ShortcutProfileManager pm
-    ) {
-        final int latch = FN_LATCH_NONE;
-        out.add(Row.section("Row 2", null, latch));
-        for (int s = 1; s <= 6; s++) {
-            addSlot(out, 3, 2, s - 1, resolveHubSlotTitle(context, pm, s), null, s, latch);
-        }
-        addSlot(out, 3, 2, 6, "—", null, 0, latch);
-        out.add(Row.section("Row 3", null, latch));
-        Rows23StripProfileManager sm = new Rows23StripProfileManager(context, pm);
-        for (int s = 1; s <= 6; s++) {
-            addSlot(out, 3, 3, s - 1, resolveStripHubSlotTitle(context, sm, s), null, 0, latch);
-        }
-        addSlot(out, 3, 3, 6, "FN", null, 0, latch);
-    }
-
-    @NonNull
-    private static String resolveStripHubSlotTitle(
-            @NonNull Context context,
-            @NonNull Rows23StripProfileManager mgr,
-            int slot1Based
-    ) {
-        String id = TopRows23StripProfileSlotPrefs.getResolvedStripProfileIdForSlot(
-                context, slot1Based, mgr);
-        if (id == null || id.trim().isEmpty()) {
-            return "\u2014";
-        }
-        Rows23StripProfile p = mgr.getProfileById(id);
-        if (p != null && p.name != null && !p.name.trim().isEmpty()) {
-            String n = p.name.trim();
-            return n.length() > 12 ? n.substring(0, 12) + "\u2026" : n;
-        }
-        return "\u2014";
     }
 
     /**
@@ -571,19 +526,6 @@ public final class FixedStripLayoutCatalog {
     private static void addSlot(List<Row> out, int page, int stripRow, int col,
             @NonNull String label, @Nullable String fnHint, int profileSlot, int fnLatch) {
         out.add(Row.slot(page, stripRow, col, label, fnHint, profileSlot, fnLatch));
-    }
-
-    @NonNull
-    private static String resolveHubSlotTitle(@NonNull Context context,
-            @NonNull ShortcutProfileManager pm,
-            int slot1Based) {
-        String id = TopShortcutProfileSlotPrefs.getResolvedProfileIdForSlot(context, slot1Based, pm);
-        ShortcutProfileManager.ShortcutProfile p = pm.getProfileById(id);
-        if (p != null && p.name != null && !p.name.trim().isEmpty()) {
-            String n = p.name.trim();
-            return n.length() > 12 ? n.substring(0, 12) + "\u2026" : n;
-        }
-        return "Hub " + slot1Based;
     }
 
     /** Parsed canonical strip slot key {@code b-p0r2c1} / legacy {@code p0_r2_c0_base} (rows 2–3 only). */

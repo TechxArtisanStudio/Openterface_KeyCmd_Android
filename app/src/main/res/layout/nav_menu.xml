@@ -33,7 +33,7 @@
             android:layout_marginStart="8dp"
             android:adjustViewBounds="true"
             android:scaleType="fitStart"
-            android:src="@drawable/ic_keymod_wordmark"
+            android:src="@drawable/ic_keycmd_wordmark"
             android:tint="@color/text_primary"
             android:contentDescription="@string/app_name" />
 
@@ -249,6 +249,14 @@
             android:textColor="@color/text_primary"
             android:layout_marginStart="12dp" />
 
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="6dp"
+            android:src="@drawable/ic_experiment_24px"
+            android:tint="@color/text_secondary"
+            android:importantForAccessibility="no" />
+
     </LinearLayout>
 
     <LinearLayout
@@ -282,6 +290,14 @@
             android:textColor="@color/text_primary"
             android:layout_marginStart="12dp" />
 
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="6dp"
+            android:src="@drawable/ic_experiment_24px"
+            android:tint="@color/text_secondary"
+            android:importantForAccessibility="no" />
+
     </LinearLayout>
 
     <!-- Settings (Material gear icon; row matches mode items above) -->
@@ -314,6 +330,42 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/settings_title"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:layout_marginStart="12dp" />
+
+    </LinearLayout>
+
+    <!-- Report a bug (opens Google Form in browser) -->
+    <LinearLayout
+        android:id="@+id/nav_report_bug"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:background="@drawable/nav_item_background_selector"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/report_bug_cd">
+
+        <ImageView
+            android:id="@+id/nav_icon_report_bug"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/chat_error_24px"
+            android:importantForAccessibility="no"
+            android:tint="?attr/colorPrimary" />
+
+        <TextView
+            android:id="@+id/nav_text_report_bug"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/report_bug"
             android:textSize="16sp"
             android:textColor="@color/text_primary"
             android:layout_marginStart="12dp" />

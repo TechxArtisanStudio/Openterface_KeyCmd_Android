@@ -34,7 +34,7 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.TouchPadView;
 import com.openterface.keymod.util.TouchPadHaptics;
-import com.openterface.keymod.util.TouchPadHelpOverlay;
+import com.openterface.keymod.util.TouchPadHelpDialog;
 import com.openterface.keymod.util.TouchPadPointerPhase;
 import com.openterface.keymod.util.TouchPadTipsFormatter;
 import com.openterface.target.CH9329MSKBMap;
@@ -54,7 +54,6 @@ public class MouseFragment extends Fragment {
     private TouchPadView touchPad;
     public UsbSerialPort port;
     private TextView touchPadTips;
-    private TextView touchPadHelpOverlay;
     private BluetoothService bluetoothService;
     private boolean isServiceBound;
     private boolean isDragMode = false;
@@ -473,10 +472,10 @@ public class MouseFragment extends Fragment {
         initTouchPadWashStyle();
         updateTouchPadTips();
 
-        touchPadHelpOverlay = view.findViewById(R.id.touchPadHelpOverlay);
         View touchPadInfo = view.findViewById(R.id.touchPadInfo);
         if (touchPadInfo != null) {
-            touchPadInfo.setOnClickListener(v -> TouchPadHelpOverlay.onInfoPressed(touchPadHelpOverlay));
+            touchPadInfo.setOnClickListener(
+                    v -> TouchPadHelpDialog.show(requireContext(), true, false));
         }
 
         touchPad = view.findViewById(R.id.touchPad);
@@ -593,10 +592,6 @@ public class MouseFragment extends Fragment {
                     }
                 }
             });
-            TouchPadHelpOverlay.wireDismissTouchTargets(touchPad, touchPadTips, touchPadHelpOverlay);
-            if (savedInstanceState == null) {
-                touchPad.post(() -> TouchPadHelpOverlay.show(touchPadHelpOverlay));
-            }
         }
 
         return view;
@@ -618,7 +613,6 @@ public class MouseFragment extends Fragment {
             touchPadBottomWashOverlay = null;
         }
         super.onDestroyView();
-        TouchPadHelpOverlay.clear(touchPadHelpOverlay);
         setDragMode(false);
         if (isServiceBound) {
             requireContext().unbindService(serviceConnection);

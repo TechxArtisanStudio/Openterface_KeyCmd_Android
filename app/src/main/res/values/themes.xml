@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Base.Theme.KeyMod" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.KeyCmd" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/theme_accent_orange</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_orange_container</item>
@@ -17,10 +17,10 @@
         <item name="android:navigationBarColor">@color/background_light</item>
     </style>
 
-    <style name="Theme.KeyMod" parent="Base.Theme.KeyMod" />
-    <style name="Theme.KeyMod.Orange" parent="Base.Theme.KeyMod" />
+    <style name="Theme.KeyCmd" parent="Base.Theme.KeyCmd" />
+    <style name="Theme.KeyCmd.Orange" parent="Base.Theme.KeyCmd" />
 
-    <style name="Theme.KeyMod.Blue" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Blue" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_blue</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_blue_container</item>
@@ -34,7 +34,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_blue_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Green" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Green" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_green</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_green_container</item>
@@ -48,7 +48,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_green_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Pink" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Pink" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_pink</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_pink_container</item>
@@ -62,7 +62,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_pink_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Purple" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Purple" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_purple</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_purple_container</item>
@@ -76,7 +76,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_purple_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Red" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Red" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_red</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_red_container</item>
@@ -90,7 +90,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_red_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Teal" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Teal" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_teal</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_teal_container</item>
@@ -104,7 +104,7 @@
         <item name="presentationControlButtonIdleFill">@color/theme_accent_teal_low_emphasis</item>
     </style>
 
-    <style name="Theme.KeyMod.Indigo" parent="Base.Theme.KeyMod">
+    <style name="Theme.KeyCmd.Indigo" parent="Base.Theme.KeyCmd">
         <item name="colorPrimary">@color/theme_accent_indigo</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorPrimaryContainer">@color/theme_accent_indigo_container</item>
@@ -123,11 +123,11 @@
         <item name="android:textAllCaps">false</item>
     </style>
 
-    <!-- Inherits accent from the active KeyMod theme (no fixed orange). -->
-    <style name="Theme.KeyMod.Presentation" parent="Base.Theme.KeyMod" />
+    <!-- Inherits accent from the active KeyCmd theme (no fixed orange). -->
+    <style name="Theme.KeyCmd.Presentation" parent="Base.Theme.KeyCmd" />
 
     <!-- Full-screen “reading mode” help above the reorder bottom sheet (blur/dim behind on API 31+). -->
-    <style name="Theme.KeyMod.FullScreenReadingHelp" parent="Theme.Material3.DayNight.Dialog">
+    <style name="Theme.KeyCmd.FullScreenReadingHelp" parent="Theme.Material3.DayNight.Dialog">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">false</item>
@@ -135,11 +135,11 @@
     </style>
 
     <!-- Gamepad mode only: dark surfaces / Material widgets regardless of app DayNight. -->
-    <style name="ThemeOverlay.KeyMod.Gamepad" parent="ThemeOverlay.Material3.Dark" />
+    <style name="ThemeOverlay.KeyCmd.Gamepad" parent="ThemeOverlay.Material3.Dark" />
 
     <!-- Layouts sheet: presentation_card is a light (or night) surface; gamepad overlay uses Dark
          tokens so colorOnSurface was light-on-white. (Legacy overlay kept for reference.) -->
-    <style name="ThemeOverlay.KeyMod.GamepadPresetSheet" parent="ThemeOverlay.Material3.Dark">
+    <style name="ThemeOverlay.KeyCmd.GamepadPresetSheet" parent="ThemeOverlay.Material3.Dark">
         <item name="android:colorBackground">@color/presentation_card_bg</item>
         <item name="colorSurface">@color/presentation_card_bg</item>
         <item name="colorOnSurface">@color/presentation_text_primary</item>
@@ -149,8 +149,11 @@
     </style>
 
     <!-- Layouts picker: floating dialog (no BottomSheet CoordinatorLayout) so the preset list scrolls reliably. -->
-    <style name="Theme.KeyMod.GamepadPresetPickerDialog" parent="Theme.Material3.DayNight.Dialog">
+    <style name="Theme.KeyCmd.GamepadPresetPickerDialog" parent="Theme.Material3.DayNight.Dialog">
         <item name="android:windowNoTitle">true</item>
+        <!-- Let our explicit window width win; avoid AppCompat-style min-width forcing near full-bleed on some devices. -->
+        <item name="android:windowMinWidthMajor">0%</item>
+        <item name="android:windowMinWidthMinor">0%</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:windowIsFloating">true</item>

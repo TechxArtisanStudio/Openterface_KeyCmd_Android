@@ -1,4 +1,4 @@
-# KeyMod pour Android
+# KeyCmd pour Android
 
 <p align="center"><strong>Langue du README</strong> · <em>GitHub affiche README.md à la racine par défaut (anglais)</em></p>
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**KeyMod** est l’application Android compagnon d’[Openterface](https://openterface.com/) : un pont matériel de type KVM qui permet de contrôler un ordinateur hôte depuis le téléphone en **USB** ou **Bluetooth**. Ce dépôt contient l’implémentation Java/Android (`com.openterface.keymod`).
+**KeyCmd** est l’application Android compagnon d’[Openterface](https://openterface.com/) : un pont matériel de type KVM qui permet de contrôler un ordinateur hôte depuis le téléphone en **USB** ou **Bluetooth**. Ce dépôt contient l’implémentation Java/Android (`com.openterface.keymod`).
 
 - **Prérequis :** Android 8.0+ (API 26) ; USB OTG si vous utilisez le contrôle USB  
 - **Documentation :** connexion, modes et raccourcis dans [docs/USER_GUIDE.md](docs/USER_GUIDE.md) (anglais)  

@@ -8,8 +8,9 @@ import androidx.annotation.NonNull;
 import com.openterface.keymod.ShortcutProfileManager;
 
 /**
- * Persists which Shortcut Hub profile id is bound to each of the seven slots (shown on
- * fixed strip page 3 row 2 for slots 1–3). Defaults match bundled profiles in {@link ShortcutProfileManager}.
+ * Persists which Shortcut Hub profile id is bound to each of the seven quick-slot indices (legacy
+ * hub UI; on-disk values are still read for migration and possible future UI). Defaults match bundled
+ * profiles in {@link ShortcutProfileManager}.
  */
 public final class TopShortcutProfileSlotPrefs {
 

@@ -1,6 +1,7 @@
 package com.openterface.keymod;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -28,7 +29,9 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +50,8 @@ import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadDpadVariantArt;
 import com.openterface.keymod.gamepad.GamepadGestureLock;
+import com.openterface.keymod.gamepad.GamepadGestureLockSensitivity;
+import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetConstants;
 import com.openterface.keymod.gamepad.GamepadLayoutPresetDocument;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
@@ -132,11 +137,16 @@ public class GamepadView extends View {
     private KeyboardHoldLockListener keyboardHoldLockListener;
     private final Map<Integer, HoldLockTracking> keyboardHoldLockByPointer = new HashMap<>();
     private final Map<String, LatchBadgeKind> gestureLatchBadgesByModuleId = new HashMap<>();
+    /** Used with {@link #layoutDocument} to resolve per-module gesture dwell and diagonal scale on each release. */
+    @Nullable
+    private SharedPreferences gestureLockSensitivityPrefs;
 
     private static final class HoldLockTracking {
         @NonNull final String moduleId;
         final float downRawX;
         final float downRawY;
+        /** {@link MotionEvent#getEventTime()} sample when this pointer went down on the module. */
+        final long downEventTimeMs;
         float lastRawX;
         float lastRawY;
         final boolean diagonalMode;
@@ -147,11 +157,13 @@ public class GamepadView extends View {
                 @NonNull String moduleId,
                 float downRawX,
                 float downRawY,
+                long downEventTimeMs,
                 boolean diagonalMode,
                 @NonNull Runnable showPopupRunnable) {
             this.moduleId = moduleId;
             this.downRawX = downRawX;
             this.downRawY = downRawY;
+            this.downEventTimeMs = downEventTimeMs;
             this.lastRawX = downRawX;
             this.lastRawY = downRawY;
             this.diagonalMode = diagonalMode;
@@ -242,6 +254,28 @@ public class GamepadView extends View {
     private int touchpadPointerId = -1;
     private float touchpadLastX;
     private float touchpadLastY;
+
+    private ScrollStripWheelListener scrollStripWheelListener;
+    private static final float SCROLL_STRIP_PIXELS_PER_WHEEL_UNIT = 5f;
+
+    private static final class ScrollStripPointerState {
+        String moduleId;
+        float lastY;
+        float accumY;
+    }
+
+    private final Map<Integer, ScrollStripPointerState> scrollStripPointerState = new HashMap<>();
+
+    private final Handler scrollStripHighlightHandler = new Handler(Looper.getMainLooper());
+    @Nullable private String scrollStripHighlightModuleId;
+    /** +1 = emphasize upper chevron (positive wheel delta), -1 = lower chevron. */
+    private int scrollStripHighlightDir;
+    private final Runnable clearScrollStripChevronHighlight = () -> {
+        scrollStripHighlightModuleId = null;
+        scrollStripHighlightDir = 0;
+        invalidate();
+    };
+    private static final long SCROLL_STRIP_CHEVRON_PULSE_MS = 100L;
 
     /**
      * Layout-level multiplier for {@code MOUSE_BUTTON} radius (L/M/R with touchpad). Set from preset
@@ -635,6 +669,14 @@ public class GamepadView extends View {
         if (!isAttachedToWindow()) {
             return;
         }
+        refreshThemeAccentForHeadless();
+    }
+
+    /**
+     * Resolves {@link #themeAccentPrimary} from the view context when the view is not attached
+     * (e.g. off-screen layout thumbnails). Safe to call before {@link #measure(int, int)}.
+     */
+    public void refreshThemeAccentForHeadless() {
         themeAccentPrimary = MaterialColors.getColor(this,
                 com.google.android.material.R.attr.colorPrimary,
                 Color.parseColor("#F57C00"));
@@ -1201,12 +1243,33 @@ public class GamepadView extends View {
         }
     }
 
+    /**
+     * Copies {@link GamepadLayoutPresetDocument.GamepadModule#anchorX}/{@code anchorY} into
+     * {@link #componentPositions} so legacy edit exit / {@link #getPositions()} cannot overwrite JSON anchors
+     * with stale SIMPLE prefs after {@link #setLayout(GamepadLayout)} reloads disk.
+     */
+    private void syncComponentPositionsFromLayoutDocument() {
+        if (layoutDocument == null || layoutDocument.modules == null) {
+            return;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule m : layoutDocument.modules) {
+            if (m != null && m.id != null) {
+                componentPositions.put(m.id, new ComponentPosition(m.anchorX, m.anchorY));
+            }
+        }
+    }
+
     public void setLayoutDocument(@androidx.annotation.Nullable GamepadLayoutPresetDocument doc) {
         this.layoutDocument = doc;
         dynamicHitTestOrder.clear();
         dynamicPointerStick.clear();
         dynamicStickOffset.clear();
         touchpadPointerId = -1;
+        scrollStripPointerState.clear();
+        scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
+        scrollStripHighlightModuleId = null;
+        scrollStripHighlightDir = 0;
+        syncComponentPositionsFromLayoutDocument();
         invalidate();
     }
 
@@ -1216,6 +1279,10 @@ public class GamepadView extends View {
 
     public void setTouchpadDeltaListener(@androidx.annotation.Nullable TouchpadDeltaListener listener) {
         this.touchpadDeltaListener = listener;
+    }
+
+    public void setScrollStripWheelListener(@androidx.annotation.Nullable ScrollStripWheelListener listener) {
+        this.scrollStripWheelListener = listener;
     }
 
     /**
@@ -1354,6 +1421,16 @@ public class GamepadView extends View {
         float ww = (m.widthNorm != null ? m.widthNorm : 0.35f) * w;
         float hh = (m.heightNorm != null ? m.heightNorm : 0.25f) * h;
         drawTouchpadModule(canvas, m, x, y, ww, hh);
+        dynamicHitTestOrder.add(m.id);
+    }
+
+    /** @see GamepadDynamicLayoutRegistry */
+    public void drawDynamicScrollStripModule(Canvas canvas, GamepadLayoutPresetDocument.GamepadModule m, int w, int h) {
+        float x = m.anchorX * w;
+        float y = m.anchorY * h;
+        float ww = (m.widthNorm != null ? m.widthNorm : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_WIDTH_NORM) * w;
+        float hh = (m.heightNorm != null ? m.heightNorm : GamepadLayoutDocEditor.SCROLL_STRIP_DEFAULT_HEIGHT_NORM) * h;
+        drawScrollStripModule(canvas, m, x, y, ww, hh);
         dynamicHitTestOrder.add(m.id);
     }
 
@@ -1503,6 +1580,155 @@ public class GamepadView extends View {
             retroTextPaint.setTypeface(retroLabelTypeface);
             canvas.drawText(title, cx, cy + retroTextPaint.getTextSize() * 0.32f, retroTextPaint);
             retroTextPaint.setLetterSpacing(0f);
+        }
+    }
+
+    private void drawScrollStripModule(Canvas canvas, @NonNull GamepadLayoutPresetDocument.GamepadModule m,
+                                       float cx, float cy, float ww, float hh) {
+        String id = m.id;
+        @Nullable Integer moduleAccentArgb = m.moduleAccentArgb;
+        float density = getResources().getDisplayMetrics().density;
+        float corner = 8f * density;
+        float borderW = 1f * density;
+        RectF bounds = new RectF(cx - ww / 2f, cy - hh / 2f, cx + ww / 2f, cy + hh / 2f);
+        componentBounds.put(id, bounds);
+
+        retroShadowPaint.setMaskFilter(new BlurMaskFilter(3f * density, BlurMaskFilter.Blur.NORMAL));
+        retroShadowPaint.setColor(0x34000000);
+        RectF shadowBounds = new RectF(bounds);
+        shadowBounds.offset(0, 1.25f * density);
+        canvas.drawRoundRect(shadowBounds, corner, corner, retroShadowPaint);
+        retroShadowPaint.setMaskFilter(null);
+
+        int surfTop = Color.parseColor("#E4E7EE");
+        int surfBot = Color.parseColor("#CED3DC");
+        int borderCol = Color.parseColor("#9AA0AC");
+        int labelCol = Color.parseColor("#4B5058");
+        if (moduleAccentArgb != null) {
+            int ac = GamepadModuleAccent.toOpaqueArgb(moduleAccentArgb);
+            surfTop = ColorUtils.blendARGB(surfTop, ac, 0.32f);
+            surfBot = ColorUtils.blendARGB(surfBot, ac, 0.36f);
+            borderCol = ColorUtils.blendARGB(borderCol, ac, 0.4f);
+            labelCol = ColorUtils.blendARGB(labelCol, ac, 0.3f);
+        }
+        if (m.displayLabelColorArgb != null) {
+            labelCol = GamepadModuleAccent.toOpaqueArgb(m.displayLabelColorArgb);
+        }
+        boolean stripHeld = false;
+        if (!scrollStripPointerState.isEmpty()) {
+            for (ScrollStripPointerState st : scrollStripPointerState.values()) {
+                if (st != null && id.equals(st.moduleId)) {
+                    stripHeld = true;
+                    break;
+                }
+            }
+        }
+        if (stripHeld) {
+            int glow = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
+            surfTop = ColorUtils.blendARGB(surfTop, glow, 0.14f);
+            surfBot = ColorUtils.blendARGB(surfBot, glow, 0.16f);
+            borderCol = ColorUtils.blendARGB(borderCol, glow, 0.18f);
+        }
+        Shader surface = new LinearGradient(bounds.left, bounds.top, bounds.right, bounds.bottom,
+                surfTop, surfBot, Shader.TileMode.CLAMP);
+        retroBodyPaint.setShader(surface);
+        canvas.drawRoundRect(bounds, corner, corner, retroBodyPaint);
+        retroBodyPaint.setShader(null);
+
+        retroRingPaint.setStyle(Paint.Style.STROKE);
+        retroRingPaint.setStrokeWidth(borderW);
+        retroRingPaint.setColor(borderCol);
+        retroRingPaint.setShader(null);
+        canvas.drawRoundRect(bounds, corner, corner, retroRingPaint);
+
+        Context ctx = getContext();
+        if (ctx != null) {
+            int chevronTint = ContextCompat.getColor(ctx, R.color.km_touchpad_scroll_strip_chevron);
+            Drawable up = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_up);
+            Drawable dn = AppCompatResources.getDrawable(ctx, R.drawable.km_basic_scroll_strip_chevron_down);
+            if (up != null && dn != null) {
+                up = DrawableCompat.wrap(up.mutate());
+                dn = DrawableCompat.wrap(dn.mutate());
+                int accent = GamepadModuleAccent.resolve(moduleAccentArgb, themeAccentPrimary);
+                boolean pulseUp = id.equals(scrollStripHighlightModuleId) && scrollStripHighlightDir > 0;
+                boolean pulseDown = id.equals(scrollStripHighlightModuleId) && scrollStripHighlightDir < 0;
+                int upTint = pulseUp ? ColorUtils.blendARGB(chevronTint, accent, 0.62f) : chevronTint;
+                int dnTint = pulseDown ? ColorUtils.blendARGB(chevronTint, accent, 0.62f) : chevronTint;
+                DrawableCompat.setTint(up, upTint);
+                DrawableCompat.setTint(dn, dnTint);
+                float pad = 6f * density;
+                float maxChev = 22f * density;
+                float chevSize = Math.min(maxChev, ww * 0.72f);
+                chevSize = Math.max(6f * density, chevSize);
+                int left = Math.round(cx - chevSize / 2f);
+                int top = Math.round(bounds.top + pad);
+                up.setBounds(left, top, Math.round(left + chevSize), Math.round(top + chevSize));
+                up.draw(canvas);
+                int bottomTop = Math.round(bounds.bottom - pad - chevSize);
+                dn.setBounds(left, bottomTop, Math.round(left + chevSize), Math.round(bounds.bottom - pad));
+                dn.draw(canvas);
+            }
+        }
+
+        if (keyMappingHintsVisible) {
+            String title = presetDisplayLabel(m);
+            if (title == null || title.isEmpty()) {
+                title = "SCROLL";
+            }
+            retroTextPaint.setColor(labelCol);
+            retroTextPaint.setTextAlign(Paint.Align.CENTER);
+            retroTextPaint.setTextSize(Math.min(ww, hh) * 0.11f);
+            retroTextPaint.setFakeBoldText(true);
+            retroTextPaint.setLetterSpacing(0.08f);
+            retroTextPaint.setTypeface(retroLabelTypeface);
+            canvas.drawText(title, cx, cy + retroTextPaint.getTextSize() * 0.28f, retroTextPaint);
+            retroTextPaint.setLetterSpacing(0f);
+        }
+    }
+
+    @Nullable
+    private GamepadLayoutPresetDocument.GamepadModule findDynamicModuleById(@Nullable String moduleId) {
+        if (layoutDocument == null || layoutDocument.modules == null || moduleId == null) {
+            return null;
+        }
+        for (GamepadLayoutPresetDocument.GamepadModule mod : layoutDocument.modules) {
+            if (mod != null && moduleId.equals(mod.id)) {
+                return mod;
+            }
+        }
+        return null;
+    }
+
+    private void applyScrollStripMoveForPointer(int pointerId, @NonNull MotionEvent event) {
+        ScrollStripPointerState st = scrollStripPointerState.get(pointerId);
+        if (st == null || scrollStripWheelListener == null) {
+            return;
+        }
+        int idx = event.findPointerIndex(pointerId);
+        if (idx < 0) {
+            return;
+        }
+        float ny = event.getY(idx);
+        float dy = ny - st.lastY;
+        st.lastY = ny;
+        GamepadLayoutPresetDocument.GamepadModule mod = findDynamicModuleById(st.moduleId);
+        float sensitivity = 1f;
+        if (mod != null && mod.scrollStripSensitivity != null) {
+            sensitivity = mod.scrollStripSensitivity;
+        }
+        if (mod != null && Boolean.TRUE.equals(mod.scrollStripInvertY)) {
+            dy = -dy;
+        }
+        st.accumY += (-dy / SCROLL_STRIP_PIXELS_PER_WHEEL_UNIT) * sensitivity;
+        int sy = (int) st.accumY;
+        if (sy != 0) {
+            st.accumY -= sy;
+            scrollStripWheelListener.onScrollStripWheel(st.moduleId, 0, sy);
+            scrollStripHighlightModuleId = st.moduleId;
+            scrollStripHighlightDir = sy > 0 ? 1 : -1;
+            scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
+            scrollStripHighlightHandler.postDelayed(clearScrollStripChevronHighlight, SCROLL_STRIP_CHEVRON_PULSE_MS);
+            invalidate();
         }
     }
 
@@ -2245,7 +2471,7 @@ public class GamepadView extends View {
                 int legacyUpIdx = event.findPointerIndex(pointerId);
                 float legacyUpRawX = legacyUpIdx >= 0 ? event.getRawX(legacyUpIdx) : event.getRawX();
                 float legacyUpRawY = legacyUpIdx >= 0 ? event.getRawY(legacyUpIdx) : event.getRawY();
-                releasePointerComponent(pointerId, legacyUpRawX, legacyUpRawY);
+                releasePointerComponent(pointerId, legacyUpRawX, legacyUpRawY, event.getEventTime());
 
                 // For ACTION_UP (last finger), clear all remaining state
                 if (action == MotionEvent.ACTION_UP) {
@@ -2279,7 +2505,7 @@ public class GamepadView extends View {
                 int legacyIdx = event.findPointerIndex(pointerId);
                 float legacyRawX = legacyIdx >= 0 ? event.getRawX(legacyIdx) : event.getRawX();
                 float legacyRawY = legacyIdx >= 0 ? event.getRawY(legacyIdx) : event.getRawY();
-                releasePointerComponent(pointerId, legacyRawX, legacyRawY);
+                releasePointerComponent(pointerId, legacyRawX, legacyRawY, event.getEventTime());
                 return true;
             }
         }
@@ -2288,6 +2514,14 @@ public class GamepadView extends View {
 
     public void setKeyboardHoldLockListener(@Nullable KeyboardHoldLockListener listener) {
         this.keyboardHoldLockListener = listener;
+    }
+
+    /**
+     * Preferences used with {@link #layoutDocument} for per-module gesture timing ({@link GamepadGestureLockSensitivity}
+     * resolution order: module → layout → prefs → default).
+     */
+    public void setGestureLockSensitivityPrefs(@Nullable SharedPreferences prefs) {
+        gestureLockSensitivityPrefs = prefs;
     }
 
     /**
@@ -2351,6 +2585,7 @@ public class GamepadView extends View {
                         moduleId,
                         event.getRawX(pointerIndex),
                         event.getRawY(pointerIndex),
+                        event.getEventTime(),
                         diagonal,
                         r);
         keyboardHoldLockByPointer.put(pointerId, t);
@@ -2417,24 +2652,38 @@ public class GamepadView extends View {
         }
     }
 
-    private boolean endKeyboardHoldLockForPointerIfAny(int pointerId, float rawX, float rawY) {
+    private boolean endKeyboardHoldLockForPointerIfAny(
+            int pointerId, float rawX, float rawY, long pointerUpEventTimeMs) {
         HoldLockTracking t = keyboardHoldLockByPointer.remove(pointerId);
         if (t == null) {
             return false;
         }
         keyboardHoldLockHandler.removeCallbacks(t.showPopupRunnable);
         boolean committed = false;
+        GamepadLayoutPresetDocument.GamepadModule mod = findGamepadModuleById(t.moduleId);
+        int dwellThreshold =
+                GamepadGestureLockSensitivity.resolveMinPressMs(
+                        layoutDocument, gestureLockSensitivityPrefs, mod);
+        float radiusScale =
+                GamepadGestureLockSensitivity.resolveRadiusScale(
+                        layoutDocument, gestureLockSensitivityPrefs, mod);
         if (t.diagonalMode) {
-            GamepadLayoutPresetDocument.GamepadModule mod = findGamepadModuleById(t.moduleId);
             float density = getResources().getDisplayMetrics().density;
             float dx = rawX - t.downRawX;
             float dy = rawY - t.downRawY;
-            String slot = GamepadGestureLock.classifyDiagonalSlot(dx, dy, density);
+            float rMinDp = GamepadGestureLock.DIAGONAL_R_MIN_DP * radiusScale;
+            float rCancelDp = GamepadGestureLock.DIAGONAL_R_CANCEL_DP * radiusScale;
+            String slot =
+                    GamepadGestureLock.classifyDiagonalSlot(dx, dy, density, rMinDp, rCancelDp);
             if (slot != null && !GamepadGestureLock.RESULT_CANCEL.equals(slot)) {
                 String action = GamepadGestureLock.resolvedActionForSlot(mod, slot);
                 if (mod != null
                         && !GamepadLayoutPresetConstants.GESTURE_LOCK_ACTION_NONE.equalsIgnoreCase(action)
                         && keyboardHoldLockListener != null) {
+                    long dwell = pointerUpEventTimeMs - t.downEventTimeMs;
+                    if (dwell < dwellThreshold) {
+                        return false;
+                    }
                     GamepadLayoutPresetDocument.GestureLockSlot slotObj =
                             GamepadGestureLock.slotForKey(mod.gestureLock, slot);
                     Integer hk = slotObj != null ? slotObj.hidKey : null;
@@ -2445,6 +2694,11 @@ public class GamepadView extends View {
                 }
             }
         } else if (t.popup != null) {
+            if (pointerUpEventTimeMs - t.downEventTimeMs < dwellThreshold) {
+                t.popup.dismiss();
+                t.popup = null;
+                return false;
+            }
             t.popup.updatePointer(rawX, rawY);
             committed = t.popup.commitIfLockSelected();
             t.popup.dismiss();
@@ -2456,8 +2710,9 @@ public class GamepadView extends View {
         return committed;
     }
 
-    private void releasePointerComponent(int pointerId, float rawX, float rawY) {
-        boolean suppressButtonRelease = endKeyboardHoldLockForPointerIfAny(pointerId, rawX, rawY);
+    private void releasePointerComponent(int pointerId, float rawX, float rawY, long pointerUpEventTimeMs) {
+        boolean suppressButtonRelease =
+                endKeyboardHoldLockForPointerIfAny(pointerId, rawX, rawY, pointerUpEventTimeMs);
         String releasedComponent = pointerComponents.remove(pointerId);
         if (releasedComponent != null) {
             if (isDpadComponent(releasedComponent)) {
@@ -2501,8 +2756,9 @@ public class GamepadView extends View {
 
     /**
      * Updates normalized position for the module being dragged. Dynamic layouts read anchors from
-     * {@link #layoutDocument}; legacy SIMPLE reads {@link #componentPositions}. Keep both in sync
-     * so the canvas repaints immediately and exit/save still merges positions.
+     * {@link #layoutDocument}; legacy SIMPLE keeps a parallel {@link #componentPositions} map for save /
+     * edit-exit. {@link #setLayoutDocument} and {@link #setLayout} refresh that map from document anchors so
+     * disk prefs cannot overwrite JSON positions on load.
      */
     private void applyDraggedComponentAnchors(float normX, float normY) {
         if (draggedComponentId == null) {
@@ -2589,6 +2845,13 @@ public class GamepadView extends View {
                         touchpadPointerId = pointerId;
                         touchpadLastX = x;
                         touchpadLastY = y;
+                    } else if (GamepadLayoutPresetConstants.isScrollStripModuleId(componentId) && !isEditMode) {
+                        ScrollStripPointerState sst = new ScrollStripPointerState();
+                        sst.moduleId = componentId;
+                        sst.lastY = y;
+                        sst.accumY = 0f;
+                        scrollStripPointerState.put(pointerId, sst);
+                        invalidate();
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -2628,6 +2891,13 @@ public class GamepadView extends View {
                             touchpadLastX = x;
                             touchpadLastY = y;
                         }
+                    } else if (GamepadLayoutPresetConstants.isScrollStripModuleId(componentId) && !isEditMode) {
+                        ScrollStripPointerState sst = new ScrollStripPointerState();
+                        sst.moduleId = componentId;
+                        sst.lastY = y;
+                        sst.accumY = 0f;
+                        scrollStripPointerState.put(pointerId, sst);
+                        invalidate();
                     } else if (componentId.startsWith("stick_") && !isEditMode
                             && !(isStickLeftDpadSplitLayout() && "stick_left".equals(componentId))) {
                         dynamicPointerStick.put(pointerId, componentId);
@@ -2711,6 +2981,11 @@ public class GamepadView extends View {
                             touchpadLastY = ny;
                         }
                     }
+                    if (!scrollStripPointerState.isEmpty()) {
+                        for (int pid : new ArrayList<>(scrollStripPointerState.keySet())) {
+                            applyScrollStripMoveForPointer(pid, event);
+                        }
+                    }
                     if (!dynamicPointerStick.isEmpty() && analogStickListener != null) {
                         for (Map.Entry<Integer, String> e : dynamicPointerStick.entrySet()) {
                             String sid = e.getValue();
@@ -2776,6 +3051,7 @@ public class GamepadView extends View {
                 if (touchpadPointerId == pointerId) {
                     touchpadPointerId = -1;
                 }
+                scrollStripPointerState.remove(pointerId);
                 if (draggedComponentId != null) {
                     draggedComponentId = null;
                     dragPointerId = -1;
@@ -2783,12 +3059,13 @@ public class GamepadView extends View {
                 int dynUpIdx = event.findPointerIndex(pointerId);
                 float dynUpRawX = dynUpIdx >= 0 ? event.getRawX(dynUpIdx) : event.getRawX();
                 float dynUpRawY = dynUpIdx >= 0 ? event.getRawY(dynUpIdx) : event.getRawY();
-                releasePointerComponent(pointerId, dynUpRawX, dynUpRawY);
+                releasePointerComponent(pointerId, dynUpRawX, dynUpRawY, event.getEventTime());
                 if (action == MotionEvent.ACTION_UP) {
                     pointerComponents.clear();
                     dpadPressedSet.clear();
                     buttonsPressedSet.clear();
                     touchpadPointerId = -1;
+                    scrollStripPointerState.clear();
                     cancelAllKeyboardHoldLockTracking();
                     if (pressedComponentId != null) {
                         pressedComponentId = null;
@@ -2818,10 +3095,11 @@ public class GamepadView extends View {
                 if (touchpadPointerId == pointerId) {
                     touchpadPointerId = -1;
                 }
+                scrollStripPointerState.remove(pointerId);
                 int dynPuIdx = event.findPointerIndex(pointerId);
                 float dynPuRawX = dynPuIdx >= 0 ? event.getRawX(dynPuIdx) : event.getRawX();
                 float dynPuRawY = dynPuIdx >= 0 ? event.getRawY(dynPuIdx) : event.getRawY();
-                releasePointerComponent(pointerId, dynPuRawX, dynPuRawY);
+                releasePointerComponent(pointerId, dynPuRawX, dynPuRawY, event.getEventTime());
                 invalidate();
                 return true;
             }
@@ -2975,6 +3253,7 @@ public class GamepadView extends View {
     public void setLayout(GamepadLayout layout) {
         this.currentLayout = layout;
         this.componentPositions = configManager.loadLayoutPositions(layout);
+        syncComponentPositionsFromLayoutDocument();
         invalidate();
     }
 
@@ -3319,8 +3598,14 @@ public class GamepadView extends View {
         void onTouchpadDelta(float dxPixels, float dyPixels);
     }
 
+    /** HID mouse wheel ticks from a {@link GamepadLayoutPresetConstants#MODULE_TYPE_SCROLL_STRIP} module. */
+    public interface ScrollStripWheelListener {
+        void onScrollStripWheel(String moduleId, int deltaX, int deltaY);
+    }
+
     @Override
     protected void onDetachedFromWindow() {
+        scrollStripHighlightHandler.removeCallbacks(clearScrollStripChevronHighlight);
         cancelAllKeyboardHoldLockTracking();
         super.onDetachedFromWindow();
     }

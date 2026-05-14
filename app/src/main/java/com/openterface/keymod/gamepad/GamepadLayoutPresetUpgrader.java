@@ -43,6 +43,23 @@ public final class GamepadLayoutPresetUpgrader {
             migrateV7ToV8(d);
             d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V8;
         }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V8) {
+            migrateV8ToV9(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V9;
+        }
+        if (d.schemaVersion == GamepadLayoutPresetConstants.SCHEMA_VERSION_V9) {
+            migrateV9ToV10(d);
+            d.schemaVersion = GamepadLayoutPresetConstants.SCHEMA_VERSION_V10;
+        }
+    }
+
+    /** v9 → v10: contiguous {@code zIndex} by draw order; no module type changes. */
+    private static void migrateV9ToV10(GamepadLayoutPresetDocument d) {
+        GamepadLayoutDocEditor.normalizeModuleZOrder(d);
+    }
+
+    /** v8 → v9: optional {@code SCROLL_STRIP} module type; no automatic module rewrites. */
+    private static void migrateV8ToV9(GamepadLayoutPresetDocument d) {
     }
 
     /** v7 → v8: optional {@code gestureLock}; no automatic module rewrites. */

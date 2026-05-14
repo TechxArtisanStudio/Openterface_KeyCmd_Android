@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyMod</string>
+    <string name="app_name">KeyCmd</string>
     <string name="settings_title">Paramètres</string>
     <string name="settings_tab_general">Général</string>
     <string name="settings_tab_voice">Voix</string>
@@ -21,13 +21,47 @@ par TechxArtisan</string>
     <string name="tutorial_next">Suivant</string>
     <string name="tutorial_done">Terminé</string>
     <string name="tutorial_step_indicator">Étape %1$d/%2$d : </string>
-    <string name="tutorial_desc_menu">Touchez ici pour ouvrir le menu : changer de mode, ouvrir Bienvenue et guide (sélecteur de mode et didacticiel) ou les paramètres.</string>
-    <string name="tutorial_desc_bluetooth_header">Touchez l\'icône Bluetooth pour vous connecter via USB ou Bluetooth. Des barres de signal vertes s\'affichent lorsque la connexion est établie.</string>
-    <string name="tutorial_desc_drawer_modes">Ouvrez le menu pour choisir le mode de saisie : Clavier et souris, Présentation, Raccourcis, Macros, Voix ou Manette.</string>
-    <string name="tutorial_desc_target_os">Touchez l\'icône du système cible dans l\'en-tête pour choisir macOS, Windows ou Linux et obtenir le bon mappage des touches.</string>
-    <string name="tutorial_desc_keyboard_modes">Touchez les touches ABC, !?# ou 123 du clavier pour basculer entre les dispositions lettres, chiffres et symboles.</string>
-    <string name="tutorial_desc_shortcut_row">La rangée de raccourcis en haut du clavier peut être défilée vers la gauche ou la droite pour afficher plus d\'options.</string>
-    <string name="tutorial_desc_touchpad">Utilisez le pavé tactile pour contrôler le curseur. Appui long pour commencer à faire glisser ; touchez pour relâcher.</string>
+    <string name="tutorial_desc_connection">Touchez pour connecter : USB (câble) ou Bluetooth (liste). Acceptez les demandes. Connecté : icône avec couleur d’accent.</string>
+    <string name="tutorial_desc_target_os">Icône ordinateur : choisissez le système piloté (macOS, Windows, Linux). Touches bizarres ? Vérifiez d’abord ici.</string>
+    <string name="tutorial_desc_submode_tabs">Basculez ici entre clavier, pavé tactile (pointeur) et pavé numérique.</string>
+    <string name="tutorial_desc_keyboard_modes">ABC, !?# et 123 changent les couches lettres, symboles et chiffres.</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Maintenez Ctrl, Maj, Alt ou Win environ une seconde jusqu’à l’indicateur de verrouillage, puis glissez vers le haut pour maintenir le modificateur sur l’hôte. Touchez la même touche à nouveau pour relâcher.</string>
+    <string name="tutorial_desc_menu">Menu : tiroir avec Bienvenue et guide (revisiter), Paramètres et autres modes.</string>
+    <string name="mode_guide_header_cd">Ouvrir le guide du mode et revoir la visite</string>
+    <string name="mode_guide_sheet_title_basic">Clavier et souris (Basique)</string>
+    <string name="mode_guide_sheet_title_pro">Clavier et souris Pro</string>
+    <string name="mode_guide_sheet_title_presentation">Présentation</string>
+    <string name="mode_guide_sheet_title_gamepad">Manette</string>
+    <string name="mode_guide_sheet_title_shortcut_hub">Hub de raccourcis</string>
+    <string name="mode_guide_sheet_body">Rejouez la courte visite de ce mode, ou fermez pour continuer.</string>
+    <string name="mode_guide_replay_tour">Rejouer la visite</string>
+    <string name="mode_guide_close">Fermer</string>
+    <string name="mode_tutorial_pro_step_connection">Connectez USB ou Bluetooth en haut pour que les entrées atteignent l’hôte.</string>
+    <string name="mode_tutorial_pro_step_target_os">Réglez l’OS cible sur la machine pilotée pour que raccourcis et modificateurs correspondent.</string>
+    <string name="mode_tutorial_pro_step_submodes">Basculez ici entre clavier, Rédaction et pavé numérique.</string>
+    <string name="mode_tutorial_pro_step_setup">Réglages : barre de raccourcis, astuces et profil actif du hub.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">Rangées de raccourcis au-dessus des lettres—balayez. Touchez pour envoyer ; + pour créer. Long appui sur certains modificateurs si indiqué.</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">Sur la barre ou la ligne QWERTY, maintenez un modificateur environ une seconde jusqu’à l’indicateur, puis glissez vers le haut pour le tenir sur l’hôte. Touchez la même touche à nouveau pour relâcher.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">Rédaction : éditeur multiligne. Cette étape ouvre automatiquement—onglet Clavier pour revenir.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">Annuler/rétablir, effacer, enregistrer dans Enregistrés, ouvrir Enregistrés, puis Envoyer à l’hôte par USB ou Bluetooth.</string>
+    <string name="mode_tutorial_presentation_step_tools">Balayez le carrousel du haut pour choisir l’app de présentation ; les raccourcis suivent l’outil sélectionné.</string>
+    <string name="mode_tutorial_presentation_step_nav">« Suivant » et « Précédent » envoient les touches de diapositive à l’hôte.</string>
+    <string name="mode_tutorial_presentation_step_actions">« Lecture » démarre le diaporama ; « Noir » masque la diapositive pour le public.</string>
+    <string name="mode_tutorial_presentation_step_timer">La carte minuteur aide le rythme ; touchez pour ajuster les options du minuteur.</string>
+    <string name="mode_tutorial_gamepad_step_connection">Touchez l’icône de connexion et connectez-vous en USB ou Bluetooth avant d’envoyer les entrées manette.</string>
+    <string name="mode_tutorial_gamepad_step_customize">« Personnaliser » active le mode déplacement et modifie la disposition.</string>
+    <string name="mode_tutorial_gamepad_step_presets">Changez de préréglage ou touchez les puces pour d’autres dispositions enregistrées.</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">Faites glisser les modules sur le pad vers de nouveaux emplacements. Touchez « Terminé » dans la barre fine quand vous avez fini : Personnaliser se désactive et les positions sont enregistrées.</string>
+    <string name="mode_tutorial_gamepad_step_sticks">Utilisez sticks et boutons comme sur une console portable ; le mappage suit le préréglage actif.</string>
+    <string name="mode_tutorial_hub_step_profiles">Créez ou importez des profils pour organiser des jeux de raccourcis par application.</string>
+    <string name="mode_tutorial_hub_step_open_profile">Touchez une ligne de profil pour l’ouvrir. L’étape suivante ouvre automatiquement le profil Par défaut pour montrer l’intérieur.</string>
+    <string name="mode_tutorial_hub_step_detail_intro">Dans un profil : le titre indique le profil en cours, Retour renvoie à la liste, et les onglets passent des ⭐ Favoris à chaque catégorie (p. ex. Général). Sur Par défaut, Réinitialiser restaure les favoris d’usine après confirmation.</string>
+    <string name="mode_tutorial_hub_step_favorites_list">Favoris est la liste ordonnée qui alimente la barre de raccourcis du clavier. Faites glisser la poignée pour réordonner ; les éléments en haut apparaissent en premier sur la barre. Touchez une ligne pour le menu débordant (modifier, retirer des favoris, etc.).</string>
+    <string name="mode_tutorial_hub_step_browse_category">Les onglets de catégorie listent les raccourcis de la section. Touchez l’étoile pour ajouter aux Favoris de la barre, ou le menu débordant pour modifier la combinaison dans ce profil.</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">Le bouton + crée un raccourci vers les Favoris ou la catégorie consultée selon l’onglet actif.</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">L’icône de réglages (engrenage) de la barre ouvre la disposition et l’affichage de ce profil dans le Hub—liste ou cartes et rendu des noms ou icônes.</string>
+    <string name="mode_tutorial_hub_step_connection">Connectez d’abord le matériel pour que les raccourcis atteignent l’appareil cible.</string>
+    <string name="mode_tutorial_hub_step_replay_hint">Touchez à tout moment cette icône de guide pour rejouer la visite du hub de raccourcis.</string>
     <string name="main_toast_auto_connecting_bluetooth">Connexion automatique au Bluetooth…</string>
     <string name="main_toast_auto_connected_to">Connexion automatique à %1$s</string>
     <string name="main_toast_auto_connect_failed">Échec de la connexion automatique : %1$s</string>
@@ -425,21 +459,21 @@ par TechxArtisan</string>
     <string name="gamepad_toast_image_load_failed">Impossible de charger l\'image</string>
     <string name="top_mode_label_shortcuts">Centre de raccourcis</string>
     <string name="top_mode_label_macros">Macro</string>
-    <string name="top_shortcut_display_mode_cd_name">Bande de raccourcis : affichage des noms de raccourcis. Appuyez pour passer aux icônes.</string>
-    <string name="top_shortcut_display_mode_cd_icon">Bande de raccourci : affichage des icônes. Appuyez pour passer au texte combiné.</string>
-    <string name="top_shortcut_display_mode_cd_chord">Bande de raccourci : affichant les touches combinées (par exemple Alt+X). Appuyez pour passer aux noms.</string>
+    <string name="top_shortcut_display_mode_cd_name">Bande et clavier principal : noms. Appuyez pour passer aux icônes.</string>
+    <string name="top_shortcut_display_mode_cd_icon">Bande et clavier principal : icônes. Appuyez pour passer au texte combiné.</string>
+    <string name="top_shortcut_display_mode_cd_chord">Bande : touches combinées (p. ex. Alt+X). Clavier principal : Tab et modificateurs en noms. Appuyez pour passer aux noms de raccourcis.</string>
     <string name="ime_capture_hint">Tapez et modifiez un long texte ici : appuyez sur Envoyer pour l\'envoyer à l\'appareil connecté.</string>
-    <string name="top_shortcut_ime_toggle_keymod">Clavier KeyMod (appuyez pour l\'IME du système)</string>
-    <string name="top_shortcut_ime_toggle_system">Système IME (appuyez pour le clavier KeyMod)</string>
-    <string name="top_shortcut_ime_toggle_keymod_short">Intégré</string>
+    <string name="top_shortcut_ime_toggle_keycmd">Clavier KeyCmd (appuyez pour l\'IME du système)</string>
+    <string name="top_shortcut_ime_toggle_system">Système IME (appuyez pour le clavier KeyCmd)</string>
+    <string name="top_shortcut_ime_toggle_keycmd_short">Intégré</string>
     <string name="top_shortcut_ime_toggle_system_short">Système IME</string>
     <string name="top_strip_modifier_long_press_lock_hint">Astuce : appuyez longuement sur cette touche pour verrouiller le modificateur.</string>
     <string name="ime_not_connected">Connectez USB ou Bluetooth pour envoyer des frappes.</string>
     <string name="ime_sub_compose_expand">Agrandir la zone de texte</string>
     <string name="ime_sub_compose_collapse">Afficher le pavé tactile et les raccourcis</string>
-    <string name="ime_capture_send_flush_note">Send tape le texte mis en mémoire tampon sur l\'hôte. En mode Composer, les frappes ne sont envoyées que lorsque vous appuyez sur Envoyer.</string>
+    <string name="ime_capture_send_flush_note">Envoyer saisit le texte mis en mémoire tampon sur l\'hôte. En mode IME (même principe que Rédiger et envoyer dans Clavier et souris — version basique), les frappes ne sont envoyées que lorsque vous appuyez sur Envoyer.</string>
     <string name="ime_sub_compose_mode_toggle_direct">Passer au HID direct : chaque touche envoie au fur et à mesure que vous tapez</string>
-    <string name="ime_sub_compose_mode_toggle_compose">Passer à la composition : saisissez un tampon, puis appuyez sur Envoyer</string>
+    <string name="ime_sub_compose_mode_toggle_compose">Passer à la composition IME : saisissez un tampon, puis appuyez sur Envoyer</string>
     <string name="ime_sub_compose_direct_hid_hint">Les clés sont envoyées directement au fur et à mesure que vous tapez</string>
     <string name="voice_hub_title">Saisie vocale</string>
     <string name="voice_transcribed_hint">Le texte transcrit apparaît ici…</string>
@@ -562,6 +596,12 @@ par TechxArtisan</string>
     <string name="touch_pad_help_overlay_one_finger_detail">Faites glisser pour déplacer le pointeur.\nAppuyez pour cliquer.\nAppuyez deux fois pour double-cliquer.\nAppuyez longuement pour commencer le glisser.\nAppuyez pour relâcher le glisser.</string>
     <string name="touch_pad_help_overlay_two_fingers">Deux doigts</string>
     <string name="touch_pad_help_overlay_two_fingers_detail">Appuyez pour faire un clic droit.\nFaites glisser avec deux doigts pour faire défiler.</string>
+    <string name="touch_pad_help_km_gestures_only_title">Gestes uniquement</string>
+    <string name="touch_pad_help_km_gestures_only_body">Un doigt : déplacer, appuyer, double appui ; appui long pour glisser (appuyer à nouveau pour lâcher).\nDeux doigts : défilement ; lever les deux sans glisser : clic droit.</string>
+    <string name="touch_pad_help_km_pad_keys_title">Pavé + touches souris</string>
+    <string name="touch_pad_help_km_pad_keys_body">Pavé : déplacer le pointeur et défilement à deux doigts uniquement.\nG, M, D : clics et glisser. Maintenir une touche puis glisser vers le haut pour verrouiller.</string>
+    <string name="touch_pad_help_km_hybrid_title">Hybride</string>
+    <string name="touch_pad_help_km_hybrid_body">Pavé : tous les gestes et défilement à deux doigts.\nBande : G, M, D + verrou. Les appuis sur le pavé font clignoter la touche ; glisser depuis le pavé garde G mis en avant.</string>
     <string name="touch_pad_compact_initial">TouchPad\nBoutons : haut (pas de glissement)\nTouch : inactif</string>
     <string name="touch_pad_info_content_description">Afficher l\'aide sur les gestes du pavé tactile</string>
 
@@ -773,13 +813,9 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_edit_canvas_menu_title"><![CDATA[Arrière-plan
     ]]></string>
-    <string name="gamepad_edit_done"><![CDATA[Done
-    ]]></string>
     <string name="gamepad_edit_mode_off"><![CDATA[Edit
     ]]></string>
-    <string name="gamepad_edit_mode_on"><![CDATA[Editing
-    ]]></string>
-    <string name="gamepad_edit_session_title"><![CDATA[Move modules
+    <string name="gamepad_edit_mode_on"><![CDATA[Disposition en cours d’édition, appuyez de nouveau pour terminer
     ]]></string>
     <string name="gamepad_key_picker_title"><![CDATA[Select key
     ]]></string>
@@ -1020,8 +1056,7 @@ par TechxArtisan</string>
     <string name="gamepad_stick_pointer_hub_mouse_middle">Milieu</string>
     <string name="gamepad_stick_pointer_hub_mouse_right">Droit</string>
     <string name="gamepad_module_remove_confirm_message">Retirer cette commande de la disposition\u00a0?</string>
-    <string name="kb_basic_compose_hint"><![CDATA[Type text, then Send (ASCII-friendly for HID).
-    ]]></string>
+    <string name="kb_basic_compose_editor_hint">Saisissez ou collez votre texte ici, modifiez-le au besoin, puis appuyez sur Envoyer.</string>
     <string name="kb_basic_numpad_00"><![CDATA[00
     ]]></string>
     <string name="kb_basic_numpad_del"><![CDATA[Del
@@ -1082,7 +1117,7 @@ par TechxArtisan</string>
     ]]></string>
     <string name="kb_basic_touchpad_scroll_area_a11y"><![CDATA[Mouse wheel scroll strip
     ]]></string>
-    <string name="kb_mouse_placeholder_compose"><![CDATA[Compose as its own screen is coming soon. Use Keyboard & Mouse Pro for compose and IME workflows.
+    <string name="kb_mouse_placeholder_compose"><![CDATA[Un écran Rédiger dédié arrive bientôt. Utilisez Clavier et souris Pro pour les mêmes flux IME de rédaction et d’envoi que Rédiger et envoyer en version basique.
     ]]></string>
     <string name="kb_mouse_placeholder_generic"><![CDATA[This section is not available yet.
     ]]></string>
@@ -1100,8 +1135,6 @@ par TechxArtisan</string>
     ]]></string>
     <string name="kb_mouse_sub_touchpad"><![CDATA[Touchpad
     ]]></string>
-    <string name="kb_mouse_sub_basic_settings"><![CDATA[Réglages
-    ]]></string>
     <string name="km_basic_cd_application_key"><![CDATA[Application key
     ]]></string>
     <string name="km_basic_cd_windows_modifier"><![CDATA[Windows key
@@ -1111,6 +1144,8 @@ par TechxArtisan</string>
     ]]></string>
     <string name="km_basic_key_sup"><![CDATA[Sup
 
+    ]]></string>
+    <string name="km_basic_setup_button_cd"><![CDATA[Mode basique : options clavier et pavé tactile
     ]]></string>
     <string name="nav_menu_close_cd"><![CDATA[Close menu
     ]]></string>
@@ -1340,9 +1375,9 @@ par TechxArtisan</string>
     ]]></string>
     <string name="settings_km_basic_modifier_sticky_desc"><![CDATA[Tap once to latch a modifier on; tap again to turn off. Highlighted keys show what is latched. Good for typing shifted symbols with a separate tap on Shift, then the key.
     ]]></string>
-    <string name="settings_km_basic_section_summary"><![CDATA[Full keyboard in Keyboard + Mouse (Basic) mode: how Ctrl, Shift, Alt/Option, and Win/Cmd behave.
+    <string name="km_basic_settings_title"><![CDATA[Keyboard & Mouse Basic setup
     ]]></string>
-    <string name="settings_km_basic_section_title"><![CDATA[KM Basic keyboard
+    <string name="settings_km_basic_section_title"><![CDATA[Keyboard & Mouse Basic setup
     ]]></string>
     <string name="settings_km_basic_strip_scroll_sensitivity"><![CDATA[Vertical scroll strip sensitivity
     ]]></string>
@@ -1423,10 +1458,6 @@ par TechxArtisan</string>
     <string name="shortcut_hub_empty_strip_profiles"><![CDATA[No strip profiles.
     ]]></string>
     <string name="shortcut_hub_import_strip_profile"><![CDATA[Import
-    ]]></string>
-    <string name="shortcut_hub_page3_info_body"><![CDATA[In Keyboard & Mouse mode, swipe the fixed rows to page 3.\n\n• Row 2: tap activates the Row 1 app profile for that slot. Long-press to pick which profile is bound (same flow as the profile slot picker).\n• Row 3: tap activates the Rows 2–3 strip profile. Long-press to pick which strip profile each slot shows.\n\nEditing strip key caps and slot overrides for pages 0–2 stays under Rows 2–3 · Strip.
-    ]]></string>
-    <string name="shortcut_hub_page3_info_title"><![CDATA[Page 3 on the keyboard strip
     ]]></string>
     <string name="shortcut_hub_reset_default"><![CDATA[Reset
     ]]></string>
@@ -1510,8 +1541,6 @@ par TechxArtisan</string>
     ]]></string>
     <string name="shortcut_hub_tab_fixed_strip"><![CDATA[Rows 2–3 · Strip
     ]]></string>
-    <string name="shortcut_hub_tab_page3_strip"><![CDATA[Page 3 · Hub keys
-    ]]></string>
     <string name="strip_edition_dialog_message"><![CDATA[Edit Rows 2–3 strip profiles and slot overrides in Shortcut Hub (Rows 2–3 · Strip tab).\n\nSlot overrides on active strip: %1$d
     ]]></string>
     <string name="strip_edition_dialog_title"><![CDATA[Strip layout
@@ -1553,4 +1582,180 @@ par TechxArtisan</string>
         <item>Teal</item>
         <item>Indigo</item>
     </string-array>
+    <string name="km_pro_setup_button_cd">Keyboard &amp; Mouse Pro: keys display (strip and main keyboard), alternate hints, and active Shortcut Hub profile</string>
+    <string name="km_pro_settings_title">Keyboard &amp; Mouse Pro setup</string>
+    <string name="km_pro_settings_close">Back</string>
+    <string name="km_pro_settings_section_strip_display">Keys display</string>
+    <string name="km_pro_settings_section_strip_display_summary">Same as the DISPLAY key at the end of row 1: how shortcuts on the strip look (names, icons, or combo text), and how Tab and the bottom-row modifier keys on the main keyboard look.</string>
+    <string name="km_pro_settings_display_mode_name">Names</string>
+    <string name="km_pro_settings_display_mode_icon">Icons</string>
+    <string name="km_pro_settings_display_mode_chord">Combo</string>
+    <string name="km_pro_settings_section_alternate_hints">Alternate hints</string>
+    <string name="km_pro_settings_section_alternate_hints_summary">When on, letter keys show small long-press hint glyphs and support the alternates popup. When off, those keys use hold-to-repeat (gaming style).</string>
+    <string name="km_pro_settings_section_touchpad">Touchpad</string>
+    <string name="km_pro_settings_section_touchpad_summary">Pad + mouse keys: move the pointer and two-finger scroll on the pad; use L, M, and R for clicks and drag (same hold-swipe-to-lock as Keyboard &amp; Mouse Basic). Hybrid: full pad gestures plus the strip, with L/M/R flashing on pad taps and L held while you drag from the pad.</string>
+    <string name="km_pro_touchpad_mode_gestures">Gestures only</string>
+    <string name="km_pro_touchpad_mode_strip">Pad + mouse keys</string>
+    <string name="km_pro_touchpad_mode_hybrid">Hybrid</string>
+    <string name="km_pro_touchpad_scroll_strip_title">Vertical scroll strip</string>
+    <string name="km_pro_touchpad_scroll_strip_summary">Show a drag strip beside the touchpad for mouse wheel up/down (same idea as Keyboard &amp; Mouse Basic). Works in all touchpad modes, including Gestures only.</string>
+    <string name="km_pro_touchpad_scroll_strip_switch">Scroll strip</string>
+    <string name="km_pro_touchpad_strip_scroll_sensitivity">Strip scroll sensitivity</string>
+    <string name="km_pro_touchpad_strip_scroll_sensitivity_desc">How fast content scrolls when you drag the strip. Independent from General → touchpad two-finger scroll sensitivity.</string>
+    <string name="km_pro_touchpad_scroll_strip_a11y">Mouse wheel scroll strip</string>
+    <string name="km_pro_settings_section_modifiers">Modifiers (main keyboard and strip)</string>
+    <string name="km_pro_settings_section_modifiers_summary">Same options as Keyboard &amp; Mouse (Basic): sticky latch, or momentary tap with long-press to chord, plus hold then swipe up to lock on the host. Applies to Ctrl, Shift, Alt, and Win/Cmd on the QWERTY row and on the top shortcut strip.</string>
+    <string name="km_pro_settings_alternate_hints_on">On</string>
+    <string name="km_pro_settings_alternate_hints_off">Off</string>
+    <string name="km_pro_settings_section_gaming_key_behavior">When hints are off: letter keys</string>
+    <string name="km_pro_settings_section_gaming_key_behavior_summary">Same options as Keyboard &amp; Mouse (Basic) setup: repeat taps while you hold, or one key-down until you lift your finger.</string>
+    <string name="km_pro_settings_long_press_repeat_short">Repeat taps</string>
+    <string name="km_pro_settings_long_press_hold_short">Hold key down</string>
+    <string name="km_pro_settings_section_profile">Shortcut Hub profile</string>
+    <string name="km_pro_settings_section_profile_summary">Catalog and favorites for row 1 use the selected profile. Manage profiles in Shortcut Hub.</string>
+    <string name="km_pro_settings_profile_field_hint">Active profile</string>
+    <string name="key_display_name_tab">Tab</string>
+    <string name="key_display_name_bksp">Bksp</string>
+    <string name="shortcut_hub_detail_settings_cd">Shortcut Hub display and layout for this profile</string>
+    <string name="shortcut_hub_detail_settings_title">This profile in Shortcut Hub</string>
+    <string name="shortcut_hub_detail_settings_title_with_profile">%1$s · Shortcut Hub</string>
+    <string name="shortcut_hub_detail_settings_layout_section">Layout</string>
+    <string name="shortcut_hub_detail_settings_layout_summary">List is best for browsing and editing. Card view uses larger type and a grid for quick access while you work.</string>
+    <string name="shortcut_hub_detail_settings_layout_list">List</string>
+    <string name="shortcut_hub_detail_settings_layout_card">Card</string>
+    <string name="shortcut_hub_detail_settings_display_section">Shortcut display</string>
+    <string name="shortcut_hub_detail_settings_display_summary">How each shortcut shows in this profile’s Favorites and category tabs. Does not change the keyboard row‑1 strip; use Keyboard &amp; Mouse Pro setup for that.</string>
+    <string name="shortcut_hub_detail_settings_display_name">Name</string>
+    <string name="shortcut_hub_detail_settings_display_icon">Icon</string>
+    <string name="shortcut_hub_detail_settings_display_chord">Chord</string>
+    <string name="shortcut_hub_detail_settings_display_hybrid">Hybrid</string>
+    <string name="hub_card_overflow_cd">More options</string>
+    <string name="hub_card_drag_handle_cd">Drag to reorder</string>
+    <string name="shortcut_hub_card_overflow_edit">Edit shortcut</string>
+    <string name="shortcut_hub_card_overflow_favorite_add">Add to Favorites</string>
+    <string name="shortcut_hub_card_overflow_favorite_remove">Remove from Favorites</string>
+    <string name="shortcut_hub_card_overflow_remove_favorite">Remove from Favorites</string>
+    <string name="gamepad_gesture_sensitivity_btn_cd">Preset-wide hold-lock and turbo timing</string>
+    <string name="gamepad_gesture_sensitivity_dialog_title">Hold-lock / turbo gestures</string>
+    <string name="gamepad_gesture_sensitivity_min_press_label">Minimum press before swipe (ms)</string>
+    <string name="gamepad_gesture_sensitivity_radius_scale_label">Diagonal stroke strictness</string>
+    <string name="gamepad_gesture_sensitivity_preset_override_note">Some controls set their own timing in JSON (per-module gestureLockMinPressMs, gestureLockDiagonalRadiusScale, turboPulsePeriodMs); those values override this preset-wide layout timing.</string>
+    <string name="gamepad_gesture_sensitivity_turbo_period_label">Turbo step interval (ms)</string>
+    <string name="gamepad_gesture_sensitivity_turbo_period_hint">Time between each on/off half-step while turbo is latched. Lower values repeat faster (25–300 ms).</string>
+    <string name="gamepad_gesture_sensitivity_saved">Preset timing saved</string>
+    <string name="gamepad_gesture_sensitivity_cleared">Preset timing cleared (app defaults apply where layout is unset)</string>
+    <string name="gamepad_gesture_sensitivity_clear_preset_timing">Clear preset timing</string>
+    <string name="gamepad_gesture_sensitivity_need_layout">Load or create a gamepad preset first.</string>
+    <string name="gamepad_module_gesture_timing_title">This button only</string>
+    <string name="gamepad_module_gesture_timing_reset">Use preset-wide / app default</string>
+    <string name="gamepad_module_config_gesture_sensitivity_hint">Not duplicated: sliders under “This button only” change timing for this control only. The bottom action opens preset-wide timing (same as the tune icon next to the preset name) for the whole layout. Effective order: this module, then layout, then app defaults.</string>
+    <string name="gamepad_module_config_gesture_sensitivity_open">Preset-wide timing…</string>
+    <string name="gamepad_presets_sheet_back_cd">Close layouts list</string>
+    <string name="gamepad_presets_reset_shipped_short">Reset built-in</string>
+    <string name="gamepad_presets_reorder">Reorder</string>
+    <string name="gamepad_presets_reorder_cd">Show drag handles to change layout order</string>
+    <string name="gamepad_presets_builtin_badge">Built-in</string>
+    <string name="gamepad_presets_active_badge">Active</string>
+    <string name="gamepad_presets_more">More</string>
+    <string name="gamepad_presets_card_a11y_activate">Double-tap to activate this layout.</string>
+    <string name="gamepad_presets_card_a11y_reorder_suffix">Reorder mode on: drag the handle on a card, then move to a new position.</string>
+    <string name="gamepad_add_scroll_strip">Scroll strip (mouse wheel)</string>
+    <string name="gamepad_component_scroll_strip">Scroll strip</string>
+    <string name="gamepad_scroll_strip_sensitivity_pct">Wheel sensitivity (%)</string>
+    <string name="gamepad_scroll_strip_invert_y">Invert vertical wheel</string>
+    <string name="gamepad_layer_order_title">Layer order</string>
+    <string name="gamepad_menu_bring_to_front">Bring to front</string>
+    <string name="gamepad_menu_send_to_back">Send to back</string>
+    <string name="gamepad_layer_already_front">Already on top</string>
+    <string name="gamepad_layer_already_back">Already at back</string>
+    <string name="connection_header_bluetooth_searching">Recherche Bluetooth</string>
+    <string name="connection_header_bluetooth_connected">Bluetooth connecté</string>
+    <string name="km_pro_settings_section_key_tap_preview">Aperçu de la touche</string>
+    <string name="km_pro_settings_section_key_tap_preview_summary">Tant que vous maintenez une touche enfoncée, affiche une étiquette flottante au-dessus (même style que Clavier et souris basiques). Activé par défaut ; désactivez pour un aspect minimal.</string>
+
+    <!-- Synced with default strings (compose send review, saved texts library, KM Pro PH1 input, bug report) -->
+    <string name="report_bug">Signaler un bug</string>
+    <string name="report_bug_cd">Signaler un bug via un formulaire web</string>
+    <string name="report_bug_no_browser_toast">Aucune application ne peut ouvrir ce lien. Installez un navigateur et réessayez.</string>
+    <string name="compose_send_warning_title">Examiner les risques d’envoi</string>
+    <string name="compose_send_warning_count_label">Longueur totale</string>
+    <string name="compose_send_warning_issues_header">Problèmes possibles</string>
+    <string name="compose_send_warning_non_ascii_label">Compatibilité</string>
+    <string name="compose_send_warning_length_label">Fiabilité</string>
+    <string name="compose_send_warning_count">%1$d caractères</string>
+    <string name="compose_send_warning_non_ascii">Contient des caractères non ASCII que l’appareil cible pourrait ne pas recevoir correctement.</string>
+    <string name="compose_send_warning_length">Les textes longs peuvent perdre des caractères sur certains appareils à cause des limites de transmission HID.</string>
+    <string name="compose_send_warning_send_anyway">Envoyer quand même</string>
+    <string name="compose_send_warning_send_unicode_host_entry">Send using host Unicode entry</string>
+    <string name="compose_send_warning_send_unicode_short">Send via Unicode</string>
+    <string name="compose_send_warning_unicode_info_title">Unicode entry on the target</string>
+    <string name="compose_send_warning_unicode_info_cd">Details about host Unicode setup</string>
+    <string name="compose_send_warning_unicode_host_hint_macos">To type non-ASCII characters on the target Mac, add the input source “Unicode Hex Input” (System Settings → Keyboard → Input Sources → Edit → + → English → Unicode Hex Input) and select it in the menu bar before you send.\n\nThis app sends the same Option-held hex digit sequence as Voice Input: hold Option (Alt), then type four hex digits (0–9 and A–F). For example U+5C0A is typed as 5, C, 0, A.\n\nHex uses letters A–F. macOS and third-party tools often assign shortcuts to Option+letter (for example Option+A may open an app or take a screenshot). If a shortcut fires instead of entering a hex digit, that character will be wrong or missing. On the target Mac, turn off or reassign conflicting shortcuts under System Settings → Keyboard → Keyboard Shortcuts, and check utilities that register Option shortcuts.\n\nIf one character fails but another succeeds, Unicode Hex Input is usually active but a specific digit (often A–F) is being intercepted—adjust the target Mac until Option+hex matches manual entry.</string>
+    <string name="compose_send_warning_unicode_host_hint_windows">On the target Windows PC, this option sends Alt+numpad-plus and hex digits (Unicode entry). Ensure a layout with a working numeric keypad path is available on the target.</string>
+    <string name="compose_send_warning_unicode_host_hint_linux">On the target Linux host, this option sends Ctrl+Shift+U followed by hex digits and Enter (typical IBus/GTK Unicode entry). Ensure that shortcut is accepted by the focused application.</string>
+    <string name="compose_send_warning_unicode_host_hint_other">On the target device, enable the OS-specific Unicode entry method that matches the selected target OS before using this option.</string>
+    <string name="compose_unicode_confirm_title">Confirm Unicode host send</string>
+    <string name="compose_unicode_confirm_message">If the connected target does not have the correct Unicode entry method active (for example Unicode Hex Input on a Mac), the keystrokes sent for this option are interpreted as ordinary shortcuts and can cause unintended behavior—such as wrong app focus, closed windows, or other actions.\n\nOnly use this if the target is set up correctly. Open the details (i) on the previous screen if you need setup steps.</string>
+    <string name="compose_unicode_confirm_continue">Continue</string>
+    <string name="compose_unicode_confirm_cancel">Cancel</string>
+    <string name="compose_send_warning_tabs_hint">Use the tabs to compare ASCII-only send versus full Unicode host entry.</string>
+    <string name="compose_send_warning_tab_label_ascii">ASCII send</string>
+    <string name="compose_send_warning_tab_label_unicode">Unicode send</string>
+    <string name="compose_send_warning_tab_hid_steps">Estimated HID steps (this send): %1$d</string>
+    <string name="compose_send_warning_tab_hid_steps_unicode">Estimated HID steps (Unicode path): %1$d</string>
+    <string name="compose_send_warning_tab_ascii_payload_title">ASCII payload</string>
+    <string name="compose_send_warning_tab_unicode_plan_title">Send plan</string>
+    <string name="compose_send_warning_inspect">Inspecter le texte</string>
+    <string name="compose_send_warning_inspect_title">Options d’inspection</string>
+    <string name="compose_send_warning_check">Vérifier</string>
+    <string name="compose_send_warning_preview">Aperçu</string>
+    <string name="compose_send_warning_no_non_ascii_found">Aucun caractère non ASCII à mettre en évidence.</string>
+    <string name="compose_send_preview_title">Aperçu d’envoi</string>
+    <string name="compose_send_preview_summary_title">Résumé de transmission</string>
+    <string name="compose_send_preview_payload_title">Contenu envoyable</string>
+    <string name="compose_send_preview_summary">Original : %1$d car.\nSera envoyé : %2$d car.\nNon-ASCII ignorés : %3$d</string>
+    <string name="compose_send_preview_empty_payload">Aucun caractère ASCII ne sera envoyé.</string>
+    <string name="ime_saved_text_title">Textes enregistrés</string>
+    <string name="ime_saved_text_cd_open_library">Ouvrir les textes enregistrés</string>
+    <string name="ime_saved_text_save_to_library">Enregistrer l’actuel</string>
+    <string name="ime_saved_text_save_cd">Enregistrer le texte actuel dans la bibliothèque</string>
+    <string name="ime_saved_text_saved">Enregistré dans la bibliothèque.</string>
+    <string name="ime_saved_text_save_empty">Rien à enregistrer.</string>
+    <string name="ime_saved_text_empty">Aucun texte enregistré. Dans Compose, appuyez sur l’icône Enregistrer entre Effacer et Textes enregistrés.</string>
+    <string name="ime_saved_text_load">Charger</string>
+    <string name="ime_saved_text_send">Envoyer</string>
+    <string name="ime_saved_text_pin">Épingler en haut</string>
+    <string name="ime_saved_text_unpin">Désépingler</string>
+    <string name="ime_saved_text_rename">Renommer</string>
+    <string name="ime_saved_text_delete">Supprimer</string>
+    <string name="ime_saved_text_delete_confirm_title">Supprimer le texte enregistré ?</string>
+    <string name="ime_saved_text_delete_confirm_message">Cette action est irréversible.</string>
+    <string name="ime_saved_text_rename_title">Renommer</string>
+    <string name="ime_saved_text_more">Plus</string>
+    <string name="ime_saved_text_preview_cd">Aperçu</string>
+    <string name="ime_saved_text_send_selected_cd">Envoyer le texte enregistré sélectionné</string>
+    <string name="ime_saved_text_load_selected_cd">Charger le texte enregistré sélectionné</string>
+    <string name="ime_saved_text_preview_selected_cd">Aperçu du texte enregistré sélectionné</string>
+    <string name="ime_saved_text_select_first">Sélectionnez d’abord un texte enregistré.</string>
+    <string name="km_pro_touchpad_gesture_status_title">État des gestes du pavé tactile</string>
+    <string name="km_pro_touchpad_gesture_status_summary">Affiche la ligne d’état compacte sur le pavé tactile (ex. boutons relevés / toucher inactif).</string>
+    <string name="km_pro_touchpad_gesture_status_switch">Afficher l’état des gestes</string>
+    <string name="km_pro_secondary_toggle_built_in_short">Intégré</string>
+    <string name="km_pro_secondary_toggle_ime_short">IME</string>
+    <string name="km_pro_secondary_toggle_full_short">Plein</string>
+    <string name="km_pro_secondary_toggle_split_short">Divisé</string>
+    <string name="km_pro_ime_direct_send_input_a11y">Envoi direct IME : utilisez le clavier système ; les touches sont envoyées à l’hôte. Revenez avec la touche intégrée sur la barre de raccourcis.</string>
+    <string name="top_shortcut_km_pro_input_built_in_short">Intégré</string>
+    <string name="top_shortcut_km_pro_input_ime_direct_short">IME direct</string>
+    <string name="top_shortcut_km_pro_input_ime_compose_short">IME composer</string>
+    <string name="top_shortcut_km_pro_input_built_in_cd">Clavier QWERTY intégré. Appuyez pour passer à l’envoi direct IME.</string>
+    <string name="top_shortcut_km_pro_input_ime_direct_cd">Envoi direct IME : chaque touche est envoyée à la frappe. Appuyez pour passer à la composition IME puis envoyer.</string>
+    <string name="top_shortcut_km_pro_input_ime_compose_cd">Composition IME : saisissez un tampon puis appuyez sur Envoyer. Appuyez pour revenir au QWERTY intégré.</string>
+    <string name="header_km_pro_input_builtin_cd">Mode clavier intégré. Appuyez pour utiliser le clavier QWERTY KeyCmd.</string>
+    <string name="header_km_pro_input_direct_cd">Mode envoi direct : chaque touche est envoyée à la frappe. Portrait uniquement.</string>
+    <string name="header_km_pro_input_compose_cd">Mode composition : saisissez un tampon puis appuyez sur Envoyer. Portrait uniquement.</string>
+    <string name="header_km_pro_input_direct_disabled_landscape_cd">L’envoi direct n’est disponible qu’en portrait dans Clavier et souris Pro.</string>
+    <string name="header_km_pro_input_compose_disabled_landscape_cd">La composition n’est disponible qu’en portrait dans Clavier et souris Pro.</string>
+    <string name="shortcut_hub_cd_create_profile">Créer un profil</string>
+    <string name="shortcut_hub_cd_import_profile">Importer un profil</string>
 </resources>

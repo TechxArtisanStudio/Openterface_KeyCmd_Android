@@ -22,7 +22,7 @@
       "dpadVariant": "cross",
       "id": "stick_left_2",
       "moduleAccentArgb": -8825528,
-      "scale": 1.5,
+      "scale": 1.07,
       "stickDownKey": 22,
       "stickLeftKey": 4,
       "stickRightKey": 7,
@@ -35,7 +35,7 @@
       "anchorY": 0.4933252,
       "id": "stick_left",
       "moduleAccentArgb": -8825528,
-      "scale": 1.05,
+      "scale": 0.75,
       "stickDownKey": 22,
       "stickLeftKey": 4,
       "stickRightKey": 7,
@@ -48,7 +48,7 @@
       "anchorY": 0.7599919,
       "id": "stick_right",
       "moduleAccentArgb": -8825528,
-      "scale": 1.17,
+      "scale": 0.84,
       "stickDownKey": 14,
       "stickLeftKey": 13,
       "stickMouseSensitivity": 1.0,
@@ -65,7 +65,7 @@
       "hidKey": 28,
       "id": "button_y",
       "modifierMask": 0,
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "BUTTON",
       "zIndex": 10
     },
@@ -76,7 +76,7 @@
       "hidKey": 27,
       "id": "button_x",
       "modifierMask": 0,
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "BUTTON",
       "zIndex": 11
     },
@@ -87,7 +87,7 @@
       "hidKey": 5,
       "id": "button_b",
       "modifierMask": 0,
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "BUTTON",
       "zIndex": 12
     },
@@ -98,7 +98,7 @@
       "hidKey": 40,
       "id": "button_a",
       "modifierMask": 0,
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "BUTTON",
       "zIndex": 13
     },
@@ -108,7 +108,7 @@
       "displayLabel": "L1",
       "hidKey": 58,
       "id": "shoulder_l",
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "SHOULDER",
       "zIndex": 20
     },
@@ -118,7 +118,7 @@
       "displayLabel": "R1",
       "hidKey": 59,
       "id": "shoulder_r",
-      "scale": 1.0,
+      "scale": 0.71,
       "type": "SHOULDER",
       "zIndex": 21
     },
@@ -128,7 +128,7 @@
       "displayLabel": "L2",
       "hidKey": 60,
       "id": "trigger_l",
-      "scale": 1.0,
+      "scale": 0.71,
       "triggerVariant": "digital",
       "type": "TRIGGER",
       "zIndex": 22
@@ -139,7 +139,7 @@
       "displayLabel": "R2",
       "hidKey": 61,
       "id": "trigger_r",
-      "scale": 1.0,
+      "scale": 0.71,
       "triggerVariant": "digital",
       "type": "TRIGGER",
       "zIndex": 23

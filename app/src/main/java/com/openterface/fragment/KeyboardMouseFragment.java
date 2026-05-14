@@ -1,9 +1,15 @@
 package com.openterface.fragment;
 
+import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.content.res.ColorStateList;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.LayoutInflater;
+import android.view.OrientationEventListener;
+import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -13,6 +19,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -22,13 +29,15 @@ import androidx.fragment.app.FragmentTransaction;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.fragments.KeyboardMouseSettingsFragment;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
  * Standard &quot;Keyboard &amp; Mouse&quot; mode: KM Basic full-screen sub-modes (keyboard, numpad,
- * touchpad, compose, basic settings). Pro composite experience lives in {@link CompositeFragment}.
+ * touchpad; Basic preferences open from the setup icon in the chrome strip). Compose &amp; Send is
+ * Keyboard &amp; Mouse Pro only ({@link CompositeFragment}).
  */
 public final class KeyboardMouseFragment extends Fragment {
 
@@ -40,6 +49,7 @@ public final class KeyboardMouseFragment extends Fragment {
     public static final String SUBMODE_KEYBOARD = "keyboard";
     public static final String SUBMODE_NUMPAD = "numpad";
     public static final String SUBMODE_TOUCHPAD = "touchpad";
+    /** Legacy intents / saved state only; KM Basic no longer hosts this submode. */
     public static final String SUBMODE_COMPOSE = "compose";
     public static final String SUBMODE_SETTINGS = "settings";
 
@@ -51,8 +61,8 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private TextView tabKeyboard;
     @Nullable private TextView tabTouch;
     @Nullable private TextView tabNum;
-    @Nullable private TextView tabIme;
-    @Nullable private TextView tabSettings;
+    @Nullable private ImageButton chromeSetup;
+    @Nullable private ImageButton chromeModeGuide;
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
     @Nullable private LinearLayout chromeConnectionWrap;
@@ -60,6 +70,19 @@ public final class KeyboardMouseFragment extends Fragment {
 
     /** Session-scoped modifier / mouse-button locks for KM Basic sub-modes. */
     private final KmBasicHoldLockController holdLockController = new KmBasicHoldLockController();
+
+    /**
+     * Touchpad: allow only normal and reverse portrait. {@link
+     * ActivityInfo#SCREEN_ORIENTATION_SENSOR_PORTRAIT} often omits upside-down; {@link
+     * ActivityInfo#SCREEN_ORIENTATION_FULL_SENSOR} allows landscape, which we avoid by driving {@link
+     * ActivityInfo#SCREEN_ORIENTATION_PORTRAIT} / {@link ActivityInfo#SCREEN_ORIENTATION_REVERSE_PORTRAIT}
+     * from the orientation sensor.
+     */
+    @Nullable
+    private OrientationEventListener portraitPairOrientationListener;
+
+    /** Last {@link Activity#setRequestedOrientation} applied for portrait-pair submodes; {@link Integer#MIN_VALUE} = none. */
+    private int lastPortraitPairLock = Integer.MIN_VALUE;
 
     private final MainActivity.OnTargetOsChangeListener basicOsListener =
             os -> {
@@ -82,15 +105,29 @@ public final class KeyboardMouseFragment extends Fragment {
         return f;
     }
 
+    /**
+     * KM Basic no longer exposes Compose &amp; Send; map legacy {@link #SUBMODE_COMPOSE} requests to
+     * keyboard.
+     */
+    @Nullable
+    public static String normalizeKmBasicSubmode(@Nullable String submode) {
+        if (SUBMODE_COMPOSE.equals(submode)) {
+            return SUBMODE_KEYBOARD;
+        }
+        return submode;
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
-            currentSubmode = savedInstanceState.getString(STATE_SUBMODE, SUBMODE_KEYBOARD);
+            currentSubmode =
+                    normalizeKmBasicSubmode(
+                            savedInstanceState.getString(STATE_SUBMODE, SUBMODE_KEYBOARD));
         } else {
             Bundle args = getArguments();
             if (args != null && args.containsKey(ARG_INITIAL_SUBMODE)) {
-                String s = args.getString(ARG_INITIAL_SUBMODE);
+                String s = normalizeKmBasicSubmode(args.getString(ARG_INITIAL_SUBMODE));
                 if (s != null && isKnownSubmode(s)) {
                     currentSubmode = s;
                 }
@@ -124,7 +161,7 @@ public final class KeyboardMouseFragment extends Fragment {
      * statusBars).
      *
      * <p>In landscape, pads the trailing end with {@code max(navigationBars, displayCutout)} on the
-     * end axis so Target OS + connection stay clear of side system navigation (same merge as
+     * end axis so Target OS, Setup, and connection stay clear of side system navigation (same merge as
      * {@link com.openterface.fragment.BasicComposeFragment#setupBasicComposeImeInsets}).
      */
     private void applyKmBasicChromeTopInset(@Nullable View chromeInsetContainer) {
@@ -176,6 +213,7 @@ public final class KeyboardMouseFragment extends Fragment {
 
     @Override
     public void onPause() {
+        disablePortraitPairOrientationListener();
         if (getActivity() != null) {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
         }
@@ -195,18 +233,118 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     /**
-     * Full-width PC keyboard is only practical in landscape; other KM Basic submodes follow device
-     * rotation (portrait and landscape).
+     * Full-width PC keyboard is only practical in landscape. Touchpad allows only the two portrait
+     * directions (see portrait-pair listener). Numpad and settings follow full rotation.
      */
     private void applyOrientationForCurrentSubmode() {
-        if (getActivity() == null) {
+        Activity activity = getActivity();
+        if (activity == null) {
             return;
         }
         if (SUBMODE_KEYBOARD.equals(currentSubmode)) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            disablePortraitPairOrientationListener();
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        } else if (isPortraitPairLockedSubmode()) {
+            ensurePortraitPairOrientationListenerEnabled();
         } else {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+            disablePortraitPairOrientationListener();
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
         }
+    }
+
+    private boolean isPortraitPairLockedSubmode() {
+        return SUBMODE_TOUCHPAD.equals(currentSubmode);
+    }
+
+    private void disablePortraitPairOrientationListener() {
+        if (portraitPairOrientationListener != null) {
+            portraitPairOrientationListener.disable();
+        }
+        lastPortraitPairLock = Integer.MIN_VALUE;
+    }
+
+    private void ensurePortraitPairOrientationListenerEnabled() {
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        if (portraitPairOrientationListener == null) {
+            portraitPairOrientationListener =
+                    new OrientationEventListener(
+                            activity.getApplicationContext(), SensorManager.SENSOR_DELAY_NORMAL) {
+                        @Override
+                        public void onOrientationChanged(int orientation) {
+                            Activity a = getActivity();
+                            if (!isAdded() || a == null || !isPortraitPairLockedSubmode()) {
+                                return;
+                            }
+                            updatePortraitPairLockFromSensorDegrees(orientation);
+                        }
+                    };
+        }
+        if (!portraitPairOrientationListener.canDetectOrientation()) {
+            lastPortraitPairLock = Integer.MIN_VALUE;
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            return;
+        }
+        syncPortraitPairLockFromDisplayRotation();
+        portraitPairOrientationListener.enable();
+    }
+
+    private void syncPortraitPairLockFromDisplayRotation() {
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        int lock;
+        switch (displayRotationCompat(activity)) {
+            case Surface.ROTATION_180:
+                lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+                break;
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_90:
+            case Surface.ROTATION_270:
+            default:
+                lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                break;
+        }
+        applyPortraitPairLockIfChanged(activity, lock);
+    }
+
+    private static int displayRotationCompat(@NonNull Activity activity) {
+        Display display = activity.getDisplay();
+        if (display != null) {
+            return display.getRotation();
+        }
+        return activity.getWindowManager().getDefaultDisplay().getRotation();
+    }
+
+    private void updatePortraitPairLockFromSensorDegrees(int orientationDegrees) {
+        if (orientationDegrees == OrientationEventListener.ORIENTATION_UNKNOWN) {
+            return;
+        }
+        Activity activity = getActivity();
+        if (activity == null || !isPortraitPairLockedSubmode()) {
+            return;
+        }
+        int lock;
+        if (orientationDegrees >= 315 || orientationDegrees < 45) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        } else if (orientationDegrees >= 135 && orientationDegrees < 225) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+        } else {
+            // Device held in a landscape band: keep UI in default portrait (never landscape).
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        }
+        applyPortraitPairLockIfChanged(activity, lock);
+    }
+
+    private void applyPortraitPairLockIfChanged(@NonNull Activity activity, int lock) {
+        if (lock == lastPortraitPairLock) {
+            return;
+        }
+        lastPortraitPairLock = lock;
+        activity.setRequestedOrientation(lock);
     }
 
     private void wireChrome(@NonNull View root) {
@@ -214,8 +352,8 @@ public final class KeyboardMouseFragment extends Fragment {
         tabKeyboard = root.findViewById(R.id.basic_km_tab_keyboard);
         tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
         tabNum = root.findViewById(R.id.basic_km_tab_numpad);
-        tabIme = root.findViewById(R.id.basic_km_tab_ime);
-        tabSettings = root.findViewById(R.id.basic_km_tab_settings);
+        chromeSetup = root.findViewById(R.id.basic_km_setup_button);
+        chromeModeGuide = root.findViewById(R.id.basic_km_mode_guide);
         chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
         chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
         chromeConnectionIcon = root.findViewById(R.id.basic_km_connection_icon);
@@ -238,11 +376,17 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabNum != null) {
             tabNum.setOnClickListener(v -> requestSubmode(SUBMODE_NUMPAD));
         }
-        if (tabIme != null) {
-            tabIme.setOnClickListener(v -> requestSubmode(SUBMODE_COMPOSE));
+        if (chromeSetup != null) {
+            chromeSetup.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
         }
-        if (tabSettings != null) {
-            tabSettings.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
+        if (chromeModeGuide != null) {
+            chromeModeGuide.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openModeGuideFromEmbeddedChrome();
+                        }
+                    });
         }
         if (chromeTargetOs != null) {
             chromeTargetOs.setOnClickListener(
@@ -298,8 +442,6 @@ public final class KeyboardMouseFragment extends Fragment {
             ((BasicNumPadFragment) child).onHostPortChanged(newPort);
         } else if (child instanceof BasicTouchpadFragment) {
             ((BasicTouchpadFragment) child).onHostPortChanged(newPort);
-        } else if (child instanceof BasicComposeFragment) {
-            ((BasicComposeFragment) child).onHostPortChanged(newPort);
         }
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
@@ -340,11 +482,14 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabNum != null) {
             tabNum.setSelected(SUBMODE_NUMPAD.equals(currentSubmode));
         }
-        if (tabIme != null) {
-            tabIme.setSelected(SUBMODE_COMPOSE.equals(currentSubmode));
-        }
-        if (tabSettings != null) {
-            tabSettings.setSelected(SUBMODE_SETTINGS.equals(currentSubmode));
+        if (chromeSetup != null) {
+            boolean settings = SUBMODE_SETTINGS.equals(currentSubmode);
+            chromeSetup.setSelected(settings);
+            int tint =
+                    settings
+                            ? ThemeManager.getColorPrimary(chromeSetup.getContext())
+                            : ContextCompat.getColor(chromeSetup.getContext(), R.color.text_secondary);
+            chromeSetup.setImageTintList(ColorStateList.valueOf(tint));
         }
     }
 
@@ -356,6 +501,7 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     private void showSubmode(@NonNull String submode) {
+        submode = normalizeKmBasicSubmode(submode);
         if (!isKnownSubmode(submode)) {
             submode = SUBMODE_KEYBOARD;
         }
@@ -365,10 +511,19 @@ public final class KeyboardMouseFragment extends Fragment {
         Fragment f = buildChildForSubmode(submode);
         FragmentTransaction tx = getChildFragmentManager().beginTransaction();
         tx.replace(R.id.kb_mouse_host, f);
-        tx.commit();
-        getChildFragmentManager().executePendingTransactions();
+        tx.runOnCommit(
+                () -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    notifyKeyboardBodyIfShown();
+                });
+        if (getChildFragmentManager().isStateSaved()) {
+            tx.commitAllowingStateLoss();
+        } else {
+            tx.commit();
+        }
         refreshBasicEmbeddedChrome();
-        notifyKeyboardBodyIfShown();
     }
 
     /**
@@ -398,8 +553,6 @@ public final class KeyboardMouseFragment extends Fragment {
                 return BasicNumPadFragment.instantiateWithPort(port);
             case SUBMODE_TOUCHPAD:
                 return BasicTouchpadFragment.instantiateWithPort(port);
-            case SUBMODE_COMPOSE:
-                return BasicComposeFragment.instantiateWithPort(port);
             case SUBMODE_SETTINGS:
                 return new KeyboardMouseSettingsFragment();
             default:
@@ -411,7 +564,6 @@ public final class KeyboardMouseFragment extends Fragment {
         return SUBMODE_KEYBOARD.equals(s)
                 || SUBMODE_NUMPAD.equals(s)
                 || SUBMODE_TOUCHPAD.equals(s)
-                || SUBMODE_COMPOSE.equals(s)
                 || SUBMODE_SETTINGS.equals(s);
     }
 

@@ -45,7 +45,7 @@ public final class StripCatalogPhysicalKeyIcons {
                 case 5:
                     return R.drawable.keyboard_return_24px;
                 case 6:
-                    return R.drawable.ic_keyboard_keymod_24;
+                    return R.drawable.ic_keyboard_keycmd_24;
                 default:
                     return 0;
             }

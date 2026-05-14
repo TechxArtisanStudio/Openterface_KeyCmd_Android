@@ -1,6 +1,6 @@
-# KeyMod Android - Orientation Support Demo Video Script
+# KeyCmd Android - Orientation Support Demo Video Script
 
-**Video Title:** "KeyMod Android App - Portrait & Landscape Orientation Support"
+**Video Title:** "KeyCmd Android App - Portrait & Landscape Orientation Support"
 **Duration:** 60 seconds
 **Format:** 1920x1080 (Full HD)
 **Style:** Screen recording with annotations
@@ -10,8 +10,8 @@
 ## 🎬 Video Script
 
 ### Scene 1: Introduction (0:00 - 0:05)
-**Visual:** KeyMod app logo with title
-**Text:** "KeyMod Android - Now with Orientation Support!"
+**Visual:** KeyCmd app logo with title
+**Text:** "KeyCmd Android - Now with Orientation Support!"
 **Audio:** Upbeat tech music
 
 ### Scene 2: Portrait Mode Demo (0:05 - 0:20)
@@ -61,7 +61,7 @@
 ## 📝 Video Description
 
 ```
-🎉 KeyMod Android now supports both portrait and landscape orientations!
+🎉 KeyCmd Android now supports both portrait and landscape orientations!
 
 ✨ Features:
 - Automatic rotation based on device sensor
@@ -129,7 +129,7 @@ https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android/actions
 [0:25] ┌─────────────────────────────────────────────────┐
        │  📱 LANDSCAPE MODE                             │
        │  Title       │ ┌─────┐ ┌─────┐ ┌─────┐        │
-       │  KeyMod      │ │ KB  │ │ GP  │ │ MC  │        │
+       │  KeyCmd      │ │ KB  │ │ GP  │ │ MC  │        │
        │  Choose mode │ └─────┘ └─────┘ └─────┘        │
        │              │ ┌─────┐ ┌─────┐ ┌─────┐        │
        │              │ │ SC  │ │ VC  │ │ PR  │        │

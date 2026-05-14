@@ -18,7 +18,8 @@
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="?attr/colorSurfaceContainerHighest" />
+            <!-- Neutral keycap idle (avoids M3 surface tint reading purple in light mode). -->
+            <solid android:color="@color/key_bg_normal" />
             <corners android:radius="9dp" />
         </shape>
     </item>

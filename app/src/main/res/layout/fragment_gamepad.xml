@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/gamepad_window_system_bar"
-    android:theme="@style/ThemeOverlay.KeyMod.Gamepad">
+    android:theme="@style/ThemeOverlay.KeyCmd.Gamepad">
 
     <!-- Gamepad View -->
     <com.openterface.keymod.GamepadView
@@ -25,7 +25,7 @@
         android:focusable="false"
         android:importantForAccessibility="no" />
 
-    <!-- Menu + customize + cycle preset + active preset + spacer + connection (top); top margin applied in code with status bar insets -->
+    <!-- Menu + customize + … + spacer + [creator chip] + mode guide + connection (top); top margin applied in code with status bar insets -->
     <LinearLayout
         android:id="@+id/gamepad_chrome_bar"
         android:layout_width="match_parent"
@@ -139,6 +139,37 @@
             tools:text="Creator"
             tools:visibility="visible" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_gesture_sensitivity_btn"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:contentDescription="@string/gamepad_gesture_sensitivity_btn_cd"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
+            app:icon="@drawable/ic_tune_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
+
+        <ImageButton
+            android:id="@+id/gamepad_mode_guide"
+            android:layout_width="@dimen/header_icon_size"
+            android:layout_height="@dimen/header_icon_size"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:layout_marginEnd="@dimen/spacing_tiny"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/mode_guide_header_cd"
+            android:padding="@dimen/button_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_mode_guide_24"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
         <LinearLayout
             android:id="@+id/gamepad_chrome_connection_wrap"
             android:layout_width="wrap_content"
@@ -159,44 +190,6 @@
                 android:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
     </LinearLayout>
-
-    <!-- Slim bar while repositioning modules (move mode) -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/gamepad_edit_session_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_marginHorizontal="@dimen/spacing_small"
-        android:layout_marginTop="0dp"
-        android:visibility="gone"
-        app:cardCornerRadius="@dimen/gamepad_toolbar_corner_radius"
-        app:cardElevation="4dp"
-        app:contentPadding="@dimen/spacing_small"
-        tools:visibility="visible">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/gamepad_edit_session_done"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_edit_done"
-                android:textAllCaps="false" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_small"
-                android:layout_weight="1"
-                android:text="@string/gamepad_edit_session_title"
-                android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
     <!-- Edit-only: background, add module, mapping hints (centered when visible) -->
     <LinearLayout
@@ -261,5 +254,14 @@
             app:iconPadding="0dp"
             app:iconTint="?android:attr/textColorSecondary" />
     </LinearLayout>
+
+    <!-- Full-screen Layouts picker (child: GamepadLayoutsFragment). Visibility synced from back stack. -->
+    <FrameLayout
+        android:id="@+id/gamepad_layouts_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
 </FrameLayout>
