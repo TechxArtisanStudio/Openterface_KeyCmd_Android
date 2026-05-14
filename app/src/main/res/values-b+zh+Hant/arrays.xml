@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="language_names">
-        <item>英語</item>
-        <item>簡體中文</item>
-        <item>繁體中文</item>
-        <item>西班牙語</item>
-        <item>法語</item>
-        <item>德語</item>
-        <item>日語</item>
-        <item>韓語</item>
-        <item>義大利語</item>
-        <item>俄語</item>
-        <item>巴西葡萄牙語</item>
-    </string-array>
     <string-array name="voice_language_names">
         <item>自動偵測</item>
         <item>英語</item>

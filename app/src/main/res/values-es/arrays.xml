@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="language_names">
-        <item>Inglés</item>
-        <item>Chino (simplificado)</item>
-        <item>Chino (tradicional)</item>
-        <item>Español</item>
-        <item>Francés</item>
-        <item>Alemán</item>
-        <item>Japonés</item>
-        <item>Coreano</item>
-        <item>Italiano</item>
-        <item>Ruso</item>
-        <item>Portugués (Brasil)</item>
-    </string-array>
     <string-array name="voice_language_names">
         <item>Detección automática</item>
         <item>Inglés</item>

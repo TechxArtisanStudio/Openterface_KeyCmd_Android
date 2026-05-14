@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="language_names">
-        <item>Английский</item>
-        <item>Китайский (упрощённый)</item>
-        <item>Китайский (традиционный)</item>
-        <item>Испанский</item>
-        <item>Французский</item>
-        <item>Немецкий</item>
-        <item>Японский</item>
-        <item>Корейский</item>
-        <item>Итальянский</item>
-        <item>Русский</item>
-        <item>Португальский (Бразилия)</item>
-    </string-array>
     <string-array name="voice_language_names">
         <item>Автоопределение</item>
         <item>Английский</item>
