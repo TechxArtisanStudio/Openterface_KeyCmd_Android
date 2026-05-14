@@ -13,7 +13,6 @@
     <string name="nav_welcome_guide_content_description">ようこそ画面、モードピッカー、チュートリアル</string>
     <string name="launch_panel_welcome_prefix">へようこそ</string>
     <string name="launch_panel_subtitle">携帯電話をスマートキーボードに変える</string>
-    <string name="launch_panel_quick_start_hint">「開始」を押したら：まず上部バーでハードウェアに接続し、操作しているパソコンに合わせて接続先OSを設定してください。</string>
     <string name="launch_panel_land_subtitle">携帯電話をスマートキーボードに変える</string>
     <string name="launch_panel_credit">詳細については、openterface.com をご覧ください。
 TechxArtisan により</string>

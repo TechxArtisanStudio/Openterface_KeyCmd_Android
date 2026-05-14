@@ -13,7 +13,6 @@
     <string name="nav_welcome_guide_content_description">Begrüßungsbildschirm, Modusauswahl und Tutorial</string>
     <string name="launch_panel_welcome_prefix">Willkommen bei</string>
     <string name="launch_panel_subtitle">Verwandeln Sie Ihr Telefon in eine intelligente Tastatur</string>
-    <string name="launch_panel_quick_start_hint">Nach Tippen auf Start: verbinden Sie die Hardware in der oberen Leiste und wählen Sie das Ziel-Betriebssystem passend zum gesteuerten Computer.</string>
     <string name="launch_panel_land_subtitle">Verwandeln Sie Ihr Telefon in eine intelligente Tastatur</string>
     <string name="launch_panel_credit">Erfahren Sie mehr unter openterface.com
 von TechxArtisan</string>

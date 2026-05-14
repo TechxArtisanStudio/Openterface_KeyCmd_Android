@@ -115,7 +115,6 @@
 
     <string name="launch_panel_welcome_prefix">欢迎来到</string>
     <string name="launch_panel_subtitle">将您的手机变成智能键盘</string>
-    <string name="launch_panel_quick_start_hint">点按「开始」后：先在顶部栏连接硬件，再将目标系统设为与您正在操作的电脑一致。</string>
     <string name="launch_panel_land_subtitle">将您的手机变成智能键盘</string>
     <string name="launch_panel_credit">了解更多信息，请访问 openterface.com
 通过 TechxArtisan</string>

@@ -185,7 +185,6 @@
     <string name="profile_builtin_default_description">Common shortcuts for any app</string>
     <string name="launch_panel_welcome_prefix">Welcome to</string>
     <string name="launch_panel_subtitle">Turn Your Phone into a Smart Controller</string>
-    <string name="launch_panel_quick_start_hint">After you tap Start: connect your hardware from the top bar, then set target OS to match the computer you control.</string>
     <string name="launch_panel_land_subtitle">Turn Your Phone into a Smart Controller</string>
     <string name="launch_panel_credit">Learn more at openterface.com
 by TechxArtisan</string>

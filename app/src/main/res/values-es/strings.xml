@@ -13,7 +13,6 @@
     <string name="nav_welcome_guide_content_description">Pantalla de bienvenida, selector de modo y tutorial</string>
     <string name="launch_panel_welcome_prefix">Bienvenido a</string>
     <string name="launch_panel_subtitle">Convierta su teléfono en un teclado inteligente</string>
-    <string name="launch_panel_quick_start_hint">Tras pulsar Iniciar: conecte el hardware desde la barra superior y configure el SO de destino según el equipo que controla.</string>
     <string name="launch_panel_land_subtitle">Convierta su teléfono en un teclado inteligente</string>
     <string name="launch_panel_credit">Obtenga más información en openterface.com
 por TechxArtisan</string>

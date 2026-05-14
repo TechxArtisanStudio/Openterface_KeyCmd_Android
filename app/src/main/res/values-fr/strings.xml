@@ -13,7 +13,6 @@
     <string name="nav_welcome_guide_content_description">Écran de bienvenue, sélecteur de mode et didacticiel</string>
     <string name="launch_panel_welcome_prefix">Bienvenue à</string>
     <string name="launch_panel_subtitle">Transformez votre téléphone en clavier intelligent</string>
-    <string name="launch_panel_quick_start_hint">Après « Commencer » : connectez le matériel depuis la barre du haut, puis réglez le système cible sur l’ordinateur que vous contrôlez.</string>
     <string name="launch_panel_land_subtitle">Transformez votre téléphone en clavier intelligent</string>
     <string name="launch_panel_credit">En savoir plus sur openterface.com
 par TechxArtisan</string>

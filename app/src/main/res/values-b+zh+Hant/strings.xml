@@ -115,7 +115,6 @@
 
     <string name="launch_panel_welcome_prefix">歡迎來到</string>
     <string name="launch_panel_subtitle">將您的手機變成智慧鍵盤</string>
-    <string name="launch_panel_quick_start_hint">點按「開始」後：請先在頂部列連線硬體，再將目標系統設為與您正在操作的電腦一致。</string>
     <string name="launch_panel_land_subtitle">將您的手機變成智慧鍵盤</string>
     <string name="launch_panel_credit">瞭解更多資訊，請訪問 openterface.com
 透過 TechxArtisan</string>
