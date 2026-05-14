@@ -552,7 +552,7 @@ by TechxArtisan</string>
     <string name="ime_saved_text_save_cd">Save current text to library</string>
     <string name="ime_saved_text_saved">Saved to library.</string>
     <string name="ime_saved_text_save_empty">Nothing to save.</string>
-    <string name="ime_saved_text_empty">No saved texts yet. Tap Save current to add from the editor.</string>
+    <string name="ime_saved_text_empty">No saved texts yet. From Compose, tap the save icon between Clear and Saved texts.</string>
     <string name="ime_saved_text_load">Load</string>
     <string name="ime_saved_text_send">Send</string>
     <string name="ime_saved_text_pin">Pin to top</string>

@@ -1667,7 +1667,7 @@ par TechxArtisan</string>
     <string name="ime_saved_text_save_cd">Enregistrer le texte actuel dans la bibliothèque</string>
     <string name="ime_saved_text_saved">Enregistré dans la bibliothèque.</string>
     <string name="ime_saved_text_save_empty">Rien à enregistrer.</string>
-    <string name="ime_saved_text_empty">Aucun texte enregistré. Appuyez sur Enregistrer l’actuel pour ajouter depuis l’éditeur.</string>
+    <string name="ime_saved_text_empty">Aucun texte enregistré. Dans Compose, appuyez sur l’icône Enregistrer entre Effacer et Textes enregistrés.</string>
     <string name="ime_saved_text_load">Charger</string>
     <string name="ime_saved_text_send">Envoyer</string>
     <string name="ime_saved_text_pin">Épingler en haut</string>

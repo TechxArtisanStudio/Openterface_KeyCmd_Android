@@ -72,15 +72,6 @@
                 android:visibility="gone"
                 app:icon="@drawable/ic_send_material_24"
                 app:iconTint="?attr/colorControlNormal" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/ime_saved_text_save_current"
-                style="@style/Widget.Material3.Button.IconButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:contentDescription="@string/ime_saved_text_save_cd"
-                app:icon="@drawable/ic_top_save"
-                app:iconTint="?attr/colorControlNormal" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView

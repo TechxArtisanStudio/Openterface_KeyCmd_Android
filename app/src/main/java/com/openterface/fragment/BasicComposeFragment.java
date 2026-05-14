@@ -31,6 +31,8 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.compose.SavedTextItem;
+import com.openterface.keymod.compose.SavedTextRepository;
 import com.openterface.keymod.util.ComposeSendPreviewDialog;
 import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
@@ -42,7 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * KM Basic IME-style compose: same send gating as Pro IME sub-compose ({@link ImeComposeSendGate}),
- * with Saved texts / Clear / Redo clear / Send and in-flight cancel (Send becomes Stop).
+ * with Redo clear / Clear / Save to library / Saved texts / Send and in-flight cancel (Send becomes Stop).
  */
 public class BasicComposeFragment extends Fragment implements ImeSavedTextFragment.Host {
 
@@ -73,6 +75,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
 
     private EditText editor;
     @Nullable private MaterialButton savedTextsBtn;
+    private MaterialButton saveLibraryBtn;
     private MaterialButton clearBtn;
     private MaterialButton redoBtn;
     private MaterialButton sendBtn;
@@ -108,6 +111,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         editor = view.findViewById(R.id.basic_compose_editor);
         editor.setImeOptions(editor.getImeOptions() | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         savedTextsBtn = view.findViewById(R.id.basic_compose_saved_texts);
+        saveLibraryBtn = view.findViewById(R.id.basic_compose_save_library);
         clearBtn = view.findViewById(R.id.basic_compose_clear);
         redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
@@ -120,6 +124,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (savedTextsBtn != null) {
             savedTextsBtn.setOnClickListener(v -> onSavedTextsClicked());
         }
+        saveLibraryBtn.setOnClickListener(v -> onSaveLibraryClicked());
 
         editor.addTextChangedListener(
                 new TextWatcher() {
@@ -280,6 +285,19 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             return;
         }
         ma.showImeSavedTextOverlay(this);
+    }
+
+    private void onSaveLibraryClicked() {
+        if (sending) {
+            return;
+        }
+        SavedTextRepository repo = new SavedTextRepository(requireContext());
+        SavedTextItem added = repo.addFromPlainText(readCurrentEditorText());
+        if (added == null) {
+            Toast.makeText(requireContext(), R.string.ime_saved_text_save_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(requireContext(), R.string.ime_saved_text_saved, Toast.LENGTH_SHORT).show();
     }
 
     private void onClearClicked() {
@@ -504,7 +522,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     }
 
     private void refreshToolbarState() {
-        if (sendBtn == null || clearBtn == null || redoBtn == null) {
+        if (sendBtn == null || clearBtn == null || redoBtn == null || saveLibraryBtn == null) {
             return;
         }
         MainActivity ma = mainActivity();
@@ -551,6 +569,8 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             savedTextsBtn.setEnabled(!sending);
             savedTextsBtn.setAlpha(sending ? 0.45f : 1f);
         }
+        saveLibraryBtn.setEnabled(!sending);
+        saveLibraryBtn.setAlpha(sending ? 0.45f : 1f);
 
         if (sending) {
             sendBtn.setText("");

@@ -1232,7 +1232,7 @@
     <string name="ime_saved_text_save_cd">将当前文本保存到库</string>
     <string name="ime_saved_text_saved">已保存到库。</string>
     <string name="ime_saved_text_save_empty">没有可保存的内容。</string>
-    <string name="ime_saved_text_empty">暂无已保存文本。在编辑器中点按「保存当前」以添加。</string>
+    <string name="ime_saved_text_empty">暂无已保存文本。在撰写界面中，点按「Clear」与已保存文本之间的保存图标。</string>
     <string name="ime_saved_text_load">加载</string>
     <string name="ime_saved_text_send">发送</string>
     <string name="ime_saved_text_pin">置顶</string>

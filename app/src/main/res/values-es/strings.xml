@@ -1666,7 +1666,7 @@ por TechxArtisan</string>
     <string name="ime_saved_text_save_cd">Guardar el texto actual en la biblioteca</string>
     <string name="ime_saved_text_saved">Guardado en la biblioteca.</string>
     <string name="ime_saved_text_save_empty">No hay nada que guardar.</string>
-    <string name="ime_saved_text_empty">Aún no hay textos guardados. Pulsa Guardar actual para añadir desde el editor.</string>
+    <string name="ime_saved_text_empty">Aún no hay textos guardados. En Compose, pulsa el icono de guardar entre Borrar y Textos guardados.</string>
     <string name="ime_saved_text_load">Cargar</string>
     <string name="ime_saved_text_send">Enviar</string>
     <string name="ime_saved_text_pin">Fijar arriba</string>

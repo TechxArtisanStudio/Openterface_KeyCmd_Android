@@ -48,26 +48,10 @@
         android:paddingBottom="12dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_saved_texts"
-            style="@style/Widget.KeyCmd.BasicComposeActionButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:contentDescription="@string/ime_saved_text_cd_open_library"
-            android:text=""
-            app:icon="@drawable/ic_bookmark_star_24"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
-            app:iconTint="?attr/colorOnSurface" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_redo"
             style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:gravity="center"
             android:contentDescription="@string/compose_redo_clear"
@@ -89,6 +73,38 @@
             android:contentDescription="@string/compose_clear"
             android:text=""
             app:icon="@drawable/ic_compose_clear_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_save_library"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/ime_saved_text_save_cd"
+            android:text=""
+            app:icon="@drawable/ic_top_save"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
+            app:iconTint="?attr/colorOnSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/basic_compose_saved_texts"
+            style="@style/Widget.KeyCmd.BasicComposeActionButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:contentDescription="@string/ime_saved_text_cd_open_library"
+            android:text=""
+            app:icon="@drawable/ic_bookmark_star_24"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"

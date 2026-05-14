@@ -1667,7 +1667,7 @@ von TechxArtisan</string>
     <string name="ime_saved_text_save_cd">Aktuellen Text in die Bibliothek speichern</string>
     <string name="ime_saved_text_saved">In der Bibliothek gespeichert.</string>
     <string name="ime_saved_text_save_empty">Nichts zu speichern.</string>
-    <string name="ime_saved_text_empty">Noch keine gespeicherten Texte. Tippe auf „Aktuellen speichern“, um aus dem Editor hinzuzufügen.</string>
+    <string name="ime_saved_text_empty">Noch keine gespeicherten Texte. In Compose auf das Speichern-Symbol zwischen „Klar“ und „Gespeicherte Texte“ tippen.</string>
     <string name="ime_saved_text_load">Laden</string>
     <string name="ime_saved_text_send">Senden</string>
     <string name="ime_saved_text_pin">Oben anheften</string>

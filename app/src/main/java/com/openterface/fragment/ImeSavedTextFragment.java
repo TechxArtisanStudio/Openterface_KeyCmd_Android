@@ -95,7 +95,6 @@ public class ImeSavedTextFragment extends Fragment {
         SavedTextRepository repo = new SavedTextRepository(ctx);
         RecyclerView rv = view.findViewById(R.id.ime_saved_text_list);
         TextView empty = view.findViewById(R.id.ime_saved_text_empty);
-        MaterialButton saveBtn = view.findViewById(R.id.ime_saved_text_save_current);
         MaterialButton previewBtn = view.findViewById(R.id.ime_saved_text_action_preview);
         MaterialButton loadBtn = view.findViewById(R.id.ime_saved_text_action_load);
         MaterialButton sendBtn = view.findViewById(R.id.ime_saved_text_action_send);
@@ -133,24 +132,6 @@ public class ImeSavedTextFragment extends Fragment {
         }
         if (sendBtn != null) {
             sendBtn.setOnClickListener(v -> adapter.sendSelected());
-        }
-
-        if (saveBtn != null) {
-            saveBtn.setOnClickListener(
-                    v -> {
-                        SavedTextItem added = repo.addFromPlainText(host.readCurrentEditorText());
-                        if (added == null) {
-                            Toast.makeText(ctx, R.string.ime_saved_text_save_empty, Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        Toast.makeText(ctx, R.string.ime_saved_text_saved, Toast.LENGTH_SHORT).show();
-                        items.clear();
-                        items.addAll(repo.loadSorted());
-                        adapter.notifyDataSetChanged();
-                        adapter.setSelectedItemId(added.id);
-                        refreshEmpty(empty, items);
-                        rv.scrollToPosition(0);
-                    });
         }
     }
 

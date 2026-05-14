@@ -1232,7 +1232,7 @@
     <string name="ime_saved_text_save_cd">將目前文字儲存到庫</string>
     <string name="ime_saved_text_saved">已儲存到庫。</string>
     <string name="ime_saved_text_save_empty">沒有可儲存的內容。</string>
-    <string name="ime_saved_text_empty">尚無已儲存文字。在編輯器中點按「儲存目前」以新增。</string>
+    <string name="ime_saved_text_empty">尚無已儲存文字。在撰寫畫面中，點按「Clear」與已儲存文字之間的儲存圖示。</string>
     <string name="ime_saved_text_load">載入</string>
     <string name="ime_saved_text_send">傳送</string>
     <string name="ime_saved_text_pin">釘選在頂端</string>

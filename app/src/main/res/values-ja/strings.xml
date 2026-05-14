@@ -1631,7 +1631,7 @@ TechxArtisan により</string>
     <string name="ime_saved_text_save_cd">編集中のテキストをライブラリに保存</string>
     <string name="ime_saved_text_saved">ライブラリに保存しました。</string>
     <string name="ime_saved_text_save_empty">保存する内容がありません。</string>
-    <string name="ime_saved_text_empty">保存テキストはまだありません。「現在を保存」でエディターから追加できます。</string>
+    <string name="ime_saved_text_empty">保存テキストはまだありません。作成画面で「クリア」と「保存テキスト」の間にある保存アイコンをタップしてください。</string>
     <string name="ime_saved_text_load">読み込み</string>
     <string name="ime_saved_text_send">送信</string>
     <string name="ime_saved_text_pin">上に固定</string>
