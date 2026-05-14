@@ -13,7 +13,7 @@ set -euo pipefail
 #   SCRCPY_OPTS="--max-fps=60 --bit-rate=8M"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INSTALL_SCRIPT="$ROOT_DIR/scripts/install_keymod_to_phone.sh"
+INSTALL_SCRIPT="$ROOT_DIR/scripts/install_to_phone.sh"
 
 ANDROID_HOME_DEFAULT="/opt/homebrew/share/android-commandlinetools"
 export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_HOME_DEFAULT}"

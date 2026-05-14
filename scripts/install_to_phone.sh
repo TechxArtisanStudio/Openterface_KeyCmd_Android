@@ -4,8 +4,8 @@ set -euo pipefail
 
 # Install current KeyCmd debug app to a connected physical Android phone.
 # Usage:
-#   ./scripts/install_keymod_to_phone.sh
-#   ./scripts/install_keymod_to_phone.sh <device_serial>
+#   ./scripts/install_to_phone.sh
+#   ./scripts/install_to_phone.sh <device_serial>
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLEW="$ROOT_DIR/gradlew"
