@@ -6,7 +6,18 @@
     <dimen name="spacing_medium">16dp</dimen>
     <dimen name="spacing_large">24dp</dimen>
     <dimen name="spacing_xlarge">32dp</dimen>
-    
+
+    <dimen name="compose_send_warning_tab_body_height">264dp</dimen>
+    <!-- Tabbed send-risk dialog: scroll area for ASCII details + expandable Unicode section -->
+    <dimen name="compose_send_warning_tabbed_scroll_height">280dp</dimen>
+    <!-- Tabbed "Review send risks" card: comfortable padding (Material dialog body + KeyCmd compose rhythm). -->
+    <dimen name="compose_send_warning_tabbed_card_padding_h">24dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_top">20dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_bottom">24dp</dimen>
+    <dimen name="compose_send_warning_tabbed_title_body_gap">16dp</dimen>
+    <dimen name="compose_send_warning_tabbed_block_gap">16dp</dimen>
+    <dimen name="compose_send_warning_tabbed_body_line_spacing_extra">4dp</dimen>
+
     <!-- Header -->
     <dimen name="header_height">56dp</dimen>
     <dimen name="header_padding">8dp</dimen>

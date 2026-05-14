@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/compose_send_warning_tabbed_card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardElevation="0dp"
+    app:contentPaddingBottom="@dimen/compose_send_warning_tabbed_card_padding_bottom"
+    app:contentPaddingEnd="@dimen/compose_send_warning_tabbed_card_padding_h"
+    app:contentPaddingStart="@dimen/compose_send_warning_tabbed_card_padding_h"
+    app:contentPaddingTop="@dimen/compose_send_warning_tabbed_card_padding_top"
+    app:shapeAppearance="?attr/shapeAppearanceCornerMedium"
+    app:strokeColor="?attr/colorPrimary"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/compose_send_warning_title_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/spacing_small">
+
+            <TextView
+                android:id="@+id/compose_send_warning_custom_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingEnd="@dimen/spacing_small"
+                android:text="@string/compose_send_warning_title"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/compose_send_warning_switch_unicode_icon"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@string/compose_send_warning_mode_switch_unicode_cd"
+                app:icon="@drawable/ic_experiment_24px"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/compose_send_warning_switch_to_ascii_icon"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@string/compose_send_warning_switch_to_ascii_cd"
+                android:visibility="gone"
+                app:icon="@drawable/ic_keyboard_ascii_mode_24"
+                app:iconTint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/compose_send_warning_mode_ascii"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/compose_send_warning_tabbed_title_body_gap"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/compose_send_warning_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="@dimen/compose_send_warning_tabbed_body_line_spacing_extra"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/compose_send_warning_send_anyway_button"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/compose_send_warning_tabbed_block_gap"
+                android:minHeight="48dp"
+                android:text="@string/compose_send_warning_send_anyway"
+                app:icon="@drawable/ic_send_warning_24"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="22dp"
+                app:iconTint="?attr/colorOnPrimary" />
+
+            <LinearLayout
+                android:id="@+id/compose_send_warning_inline_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_medium"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/compose_send_warning_check_button"
+                        style="@style/Widget.KeyCmd.ComposeSendWarning.SecondaryButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:contentDescription="@string/compose_send_warning_check"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/compose_send_warning_check"
+                        app:icon="@drawable/chat_error_24px"
+                        app:iconGravity="textStart"
+                        app:iconPadding="6dp"
+                        app:iconSize="20dp"
+                        app:iconTint="?attr/colorOnSurface" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/compose_send_warning_preview_button"
+                        style="@style/Widget.KeyCmd.ComposeSendWarning.SecondaryButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_small"
+                        android:layout_weight="1"
+                        android:contentDescription="@string/compose_send_warning_preview"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/compose_send_warning_preview"
+                        app:icon="@drawable/search_check_2_24px"
+                        app:iconGravity="textStart"
+                        app:iconPadding="6dp"
+                        app:iconSize="20dp"
+                        app:iconTint="?attr/colorOnSurface" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/compose_send_warning_mode_unicode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/compose_send_warning_tabbed_title_body_gap"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/compose_send_warning_unicode_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="@dimen/compose_send_warning_tabbed_body_line_spacing_extra"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/compose_send_warning_unicode_host_entry_button"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/compose_send_warning_tabbed_block_gap"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:minHeight="48dp"
+                android:text="@string/compose_send_warning_send_unicode_short"
+                app:icon="@drawable/ic_code_xml_24"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="22dp"
+                app:iconTint="?attr/colorOnPrimary" />
+
+            <LinearLayout
+                android:id="@+id/compose_send_warning_unicode_inline_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_medium"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/compose_send_warning_unicode_preview_button"
+                    style="@style/Widget.KeyCmd.ComposeSendWarning.SecondaryButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/compose_send_warning_preview_unicode_cd"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/compose_send_warning_preview"
+                    app:icon="@drawable/search_check_2_24px"
+                    app:iconGravity="textStart"
+                    app:iconPadding="6dp"
+                    app:iconSize="20dp"
+                    app:iconTint="?attr/colorOnSurface" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/compose_send_warning_unicode_info_button"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="@dimen/spacing_small"
+                    android:contentDescription="@string/compose_send_warning_unicode_info_cd"
+                    app:icon="@drawable/ic_touchpad_info_24"
+                    app:iconTint="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

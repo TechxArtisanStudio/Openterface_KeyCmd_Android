@@ -1,6 +1,8 @@
 package com.openterface.keymod.util;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -14,6 +16,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.openterface.keymod.R;
 
@@ -31,19 +35,56 @@ public final class ComposeSendWarningDialog {
             @NonNull Runnable onSendAnyway,
             @NonNull Runnable onCheck,
             @NonNull Runnable onPreview) {
-        show(context, warningInfo, onSendAnyway, onCheck, onPreview, null, null);
+        show(
+                context,
+                warningInfo,
+                null,
+                onSendAnyway,
+                onCheck,
+                onPreview,
+                null,
+                null,
+                null);
     }
 
     public static void show(
             @NonNull Context context,
             @NonNull ImeComposeSendGate.WarningInfo warningInfo,
+            @Nullable String bufferText,
             @NonNull Runnable onSendAnyway,
             @NonNull Runnable onCheck,
             @NonNull Runnable onPreview,
             @Nullable String targetOs,
             @Nullable Runnable onSendWithUnicodeHostEntry) {
-        View content =
-                LayoutInflater.from(context).inflate(R.layout.dialog_compose_send_warning, null, false);
+        show(
+                context,
+                warningInfo,
+                bufferText,
+                onSendAnyway,
+                onCheck,
+                onPreview,
+                targetOs,
+                onSendWithUnicodeHostEntry,
+                null);
+    }
+
+    public static void show(
+            @NonNull Context context,
+            @NonNull ImeComposeSendGate.WarningInfo warningInfo,
+            @Nullable String bufferText,
+            @NonNull Runnable onSendAnyway,
+            @NonNull Runnable onCheck,
+            @NonNull Runnable onPreview,
+            @Nullable String targetOs,
+            @Nullable Runnable onSendWithUnicodeHostEntry,
+            @Nullable Runnable onPreviewUnicodeHostEntry) {
+        final boolean showUnicodeHostEntry =
+                warningInfo.hasNonAscii && onSendWithUnicodeHostEntry != null;
+        final boolean useTabbed = showUnicodeHostEntry && bufferText != null;
+        final int layoutRes =
+                useTabbed ? R.layout.dialog_compose_send_warning_tabbed : R.layout.dialog_compose_send_warning;
+
+        View content = LayoutInflater.from(context).inflate(layoutRes, null, false);
         TextView message = content.findViewById(R.id.compose_send_warning_message);
         View inlineActions = content.findViewById(R.id.compose_send_warning_inline_actions);
         View checkButton = content.findViewById(R.id.compose_send_warning_check_button);
@@ -64,22 +105,32 @@ public final class ComposeSendWarningDialog {
             previewButton.setVisibility(View.GONE);
         }
 
-        final boolean showUnicodeHostEntry =
-                warningInfo.hasNonAscii && onSendWithUnicodeHostEntry != null;
         final String targetOsForHint = targetOs;
-        if (showUnicodeHostEntry) {
-            unicodeRow.setVisibility(View.VISIBLE);
+        if (showUnicodeHostEntry && unicodeHostEntryButton != null) {
             unicodeHostEntryButton.setContentDescription(
                     context.getString(R.string.compose_send_warning_send_unicode_host_entry));
         } else {
-            unicodeRow.setVisibility(View.GONE);
+            if (unicodeRow != null) {
+                unicodeRow.setVisibility(View.GONE);
+            }
         }
 
-        AlertDialog dialog =
-                new MaterialAlertDialogBuilder(context)
-                        .setTitle(R.string.compose_send_warning_title)
-                        .setView(content)
-                        .create();
+        MaterialAlertDialogBuilder builder =
+                new MaterialAlertDialogBuilder(context).setView(content);
+        if (!useTabbed) {
+            builder.setTitle(R.string.compose_send_warning_title);
+        }
+        AlertDialog dialog = builder.create();
+
+        if (useTabbed) {
+            View unicodePreviewButton = content.findViewById(R.id.compose_send_warning_unicode_preview_button);
+            if (unicodePreviewButton != null) {
+                unicodePreviewButton.setVisibility(
+                        onPreviewUnicodeHostEntry != null ? View.VISIBLE : View.GONE);
+            }
+            wireDualModeUi(content);
+            populateUnicodePlan(context, content, bufferText, targetOs);
+        }
 
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
@@ -93,26 +144,115 @@ public final class ComposeSendWarningDialog {
                     dialog.dismiss();
                     onPreview.run();
                 });
-        unicodeInfoButton.setOnClickListener(
-                v ->
-                        new MaterialAlertDialogBuilder(context)
-                                .setTitle(R.string.compose_send_warning_unicode_info_title)
-                                .setMessage(unicodeHostSetupHint(context, targetOsForHint))
-                                .setPositiveButton(android.R.string.ok, null)
-                                .show());
-        unicodeHostEntryButton.setOnClickListener(
-                v -> {
-                    dialog.dismiss();
-                    if (onSendWithUnicodeHostEntry != null) {
-                        onSendWithUnicodeHostEntry.run();
-                    }
-                });
+        if (unicodeInfoButton != null) {
+            unicodeInfoButton.setOnClickListener(
+                    v ->
+                            new MaterialAlertDialogBuilder(context)
+                                    .setTitle(R.string.compose_send_warning_unicode_info_title)
+                                    .setMessage(unicodeHostSetupHint(context, targetOsForHint))
+                                    .setPositiveButton(android.R.string.ok, null)
+                                    .show());
+        }
+        if (unicodeHostEntryButton != null) {
+            unicodeHostEntryButton.setOnClickListener(
+                    v -> {
+                        dialog.dismiss();
+                        if (onSendWithUnicodeHostEntry != null) {
+                            onSendWithUnicodeHostEntry.run();
+                        }
+                    });
+        }
+        View unicodePreviewTabbed = content.findViewById(R.id.compose_send_warning_unicode_preview_button);
+        if (unicodePreviewTabbed != null && onPreviewUnicodeHostEntry != null) {
+            unicodePreviewTabbed.setOnClickListener(
+                    v -> {
+                        dialog.dismiss();
+                        onPreviewUnicodeHostEntry.run();
+                    });
+        }
         sendAnywayButton.setOnClickListener(
                 v -> {
                     dialog.dismiss();
                     onSendAnyway.run();
                 });
         dialog.show();
+    }
+
+    private static void wireDualModeUi(@NonNull View content) {
+        View modeAscii = content.findViewById(R.id.compose_send_warning_mode_ascii);
+        View modeUnicode = content.findViewById(R.id.compose_send_warning_mode_unicode);
+        View switchToAsciiIcon = content.findViewById(R.id.compose_send_warning_switch_to_ascii_icon);
+        View switchUnicodeIcon = content.findViewById(R.id.compose_send_warning_switch_unicode_icon);
+        if (modeAscii == null || modeUnicode == null || switchUnicodeIcon == null) {
+            return;
+        }
+
+        final boolean[] unicodeMode = {false};
+
+        Runnable applyMode =
+                () -> {
+                    modeAscii.setVisibility(unicodeMode[0] ? View.GONE : View.VISIBLE);
+                    modeUnicode.setVisibility(unicodeMode[0] ? View.VISIBLE : View.GONE);
+                    if (switchToAsciiIcon != null) {
+                        switchToAsciiIcon.setVisibility(unicodeMode[0] ? View.VISIBLE : View.GONE);
+                    }
+                    switchUnicodeIcon.setVisibility(unicodeMode[0] ? View.GONE : View.VISIBLE);
+                    applyUnicodeSubpageChrome(content, unicodeMode[0]);
+                };
+
+        switchUnicodeIcon.setOnClickListener(
+                v -> {
+                    unicodeMode[0] = true;
+                    applyMode.run();
+                });
+        if (switchToAsciiIcon != null) {
+            switchToAsciiIcon.setOnClickListener(
+                    v -> {
+                        unicodeMode[0] = false;
+                        applyMode.run();
+                    });
+        }
+
+        applyMode.run();
+    }
+
+    private static void applyUnicodeSubpageChrome(@NonNull View content, boolean unicodeMode) {
+        MaterialCardView card = content.findViewById(R.id.compose_send_warning_tabbed_card);
+        if (card == null) {
+            return;
+        }
+        float density = card.getResources().getDisplayMetrics().density;
+        if (unicodeMode) {
+            card.setStrokeWidth((int) (density + 0.5f));
+            int primary =
+                    MaterialColors.getColor(
+                            card, com.google.android.material.R.attr.colorPrimary, Color.TRANSPARENT);
+            int strokeArgb = (0xCC << 24) | (primary & 0x00FFFFFF);
+            card.setStrokeColor(ColorStateList.valueOf(strokeArgb));
+        } else {
+            card.setStrokeWidth(0);
+        }
+    }
+
+    private static void populateUnicodePlan(
+            @NonNull Context context,
+            @NonNull View content,
+            @NonNull String bufferText,
+            @Nullable String targetOs) {
+        String os = targetOs != null ? targetOs : "macos";
+        TextView unicodeMessage = content.findViewById(R.id.compose_send_warning_unicode_message);
+        if (unicodeMessage == null) {
+            return;
+        }
+        int steps = HidTextKeystrokeSender.countSendUnits(bufferText, true, os);
+        String hidLine = context.getString(R.string.compose_send_warning_tab_hid_steps_unicode, steps);
+        String body =
+                context.getString(R.string.compose_send_warning_unicode_mode_intro)
+                        + "\n\n"
+                        + context.getString(R.string.compose_send_warning_unicode_preview_hint)
+                        + "\n\n"
+                        + hidLine;
+        unicodeMessage.setText(body);
     }
 
     @NonNull

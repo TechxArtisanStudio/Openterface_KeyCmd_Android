@@ -16,11 +16,25 @@
         android:textColor="?attr/colorOnSurface"
         android:textSize="16sp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/compose_send_warning_send_anyway_button"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:minHeight="48dp"
+        android:text="@string/compose_send_warning_send_anyway"
+        app:icon="@drawable/ic_send_warning_24"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        app:iconSize="22dp"
+        app:iconTint="?attr/colorOnPrimary" />
+
     <LinearLayout
         android:id="@+id/compose_send_warning_inline_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
@@ -53,20 +67,11 @@
             app:iconTint="?attr/colorOnSurface" />
     </LinearLayout>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/compose_send_warning_send_anyway_button"
-        style="@style/Widget.Material3.Button.TonalButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:minHeight="46dp"
-        android:text="@string/compose_send_warning_send_anyway" />
-
     <LinearLayout
         android:id="@+id/compose_send_warning_unicode_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:visibility="gone">
@@ -77,9 +82,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:minHeight="46dp"
+            android:minHeight="48dp"
             android:text="@string/compose_send_warning_send_unicode_short"
-            app:icon="@drawable/ic_experiment_24px"
+            app:icon="@drawable/ic_code_xml_24"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
             app:iconTint="?attr/colorOnSecondaryContainer" />

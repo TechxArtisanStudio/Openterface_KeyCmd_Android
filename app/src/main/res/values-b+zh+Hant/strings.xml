@@ -1265,6 +1265,17 @@
     <string name="compose_unicode_confirm_message">若已連線的目標未啟用正確的 Unicode 輸入方式（例如在 Mac 上需使用「Unicode Hex 輸入」），本選項傳出的按鍵會被當成一般快捷鍵，可能導致非預期行為（如焦點跳到錯誤應用程式、關閉視窗等）。\n\n請僅在目標已正確設定後使用。需要設定步驟時，請先在上一畫面點按詳情 (i)。</string>
     <string name="compose_unicode_confirm_continue">繼續</string>
     <string name="compose_unicode_confirm_cancel">取消</string>
+    <string name="compose_send_warning_mode_switch_unicode_cd">切換到 Unicode 主機傳送</string>
+    <string name="compose_send_warning_mode_switch_ascii_cd">切換為僅 ASCII 傳送</string>
+    <string name="compose_send_warning_switch_to_ascii">透過 ASCII 傳送</string>
+    <string name="compose_send_warning_switch_to_ascii_cd">切換為僅 ASCII 傳送</string>
+    <string name="compose_send_warning_unicode_mode_intro">使用主機 Unicode 輸入方式傳送全文。主機必須事先正確設定——點按「預覽」旁的 (i) 了解設定與風險。</string>
+    <string name="compose_send_warning_unicode_preview_hint">點按「預覽」查看完整分步傳送計畫。</string>
+    <string name="compose_send_warning_preview_unicode_cd">預覽 Unicode 主機傳送計畫</string>
+    <string name="compose_send_warning_tab_hid_steps">預估 HID 步數（本次傳送）：%1$d</string>
+    <string name="compose_send_warning_tab_hid_steps_unicode">預估 HID 步數（Unicode 路徑）：%1$d</string>
+    <string name="compose_send_warning_tab_ascii_payload_title">ASCII 內容</string>
+    <string name="compose_send_warning_tab_unicode_plan_title">傳送計畫</string>
     <string name="compose_send_warning_inspect">檢查文字</string>
     <string name="compose_send_warning_inspect_title">檢查選項</string>
     <string name="compose_send_warning_check">檢查</string>
@@ -1275,6 +1286,9 @@
     <string name="compose_send_preview_payload_title">可傳送內容</string>
     <string name="compose_send_preview_summary">原文：%1$d 字元\n將傳送：%2$d 字元\n捨棄非 ASCII：%3$d</string>
     <string name="compose_send_preview_empty_payload">沒有可傳送的 ASCII 字元。</string>
+    <string name="compose_send_preview_unicode_title">Unicode 傳送預覽</string>
+    <string name="compose_send_preview_unicode_summary_title">Unicode 路徑摘要</string>
+    <string name="compose_send_preview_unicode_summary_body">原文長度：%1$d 個字元\n%2$s</string>
     <string name="ime_saved_text_title">已儲存文字</string>
     <string name="ime_saved_text_cd_open_library">開啟已儲存文字</string>
     <string name="ime_saved_text_save_to_library">儲存目前</string>

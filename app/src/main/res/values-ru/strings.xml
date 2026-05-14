@@ -537,6 +537,13 @@
     <string name="compose_unicode_confirm_message">If the connected target does not have the correct Unicode entry method active (for example Unicode Hex Input on a Mac), the keystrokes sent for this option are interpreted as ordinary shortcuts and can cause unintended behavior—such as wrong app focus, closed windows, or other actions.\n\nOnly use this if the target is set up correctly. Open the details (i) on the previous screen if you need setup steps.</string>
     <string name="compose_unicode_confirm_continue">Continue</string>
     <string name="compose_unicode_confirm_cancel">Cancel</string>
+    <string name="compose_send_warning_tabs_hint">Use the tabs to compare ASCII-only send versus full Unicode host entry.</string>
+    <string name="compose_send_warning_tab_label_ascii">ASCII send</string>
+    <string name="compose_send_warning_tab_label_unicode">Unicode send</string>
+    <string name="compose_send_warning_tab_hid_steps">Estimated HID steps (this send): %1$d</string>
+    <string name="compose_send_warning_tab_hid_steps_unicode">Estimated HID steps (Unicode path): %1$d</string>
+    <string name="compose_send_warning_tab_ascii_payload_title">ASCII payload</string>
+    <string name="compose_send_warning_tab_unicode_plan_title">Send plan</string>
     <string name="compose_send_warning_inspect">Проверить текст</string>
     <string name="compose_send_warning_inspect_title">Проверить Опции</string>
     <string name="compose_send_warning_check">Проверить</string>

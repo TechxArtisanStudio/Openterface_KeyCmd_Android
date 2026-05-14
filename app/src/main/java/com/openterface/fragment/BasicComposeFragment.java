@@ -482,6 +482,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         ComposeSendWarningDialog.show(
                 requireContext(),
                 warningInfo,
+                pendingSendText,
                 () -> {
                     MainActivity ma2 = mainActivity();
                     if (ma2 == null || editor == null || sending) {
@@ -521,7 +522,20 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                     ComposeSendPreviewDialog.show(requireContext(), preview);
                 },
                 ma.getTargetOs(),
-                sendWithUnicodeHostEntry);
+                sendWithUnicodeHostEntry,
+                () -> {
+                    String preview =
+                            editorIsSourceBuffer
+                                    ? (editor != null && editor.getText() != null
+                                            ? editor.getText().toString()
+                                            : "")
+                                    : pendingSendText;
+                    if (preview.isEmpty()) {
+                        return;
+                    }
+                    ComposeSendPreviewDialog.showUnicodeHostPlan(
+                            requireContext(), preview, ma.getTargetOs());
+                });
     }
 
     private void showUnicodeHostSendConfirmDialog(
