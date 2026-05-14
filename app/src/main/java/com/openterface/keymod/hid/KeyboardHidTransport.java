@@ -1,5 +1,6 @@
 package com.openterface.keymod.hid;
 
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.openterface.keymod.BluetoothService;
@@ -31,14 +32,38 @@ public final class KeyboardHidTransport {
             try {
                 port.write(bytes, 20);
                 Log.d(TAG, "USB keyboard: " + sendKbData);
+                if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+                    Log.d(
+                            "KmProTouch",
+                            SystemClock.uptimeMillis()
+                                    + " transport USB sendKeyReport mod=0x"
+                                    + String.format("%02X", modifiers & 0xFF)
+                                    + " key=0x"
+                                    + String.format("%02X", keyCode & 0xFF));
+                }
             } catch (IOException e) {
                 Log.e(TAG, "USB keyboard write failed: " + e.getMessage());
             }
         } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
             bluetoothService.sendData(bytes);
             Log.d(TAG, "BT keyboard: " + sendKbData);
+            if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+                Log.d(
+                        "KmProTouch",
+                        SystemClock.uptimeMillis()
+                                + " transport BT sendKeyReport mod=0x"
+                                + String.format("%02X", modifiers & 0xFF)
+                                + " key=0x"
+                                + String.format("%02X", keyCode & 0xFF));
+            }
         } else {
             Log.w(TAG, "No connection for keyboard HID");
+            if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+                Log.d(
+                        "KmProTouch",
+                        SystemClock.uptimeMillis()
+                                + " transport sendKeyReport SKIPPED (no usb/bt)");
+            }
         }
     }
 
@@ -51,11 +76,21 @@ public final class KeyboardHidTransport {
         if (port != null) {
             try {
                 port.write(bytes, 20);
+                if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+                    Log.d("KmProTouch", SystemClock.uptimeMillis() + " transport USB allKeysReleased");
+                }
             } catch (IOException e) {
                 Log.e(TAG, "Keyboard release write failed: " + e.getMessage());
             }
         } else if (bluetoothServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
             bluetoothService.sendData(bytes);
+            if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+                Log.d("KmProTouch", SystemClock.uptimeMillis() + " transport BT allKeysReleased");
+            }
+        } else if (Log.isLoggable("KmProTouch", Log.DEBUG)) {
+            Log.d(
+                    "KmProTouch",
+                    SystemClock.uptimeMillis() + " transport allKeysReleased SKIPPED (no usb/bt)");
         }
     }
 }

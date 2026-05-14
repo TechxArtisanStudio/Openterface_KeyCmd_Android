@@ -70,6 +70,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329PacketUtil;
 import com.openterface.keymod.hid.KeyboardHidTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
@@ -114,6 +115,13 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private static final String TAG = "CustomKeyboardView";
+
+    /**
+     * Touch / HID correlation for KM Pro built-in keys. Debug builds log by default; on release APKs
+     * run: {@code adb shell setprop log.tag.KmProTouch DEBUG} then
+     * {@code adb logcat -s KmProTouch:D KeyboardHidTransport:D}.
+     */
+    private static final String TAG_KMPRO_TOUCH = "KmProTouch";
     private static final int TOP_PANEL_COLUMNS = 7;
     private static final int TOP_PANEL_ROWS = 3;
     private static final int FIXED_TOP_ROWS_DEFAULT_PAGE_INDEX = 1;
@@ -3068,6 +3076,14 @@ public class CustomKeyboardView extends LinearLayout {
         kmProKeyPreview.show(v, t);
     }
 
+    /** Correlated touch/HID timeline for KM Pro; see {@link #TAG_KMPRO_TOUCH}. */
+    private static void logKmProTouch(String message) {
+        if (!BuildConfig.DEBUG && !Log.isLoggable(TAG_KMPRO_TOUCH, Log.DEBUG)) {
+            return;
+        }
+        Log.d(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
+    }
+
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
         if (isProBuiltInModifierTouchKey(key)) {
@@ -3088,8 +3104,26 @@ public class CustomKeyboardView extends LinearLayout {
                         gamingHoldActive[0] = true;
                         setParentDisallowInterceptTouchEvent(v, true);
                         if (KmBasicKeyboardPrefs.isLongPressSustainedHoldMode(getContext())) {
+                            logKmProTouch(
+                                    "DOWN gaming sustainedHold key="
+                                            + key.label
+                                            + " code=0x"
+                                            + Integer.toHexString(key.code)
+                                            + " raw="
+                                            + event.getRawX()
+                                            + ","
+                                            + event.getRawY());
                             sendHidKeyDataForKey(key);
                         } else {
+                            logKmProTouch(
+                                    "DOWN gaming repeat key="
+                                            + key.label
+                                            + " code=0x"
+                                            + Integer.toHexString(key.code)
+                                            + " raw="
+                                            + event.getRawX()
+                                            + ","
+                                            + event.getRawY());
                             sendHidKeyTapForGamingRepeat(key);
                             startGamingKeyRepeat(key);
                         }
@@ -3118,6 +3152,21 @@ public class CustomKeyboardView extends LinearLayout {
                     v.setTag(R.id.tag_custom_keyboard_tap_consume_move, Boolean.TRUE);
                     setParentDisallowInterceptTouchEvent(v, true);
                     updateKmProKeyTapPreviewForPointer(v, key, event);
+                    logKmProTouch(
+                            "DOWN altHintsPath key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " keyboardAltHints="
+                                    + keyboardAlternatesHintsEnabled
+                                    + " enableAlt="
+                                    + shouldEnableAlternates(key)
+                                    + " holdRepeat="
+                                    + shouldRepeatOnLongPress(key)
+                                    + " raw="
+                                    + event.getRawX()
+                                    + ","
+                                    + event.getRawY());
                     return true;
                 }
                 case MotionEvent.ACTION_MOVE: {
@@ -3163,12 +3212,14 @@ public class CustomKeyboardView extends LinearLayout {
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, null);
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
+                        logKmProTouch("UP gamingEnd key=" + key.label);
                         stopGamingKeyRepeat();
                         scheduleKeyboardTapRelease();
                         gamingHoldActive[0] = false;
                         return true;
                     }
                     if (isAlternatePopupVisible()) {
+                        logKmProTouch("UP alternatesPopupCommit key=" + key.label);
                         commitCurrentAlternateSelection();
                         dismissAlternatesPopup();
                         scheduleKeyboardTapRelease();
@@ -3182,8 +3233,37 @@ public class CustomKeyboardView extends LinearLayout {
                     // (e.g. glide K→J — same stream still delivers UP to K with x/y past the cap).
                     boolean commitShortTapAlternatesKey =
                             hadPendingAlternatesRunnable && shouldEnableAlternates(key);
-                    if (!suppressTapUp
-                            && (isTouchInsideViewSlopForTapUp(v, event) || commitShortTapAlternatesKey)) {
+                    boolean insideSlop = isTouchInsideViewSlopForTapUp(v, event);
+                    boolean willHandleKeyPress =
+                            !suppressTapUp && (insideSlop || commitShortTapAlternatesKey);
+                    logKmProTouch(
+                            "UP key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " suppress="
+                                    + suppressTapUp
+                                    + " hadPendingAlt="
+                                    + hadPendingAlternatesRunnable
+                                    + " insideSlop="
+                                    + insideSlop
+                                    + " commitShortTapAlt="
+                                    + commitShortTapAlternatesKey
+                                    + " willHandleKeyPress="
+                                    + willHandleKeyPress
+                                    + " xy="
+                                    + event.getX()
+                                    + ","
+                                    + event.getY()
+                                    + " wh="
+                                    + v.getWidth()
+                                    + "x"
+                                    + v.getHeight()
+                                    + " raw="
+                                    + event.getRawX()
+                                    + ","
+                                    + event.getRawY());
+                    if (willHandleKeyPress) {
                         handleKeyPress(key);
                     }
                     holdRepeatSuppressUpTap = false;
@@ -3216,9 +3296,22 @@ public class CustomKeyboardView extends LinearLayout {
                         stopRepeatingDelete();
                     }
                     boolean suppressTapCancel = holdRepeatSuppressUpTap;
-                    if (!suppressTapCancel
-                            && hadPendingAlternatesOnCancel
-                            && shouldEnableAlternates(key)) {
+                    boolean cancelWillHandle =
+                            !suppressTapCancel
+                                    && hadPendingAlternatesOnCancel
+                                    && shouldEnableAlternates(key);
+                    logKmProTouch(
+                            "CANCEL key="
+                                    + key.label
+                                    + " code=0x"
+                                    + Integer.toHexString(key.code)
+                                    + " suppress="
+                                    + suppressTapCancel
+                                    + " hadPendingAlt="
+                                    + hadPendingAlternatesOnCancel
+                                    + " willHandleKeyPress="
+                                    + cancelWillHandle);
+                    if (cancelWillHandle) {
                         handleKeyPress(key);
                     }
                     holdRepeatSuppressUpTap = false;
@@ -7690,6 +7783,13 @@ public class CustomKeyboardView extends LinearLayout {
     public void sendReleaseData() {
         repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
         repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        logKmProTouch(
+                "sendReleaseData usbPort="
+                        + (port != null)
+                        + " btBound="
+                        + isServiceBound
+                        + " btConn="
+                        + (bluetoothService != null && bluetoothService.isConnected()));
         KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
         Log.d(TAG, "Sent keyboard release (all keys)");
         post(this::reassertKeyboardAfterHidRelease);
@@ -7707,6 +7807,7 @@ public class CustomKeyboardView extends LinearLayout {
     private void scheduleKeyboardTapRelease(long delayMs) {
         repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
         repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        logKmProTouch("scheduleKeyboardTapRelease delayMs=" + delayMs);
         repeatHandler.postDelayed(keyboardTapReleaseRunnable, delayMs);
     }
 
@@ -7726,6 +7827,11 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void handleKeyPress(Key key) {
         Log.d(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
+        logKmProTouch(
+                "handleKeyPress enter label="
+                        + (key != null ? key.label : "null")
+                        + " code=0x"
+                        + (key != null ? Integer.toHexString(key.code) : "0"));
 
         int topSlot = topModeSlotIndexFromKeyCode(key.code);
         if (topSlot > 0) {
@@ -7892,6 +7998,11 @@ public class CustomKeyboardView extends LinearLayout {
     private void sendHidKeyTapForGamingRepeat(Key key) {
         repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
         repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        logKmProTouch(
+                "sendHidKeyTapForGamingRepeat key="
+                        + (key != null ? key.label : "null")
+                        + " code=0x"
+                        + (key != null ? Integer.toHexString(key.code) : "0"));
         sendHidKeyDataForKey(key);
         repeatHandler.postDelayed(gamingTapReleaseRunnable, 30);
     }
@@ -8065,6 +8176,17 @@ public class CustomKeyboardView extends LinearLayout {
     private void sendKeyData(int modifiers, int keyCode) {
         int m = mergeHoldLockedBootMask(modifiers);
         m = mergeChordHeldBootMask(m);
+        logKmProTouch(
+                "sendKeyData mod=0x"
+                        + Integer.toHexString(m)
+                        + " key=0x"
+                        + Integer.toHexString(keyCode)
+                        + " usb="
+                        + (port != null)
+                        + " btBound="
+                        + isServiceBound
+                        + " btConn="
+                        + (bluetoothService != null && bluetoothService.isConnected()));
         KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, m, keyCode);
     }
 
