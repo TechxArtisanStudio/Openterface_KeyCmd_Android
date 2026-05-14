@@ -101,6 +101,7 @@ import androidx.preference.PreferenceManager;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.R;
 import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
@@ -2678,7 +2679,7 @@ public class GamepadFragment extends Fragment {
             @NonNull List<View> swatchViews,
             @NonNull Context ctx) {
         int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
@@ -2772,7 +2773,7 @@ public class GamepadFragment extends Fragment {
             @NonNull List<View> swatchViews,
             @NonNull Context ctx) {
         int primary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int outlineSoft = Color.argb(140, Color.red(outline), Color.green(outline), Color.blue(outline));
@@ -3017,14 +3018,14 @@ public class GamepadFragment extends Fragment {
                 ? GamepadModuleAccent.toOpaqueArgb(module.moduleAccentArgb)
                 : GamepadModuleAccent.toOpaqueArgb(MaterialColors.getColor(ctx,
                         com.google.android.material.R.attr.colorPrimary,
-                        ContextCompat.getColor(ctx, R.color.primary)));
+                        ThemeManager.getColorPrimary(ctx)));
         int r0 = Color.red(cur);
         int g0 = Color.green(cur);
         int b0 = Color.blue(cur);
         int outline = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOutline,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         int errorColor = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ContextCompat.getColor(ctx, R.color.holo_red_light));
 
         LinearLayout shell = new LinearLayout(ctx);
         shell.setOrientation(LinearLayout.VERTICAL);
@@ -3337,7 +3338,7 @@ public class GamepadFragment extends Fragment {
         verticalSheet.addView(footer, footLp);
 
         int err = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorError,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ContextCompat.getColor(ctx, R.color.holo_red_light));
         MaterialButton removeBtn = new MaterialButton(ctx, null,
                 com.google.android.material.R.attr.materialButtonOutlinedStyle);
         removeBtn.setText(R.string.gamepad_menu_remove);
@@ -5117,7 +5118,7 @@ public class GamepadFragment extends Fragment {
     private void buildKeyPickerDialog(int initialKeyCode, int initialModifiers, final KeySelectedListener listener) {
         android.content.Context ctx = requireContext();
         final int colorPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimary,
-                ContextCompat.getColor(ctx, R.color.primary));
+                ThemeManager.getColorPrimary(ctx));
         final int colorUnsel = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.gray_600));
         final int colorOnPrimary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnPrimary,
@@ -5127,7 +5128,7 @@ public class GamepadFragment extends Fragment {
         final int colorTextSecondary = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorOnSurfaceVariant,
                 ContextCompat.getColor(ctx, R.color.text_secondary));
         final int colorStrokeAccent = MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorPrimaryContainer,
-                ContextCompat.getColor(ctx, R.color.theme_accent_orange_container));
+                ThemeManager.getColorPrimaryContainer(ctx));
 
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
 

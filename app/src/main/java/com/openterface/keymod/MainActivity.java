@@ -993,8 +993,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             kmProSetupHeaderButton.setOnClickListener(v -> toggleKmProSettingsOverlay());
             kmProSetupHeaderButton.setContentDescription(getString(R.string.km_pro_setup_button_cd));
             int tint =
-                    ContextCompat.getColor(
-                            this, kmProOverlayOpen ? R.color.primary : R.color.text_secondary);
+                    kmProOverlayOpen
+                            ? ThemeManager.getColorPrimary(this)
+                            : ContextCompat.getColor(this, R.color.text_secondary);
             kmProSetupHeaderButton.setImageTintList(ColorStateList.valueOf(tint));
             return;
         }
@@ -1805,7 +1806,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (getTheme().resolveAttribute(attrId, value, true)) {
             return value.data;
         }
-        return getColor(R.color.primary);
+        return ThemeManager.getColorPrimary(this);
     }
 
     private void showKeyboardFragment() {

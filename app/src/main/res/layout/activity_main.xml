@@ -188,7 +188,7 @@
                             android:layout_height="@dimen/header_connection_icon_size"
                             android:layout_marginTop="1dp"
                             android:src="@drawable/signal_cellular_alt_off_24px"
-                            android:tint="@color/primary"
+                            android:tint="?attr/colorPrimary"
                             android:visibility="gone"
                             android:contentDescription="Signal strength"/>
 

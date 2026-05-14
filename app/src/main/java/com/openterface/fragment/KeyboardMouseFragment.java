@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentTransaction;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.fragments.KeyboardMouseSettingsFragment;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -485,9 +486,9 @@ public final class KeyboardMouseFragment extends Fragment {
             boolean settings = SUBMODE_SETTINGS.equals(currentSubmode);
             chromeSetup.setSelected(settings);
             int tint =
-                    ContextCompat.getColor(
-                            chromeSetup.getContext(),
-                            settings ? R.color.primary : R.color.text_secondary);
+                    settings
+                            ? ThemeManager.getColorPrimary(chromeSetup.getContext())
+                            : ContextCompat.getColor(chromeSetup.getContext(), R.color.text_secondary);
             chromeSetup.setImageTintList(ColorStateList.valueOf(tint));
         }
     }
