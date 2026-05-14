@@ -45,6 +45,13 @@ public final class ModeTutorialSteps {
                     false),
             step(
                     activity,
+                    new int[] {R.id.basic_physical_keyboard, R.id.basic_keyboard_surface},
+                    R.string.tutorial_desc_modifier_hold_swipe,
+                    false,
+                    450,
+                    () -> activity.ensureKmBasicKeyboardSubmodeForGuide()),
+            step(
+                    activity,
                     new int[] {R.id.basic_km_menu_button, R.id.menu_button},
                     R.string.tutorial_desc_menu,
                     true)
@@ -80,6 +87,17 @@ public final class ModeTutorialSteps {
                     },
                     R.string.mode_tutorial_pro_step_keyboard_strip,
                     false),
+            step(
+                    activity,
+                    new int[] {
+                        R.id.keyboard_view, R.id.keyboard_view_left, R.id.keyboard_view_right
+                    },
+                    R.string.mode_tutorial_pro_step_modifier_hold_swipe,
+                    false,
+                    550,
+                    () ->
+                            activity.ensureKmProFragmentSubmode(
+                                    KmProSubmodePrefs.SUBMODE_KEYBOARD)),
             step(
                     activity,
                     new int[] {

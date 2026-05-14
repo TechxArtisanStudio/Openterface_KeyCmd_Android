@@ -25,6 +25,7 @@ TechxArtisan により</string>
     <string name="tutorial_desc_target_os">接続先PCのアイコンでOS（macOS/Windows/Linux）を選ぶとキーが合います。おかしいときはまずここを確認。</string>
     <string name="tutorial_desc_submode_tabs">フルキーボード、タッチパッド（ポインタ）、テンキーを切り替えます。</string>
     <string name="tutorial_desc_keyboard_modes">ABC、!?#、123で英字・記号・数字レイヤーを切り替えます。</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Ctrl、Shift、Alt、Win を約1秒押し続けてロック表示が出たら上にスワイプすると、ホスト側で修飾キーを押し続けます。同じキーをもう一度タップで解除します。</string>
     <string name="tutorial_desc_menu">メニューでサイドバー：ようこそ＆ガイド（ツアー再表示）、設定、その他のモード。</string>
     <string name="mode_guide_header_cd">モードガイドを開き、このモードのツアーを再表示</string>
     <string name="mode_guide_sheet_title_basic">キーボード＆マウス（ベーシック）</string>
@@ -40,6 +41,7 @@ TechxArtisan により</string>
     <string name="mode_tutorial_pro_step_submodes">キーボード、作成、テンキーをここで切り替えます。</string>
     <string name="mode_tutorial_pro_step_setup">設定でクイックストリップ、ヒント、アクティブなショートカットハブのプロファイルを変更します。</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">文字の上のショートカット行は横スクロール。タップで送信、「+」で新規。修飾キーはヒント時に長押し。</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">ストリップまたは QWERTY 行で修飾キーを約1秒押し続け、ロック表示が出たら上にスワイプしてホストで保持します。同じキーをもう一度タップで解除します。</string>
     <string name="mode_tutorial_pro_step_compose_editor">作成は長文用の複数行エディタ。このステップで自動切替—「キーボード」タブで戻ります。</string>
     <string name="mode_tutorial_pro_step_compose_actions">元に戻す/やり直し、消去、保存ライブラリへ保存、保存済みを開き、USBまたはBluetoothでホストへ送信。</string>
     <string name="mode_tutorial_presentation_step_tools">上部のカルーセルを左右にスワイプしてプレゼンアプリを選ぶと、ショートカットが変わります。</string>

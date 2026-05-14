@@ -127,6 +127,7 @@
     <string name="tutorial_desc_target_os">点按电脑图标，选择正在控制的系统（macOS、Windows 或 Linux），按键与修饰键才正确。按键异常请先确认此项。</string>
     <string name="tutorial_desc_submode_tabs">在此切换全键盘、触控板（指针）与数字键盘。</string>
     <string name="tutorial_desc_keyboard_modes">用键盘上的 ABC、!?#、123 切换字母、符号与数字层。</string>
+    <string name="tutorial_desc_modifier_hold_swipe">按住 Ctrl、Shift、Alt 或 Win/Cmd 约一秒直到出现锁定提示，再向上滑动可在主机端保持修饰键按下。再次点按同一修饰键释放。</string>
     <string name="tutorial_desc_menu">点按菜单打开侧栏：欢迎与指导（可重播本教程）、设置及其他模式。</string>
     <string name="mode_guide_header_cd">打开模式指南，重播本模式教程</string>
     <string name="mode_guide_sheet_title_basic">键盘与鼠标（基础）</string>
@@ -142,6 +143,7 @@
     <string name="mode_tutorial_pro_step_submodes">在此切换键盘、撰写与数字键盘界面。</string>
     <string name="mode_tutorial_pro_step_setup">打开设置可调整快捷条、提示与当前快捷方式中心配置文件。</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">字母键上方为快捷行，可横向滑动；点按发送，「+」新建；部分修饰键可长按（见提示）。</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">在快捷条或字母行：按住修饰键约一秒至出现锁定提示，向上滑动可在主机端保持按下；再点按同一键释放。</string>
     <string name="mode_tutorial_pro_step_compose_editor">撰写模式用多行编辑器输入长文；本步自动进入，点「键盘」标签返回。</string>
     <string name="mode_tutorial_pro_step_compose_actions">撤销/重做、清空、保存到已保存、打开已保存文本，再通过 USB 或蓝牙发送到主机。</string>
     <string name="mode_tutorial_presentation_step_tools">在顶部轮播左右滑动选择演示应用，快捷键会随所选工具变化。</string>

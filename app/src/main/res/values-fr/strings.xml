@@ -25,6 +25,7 @@ par TechxArtisan</string>
     <string name="tutorial_desc_target_os">Icône ordinateur : choisissez le système piloté (macOS, Windows, Linux). Touches bizarres ? Vérifiez d’abord ici.</string>
     <string name="tutorial_desc_submode_tabs">Basculez ici entre clavier, pavé tactile (pointeur) et pavé numérique.</string>
     <string name="tutorial_desc_keyboard_modes">ABC, !?# et 123 changent les couches lettres, symboles et chiffres.</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Maintenez Ctrl, Maj, Alt ou Win environ une seconde jusqu’à l’indicateur de verrouillage, puis glissez vers le haut pour maintenir le modificateur sur l’hôte. Touchez la même touche à nouveau pour relâcher.</string>
     <string name="tutorial_desc_menu">Menu : tiroir avec Bienvenue et guide (revisiter), Paramètres et autres modes.</string>
     <string name="mode_guide_header_cd">Ouvrir le guide du mode et revoir la visite</string>
     <string name="mode_guide_sheet_title_basic">Clavier et souris (Basique)</string>
@@ -40,6 +41,7 @@ par TechxArtisan</string>
     <string name="mode_tutorial_pro_step_submodes">Basculez ici entre clavier, Rédaction et pavé numérique.</string>
     <string name="mode_tutorial_pro_step_setup">Réglages : barre de raccourcis, astuces et profil actif du hub.</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">Rangées de raccourcis au-dessus des lettres—balayez. Touchez pour envoyer ; + pour créer. Long appui sur certains modificateurs si indiqué.</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">Sur la barre ou la ligne QWERTY, maintenez un modificateur environ une seconde jusqu’à l’indicateur, puis glissez vers le haut pour le tenir sur l’hôte. Touchez la même touche à nouveau pour relâcher.</string>
     <string name="mode_tutorial_pro_step_compose_editor">Rédaction : éditeur multiligne. Cette étape ouvre automatiquement—onglet Clavier pour revenir.</string>
     <string name="mode_tutorial_pro_step_compose_actions">Annuler/rétablir, effacer, enregistrer dans Enregistrés, ouvrir Enregistrés, puis Envoyer à l’hôte par USB ou Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Balayez le carrousel du haut pour choisir l’app de présentation ; les raccourcis suivent l’outil sélectionné.</string>

@@ -2191,6 +2191,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
+    /** Switches KM Basic to the full keyboard submode for the quick-start tour highlight. */
+    public void ensureKmBasicKeyboardSubmodeForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof KeyboardMouseFragment) {
+            ((KeyboardMouseFragment) f).requestSubmode(KeyboardMouseFragment.SUBMODE_KEYBOARD);
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
     /** Opens Default profile detail inside Shortcut Hub for the mode tour. */
     public void ensureShortcutHubDefaultProfileForGuide() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);

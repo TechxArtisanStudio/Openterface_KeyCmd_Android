@@ -199,6 +199,7 @@ by TechxArtisan</string>
     <string name="tutorial_desc_target_os">Tap the computer icon and pick the OS you control—macOS, Windows, or Linux—so keys map correctly. Wrong keys? Check this first.</string>
     <string name="tutorial_desc_submode_tabs">Switch between full keyboard, touchpad (pointer), and numpad here.</string>
     <string name="tutorial_desc_keyboard_modes">Use ABC, !?#, and 123 on the keyboard to change letter, symbol, and number layers.</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Press and hold Ctrl, Shift, Alt, or Win for about one second until the lock hint appears, then swipe up for a sustained hold on the host. Tap the same modifier again to release.</string>
     <string name="tutorial_desc_menu">Open the side menu for Welcome &amp; Guide (replay tour), Settings, and other modes.</string>
 
     <!-- Mode guide (header info icon + per-mode first-run tours) -->
@@ -216,6 +217,7 @@ by TechxArtisan</string>
     <string name="mode_tutorial_pro_step_submodes">Switch between keyboard, Compose, and Numpad here.</string>
     <string name="mode_tutorial_pro_step_setup">Open setup for shortcut strip options, hints, and the active Shortcut Hub profile.</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">Shortcut rows sit above the letters—scroll sideways. Tap a slot to send it; + creates one. Some modifiers use long-press when hints appear.</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">On the strip or QWERTY row, hold a modifier for about one second until the lock hint appears, then swipe up to hold it on the host. Tap the same key again to release.</string>
     <string name="mode_tutorial_pro_step_compose_editor">Compose is a multi-line editor for longer text. This step opens it automatically—use the Keyboard tab to return.</string>
     <string name="mode_tutorial_pro_step_compose_actions">Undo/redo, clear, save to Saved, open Saved texts, then Send to the host over USB or Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Swipe the top carousel to pick your presentation app; shortcuts adapt to that tool.</string>

@@ -127,6 +127,7 @@
     <string name="tutorial_desc_target_os">點按電腦圖示，選正在控制的系統（macOS、Windows 或 Linux），按鍵與修飾鍵才正確。異常時請先確認此項。</string>
     <string name="tutorial_desc_submode_tabs">在此切換全鍵盤、觸控板（指標）與數字鍵盤。</string>
     <string name="tutorial_desc_keyboard_modes">用鍵盤上的 ABC、!?#、123 切換字母、符號與數字層。</string>
+    <string name="tutorial_desc_modifier_hold_swipe">按住 Ctrl、Shift、Alt 或 Win/Cmd 約一秒直到出現鎖定提示，再向上滑動可在主機端保持修飾鍵按下。再次點按同一修飾鍵釋放。</string>
     <string name="tutorial_desc_menu">點按選單開啟側欄：歡迎與指導（可重播教學）、設定及其他模式。</string>
     <string name="mode_guide_header_cd">開啟模式指南，重播本模式教學</string>
     <string name="mode_guide_sheet_title_basic">鍵盤與滑鼠（基礎）</string>
@@ -142,6 +143,7 @@
     <string name="mode_tutorial_pro_step_submodes">在此切換鍵盤、撰寫與數字鍵盤畫面。</string>
     <string name="mode_tutorial_pro_step_setup">開啟設定可調整快捷列、提示與目前捷徑中心設定檔。</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">字母鍵上方為快捷列，可橫向滑動；點按送出，「+」新增；部分修飾鍵可長按（見提示）。</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">在快捷列或字母列：按住修飾鍵約一秒至出現鎖定提示，向上滑動可在主機端保持按下；再點按同一鍵釋放。</string>
     <string name="mode_tutorial_pro_step_compose_editor">撰寫模式用多行編輯器輸入長文；本步自動進入，點「鍵盤」標籤返回。</string>
     <string name="mode_tutorial_pro_step_compose_actions">復原/重做、清空、儲存到已儲存、開啟已儲存文字，再經 USB 或藍牙傳送到主機。</string>
     <string name="mode_tutorial_presentation_step_tools">在頂端輪播左右滑動選擇簡報 App，快捷鍵會隨所選工具變化。</string>

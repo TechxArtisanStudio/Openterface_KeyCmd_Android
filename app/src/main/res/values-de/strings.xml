@@ -25,6 +25,7 @@ von TechxArtisan</string>
     <string name="tutorial_desc_target_os">Computer-Symbol: macOS, Windows oder Linux wählen – Ihr Zielsystem. Falsche Tasten? Zuerst hier prüfen.</string>
     <string name="tutorial_desc_submode_tabs">Hier zwischen Tastatur, Touchpad (Zeiger) und Ziffernblock wechseln.</string>
     <string name="tutorial_desc_keyboard_modes">Mit ABC, !?# und 123 die Buchstaben-, Symbol- und Zahlenebenen wechseln.</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Strg, Umschalt, Alt oder Win etwa eine Sekunde halten, bis der Sperr-Hinweis erscheint, dann nach oben wischen, um den Modifier auf dem Host gehalten zu halten. Zum Loslassen dieselbe Taste erneut tippen.</string>
     <string name="tutorial_desc_menu">Menü öffnet die Seitenleiste: Willkommen &amp; Anleitung (Tour), Einstellungen und weitere Modi.</string>
     <string name="mode_guide_header_cd">Modusführer öffnen und diese Tour erneut starten</string>
     <string name="mode_guide_sheet_title_basic">Tastatur &amp; Maus (Basic)</string>
@@ -40,6 +41,7 @@ von TechxArtisan</string>
     <string name="mode_tutorial_pro_step_submodes">Hier zwischen Tastatur, Verfassen und Ziffernblock wechseln.</string>
     <string name="mode_tutorial_pro_step_setup">Einstellungen: Schnellleiste, Hinweise und aktives Kurzbefehl-Hub-Profil.</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">Kurzbefehlzeilen über den Buchstaben—seitwärts scrollen. Slot tippen zum Senden; „+“ neu anlegen. Manche Modifier: Long-Press bei Hinweis.</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">In der Leiste oder QWERTY-Zeile einen Modifier etwa eine Sekunde halten, bis der Sperr-Hinweis erscheint, dann nach oben wischen, um ihn auf dem Host zu halten. Zum Loslassen dieselbe Taste erneut tippen.</string>
     <string name="mode_tutorial_pro_step_compose_editor">Verfassen = Mehrzeilen-Editor für längere Texte. Dieser Schritt wechselt automatisch—Tab „Tastatur“ zum Zurückkehren.</string>
     <string name="mode_tutorial_pro_step_compose_actions">Rückgängig/Wiederholen, leeren, in „Gespeichert“ legen, Gespeichert öffnen, dann Senden per USB/Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Wischen Sie im oberen Karussell, um die Präsentations-App zu wählen; die Tastenkürzel passen sich an.</string>

@@ -25,6 +25,7 @@ por TechxArtisan</string>
     <string name="tutorial_desc_target_os">Pulse el icono del PC y elija el SO que controla (macOS, Windows, Linux). ¿Teclas raras? Revise esto primero.</string>
     <string name="tutorial_desc_submode_tabs">Cambie aquí entre teclado, panel táctil (puntero) y numérico.</string>
     <string name="tutorial_desc_keyboard_modes">Use ABC, !?# y 123 para capas de letras, símbolos y números.</string>
+    <string name="tutorial_desc_modifier_hold_swipe">Mantenga pulsados Ctrl, Mayús, Alt o Win unos segundos hasta ver la pista de bloqueo, luego deslice hacia arriba para mantener el modificador en el host. Pulse la misma tecla otra vez para soltar.</string>
     <string name="tutorial_desc_menu">Menú: panel lateral con Bienvenida y guía (repetir tour), Ajustes y más modos.</string>
     <string name="mode_guide_header_cd">Abrir guía del modo y repetir el recorrido</string>
     <string name="mode_guide_sheet_title_basic">Teclado y ratón (Básico)</string>
@@ -40,6 +41,7 @@ por TechxArtisan</string>
     <string name="mode_tutorial_pro_step_submodes">Cambie aquí entre teclado, Redactar y numérico.</string>
     <string name="mode_tutorial_pro_step_setup">Ajustes: tira de atajos, sugerencias y perfil activo del centro.</string>
     <string name="mode_tutorial_pro_step_keyboard_strip">Filas de atajos sobre las letras—deslice. Pulse para enviar; + crea. Algunos modificadores: pulsación larga si hay pista.</string>
+    <string name="mode_tutorial_pro_step_modifier_hold_swipe">En la franja o la fila QWERTY, mantenga un modificador unos segundos hasta la pista de bloqueo, deslice hacia arriba para mantenerlo en el host. Pulse la misma tecla otra vez para soltar.</string>
     <string name="mode_tutorial_pro_step_compose_editor">Redactar es un editor multilínea. Este paso abre solo—use la pestaña Teclado para volver.</string>
     <string name="mode_tutorial_pro_step_compose_actions">Deshacer/rehacer, borrar, guardar en Guardados, abrir Guardados y Enviar al host por USB o Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Deslice el carrusel superior para elegir la app de presentación; los atajos siguen la herramienta seleccionada.</string>
