@@ -8,6 +8,7 @@
         <item>Francés</item>
         <item>Alemán</item>
         <item>Japonés</item>
+        <item>Coreano</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>Detección automática</item>
