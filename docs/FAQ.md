@@ -2,7 +2,7 @@
 
 For **app theme colors** (light/dark, accent families, KM Pro surfaces), see [THEME_AND_KM_PRO_COLORS.md](THEME_AND_KM_PRO_COLORS.md).
 
-Common questions about what KeyCmd can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
+Common questions about what KeyCmd can type over USB, especially **Rows 2–3 strip layouts** (edited from **Keyboard & Mouse Pro setup**). **Shortcut Hub** is for shortcut **profiles** and Favorites. Later sections cover **macOS host behavior** (Prt Sc as F13, Scr Lk / Pause and brightness, F11 and other F-key shortcuts), **Keyboard & Mouse (Basic)** modifier behavior and **holding keys** (repeat vs real hold), **Gamepad Mode** (custom layouts, hold-and-lock, turbo, macros, and what the host sees), **Bluetooth topology**, and a short **gamepad preset glossary** at the end.
 
 ---
 
@@ -39,6 +39,27 @@ You can count on KeyCmd behaving like a **real keyboard** for:
 - **Function keys**, arrows, Tab, Enter, Escape, Space, and other **standard keys**
 
 That is where results are most **consistent across different machines**.
+
+---
+
+## On macOS, why does Print Screen show as **F13** in a key tester—and **Scr Lk** / **Pause** change screen brightness?
+
+KeyCmd sends **normal USB keyboard HID** usages (the same scan codes a PC keyboard would send for **Print Screen**, **Scroll Lock**, and **Pause / Break**). **macOS** then applies its own rules for many “PC legacy” keys:
+
+- **Print Screen** is often surfaced to apps and websites as **F13** (Apple extended layouts expose **F13–F16**; there is no separate “Print Screen” name at the OS layer the way Windows has). Online testers such as [en.key-test.ru](https://en.key-test.ru/) show the **logical** key macOS reports—not a bug in KeyCmd.
+- **Scroll Lock** and **Pause / Break** are commonly mapped to **F14** and **F15**. With typical **System Settings → Keyboard** defaults, **F14** and **F15** are also assigned to **decrease / increase display brightness**, so those strip keys can **dim or brighten** the built-in display even though the cap says Scr Lk or Pause.
+
+Changing **Target OS** in the KeyCmd header mainly updates **labels and modifier icons** on the phone; it does **not** change how the **Mac** interprets incoming HID or which **system shortcuts** run.
+
+To get closer to “plain F-keys” or change brightness behavior, adjust **System Settings → Keyboard** (for example **“Use F1, F2, etc. keys as standard function keys”** where available) and **Keyboard Shortcuts** (Mission Control, Display), or use host tools such as **Karabiner-Elements** or **`hidutil`** for remapping.
+
+---
+
+## On macOS, why does **F11** show the desktop (or other F-keys do volume, Mission Control, etc.)?
+
+**That is normal macOS shortcut behavior.** KeyCmd sends a standard **F11** (or **F1**, **F2**, …) keyboard usage. Whether the Mac treats it as a **function key for apps** or as a **system shortcut** (for example **Show Desktop** for **F11**) is decided by **macOS keyboard settings and shortcut assignments**, not by the in-app **Target OS** toggle.
+
+If you need different behavior, change the assignments under **System Settings → Keyboard → Keyboard Shortcuts** (sections such as **Mission Control** and **Display**) or enable **standard function keys** mode as above.
 
 ---
 
