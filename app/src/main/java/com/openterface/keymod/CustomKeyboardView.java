@@ -2682,7 +2682,11 @@ public class CustomKeyboardView extends LinearLayout {
                         applyFlatKeyStyle(brandCell);
                         brandCell.setLayoutParams(params);
                         brandCell.setBackgroundResource(R.drawable.key_background);
-                        brandCell.setClickable(false);
+                        // Touch + pressed state must live on this cell: key_background is here, not on the
+                        // centered wordmark ImageView (otherwise attachKeyListeners setPressed has no effect).
+                        brandCell.setClickable(true);
+                        brandCell.setFocusable(true);
+                        brandCell.setContentDescription(ctx.getString(R.string.Space_Button));
 
                         ImageView brand = new ImageView(ctx);
                         Resources res = ctx.getResources();
@@ -2709,12 +2713,12 @@ public class CustomKeyboardView extends LinearLayout {
                         brand.setColorFilter(
                                 ContextCompat.getColor(ctx, R.color.text_secondary),
                                 PorterDuff.Mode.SRC_IN);
-                        brand.setContentDescription(ctx.getString(R.string.Space_Button));
-                        brand.setClickable(true);
-                        brand.setFocusable(true);
+                        brand.setClickable(false);
+                        brand.setFocusable(false);
+                        brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                         brandCell.addView(brand);
                         button = brandCell;
-                        listenerTarget = brand;
+                        listenerTarget = brandCell;
                     } else {
                     ImageButton imageButton = new ImageButton(getContext());
                     applyFlatKeyStyle(imageButton);
@@ -2989,6 +2993,9 @@ public class CustomKeyboardView extends LinearLayout {
                         setParentDisallowInterceptTouchEvent(v, true);
                         return true;
                     }
+                    // Listener consumes DOWN/MOVE so the framework never applies pressed; drive
+                    // key_background state_pressed explicitly (alternate-hints path).
+                    v.setPressed(true);
                     v.setTag(R.id.tag_custom_keyboard_tap_consume_move, Boolean.TRUE);
                     setParentDisallowInterceptTouchEvent(v, true);
                     return true;
