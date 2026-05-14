@@ -31,6 +31,7 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProKeyTapPreviewPrefs;
 import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 
@@ -46,6 +47,7 @@ public class KmProSettingsFragment extends Fragment {
     private ImageButton closeButton;
     private MaterialButtonToggleGroup displayModeToggle;
     private MaterialButtonToggleGroup alternateHintsToggle;
+    private MaterialButtonToggleGroup keyTapPreviewToggle;
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
     private MaterialButtonToggleGroup touchpadModeToggle;
@@ -70,6 +72,7 @@ public class KmProSettingsFragment extends Fragment {
 
     private boolean suppressDisplayToggleCallback;
     private boolean suppressAlternateHintsToggleCallback;
+    private boolean suppressKeyTapPreviewToggleCallback;
     private boolean suppressGamingBehaviorToggleCallback;
     private boolean suppressModifierBehaviorCallback;
     private boolean suppressChordSustainCallback;
@@ -87,6 +90,7 @@ public class KmProSettingsFragment extends Fragment {
         closeButton = view.findViewById(R.id.km_pro_settings_close_button);
         displayModeToggle = view.findViewById(R.id.km_pro_display_mode_toggle);
         alternateHintsToggle = view.findViewById(R.id.km_pro_alternate_hints_toggle);
+        keyTapPreviewToggle = view.findViewById(R.id.km_pro_key_tap_preview_toggle);
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
         touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
@@ -134,6 +138,17 @@ public class KmProSettingsFragment extends Fragment {
                         && gamingKeyBehaviorSection.getVisibility() == View.VISIBLE) {
                     syncGamingKeyBehaviorToggleFromPrefs();
                 }
+            });
+        }
+
+        if (keyTapPreviewToggle != null) {
+            keyTapPreviewToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked || suppressKeyTapPreviewToggleCallback) {
+                    return;
+                }
+                boolean enabled = checkedId == R.id.km_pro_key_tap_preview_on;
+                KmProKeyTapPreviewPrefs.write(requireContext(), enabled);
+                notifyKmProKeyTapPreviewFromPrefs();
             });
         }
 
@@ -296,6 +311,7 @@ public class KmProSettingsFragment extends Fragment {
         super.onResume();
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
+        syncKeyTapPreviewToggleFromPrefs();
         syncTouchpadModeToggleFromPrefs();
         syncGestureStatusSwitchFromPrefs();
         syncScrollStripControlsFromPrefs();
@@ -340,6 +356,17 @@ public class KmProSettingsFragment extends Fragment {
 
     private static int alternateHintsEnabledToButtonId(boolean enabled) {
         return enabled ? R.id.km_pro_alternate_hints_on : R.id.km_pro_alternate_hints_off;
+    }
+
+    private void syncKeyTapPreviewToggleFromPrefs() {
+        if (keyTapPreviewToggle == null) {
+            return;
+        }
+        boolean enabled = KmProKeyTapPreviewPrefs.read(requireContext());
+        int buttonId = enabled ? R.id.km_pro_key_tap_preview_on : R.id.km_pro_key_tap_preview_off;
+        suppressKeyTapPreviewToggleCallback = true;
+        keyTapPreviewToggle.check(buttonId);
+        suppressKeyTapPreviewToggleCallback = false;
     }
 
     private void updateGamingKeyBehaviorSectionVisibility() {
@@ -424,6 +451,13 @@ public class KmProSettingsFragment extends Fragment {
         Activity a = getActivity();
         if (a instanceof MainActivity) {
             ((MainActivity) a).refreshKeyboardAlternatesHintsFromPrefs();
+        }
+    }
+
+    private void notifyKmProKeyTapPreviewFromPrefs() {
+        Activity a = getActivity();
+        if (a instanceof MainActivity) {
+            ((MainActivity) a).refreshKmProKeyTapPreviewFromPrefs();
         }
     }
 

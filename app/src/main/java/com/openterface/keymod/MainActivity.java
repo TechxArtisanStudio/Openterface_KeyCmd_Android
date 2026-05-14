@@ -1917,6 +1917,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
+    /** Reload KM Pro key tap preview pref into the composite keyboard after Pro setup. */
+    public void refreshKmProKeyTapPreviewFromPrefs() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).refreshKmProKeyTapPreviewFromPrefs();
+        }
+    }
+
     /** Rebuild composite keyboard views after KM Pro setup (long-press behavior, etc.). */
     public void refreshCompositeKeyboardLayoutFromKmProSetup() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);

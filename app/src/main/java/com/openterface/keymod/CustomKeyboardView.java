@@ -79,12 +79,14 @@ import com.google.android.material.color.MaterialColors;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.openterface.keymod.basic.BasicHoldLockPopup;
 import com.openterface.keymod.basic.BasicKeyFeedback;
+import com.openterface.keymod.basic.BasicKeyPreview;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.basic.KmBasicHoldLockTiming;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.preset.FixedStripLayoutCatalog;
 import com.openterface.keymod.preset.Rows23StripProfile;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProKeyTapPreviewPrefs;
 import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
 import com.openterface.keymod.preset.Rows23StripProfileManager;
@@ -250,6 +252,9 @@ public class CustomKeyboardView extends LinearLayout {
      * (built-in Pro layout: row below letters, left of Z) when main keyboard Fn is latched.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
+    /** KM Pro setup: floating label above key while pressed (see {@link KmProKeyTapPreviewPrefs}). */
+    private boolean kmProKeyTapPreviewEnabled;
+    private final BasicKeyPreview kmProKeyPreview = new BasicKeyPreview();
     private Runnable gamingRepeatRunnable;
     private Runnable gamingRepeatStarterRunnable;
     private Key gamingRepeatKey;
@@ -640,6 +645,7 @@ public class CustomKeyboardView extends LinearLayout {
         // Reload keyboard layout when orientation changes
         boolean isLandscape = newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
         Log.d(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
+        kmProKeyPreview.dismiss();
         loadKeyboardForCurrentState(getContext());
         removeAllViews();
         updateKeyboard();
@@ -659,6 +665,7 @@ public class CustomKeyboardView extends LinearLayout {
                     .apply();
         }
         keyboardAlternatesHintsEnabled = KeyboardAlternatesHintsPrefs.read(context);
+        kmProKeyTapPreviewEnabled = KmProKeyTapPreviewPrefs.read(context);
 
         // Load keyboard layout based on orientation (matching iOS behavior)
         reloadForCurrentOrientation();
@@ -671,6 +678,7 @@ public class CustomKeyboardView extends LinearLayout {
     public void reloadForCurrentOrientation() {
         Context context = getContext();
         loadKeyboardForCurrentState(context);
+        kmProKeyPreview.dismiss();
         removeAllViews();
         updateKeyboard();
     }
@@ -709,6 +717,7 @@ public class CustomKeyboardView extends LinearLayout {
         Context context = getContext();
         if (context == null) return;
         loadKeyboardForCurrentState(context);
+        kmProKeyPreview.dismiss();
         removeAllViews();
         updateKeyboard();
     }
@@ -1837,6 +1846,23 @@ public class CustomKeyboardView extends LinearLayout {
         updateKeyboard();
     }
 
+    /** Reload KM Pro key tap preview pref (Keyboard and Mouse Pro setup); no full layout rebuild. */
+    public void reloadKmProKeyTapPreviewFromPrefs() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        kmProKeyTapPreviewEnabled = KmProKeyTapPreviewPrefs.read(ctx);
+        syncKmProKeyTapPreviewToPartner();
+    }
+
+    private void syncKmProKeyTapPreviewToPartner() {
+        if (splitPartner == null) {
+            return;
+        }
+        splitPartner.kmProKeyTapPreviewEnabled = kmProKeyTapPreviewEnabled;
+    }
+
     /** Full layout rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
     public void rebuildKeyboardFromKmProSetup() {
         updateKeyboard();
@@ -2525,6 +2551,7 @@ public class CustomKeyboardView extends LinearLayout {
     private void updateKeyboard() {
         stopGamingKeyRepeat();
         detachLocalImeFieldQuiet();
+        kmProKeyPreview.dismiss();
         removeAllViews();
         kmProLetterKeyboardBody = null;
         kmProPortraitBrandFooter = null;
@@ -2951,6 +2978,90 @@ public class CustomKeyboardView extends LinearLayout {
         }
     }
 
+    @NonNull
+    private String buildKmProKeyTapPreviewLabel(@Nullable Key key) {
+        if (key == null) {
+            return "";
+        }
+        if (isFnAlternateHintsToggleKey(key)) {
+            return "";
+        }
+        int code = key.code;
+        if (code == KEY_NOOP_PLACEHOLDER
+                || code == KEY_IME_TOGGLE
+                || code == KEY_TOP_SHORTCUT_DISPLAY_TOGGLE
+                || code == KEY_TOP_STRIP_CREATE_SHORTCUT
+                || code == KEY_EXTRA_NUMPAD_FN) {
+            return "";
+        }
+        if (code == KEY_MODE_FN || code == KEY_FIXED_TOP_LOCAL_FN) {
+            return "";
+        }
+        if (code >= KEY_TOP_MODE_SLOT_1 && code <= KEY_TOP_MODE_SLOT_3) {
+            return "";
+        }
+
+        String fnText = getFnDisplayLabel(key);
+        if (isFnLocked && !TextUtils.isEmpty(fnText)) {
+            return fnText.trim();
+        }
+
+        boolean showAlt = isShiftLeftLocked || isSymbolMode;
+        String displayLabel = key.label != null ? key.label : "";
+        String symbolLabel = key.symbolLabel != null ? key.symbolLabel : "";
+        if (displayLabel.contains("\n")) {
+            String[] parts = displayLabel.split("\n");
+            if (parts.length == 2) {
+                symbolLabel = parts[0];
+                displayLabel = parts[1];
+            }
+        }
+
+        if (showAlt && !TextUtils.isEmpty(symbolLabel)) {
+            String s = symbolLabel.trim();
+            if (!s.isEmpty()) {
+                int nl = s.indexOf('\n');
+                return nl >= 0 ? s.substring(0, nl) : s;
+            }
+        }
+
+        displayLabel = displayLabel.trim();
+        if (displayLabel.isEmpty()) {
+            return "";
+        }
+        if (displayLabel.length() == 1) {
+            char c = displayLabel.charAt(0);
+            if (Character.isLetter(c)) {
+                char lower = Character.toLowerCase(c);
+                return showAlt ? String.valueOf(Character.toUpperCase(lower)) : String.valueOf(lower);
+            }
+        }
+        if (displayLabel.length() > 14 || displayLabel.indexOf('\n') >= 0) {
+            return "";
+        }
+        return displayLabel;
+    }
+
+    private void updateKmProKeyTapPreviewForPointer(View v, Key key, MotionEvent event) {
+        if (!kmProKeyTapPreviewEnabled) {
+            return;
+        }
+        if (isAlternatePopupVisible()) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        if (!isTouchInsideView(v, event)) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        String t = buildKmProKeyTapPreviewLabel(key);
+        if (TextUtils.isEmpty(t)) {
+            kmProKeyPreview.dismiss();
+            return;
+        }
+        kmProKeyPreview.show(v, t);
+    }
+
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
         if (isProBuiltInModifierTouchKey(key)) {
@@ -2976,6 +3087,7 @@ public class CustomKeyboardView extends LinearLayout {
                             sendHidKeyTapForGamingRepeat(key);
                             startGamingKeyRepeat(key);
                         }
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     if (shouldRepeatOnLongPress(key) && getContext() != null) {
@@ -2991,6 +3103,7 @@ public class CustomKeyboardView extends LinearLayout {
                     if (isFnAlternateHintsToggleKey(key)) {
                         v.setPressed(true);
                         setParentDisallowInterceptTouchEvent(v, true);
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     // Listener consumes DOWN/MOVE so the framework never applies pressed; drive
@@ -2998,33 +3111,41 @@ public class CustomKeyboardView extends LinearLayout {
                     v.setPressed(true);
                     v.setTag(R.id.tag_custom_keyboard_tap_consume_move, Boolean.TRUE);
                     setParentDisallowInterceptTouchEvent(v, true);
+                    updateKmProKeyTapPreviewForPointer(v, key, event);
                     return true;
                 }
                 case MotionEvent.ACTION_MOVE: {
                     if (isAlternatePopupVisible()) {
+                        kmProKeyPreview.dismiss();
                         updateAlternateSelection(event.getRawX(), event.getRawY());
                         return true;
                     }
                     if (v.getTag(R.id.tag_custom_keyboard_pending_alternates) instanceof Runnable) {
                         // Keep the touch on this key until long-press fires; otherwise a parent may
                         // cancel the stream before the alternates popup opens.
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     if (Boolean.TRUE.equals(v.getTag(R.id.tag_custom_keyboard_tap_consume_move))) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
                     if (holdKeyRepeatActive && holdKeyRepeatKey == key && !isTouchInsideView(v, event)) {
                         stopRepeatingDelete();
                     }
                     if (isFnAlternateHintsToggleKey(key)) {
+                        updateKmProKeyTapPreviewForPointer(v, key, event);
                         return true;
                     }
+                    updateKmProKeyTapPreviewForPointer(v, key, event);
                     return false;
                 }
                 case MotionEvent.ACTION_UP: {
+                    kmProKeyPreview.dismiss();
                     v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
                     setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
@@ -3058,6 +3179,7 @@ public class CustomKeyboardView extends LinearLayout {
                     return false;
                 }
                 case MotionEvent.ACTION_CANCEL: {
+                    kmProKeyPreview.dismiss();
                     v.setTag(R.id.tag_custom_keyboard_tap_consume_move, null);
                     setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
@@ -3761,6 +3883,7 @@ public class CustomKeyboardView extends LinearLayout {
         currentAlternatePopupModel = null;
         currentAlternatePick = AlternatePopupGeometry.RESULT_DEFAULT;
         lastAlternatePickForHaptic = Integer.MIN_VALUE;
+        kmProKeyPreview.dismiss();
     }
 
     private void performKeyHapticFeedback(View view) {
@@ -8069,6 +8192,7 @@ public class CustomKeyboardView extends LinearLayout {
         longPressHandler.removeCallbacksAndMessages(null);
         stopRepeatingDelete();
         dismissAlternatesPopup();
+        kmProKeyPreview.dismiss();
         if (isServiceBound) {
             getContext().unbindService(serviceConnection);
             isServiceBound = false;

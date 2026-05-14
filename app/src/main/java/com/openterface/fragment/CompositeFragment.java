@@ -253,6 +253,19 @@ public class CompositeFragment extends Fragment {
         }
     }
 
+    /** Reload key tap preview pref (Keyboard and Mouse Pro setup). */
+    public void refreshKmProKeyTapPreviewFromPrefs() {
+        if (keyboardView != null) {
+            keyboardView.reloadKmProKeyTapPreviewFromPrefs();
+        }
+        if (keyboardViewLeft != null) {
+            keyboardViewLeft.reloadKmProKeyTapPreviewFromPrefs();
+        }
+        if (keyboardViewRight != null) {
+            keyboardViewRight.reloadKmProKeyTapPreviewFromPrefs();
+        }
+    }
+
     /** Full keyboard rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
     public void refreshCompositeKeyboardLayoutFromKmProSetup() {
         if (keyboardView != null) {
