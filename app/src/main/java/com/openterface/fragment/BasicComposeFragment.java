@@ -495,7 +495,11 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         WindowInsetsCompat windowInsets = ViewCompat.getRootWindowInsets(editor);
         boolean imeVisible =
                 windowInsets != null && windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom > 0;
-        boolean showLogo = !sending && !imeVisible && (text == null || text.length() == 0);
+        boolean emptyBuffer = text == null || text.length() == 0;
+        // KM Pro embeds this fragment with the soft keyboard shown; do not tie visibility to IME or the
+        // wordmark never appears (standalone Basic Compose still hides while IME is up).
+        boolean imeAllowsLogo = isEmbeddedInKmPro() || !imeVisible;
+        boolean showLogo = !sending && imeAllowsLogo && emptyBuffer;
         composeBrandLogo.setVisibility(showLogo ? View.VISIBLE : View.GONE);
     }
 

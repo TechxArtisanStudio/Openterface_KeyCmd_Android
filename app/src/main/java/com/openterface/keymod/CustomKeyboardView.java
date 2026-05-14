@@ -6704,6 +6704,10 @@ public class CustomKeyboardView extends LinearLayout {
                 gridLayout.addView(createExtraNumpadSplitPlusCell(params));
                 continue;
             }
+            if (shouldRenderExtraNumpadZeroWordmarkCell(entry)) {
+                gridLayout.addView(createExtraNumpadZeroWordmarkCell(entry, params));
+                continue;
+            }
             if (entry.key.iconResId != 0) {
                 ImageButton iconButton = new ImageButton(getContext());
                 applyFlatKeyStyle(iconButton);
@@ -6784,6 +6788,72 @@ public class CustomKeyboardView extends LinearLayout {
                 && entry.col == 6
                 && entry.rowSpan == 1
                 && entry.colSpan == 2;
+    }
+
+    /** Wide numpad 0: match KM Basic {@code fragment_basic_numpad} wordmark on {@code NUMPAD_0}. */
+    private boolean shouldRenderExtraNumpadZeroWordmarkCell(@Nullable ExtraGridKey entry) {
+        return entry != null
+                && entry.key != null
+                && entry.key.code == 0x62
+                && "0".equals(entry.key.label)
+                && entry.colSpan == 4
+                && entry.rowSpan == 1;
+    }
+
+    private View createExtraNumpadZeroWordmarkCell(ExtraGridKey entry, GridLayout.LayoutParams params) {
+        Context ctx = getContext();
+        FrameLayout cell = new FrameLayout(ctx);
+        applyFlatKeyStyle(cell);
+        cell.setLayoutParams(params);
+        cell.setBackgroundResource(R.drawable.function_button_background);
+        cell.setClickable(false);
+
+        ImageView brand = new ImageView(ctx);
+        Resources res = ctx.getResources();
+        int padV = dpToPx(4);
+        // Match fragment_basic_numpad NUMPAD_0 inner image padding (6dp horizontal, 4dp vertical).
+        int padH = dpToPx(6);
+        brand.setPaddingRelative(padH, padV, padH, padV);
+        int maxH = res.getDimensionPixelSize(R.dimen.km_basic_numpad_zero_wordmark_max_height);
+        int maxW = res.getDimensionPixelSize(R.dimen.km_basic_numpad_zero_wordmark_max_width);
+        brand.setMaxWidth(maxW);
+        brand.setMaxHeight(maxH);
+        brand.setAdjustViewBounds(true);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setImageResource(R.drawable.ic_openterface_wordmark);
+        brand.setColorFilter(
+                ContextCompat.getColor(ctx, R.color.basic_key_label_color), PorterDuff.Mode.SRC_IN);
+        brand.setContentDescription(ctx.getString(R.string.kb_basic_numpad_zero_desc));
+        brand.setDuplicateParentStateEnabled(true);
+        FrameLayout.LayoutParams logoLp =
+                new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER);
+        brand.setLayoutParams(logoLp);
+        brand.setTag(R.id.tag_custom_keyboard_extra_cell_key, entry.key);
+        if (shouldRepeatOnLongPress(entry.key)) {
+            attachKeyListeners(brand, entry.key);
+        } else {
+            brand.setOnClickListener(v -> handleKeyPress(entry.key));
+            brand.setOnTouchListener(
+                    (v, event) -> {
+                        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                            performKeyHapticFeedback(v);
+                        }
+                        if (event.getAction() == MotionEvent.ACTION_UP) {
+                            repeatHandler.postDelayed(
+                                    () -> {
+                                        sendReleaseData();
+                                        Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
+                                    },
+                                    30);
+                        }
+                        return false;
+                    });
+        }
+        cell.addView(brand);
+        return cell;
     }
 
     private View createExtraNumpadSplitPlusCell(GridLayout.LayoutParams params) {

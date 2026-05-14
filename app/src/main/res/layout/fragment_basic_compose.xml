@@ -114,16 +114,16 @@
     <ImageView
         android:id="@+id/basic_compose_brand_logo"
         android:layout_width="wrap_content"
-        android:layout_height="12dp"
+        android:layout_height="@dimen/km_basic_touchpad_brand_logo_height"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="2dp"
         android:layout_marginBottom="10dp"
-        android:maxWidth="200dp"
+        android:maxWidth="@dimen/km_basic_touchpad_brand_logo_max_width"
         android:adjustViewBounds="true"
         android:scaleType="fitCenter"
         android:alpha="0.82"
         android:src="@drawable/ic_openterface_wordmark"
         android:tint="@color/text_secondary"
-        android:contentDescription="@null"
-        android:importantForAccessibility="no" />
+        android:contentDescription="@string/touch_pad_brand_content_description"
+        android:importantForAccessibility="yes" />
 </LinearLayout>
