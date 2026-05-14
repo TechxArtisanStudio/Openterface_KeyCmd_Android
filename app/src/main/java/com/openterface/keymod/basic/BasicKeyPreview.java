@@ -2,6 +2,7 @@ package com.openterface.keymod.basic;
 
 import android.graphics.Rect;
 import android.os.Build;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +23,12 @@ public final class BasicKeyPreview {
     @Nullable
     private PopupWindow popup;
 
+    @Nullable
+    private View lastPreviewAnchor;
+
+    @Nullable
+    private String lastPreviewText;
+
     public void dismiss() {
         if (popup != null) {
             try {
@@ -33,10 +40,18 @@ public final class BasicKeyPreview {
             }
             popup = null;
         }
+        lastPreviewAnchor = null;
+        lastPreviewText = null;
     }
 
     public void show(View anchor, CharSequence text) {
         if (anchor == null || anchor.getContext() == null || text == null || text.length() == 0) {
+            return;
+        }
+        if (popup != null
+                && popup.isShowing()
+                && anchor == lastPreviewAnchor
+                && TextUtils.equals(lastPreviewText, text)) {
             return;
         }
         dismiss();
@@ -100,6 +115,8 @@ public final class BasicKeyPreview {
         }
 
         win.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY);
+        lastPreviewAnchor = anchor;
+        lastPreviewText = text.toString();
     }
 
     /**

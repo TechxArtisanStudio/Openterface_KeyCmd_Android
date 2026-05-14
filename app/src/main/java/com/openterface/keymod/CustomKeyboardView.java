@@ -3064,7 +3064,7 @@ public class CustomKeyboardView extends LinearLayout {
             kmProKeyPreview.dismiss();
             return;
         }
-        if (!isTouchInsideView(v, event)) {
+        if (!isTouchInsideViewWithSlop(v, event)) {
             kmProKeyPreview.dismiss();
             return;
         }
@@ -3345,6 +3345,11 @@ public class CustomKeyboardView extends LinearLayout {
      * the key still send HID (KM Pro built-in vs KM Basic responsiveness).
      */
     private static boolean isTouchInsideViewSlopForTapUp(@Nullable View view, @Nullable MotionEvent event) {
+        return isTouchInsideViewWithSlop(view, event);
+    }
+
+    /** Same expanded hit rect as tap-up commit; used for KM Pro tap preview during MOVE to avoid edge flicker. */
+    private static boolean isTouchInsideViewWithSlop(@Nullable View view, @Nullable MotionEvent event) {
         if (view == null || event == null) {
             return false;
         }
