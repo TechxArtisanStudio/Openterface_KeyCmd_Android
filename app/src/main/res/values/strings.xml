@@ -215,7 +215,9 @@ by TechxArtisan</string>
     <string name="mode_tutorial_pro_step_target_os">Set target OS to match the computer you control so shortcuts and modifiers are correct.</string>
     <string name="mode_tutorial_pro_step_submodes">Use these icons to switch between keyboard, compose, and numpad surfaces.</string>
     <string name="mode_tutorial_pro_step_setup">Open setup to change strip display, alternate hints, and the active Shortcut Hub profile.</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">The keyboard area includes shortcut strips—scroll them to reach more actions.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">The shortcut panel sits above the letter keys: up to three rows include a Shortcut Hub profile strip you can scroll sideways, plus favorites and fixed shortcuts. Tap a slot to send that shortcut to the host. Use the + control to create a new shortcut. Some modifier keys support long-press for lock or hold hints—watch the strip for cues.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">Compose mode gives you a scrollable multi-line editor so you can type or paste longer text instead of tapping key-by-key. The tour switches here automatically for this step; use the Keyboard tab anytime to return.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">The action row: undo/redo, clear the field, save text to your Saved library, open Saved texts to load earlier clips, and Send to transmit the current text to the host over your USB or Bluetooth link.</string>
     <string name="mode_tutorial_presentation_step_tools">Swipe the top carousel to pick your presentation app; shortcuts adapt to that tool.</string>
     <string name="mode_tutorial_presentation_step_nav">Use Next and Previous to send slide keys to the host.</string>
     <string name="mode_tutorial_presentation_step_actions">Play starts the slideshow; Black screen hides the slide for the audience.</string>

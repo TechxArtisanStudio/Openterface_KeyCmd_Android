@@ -141,7 +141,9 @@
     <string name="mode_tutorial_pro_step_target_os">设置目标系统与您正在控制的电脑一致，以便快捷键与修饰键正确。</string>
     <string name="mode_tutorial_pro_step_submodes">使用这些图标在键盘、撰写与数字键盘界面之间切换。</string>
     <string name="mode_tutorial_pro_step_setup">打开设置可调整快捷条显示、备用提示以及当前快捷方式中心配置文件。</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">键盘区域包含快捷条，可左右滑动查看更多操作。</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">快捷方式面板位于字母键上方：最多三行，包括可横向滑动的快捷方式中心配置区，以及收藏与固定快捷方式。点按槽位即可将该快捷方式发送到主机。使用「+」可新建快捷方式。部分修饰键支持长按锁定或按住提示，请注意快捷条上的提示。</string>
+    <string name="mode_tutorial_pro_step_compose_editor">撰写模式提供可滚动的多行编辑器，便于输入或粘贴较长文本，而无需逐键点按。本教程此步会自动切换到撰写模式；随时可用顶部的「键盘」标签返回。</string>
+    <string name="mode_tutorial_pro_step_compose_actions">操作行包含：撤销/重做、清空、将文本保存到已保存库、打开已保存文本以载入之前的片段，以及通过当前 USB 或蓝牙连接将当前文本发送到主机。</string>
     <string name="mode_tutorial_presentation_step_tools">在顶部轮播左右滑动选择演示应用，快捷键会随所选工具变化。</string>
     <string name="mode_tutorial_presentation_step_nav">使用「下一页」和「上一页」向主机发送翻页键。</string>
     <string name="mode_tutorial_presentation_step_actions">「播放」开始放映；「黑屏」可向观众隐藏当前幻灯片。</string>

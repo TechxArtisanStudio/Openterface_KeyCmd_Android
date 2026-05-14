@@ -2179,6 +2179,18 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return bluetoothService;
     }
 
+    /**
+     * Switches the top {@link CompositeFragment} KM Pro tab (keyboard / compose / numpad). Used by the
+     * KM Pro mode tour so Compose UI exists before highlight measurement.
+     */
+    public void ensureKmProFragmentSubmode(@NonNull String submodeKey) {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof CompositeFragment) {
+            ((CompositeFragment) f).applyKmProSubmodeFromHost(submodeKey);
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
     public void openModeGuideSheet() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(f);

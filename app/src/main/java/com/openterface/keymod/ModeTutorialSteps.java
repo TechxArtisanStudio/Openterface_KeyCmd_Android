@@ -3,6 +3,9 @@ package com.openterface.keymod;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.openterface.keymod.prefs.KmProSubmodePrefs;
 
 /**
  * Builds {@link TutorialOverlay.Step} arrays for KM Basic and per-mode guides.
@@ -72,8 +75,28 @@ public final class ModeTutorialSteps {
                     false),
             step(
                     activity,
-                    new int[] {R.id.keyboard_view},
+                    new int[] {
+                        R.id.keyboard_view, R.id.keyboard_view_left, R.id.keyboard_view_right
+                    },
                     R.string.mode_tutorial_pro_step_keyboard_strip,
+                    false),
+            step(
+                    activity,
+                    new int[] {
+                        R.id.basic_compose_editor,
+                        R.id.basic_compose_root,
+                        R.id.km_pro_compose_fragment_host
+                    },
+                    R.string.mode_tutorial_pro_step_compose_editor,
+                    false,
+                    650,
+                    () ->
+                            activity.ensureKmProFragmentSubmode(
+                                    KmProSubmodePrefs.SUBMODE_COMPOSE)),
+            step(
+                    activity,
+                    new int[] {R.id.basic_compose_actions, R.id.basic_compose_send},
+                    R.string.mode_tutorial_pro_step_compose_actions,
                     true)
         };
     }
@@ -158,6 +181,16 @@ public final class ModeTutorialSteps {
             @NonNull final int[] viewIds,
             final int descriptionRes,
             final boolean last) {
+        return step(activity, viewIds, descriptionRes, last, 400, null);
+    }
+
+    private static TutorialOverlay.Step step(
+            @NonNull final MainActivity activity,
+            @NonNull final int[] viewIds,
+            final int descriptionRes,
+            final boolean last,
+            final int delayMs,
+            @Nullable final Runnable extraOnShow) {
         return new TutorialOverlay.Step() {
             @Override
             public int[] targetViewIds() {
@@ -178,11 +211,14 @@ public final class ModeTutorialSteps {
             @Override
             public void onShow(Context context) {
                 MainActivity.closeDrawerIfOpen(context);
+                if (extraOnShow != null) {
+                    extraOnShow.run();
+                }
             }
 
             @Override
             public int delayMs() {
-                return 400;
+                return delayMs;
             }
         };
     }

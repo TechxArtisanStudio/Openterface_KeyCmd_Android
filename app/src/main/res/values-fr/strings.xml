@@ -39,7 +39,9 @@ par TechxArtisan</string>
     <string name="mode_tutorial_pro_step_target_os">Réglez le système cible sur celui que vous contrôlez pour que raccourcis et modificateurs correspondent.</string>
     <string name="mode_tutorial_pro_step_submodes">Ces icônes basculent entre clavier, rédaction et pavé numérique.</string>
     <string name="mode_tutorial_pro_step_setup">Ouvrez les réglages pour ajuster la barre rapide, les astuces de secours et le profil du hub de raccourcis actif.</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">La zone clavier inclut une barre rapide ; balayez horizontalement pour voir d’autres actions.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">Au-dessus des clavier lettres, le panneau de raccourcis comporte jusqu’à trois rangées : une bande de profil du hub que vous pouvez faire défiler latéralement, plus des favoris et des raccourcis fixes. Touchez une case pour envoyer le raccourci à l’hôte. L’icône « + » crée un raccourci. Certains modificateurs se maintiennent au long appui—suivez les indications sur la bande.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">Le mode Rédaction offre un éditeur multiligne défilable pour saisir ou coller de longs textes sans frapper touche par touche. La visite bascule ici automatiquement pour cette étape ; revenez à tout moment avec l’onglet Clavier.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">La barre d’actions : annuler/rétablir, effacer, enregistrer dans Bibliothèque enregistrée, ouvrir Textes enregistrés pour charger d’anciens extraits, et Envoyer pour transmettre le texte actuel à l’hôte via USB ou Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Balayez le carrousel du haut pour choisir l’app de présentation ; les raccourcis suivent l’outil sélectionné.</string>
     <string name="mode_tutorial_presentation_step_nav">« Suivant » et « Précédent » envoient les touches de diapositive à l’hôte.</string>
     <string name="mode_tutorial_presentation_step_actions">« Lecture » démarre le diaporama ; « Noir » masque la diapositive pour le public.</string>

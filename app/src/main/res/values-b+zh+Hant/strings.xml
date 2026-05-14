@@ -141,7 +141,9 @@
     <string name="mode_tutorial_pro_step_target_os">將目標系統設為您正在控制的電腦，讓快捷鍵與修飾鍵正確對應。</string>
     <string name="mode_tutorial_pro_step_submodes">使用這些圖示在鍵盤、撰寫與數字鍵盤畫面之間切換。</string>
     <string name="mode_tutorial_pro_step_setup">開啟設定可調整快捷列顯示、備援提示以及目前捷徑中心的設定檔。</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">鍵盤區域含快捷列，可左右滑動查看更多動作。</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">快捷方式面板位於字母鍵上方：最多三行，包含可橫向滑動的快捷方式中心設定檔區，以及我的最愛與固定快捷方式。點按槽位即可將該快捷方式傳送到主機。使用「+」可新增快捷方式。部分修飾鍵支援長按鎖定或按住提示，請留意快捷列上的提示。</string>
+    <string name="mode_tutorial_pro_step_compose_editor">撰寫模式提供可捲動的多行編輯器，方便輸入或貼上較長文字，而無需逐鍵點按。本教學此步會自動切換到撰寫模式；隨時可用頂部的「鍵盤」標籤返回。</string>
+    <string name="mode_tutorial_pro_step_compose_actions">操作列包含：復原/重做、清空、將文字儲存到已儲存庫、開啟已儲存文字以載入先前的片段，以及透過目前的 USB 或藍牙連線將目前文字傳送到主機。</string>
     <string name="mode_tutorial_presentation_step_tools">在頂端輪播左右滑動選擇簡報 App，快捷鍵會隨所選工具變化。</string>
     <string name="mode_tutorial_presentation_step_nav">使用「下一頁」與「上一頁」向主機送出換頁鍵。</string>
     <string name="mode_tutorial_presentation_step_actions">「播放」開始放映；「黑畫面」可向觀眾隱藏目前投影片。</string>

@@ -39,7 +39,9 @@ por TechxArtisan</string>
     <string name="mode_tutorial_pro_step_target_os">Ajuste el sistema de destino al que controla para que atajos y modificadores coincidan.</string>
     <string name="mode_tutorial_pro_step_submodes">Estos iconos cambian entre teclado, redacción y teclado numérico.</string>
     <string name="mode_tutorial_pro_step_setup">Abra Ajustes para cambiar la barra rápida, sugerencias de respaldo y el perfil activo del centro de accesos directos.</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">El área del teclado incluye una barra rápida; deslice horizontalmente para ver más acciones.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">Sobre las letras, el panel de accesos directos tiene hasta tres filas: una franja de perfil del centro que puedes desplazar lateralmente, más favoritos y accesos fijos. Pulsa una ranura para enviar ese atajo al host. El botón «+» crea un atajo nuevo. Algunos modificadores admiten pulsación larga para bloqueo o mantener—fíjate en la franja.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">El modo Redactar ofrece un editor multilínea con desplazamiento para escribir o pegar textos largos sin pulsar tecla a tecla. El recorrido cambia aquí automáticamente en este paso; vuelve cuando quieras con la pestaña Teclado.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">La fila de acciones: deshacer/rehacer, borrar el campo, guardar en tu biblioteca Guardados, abrir Guardados para cargar fragmentos anteriores y Enviar para transmitir el texto actual al host por USB o Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Deslice el carrusel superior para elegir la app de presentación; los atajos siguen la herramienta seleccionada.</string>
     <string name="mode_tutorial_presentation_step_nav">«Siguiente» y «Anterior» envían teclas de diapositiva al host.</string>
     <string name="mode_tutorial_presentation_step_actions">«Reproducir» inicia la presentación; «Negro» oculta la diapositiva para la audiencia.</string>

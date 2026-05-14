@@ -39,7 +39,9 @@ TechxArtisan により</string>
     <string name="mode_tutorial_pro_step_target_os">操作している PC に合わせてターゲット OS を設定し、ショートカットと修飾キーが正しく動くようにします。</string>
     <string name="mode_tutorial_pro_step_submodes">これらのアイコンでキーボード、作成、テンキーの画面を切り替えます。</string>
     <string name="mode_tutorial_pro_step_setup">設定ではクイックストリップの表示、フォールバックのヒント、現在のショートカットハブのプロファイルを調整できます。</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">キーボード領域にはクイックストリップがあり、横にスワイプしてさらに操作を表示します。</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">文字キーの上にショートカットパネルがあります。最大3行で、横にスクロールできるショートカットハブのプロファイル帯に加え、お気に入りと固定ショートカットが並びます。スロットをタップするとそのショートカットをホストへ送信します。「+」で新規ショートカットを作成できます。一部の修飾キーは長押しでロックやホールドのヒントに対応します。帯の表示に注目してください。</string>
+    <string name="mode_tutorial_pro_step_compose_editor">作成モードでは複数行のスクロール可能なエディタで、キーを一つずつ押さずに長文の入力や貼り付けができます。このステップではツアーが自動的に作成モードへ切り替わります。いつでも上部の「キーボード」タブで戻れます。</string>
+    <string name="mode_tutorial_pro_step_compose_actions">アクション行：元に戻す/やり直し、入力のクリア、保存ライブラリへの保存、保存済みテキストを開いて以前のクリップを読み込み、送信で現在のテキストを USB または Bluetooth 経由でホストへ送ります。</string>
     <string name="mode_tutorial_presentation_step_tools">上部のカルーセルを左右にスワイプしてプレゼンアプリを選ぶと、ショートカットが変わります。</string>
     <string name="mode_tutorial_presentation_step_nav">「次へ」「前へ」でホストにスライド送りのキーを送ります。</string>
     <string name="mode_tutorial_presentation_step_actions">「再生」でスライドショーを開始し、「ブラック」で観客向けに画面を隠します。</string>
