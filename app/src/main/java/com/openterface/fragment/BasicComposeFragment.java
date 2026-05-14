@@ -957,10 +957,16 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             if (!canSend) {
                 sendBtn.setStrokeColor(outlineStroke);
                 sendBtn.setIconTint(mutedIcon);
-            } else if (showNonAsciiWarningInKmPro && darkMode) {
-                // Keep this clearly actionable in dark KM Pro Compose when non-ASCII warning is present.
-                sendBtn.setStrokeColor(whiteStroke);
-                sendBtn.setIconTint(whiteIcon);
+            } else if (showNonAsciiWarningInKmPro) {
+                // Keep this clearly actionable in KM Pro Compose when non-ASCII warning is present.
+                if (darkMode) {
+                    sendBtn.setStrokeColor(whiteStroke);
+                    sendBtn.setIconTint(whiteIcon);
+                } else {
+                    // In light mode, match neighboring action buttons (neutral dark icon + outline).
+                    sendBtn.setStrokeColor(outlineStroke);
+                    sendBtn.setIconTint(mutedIcon);
+                }
             } else if (showWarning) {
                 sendBtn.setStrokeColor(warningStroke);
                 sendBtn.setIconTint(warningIcon);
