@@ -1,4 +1,4 @@
-# KeyMod（Android）
+# KeyCmd（Android）
 
 <p align="center"><strong>README 語言</strong> · <em>GitHub 儲存庫首頁預設顯示根目錄嘅 README.md（英文）</em></p>
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**KeyMod** 係 [Openterface](https://openterface.com/) 嘅 Android 配套應用程式——透過類 KVM **硬件**橋接，用手機經 **USB** 或者 **藍牙** 控制主機電腦。本儲存庫為 Java／Android 實作（`com.openterface.keymod`）。
+**KeyCmd** 係 [Openterface](https://openterface.com/) 嘅 Android 配套應用程式——透過類 KVM **硬件**橋接，用手機經 **USB** 或者 **藍牙** 控制主機電腦。本儲存庫為 Java／Android 實作（`com.openterface.keymod`）。
 
 - **系統需求：** Android 8.0+（API 26）；使用 USB 控制時需要 USB OTG  
 - **文件：** 連接步驟、模式同快捷鍵見 [docs/USER_GUIDE.md](docs/USER_GUIDE.md)（英文）  

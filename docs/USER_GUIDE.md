@@ -1,6 +1,6 @@
 # KeyCmd Android - User Guide
 
-> **KeyCmd** is the companion Android app for [Openterface KVM-style hardware](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) — a bridge that lets you control any computer from your phone via USB or Bluetooth.
+> **KeyCmd** is the companion Android app for [Openterface](https://openterface.com/) — KVM-style hardware that bridges your phone to a host computer over **USB** or **Bluetooth**. Source code: [Openterface_KeyMod_Android](https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android) on GitHub.
 
 ---
 
@@ -46,22 +46,20 @@ On the **Welcome & Guide** screen (first launch or side menu), pick your primary
 ### USB Connection
 
 1. Connect your phone to your Openterface hardware via USB-C cable
-2. Open the app → tap the **connection icon** (top-right) or go to **Settings → General**
-3. Tap **USB Connection**
-4. Accept the USB permission dialog when prompted
-5. Status changes to ✅ **Connected**
+2. Open the app → tap the **connection** control in the app header (top-right cluster in most modes; on **Keyboard & Mouse (Basic)** it is in the keyboard’s top row)
+3. In the connection sheet, choose **USB** and accept the USB permission dialog when prompted
+4. Status changes to ✅ **Connected**
 
 ### Bluetooth Connection
 
 1. Turn on Bluetooth on your phone
-2. Open the app → tap the **connection icon**
-3. Tap **Bluetooth Connection**
-4. Select your Openterface hardware from the scan results
-5. Status changes to ✅ **Connected**
+2. Open the app → tap the **connection** control
+3. In the connection sheet, choose **Bluetooth** and select your Openterface hardware from the scan results
+4. Status changes to ✅ **Connected**
 
 ### Auto-Connect
 
-Enable **Auto-connect on startup** in the connection dialog to automatically reconnect to your last-used device when the app launches.
+Enable **Auto-connect on startup** in **Settings → General** (first tab), or from the same toggle inside the connection sheet when available, so the app reconnects to your last-used device on launch.
 
 ---
 
@@ -292,13 +290,12 @@ Go to **Settings → AI Settings** to configure AI model connections for voice-t
 
 ## ⚙️ Settings
 
-Access via the **⚙️ gear icon** on the main screen. Four tabs:
+Open the **side navigation** (menu icon), then tap **Settings** — the row with the **⚙️ gear** icon at the bottom of the drawer. Four tabs:
 
 ### General
-- Connection type (USB / Bluetooth)
-- Auto-connect toggle
-- Input mode preferences
-- Screen orientation settings
+- **Auto-connect on startup** (same preference as in the connection sheet)
+- Display: keep screen on, optional landscape orientation lock, touchpad scroll sensitivity
+- Language and **theme** (accent family, light/dark / follow system)
 
 ### Voice Input
 - Voice recognition configuration
@@ -358,7 +355,7 @@ The app auto-rotates when you turn your device.
 git clone https://github.com/TechxArtisanStudio/Openterface_KeyMod_Android.git
 cd Openterface_KeyMod_Android
 
-# Build (requires Java 21, Android SDK 35)
+# Build (JDK 17+ recommended; Android SDK / compileSdk 35)
 ./gradlew assembleDebug
 
 # APK output
@@ -377,7 +374,7 @@ adb install -r app/build/outputs/apk/debug/KeyCmd-debug.apk
 | **Package** | `com.openterface.keymod` |
 | **Min SDK** | Android 8.0 (API 26) |
 | **Target SDK** | Android 15 (API 35) |
-| **Version** | 1.0 (code 1) |
+| **Version** | See `versionName` / `versionCode` in `app/build.gradle` (e.g. **0.17** / **17** at time of writing) |
 | **HID Protocol** | CH9329 UART |
 | **USB Serial** | usb-serial-for-android |
 | **Bluetooth** | RxAndroidBle 1.19.0 |
@@ -408,4 +405,4 @@ Open source. See the project repository for details.
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-05-14*

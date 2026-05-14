@@ -93,7 +93,7 @@ Swipe-locked modifiers from the hold gesture are **cleared** when you leave Pro 
 
 ---
 
-## GamePad Mod: can I move the touchpad and use the stick (WASD) at the same time?
+## Gamepad Mode: can I move the touchpad and use the stick (WASD) at the same time?
 
 **Yes.** Use **one finger on the touchpad** for the cursor and **another finger on the stick** (or face buttons). The layout treats those as separate pointers so mouse movement and stick or keys can run together.
 
