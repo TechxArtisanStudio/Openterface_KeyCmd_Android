@@ -6154,7 +6154,12 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private OnTouchListener createFixedTopRowsTouchListener(Key key) {
-        if (key != null && isTopModifierLockCandidate(key)) {
+        // Page 1 + local Fn: Ctrl/Alt/Win/Shift cells show SCR LK / PRT SC / etc. and must use the
+        // normal HID path (handleKeyPress → sendHidKeyDataForKey). Keep the modifier listener only
+        // when there is no active Fn overlay, or for macOS Cmd→Caps momentary behavior.
+        if (key != null && isTopModifierLockCandidate(key)
+                && (resolveFixedTopLocalFnMapping(key) == null
+                        || isMacCapsMomentaryFromTopStripModifier(key))) {
             return createProTopStripModifierTouchListener(key, true);
         }
         final float[] startX = new float[1];
@@ -7975,12 +7980,14 @@ public class CustomKeyboardView extends LinearLayout {
             }
         }
 
-        if (key.code == KEY_MODE_FN
-            || key.code == 0xE0
-            || key.code == 0xE1
-            || key.code == 0xE2
-            || key.code == 0xE3) {
+        if (key.code == KEY_MODE_FN) {
             return;
+        }
+        if (key.code == 0xE0 || key.code == 0xE1 || key.code == 0xE2 || key.code == 0xE3) {
+            FnMapping stripFnOverlay = resolveFixedTopLocalFnMapping(key);
+            if (stripFnOverlay == null || isMacCapsMomentaryFromTopStripModifier(key)) {
+                return;
+            }
         }
 
         sendHidKeyDataForKey(key);
