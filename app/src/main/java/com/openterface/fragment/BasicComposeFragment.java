@@ -587,8 +587,8 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                     ComposeSendPreviewDialog.showUnicodeHostPlan(
                             requireContext(), preview, ma.getTargetOs());
                 },
-                "macos".equalsIgnoreCase(ma.getTargetOs()) && cm != null
-                        ? () -> MacUnicodeHexAuditFlow.start(ma, cm)
+                "macos".equalsIgnoreCase(ma.getTargetOs())
+                        ? () -> MacUnicodeHexAuditFlow.start(ma, ma.getConnectionManager())
                         : null);
     }
 

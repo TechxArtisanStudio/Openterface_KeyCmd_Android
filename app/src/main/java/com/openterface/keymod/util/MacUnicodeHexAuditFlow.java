@@ -43,7 +43,12 @@ public final class MacUnicodeHexAuditFlow {
     @Nullable private AlertDialog sendingOverlay;
 
     public static void start(@NonNull MainActivity activity, @Nullable ConnectionManager cm) {
-        if (cm == null || !"macos".equalsIgnoreCase(activity.getTargetOs())) {
+        if (!"macos".equalsIgnoreCase(activity.getTargetOs())) {
+            return;
+        }
+        if (cm == null) {
+            Toast.makeText(activity, R.string.unicode_hex_audit_not_connected, Toast.LENGTH_LONG)
+                    .show();
             return;
         }
         new MacUnicodeHexAuditFlow(activity, cm).beginPrereq();

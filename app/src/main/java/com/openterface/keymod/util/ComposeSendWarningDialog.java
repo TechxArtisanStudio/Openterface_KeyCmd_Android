@@ -49,7 +49,6 @@ public final class ComposeSendWarningDialog {
                 null,
                 null,
                 null,
-                null,
                 null);
     }
 
@@ -164,6 +163,20 @@ public final class ComposeSendWarningDialog {
             populateUnicodePlan(context, content, bufferText, targetOs);
         }
 
+        View unicodeHexAuditButton = content.findViewById(R.id.compose_send_warning_unicode_hex_audit_button);
+        if (unicodeHexAuditButton != null) {
+            boolean showHexAudit =
+                    isMacOsTarget(targetOsForHint) && onMacUnicodeHexAudit != null;
+            unicodeHexAuditButton.setVisibility(showHexAudit ? View.VISIBLE : View.GONE);
+            if (showHexAudit) {
+                unicodeHexAuditButton.setOnClickListener(
+                        v -> {
+                            dialog.dismiss();
+                            onMacUnicodeHexAudit.run();
+                        });
+            }
+        }
+
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
         checkButton.setOnClickListener(
@@ -184,11 +197,12 @@ public final class ComposeSendWarningDialog {
                                         .setTitle(R.string.compose_send_warning_unicode_info_title)
                                         .setMessage(unicodeHostSetupHint(context, targetOsForHint))
                                         .setPositiveButton(android.R.string.ok, null);
-                        if ("macos".equals(targetOsForHint) && onMacUnicodeHexAudit != null) {
-                            info.setNeutralButton(
+                        if (isMacOsTarget(targetOsForHint) && onMacUnicodeHexAudit != null) {
+                            // Negative is shown as a full-width-style action beside OK more reliably than neutral.
+                            info.setNegativeButton(
                                     R.string.unicode_hex_audit_entry,
-                                    (dialog, which) -> {
-                                        dialog.dismiss();
+                                    (infoDialog, which) -> {
+                                        infoDialog.dismiss();
                                         onMacUnicodeHexAudit.run();
                                     });
                         }
@@ -379,16 +393,20 @@ public final class ComposeSendWarningDialog {
         unicodeMessage.setText(body);
     }
 
+    private static boolean isMacOsTarget(@Nullable String targetOs) {
+        return "macos".equalsIgnoreCase(targetOs);
+    }
+
     @NonNull
     private static CharSequence unicodeHostSetupHint(
             @NonNull Context context, @Nullable String targetOs) {
-        if ("macos".equals(targetOs)) {
+        if (isMacOsTarget(targetOs)) {
             return context.getString(R.string.compose_send_warning_unicode_host_hint_macos);
         }
-        if ("windows".equals(targetOs)) {
+        if ("windows".equalsIgnoreCase(targetOs)) {
             return context.getString(R.string.compose_send_warning_unicode_host_hint_windows);
         }
-        if ("linux".equals(targetOs)) {
+        if ("linux".equalsIgnoreCase(targetOs)) {
             return context.getString(R.string.compose_send_warning_unicode_host_hint_linux);
         }
         return context.getString(R.string.compose_send_warning_unicode_host_hint_other);

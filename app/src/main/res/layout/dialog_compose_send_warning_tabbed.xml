@@ -218,6 +218,24 @@
                     app:icon="@drawable/ic_touchpad_info_24"
                     app:iconTint="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/compose_send_warning_unicode_hex_audit_button"
+                style="@style/Widget.KeyCmd.ComposeSendWarning.SecondaryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_small"
+                android:contentDescription="@string/unicode_hex_audit_entry"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:minHeight="48dp"
+                android:text="@string/unicode_hex_audit_entry"
+                android:visibility="gone"
+                app:icon="@drawable/ic_experiment_24px"
+                app:iconGravity="textStart"
+                app:iconPadding="6dp"
+                app:iconSize="20dp"
+                app:iconTint="?attr/colorOnSurface" />
         </LinearLayout>
     </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
