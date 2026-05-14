@@ -24,6 +24,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.annotation.SuppressLint;
 import android.view.View;
@@ -80,6 +81,7 @@ import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.color.MaterialColors;
 import com.polidea.rxandroidble2.RxBleClient;
@@ -2201,7 +2203,63 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (close != null) {
             close.setOnClickListener(v -> sheet.dismiss());
         }
+        sheet.setOnShowListener(
+                d -> {
+                    BottomSheetDialog dialog = (BottomSheetDialog) d;
+                    View decor = dialog.getWindow() != null ? dialog.getWindow().getDecorView() : null;
+                    if (decor != null) {
+                        decor.post(() -> applyModeGuideBottomSheetLayout(dialog));
+                    } else {
+                        applyModeGuideBottomSheetLayout(dialog);
+                    }
+                });
         sheet.show();
+    }
+
+    /**
+     * {@link BottomSheetDialog} can anchor to the wrong edge and use a portrait-narrow max width when
+     * the activity uses {@code configChanges} for orientation and Basic keyboard forces landscape
+     * ({@code SENSOR_LANDSCAPE}). Force full activity width, bottom gravity, and expanded behavior.
+     */
+    private void applyModeGuideBottomSheetLayout(@NonNull BottomSheetDialog dialog) {
+        View bottom = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        if (bottom == null) {
+            return;
+        }
+        int targetWidth = resolveActivityContentWidthPx();
+        BottomSheetBehavior<View> behavior = BottomSheetBehavior.from(bottom);
+        behavior.setFitToContents(true);
+        behavior.setSkipCollapsed(true);
+        behavior.setMaxWidth(targetWidth);
+        ViewGroup.LayoutParams lp = bottom.getLayoutParams();
+        if (lp != null) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            bottom.setLayoutParams(lp);
+        }
+        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            WindowManager.LayoutParams wlp = window.getAttributes();
+            wlp.width = WindowManager.LayoutParams.MATCH_PARENT;
+            wlp.gravity = Gravity.BOTTOM;
+            window.setAttributes(wlp);
+        }
+    }
+
+    private int resolveActivityContentWidthPx() {
+        Window w = getWindow();
+        if (w != null) {
+            View decor = w.getDecorView();
+            int dw = decor.getWidth();
+            if (dw > 0) {
+                return dw;
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return getWindowManager().getCurrentWindowMetrics().getBounds().width();
+        }
+        return getResources().getDisplayMetrics().widthPixels;
     }
 
     /** Called from KM Basic / Gamepad embedded chrome (activity header hidden there). */
