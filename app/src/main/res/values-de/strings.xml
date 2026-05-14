@@ -1668,7 +1668,10 @@ von TechxArtisan</string>
     <string name="gamepad_menu_send_to_back">Send to back</string>
     <string name="gamepad_layer_already_front">Already on top</string>
     <string name="gamepad_layer_already_back">Already at back</string>
-    <string name="presentation_timer_sample_time">25:00</string>
+    <string name="connection_header_bluetooth_searching">Bluetooth-Suche</string>
+    <string name="connection_header_bluetooth_connected">Bluetooth verbunden</string>
+    <string name="km_pro_settings_section_key_tap_preview">Tastenvorschau beim Tippen</string>
+    <string name="km_pro_settings_section_key_tap_preview_summary">Solange Sie eine Taste gedrückt halten, erscheint eine schwebende Beschriftung darüber (gleicher Stil wie Tastatur &amp; Maus Basic). Standardmäßig ein; für ein schlankeres Aussehen deaktivieren.</string>
 
     <!-- Synced with default strings (compose send review, saved texts library, KM Pro PH1 input, bug report) -->
     <string name="report_bug">Fehler melden</string>

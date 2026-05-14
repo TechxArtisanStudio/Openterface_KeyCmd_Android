@@ -1235,7 +1235,10 @@
     <string name="gamepad_menu_send_to_back">Send to back</string>
     <string name="gamepad_layer_already_front">Already on top</string>
     <string name="gamepad_layer_already_back">Already at back</string>
-    <string name="presentation_timer_sample_time">25:00</string>
+    <string name="connection_header_bluetooth_searching">蓝牙搜索中</string>
+    <string name="connection_header_bluetooth_connected">蓝牙已连接</string>
+    <string name="km_pro_settings_section_key_tap_preview">按键点按预览</string>
+    <string name="km_pro_settings_section_key_tap_preview_summary">按住按键时在其上方显示浮动标签（与键盘与鼠标基础模式相同）。默认开启；可关闭以获得极简外观。</string>
 
     <!-- Synced with default strings (compose send review, saved texts library, KM Pro PH1 input, bug report) -->
     <string name="report_bug">反馈问题</string>

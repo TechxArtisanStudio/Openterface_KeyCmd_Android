@@ -1633,7 +1633,10 @@ TechxArtisan により</string>
     <string name="gamepad_menu_send_to_back">Send to back</string>
     <string name="gamepad_layer_already_front">Already on top</string>
     <string name="gamepad_layer_already_back">Already at back</string>
-    <string name="presentation_timer_sample_time">25:00</string>
+    <string name="connection_header_bluetooth_searching">Bluetooth 検索中</string>
+    <string name="connection_header_bluetooth_connected">Bluetooth 接続済み</string>
+    <string name="km_pro_settings_section_key_tap_preview">キータッププレビュー</string>
+    <string name="km_pro_settings_section_key_tap_preview_summary">キーを押し続けている間、キーの上にフローティングラベルを表示します（キーボードとマウス ベーシックと同じスタイル）。標準ではオン。すっきりした見た目にする場合はオフにします。</string>
 
     <!-- Synced with default strings (compose send review, saved texts library, KM Pro PH1 input, bug report) -->
     <string name="report_bug">不具合を報告</string>
