@@ -153,7 +153,12 @@
     <string name="mode_tutorial_gamepad_step_presets">切换预设或点按芯片选择其他已保存布局。</string>
     <string name="mode_tutorial_gamepad_step_sticks">使用摇杆与按键如同掌机手柄，映射随当前预设而定。</string>
     <string name="mode_tutorial_hub_step_profiles">创建或导入配置文件，为不同应用整理快捷方式集。</string>
-    <string name="mode_tutorial_hub_step_open_profile">点按配置文件即可编辑收藏并浏览分类。</string>
+    <string name="mode_tutorial_hub_step_open_profile">点按配置文件行即可打开。下一步教程会自动打开默认配置文件，便于查看内部功能。</string>
+    <string name="mode_tutorial_hub_step_detail_intro">在配置文件内：标题显示正在编辑的配置；返回可回到列表；标签可在「收藏」与各分类（如「通用」）之间切换。在默认配置上，「重置」可在确认后将收藏恢复为出厂内容。</string>
+    <string name="mode_tutorial_hub_step_favorites_list">「收藏」是有序列表，会同步到键盘快捷条。拖曳控点可排序；越靠前越靠近快捷条前端。点按一行可打开溢出菜单（如编辑或从收藏移除）。</string>
+    <string name="mode_tutorial_hub_step_browse_category">分类标签列出该分区内的全部快捷方式。点按行上的星形可加入收藏以便上键盘条，或通过溢出菜单编辑该配置文件下的组合键。</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">「+」用于新建快捷方式：根据当前标签，会加入收藏或正在浏览的分类。</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">顶栏的设置（齿轮）可打开该配置文件在中心内的版式与显示选项，例如列表与卡片视图，以及名称或图标在列表中的呈现方式。</string>
     <string name="mode_tutorial_hub_step_connection">请先连接硬件，快捷方式才会发送到目标设备。</string>
     <string name="mode_tutorial_hub_step_replay_hint">随时点按本指南图标可重播快捷方式中心教程。</string>
     <string name="main_toast_auto_connecting_bluetooth">正在自动连接蓝牙…</string>

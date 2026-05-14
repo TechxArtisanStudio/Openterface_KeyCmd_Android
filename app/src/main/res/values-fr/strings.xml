@@ -51,7 +51,12 @@ par TechxArtisan</string>
     <string name="mode_tutorial_gamepad_step_presets">Changez de préréglage ou touchez les puces pour d’autres dispositions enregistrées.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Utilisez sticks et boutons comme sur une console portable ; le mappage suit le préréglage actif.</string>
     <string name="mode_tutorial_hub_step_profiles">Créez ou importez des profils pour organiser des jeux de raccourcis par application.</string>
-    <string name="mode_tutorial_hub_step_open_profile">Touchez un profil pour modifier les favoris et parcourir les catégories.</string>
+    <string name="mode_tutorial_hub_step_open_profile">Touchez une ligne de profil pour l’ouvrir. L’étape suivante ouvre automatiquement le profil Par défaut pour montrer l’intérieur.</string>
+    <string name="mode_tutorial_hub_step_detail_intro">Dans un profil : le titre indique le profil en cours, Retour renvoie à la liste, et les onglets passent des ⭐ Favoris à chaque catégorie (p. ex. Général). Sur Par défaut, Réinitialiser restaure les favoris d’usine après confirmation.</string>
+    <string name="mode_tutorial_hub_step_favorites_list">Favoris est la liste ordonnée qui alimente la barre de raccourcis du clavier. Faites glisser la poignée pour réordonner ; les éléments en haut apparaissent en premier sur la barre. Touchez une ligne pour le menu débordant (modifier, retirer des favoris, etc.).</string>
+    <string name="mode_tutorial_hub_step_browse_category">Les onglets de catégorie listent les raccourcis de la section. Touchez l’étoile pour ajouter aux Favoris de la barre, ou le menu débordant pour modifier la combinaison dans ce profil.</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">Le bouton + crée un raccourci vers les Favoris ou la catégorie consultée selon l’onglet actif.</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">L’icône de réglages (engrenage) de la barre ouvre la disposition et l’affichage de ce profil dans le Hub—liste ou cartes et rendu des noms ou icônes.</string>
     <string name="mode_tutorial_hub_step_connection">Connectez d’abord le matériel pour que les raccourcis atteignent l’appareil cible.</string>
     <string name="mode_tutorial_hub_step_replay_hint">Touchez à tout moment cette icône de guide pour rejouer la visite du hub de raccourcis.</string>
     <string name="main_toast_auto_connecting_bluetooth">Connexion automatique au Bluetooth…</string>

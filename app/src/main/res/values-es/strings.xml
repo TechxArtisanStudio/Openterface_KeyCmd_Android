@@ -51,7 +51,12 @@ por TechxArtisan</string>
     <string name="mode_tutorial_gamepad_step_presets">Cambie de preajuste o pulse las etiquetas para otros diseños guardados.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Use sticks y botones como en una portátil; el mapeo sigue el preajuste activo.</string>
     <string name="mode_tutorial_hub_step_profiles">Cree o importe perfiles para organizar conjuntos de accesos directos por aplicación.</string>
-    <string name="mode_tutorial_hub_step_open_profile">Pulse un perfil para editar favoritos y explorar categorías.</string>
+    <string name="mode_tutorial_hub_step_open_profile">Pulse una fila de perfil para abrirlo. El siguiente paso abre automáticamente el perfil Predeterminado para mostrar el interior.</string>
+    <string name="mode_tutorial_hub_step_detail_intro">Dentro de un perfil: el título indica cuál edita, Atrás vuelve a la lista y las pestañas cambian entre ⭐ Favoritos y cada categoría (p. ej. General). En Predeterminado, Restablecer recupera los favoritos de fábrica tras confirmar.</string>
+    <string name="mode_tutorial_hub_step_favorites_list">Favoritos es la lista ordenada que alimenta la tira de accesos del teclado. Arrastre el asa para reordenar; los de arriba salen primero en la tira. Pulse una fila para acciones extra (editar, quitar de favoritos, etc.).</string>
+    <string name="mode_tutorial_hub_step_browse_category">Las pestañas de categoría listan los atajos de esa sección. Pulse la estrella para añadirlo a Favoritos de la tira, o el menú desbordante para editar la combinación en este perfil.</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">El botón + crea un atajo en Favoritos o en la categoría que esté viendo, según la pestaña activa.</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">El engrane de la barra abre diseño y visualización de este perfil en el centro: lista frente a tarjetas y cómo se muestran nombres o iconos.</string>
     <string name="mode_tutorial_hub_step_connection">Conecte primero el hardware para que los accesos directos lleguen al dispositivo de destino.</string>
     <string name="mode_tutorial_hub_step_replay_hint">Pulse en cualquier momento este icono de guía para repetir la visita del centro de accesos directos.</string>
     <string name="main_toast_auto_connecting_bluetooth">Conectando automáticamente por Bluetooth…</string>

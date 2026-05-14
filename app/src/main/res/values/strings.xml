@@ -227,7 +227,12 @@ by TechxArtisan</string>
     <string name="mode_tutorial_gamepad_step_presets">Cycle presets or open the chip to pick another saved layout.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Use sticks and buttons like a handheld controller; mapping follows your preset.</string>
     <string name="mode_tutorial_hub_step_profiles">Create or import profiles to organize shortcut sets for different apps.</string>
-    <string name="mode_tutorial_hub_step_open_profile">Tap a profile to edit favorites and browse categories.</string>
+    <string name="mode_tutorial_hub_step_open_profile">Tap a profile row to open it. The next step opens the Default profile automatically so you can see what is inside.</string>
+    <string name="mode_tutorial_hub_step_detail_intro">Inside a profile: the title shows which profile you are editing, Back returns to the list, and the tabs switch between ⭐ Favorites and each category (such as General). On Default, Reset restores factory favorites after you confirm.</string>
+    <string name="mode_tutorial_hub_step_favorites_list">Favorites is the ordered list that feeds the keyboard shortcut strip. Drag the handle to reorder; the top items appear first on the strip. Tap a row for overflow actions such as edit or remove from favorites.</string>
+    <string name="mode_tutorial_hub_step_browse_category">Category tabs list every shortcut in that section. Tap ⭐ on a row to add it to Favorites for the strip, or use overflow to edit the key combo for this profile.</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">The + button creates a new shortcut into Favorites or into the category you are browsing, depending on the active tab.</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">The header setup (gear) icon opens layout and display options for this profile in the Hub—list versus card view and how names or icons appear in lists here.</string>
     <string name="mode_tutorial_hub_step_connection">Connect hardware first so shortcuts send to the target machine.</string>
     <string name="mode_tutorial_hub_step_replay_hint">Tap this guide icon anytime to replay the Shortcut Hub tour.</string>
 

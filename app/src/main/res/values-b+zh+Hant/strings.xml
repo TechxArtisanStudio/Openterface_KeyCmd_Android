@@ -153,7 +153,12 @@
     <string name="mode_tutorial_gamepad_step_presets">切換預設組或點按標籤選擇其他已儲存版面。</string>
     <string name="mode_tutorial_gamepad_step_sticks">使用搖桿與按鍵如同掌上型主機，對應隨目前預設組而定。</string>
     <string name="mode_tutorial_hub_step_profiles">建立或匯入設定檔，為不同 App 整理捷徑組合。</string>
-    <string name="mode_tutorial_hub_step_open_profile">點按設定檔即可編輯我的最愛並瀏覽分類。</string>
+    <string name="mode_tutorial_hub_step_open_profile">點按設定檔列即可開啟。下一步教學會自動開啟預設設定檔，方便檢視內部功能。</string>
+    <string name="mode_tutorial_hub_step_detail_intro">在設定檔內：標題顯示正在編輯的設定檔；返回可回到清單；分頁可在「我的最愛」與各分類（如「一般」）之間切換。在預設設定檔上，「重設」可在確認後將我的最愛還原為出廠內容。</string>
+    <string name="mode_tutorial_hub_step_favorites_list">「我的最愛」是有序清單，會同步到鍵盤捷徑列。拖曳控點可排序；越靠前越靠近捷徑列前端。點按一列可開啟溢位選單（如編輯或從我的最愛移除）。</string>
+    <string name="mode_tutorial_hub_step_browse_category">分類分頁列出該區段內的所有捷徑。點按列上的星形可加入我的最愛以便上鍵盤列，或透過溢位選單編輯此設定檔下的組合鍵。</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">「+」用於新增捷徑：依目前分頁，會加入我的最愛或正在瀏覽的分類。</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">頂列的設定（齒輪）可開啟此設定檔在中心內的版面與顯示選項，例如清單與卡片檢視，以及名稱或圖示在清單中的呈現方式。</string>
     <string name="mode_tutorial_hub_step_connection">請先連線硬體，捷徑才會傳送到目標裝置。</string>
     <string name="mode_tutorial_hub_step_replay_hint">隨時點按本指南圖示可重播捷徑中心教學。</string>
     <string name="main_toast_auto_connecting_bluetooth">正在自動連線藍牙…</string>

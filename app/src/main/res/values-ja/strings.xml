@@ -51,7 +51,12 @@ TechxArtisan により</string>
     <string name="mode_tutorial_gamepad_step_presets">プリセットを切り替えるか、チップをタップして別の保存レイアウトを選びます。</string>
     <string name="mode_tutorial_gamepad_step_sticks">スティックとボタンは携帯ゲーム機のように使え、割り当ては現在のプリセットに従います。</string>
     <string name="mode_tutorial_hub_step_profiles">プロファイルを作成または取り込み、アプリごとにショートカット集を整理します。</string>
-    <string name="mode_tutorial_hub_step_open_profile">プロファイルをタップしてお気に入りを編集し、カテゴリを閲覧します。</string>
+    <string name="mode_tutorial_hub_step_open_profile">プロファイルの行をタップして開きます。次のステップではツアーが自動的にデフォルトのプロファイルを開き、中身を案内します。</string>
+    <string name="mode_tutorial_hub_step_detail_intro">プロファイル内では、タイトルが編集中のプロファイルを示し、戻るで一覧に戻り、タブで⭐お気に入りと各カテゴリ（例：一般）を切り替えます。デフォルトでは、リセットで確認後にお気に入りを出荷時状態に戻せます。</string>
+    <string name="mode_tutorial_hub_step_favorites_list">お気に入りはキーボードのショートカットストリップに反映される並び順です。ハンドルをドラッグして並べ替え、上に近いほどストリップの手前に出ます。行をタップしてオーバーフロー（編集・お気に入りから削除など）を開けます。</string>
+    <string name="mode_tutorial_hub_step_browse_category">カテゴリのタブにはそのセクションのショートカットが一覧表示されます。星をタップしてストリップ用のお気に入りに追加したり、オーバーフローからこのプロファイル内のキー操作を編集したりできます。</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">「+」は新しいショートカットを作成します。アクティブなタブに応じてお気に入り、または閲覧中のカテゴリに追加されます。</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">画面上部の設定（歯車）では、このプロファイルをハブ内でどう表示するか（リストとカード、名称やアイコンの出し方）を開けます。</string>
     <string name="mode_tutorial_hub_step_connection">まずハードウェアに接続すると、ショートカットが送信先に届きます。</string>
     <string name="mode_tutorial_hub_step_replay_hint">いつでもこのガイドアイコンをタップしてショートカットハブのツアーを再表示できます。</string>
     <string name="main_toast_auto_connecting_bluetooth">Bluetoothに自動接続しています…</string>

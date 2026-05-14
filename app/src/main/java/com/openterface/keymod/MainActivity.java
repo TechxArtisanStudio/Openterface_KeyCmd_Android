@@ -2191,6 +2191,25 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
+    /** Opens Default profile detail inside Shortcut Hub for the mode tour. */
+    public void ensureShortcutHubDefaultProfileForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof ShortcutHubFragment) {
+            ((ShortcutHubFragment) f).openDefaultProfileDetailForTour();
+            getSupportFragmentManager().executePendingTransactions();
+            refreshHeaderSetupGearChrome();
+        }
+    }
+
+    /** Switches Hub profile detail to the first category tab for the mode tour. */
+    public void ensureShortcutHubBrowseFirstCategoryForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof ShortcutHubFragment) {
+            ((ShortcutHubFragment) f).selectFirstBrowseCategoryForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
     public void openModeGuideSheet() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(f);

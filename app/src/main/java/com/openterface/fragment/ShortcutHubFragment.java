@@ -1491,6 +1491,40 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         loadProfiles();
     }
 
+    /**
+     * Opens the built-in Default profile detail for guided tours. Reloads the list first; falls back
+     * to the first profile if Default is missing.
+     */
+    public void openDefaultProfileDetailForTour() {
+        if (!isAdded() || profileManager == null) {
+            return;
+        }
+        loadProfiles();
+        ShortcutProfile p = profileManager.getProfileById("default");
+        if (p == null && profilesList != null && !profilesList.isEmpty()) {
+            p = profilesList.get(0);
+        }
+        if (p != null) {
+            showShortcutsDetail(p);
+        }
+    }
+
+    /**
+     * Selects the first named category tab (e.g. General on Default) so browse shortcuts are visible
+     * for tour steps that highlight {@link R.id#browse_shortcuts_recycler}.
+     */
+    public void selectFirstBrowseCategoryForTour() {
+        if (!isAdded() || selectedProfile == null) {
+            return;
+        }
+        if (selectedProfile.categories == null || selectedProfile.categories.isEmpty()) {
+            return;
+        }
+        currentTab = TAB_BROWSE;
+        currentCategoryId = selectedProfile.categories.get(0).id;
+        syncHubDetailTabsSelection();
+        refreshShortcutsGrid();
+    }
 
     private final class ProfilesRecyclerAdapter extends RecyclerView.Adapter<ProfilesRecyclerAdapter.VH> {
 

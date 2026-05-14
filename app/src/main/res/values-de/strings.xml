@@ -51,7 +51,12 @@ von TechxArtisan</string>
     <string name="mode_tutorial_gamepad_step_presets">Wechseln Sie Presets oder tippen Sie auf Chips, um andere gespeicherte Layouts zu wählen.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Nutzen Sie Sticks und Tasten wie auf einem Handheld; die Zuordnung folgt dem aktuellen Preset.</string>
     <string name="mode_tutorial_hub_step_profiles">Erstellen oder importieren Sie Profile, um Kurzbefehl-Sets für verschiedene Apps zu organisieren.</string>
-    <string name="mode_tutorial_hub_step_open_profile">Tippen Sie auf ein Profil, um Favoriten zu bearbeiten und Kategorien zu durchsuchen.</string>
+    <string name="mode_tutorial_hub_step_open_profile">Tippen Sie auf eine Profilzeile, um es zu öffnen. Im nächsten Schritt öffnet die Tour automatisch das Standardprofil, damit Sie den Inhalt sehen.</string>
+    <string name="mode_tutorial_hub_step_detail_intro">In einem Profil: der Titel zeigt das bearbeitete Profil, Zurück führt zur Liste, und die Registerkarten wechseln zwischen ⭐ Favoriten und jeder Kategorie (z. B. Allgemein). Beim Standardprofil stellt Zurücksetzen nach Bestätigung die Werkseinstellungen der Favoriten wieder her.</string>
+    <string name="mode_tutorial_hub_step_favorites_list">Favoriten ist die sortierte Liste für die Tastatur-Kurzbefehlleiste. Ziehen Sie am Griff zum Sortieren; oben stehende erscheinen zuerst auf der Leiste. Zeilentipp für weitere Aktionen wie Bearbeiten oder aus Favoriten entfernen.</string>
+    <string name="mode_tutorial_hub_step_browse_category">Kategorie-Tabs listen alle Kurzbefehle in diesem Bereich. Tippen Sie auf den Stern, um einen Eintrag den Favoriten für die Leiste hinzuzufügen, oder nutzen Sie das Überlaufmenü, um die Tastenkombination in diesem Profil zu bearbeiten.</string>
+    <string name="mode_tutorial_hub_step_add_shortcut_toolbar">Mit „+“ legen Sie einen neuen Kurzbefehl an—je nach aktivem Tab in Favoriten oder in der gerade durchsuchten Kategorie.</string>
+    <string name="mode_tutorial_hub_step_detail_setup_gear">Das Einstellungs-(Zahnrad)-Symbol in der Kopfzeile öffnet Layout- und Anzeigeoptionen für dieses Profil im Hub—Liste vs. Karten und wie Namen oder Symbole in Listen erscheinen.</string>
     <string name="mode_tutorial_hub_step_connection">Verbinden Sie die Hardware zuerst, damit Kurzbefehle an das Zielgerät gesendet werden.</string>
     <string name="mode_tutorial_hub_step_replay_hint">Tippen Sie jederzeit auf dieses Führersymbol, um die Kurzbefehl-Hub-Tour erneut abzuspielen.</string>
     <string name="main_toast_auto_connecting_bluetooth">Automatische Bluetooth-Verbindung…</string>

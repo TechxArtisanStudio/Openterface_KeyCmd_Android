@@ -165,6 +165,40 @@ public final class ModeTutorialSteps {
                     false),
             step(
                     activity,
+                    new int[] {
+                        R.id.detail_profile_name,
+                        R.id.hub_detail_tabs,
+                        R.id.back_button,
+                        R.id.reset_default_profile_button
+                    },
+                    R.string.mode_tutorial_hub_step_detail_intro,
+                    false,
+                    550,
+                    () -> activity.ensureShortcutHubDefaultProfileForGuide()),
+            step(
+                    activity,
+                    new int[] {R.id.my_shortcuts_recycler},
+                    R.string.mode_tutorial_hub_step_favorites_list,
+                    false),
+            step(
+                    activity,
+                    new int[] {R.id.browse_shortcuts_recycler},
+                    R.string.mode_tutorial_hub_step_browse_category,
+                    false,
+                    500,
+                    () -> activity.ensureShortcutHubBrowseFirstCategoryForGuide()),
+            step(
+                    activity,
+                    new int[] {R.id.add_shortcut_button},
+                    R.string.mode_tutorial_hub_step_add_shortcut_toolbar,
+                    false),
+            step(
+                    activity,
+                    new int[] {R.id.km_pro_setup_header_button},
+                    R.string.mode_tutorial_hub_step_detail_setup_gear,
+                    false),
+            step(
+                    activity,
                     new int[] {R.id.connection_container},
                     R.string.mode_tutorial_hub_step_connection,
                     false),

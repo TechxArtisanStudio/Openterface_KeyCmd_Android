@@ -25,7 +25,7 @@ public final class ModeGuidePrefs {
     private static final String KEY_KM_PRO_V1 = "mode_guide_km_pro_v1";
     private static final String KEY_PRESENTATION_V1 = "mode_guide_presentation_v1";
     private static final String KEY_GAMEPAD_V1 = "mode_guide_gamepad_v1";
-    private static final String KEY_SHORTCUT_HUB_V1 = "mode_guide_shortcut_hub_v1";
+    private static final String KEY_SHORTCUT_HUB_V2 = "mode_guide_shortcut_hub_v2";
 
     private ModeGuidePrefs() {}
 
@@ -69,7 +69,7 @@ public final class ModeGuidePrefs {
             case GAMEPAD:
                 return KEY_GAMEPAD_V1;
             case SHORTCUT_HUB:
-                return KEY_SHORTCUT_HUB_V1;
+                return KEY_SHORTCUT_HUB_V2;
             case KM_BASIC:
             default:
                 throw new IllegalArgumentException("No prefs key for mode: " + mode);
