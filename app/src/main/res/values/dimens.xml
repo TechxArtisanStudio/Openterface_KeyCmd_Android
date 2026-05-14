@@ -69,6 +69,8 @@
     <dimen name="km_basic_chrome_min_top_padding">12dp</dimen>
     <!-- KM Basic compose: min editor height in portrait (NestedScrollView allows shrinking when IME shows). -->
     <dimen name="basic_compose_editor_min_height">120dp</dimen>
+    <!-- Cancels basic_compose_root horizontal padding so KM Pro embedded shortcut strip is full device width. -->
+    <dimen name="basic_compose_km_pro_shortcut_strip_horizontal_outdent">-12dp</dimen>
 
     <!-- Gamepad toolbar -->
     <!-- Full-width fade behind chrome + centered toggle (same vertical band); not a solid bar. -->

@@ -238,6 +238,10 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.refreshAfterShortcutHubPrefsChange();
         }
+        CustomKeyboardView composeStrip = kmProComposeEmbeddedShortcutStripView();
+        if (composeStrip != null) {
+            composeStrip.refreshAfterShortcutHubPrefsChange();
+        }
     }
 
     /** Reload alternate-hints preference and rebuild keyboards (Keyboard and Mouse Pro setup). */
@@ -250,6 +254,10 @@ public class CompositeFragment extends Fragment {
         }
         if (keyboardViewRight != null) {
             keyboardViewRight.reloadKeyboardAlternatesHintsFromPrefs();
+        }
+        CustomKeyboardView composeStrip = kmProComposeEmbeddedShortcutStripView();
+        if (composeStrip != null) {
+            composeStrip.reloadKeyboardAlternatesHintsFromPrefs();
         }
     }
 
@@ -264,6 +272,10 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.reloadKmProKeyTapPreviewFromPrefs();
         }
+        CustomKeyboardView composeStrip = kmProComposeEmbeddedShortcutStripView();
+        if (composeStrip != null) {
+            composeStrip.reloadKmProKeyTapPreviewFromPrefs();
+        }
     }
 
     /** Full keyboard rebuild after KM Pro setup (e.g. long-press repeat vs hold). */
@@ -276,6 +288,10 @@ public class CompositeFragment extends Fragment {
         }
         if (keyboardViewRight != null) {
             keyboardViewRight.rebuildKeyboardFromKmProSetup();
+        }
+        CustomKeyboardView composeStrip = kmProComposeEmbeddedShortcutStripView();
+        if (composeStrip != null) {
+            composeStrip.rebuildKeyboardFromKmProSetup();
         }
     }
 
@@ -884,6 +900,34 @@ public class CompositeFragment extends Fragment {
         }
     }
 
+    @Nullable
+    private CustomKeyboardView kmProComposeEmbeddedShortcutStripView() {
+        if (!isAdded()) {
+            return null;
+        }
+        Fragment f = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+        if (!(f instanceof BasicComposeFragment)) {
+            return null;
+        }
+        return ((BasicComposeFragment) f).getKmProEmbeddedShortcutStripOrNull();
+    }
+
+    /**
+     * Keeps the KM Pro Compose embedded shortcut strip in sync with {@link #port} and
+     * {@link #proHoldLockController} (same as the main keyboard slot).
+     */
+    public void syncKmProComposeShortcutStripFromKeyboardHost() {
+        if (!isAdded()) {
+            return;
+        }
+        Fragment f = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+        if (!(f instanceof BasicComposeFragment)) {
+            return;
+        }
+        ((BasicComposeFragment) f)
+                .syncKmProEmbeddedShortcutStripFromCompositeHost(port, proHoldLockController);
+    }
+
     private void bindProHoldLockControllerToKeyboardViews() {
         if (keyboardView != null) {
             keyboardView.setHoldLockController(proHoldLockController);
@@ -894,6 +938,7 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.setHoldLockController(proHoldLockController);
         }
+        syncKmProComposeShortcutStripFromKeyboardHost();
     }
 
     private void detachProHoldLockControllerFromKeyboardViews() {
@@ -905,6 +950,10 @@ public class CompositeFragment extends Fragment {
         }
         if (keyboardViewRight != null) {
             keyboardViewRight.setHoldLockController(null);
+        }
+        Fragment compose = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
+        if (compose instanceof BasicComposeFragment) {
+            ((BasicComposeFragment) compose).syncKmProEmbeddedShortcutStripFromCompositeHost(port, null);
         }
     }
 
@@ -1917,6 +1966,10 @@ public class CompositeFragment extends Fragment {
         if (keyboardViewRight != null) {
             keyboardViewRight.reloadForCurrentOrientation();
         }
+        CustomKeyboardView composeStrip = kmProComposeEmbeddedShortcutStripView();
+        if (composeStrip != null) {
+            composeStrip.reloadForCurrentOrientation();
+        }
     }
 
     private void hideKmProComposeSubUi() {
@@ -1957,11 +2010,13 @@ public class CompositeFragment extends Fragment {
                                 if (f instanceof BasicComposeFragment) {
                                     ((BasicComposeFragment) f).requestEditorImeForKmProEmbedded();
                                 }
+                                syncKmProComposeShortcutStripFromKeyboardHost();
                             })
                     .commitAllowingStateLoss();
         } else {
             ((BasicComposeFragment) current).onHostPortChanged(port);
             ((BasicComposeFragment) current).requestEditorImeForKmProEmbedded();
+            syncKmProComposeShortcutStripFromKeyboardHost();
         }
     }
 

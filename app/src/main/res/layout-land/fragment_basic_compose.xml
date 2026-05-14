@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Landscape KM Basic: full-height compose editor; Undo / Clear / Send toolbar is hidden (use portrait
+  Landscape KM Basic: full-height compose editor; Clear / Undo / Send toolbar is hidden (use portrait
   or another tab for those actions). Insets still pad the editor above IME / system bars.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -10,6 +10,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_light"
+    android:clipToPadding="false"
     android:paddingStart="12dp"
     android:paddingTop="8dp"
     android:paddingEnd="12dp"
@@ -84,26 +85,10 @@
         android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/basic_compose_redo"
-            style="@style/Widget.KeyCmd.BasicComposeActionButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:contentDescription="@string/compose_redo_clear"
-            android:text=""
-            app:icon="@drawable/ic_compose_undo_24"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
-            app:iconTint="?attr/colorOnSurface" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/basic_compose_clear"
             style="@style/Widget.KeyCmd.BasicComposeActionButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:gravity="center"
             android:contentDescription="@string/compose_clear"
@@ -167,6 +152,8 @@
         android:id="@+id/basic_compose_km_pro_shortcut_strip_wrap"
         android:layout_width="match_parent"
         android:layout_height="@dimen/compose_shortcut_strip_height"
+        android:layout_marginStart="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
+        android:layout_marginEnd="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
         android:layout_marginTop="6dp"
         android:visibility="gone">
 

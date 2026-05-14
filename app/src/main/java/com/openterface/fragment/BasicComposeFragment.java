@@ -51,7 +51,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * KM Basic IME-style compose: same send gating as Pro IME sub-compose ({@link ImeComposeSendGate}),
- * with Redo clear / Clear / Save to library / Saved texts / Send and in-flight cancel (Send becomes Stop).
+ * with a combined Clear / undo-clear action, Save to library / Saved texts / Send and in-flight cancel
+ * (Send becomes Stop).
  */
 public class BasicComposeFragment extends Fragment implements ImeSavedTextFragment.Host {
 
@@ -84,7 +85,6 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     @Nullable private MaterialButton savedTextsBtn;
     private MaterialButton saveLibraryBtn;
     private MaterialButton clearBtn;
-    private MaterialButton redoBtn;
     private MaterialButton sendBtn;
     @Nullable private View actionsRow;
     @Nullable private View sendProgressWrap;
@@ -96,6 +96,13 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     @Nullable private View kmProShortcutStripWrap;
     @Nullable private MainActivity.OnTargetOsChangeListener kmProStripOsListener;
     @Nullable private String undoSnapshot;
+    /**
+     * True after a programmatic clear while {@link #undoSnapshot} holds the pre-clear buffer; any
+     * user edit then clears the snapshot so the action returns to Clear-only.
+     */
+    private boolean undoClearEligible;
+    /** Skips user-edit handling in the editor {@link TextWatcher} for programmatic {@link EditText#setText}. */
+    private boolean programmaticEditorChange;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
     private boolean highlightNonAsciiChars;
@@ -150,8 +157,15 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (d == null) {
             return;
         }
-        editor.setText(d.editorText);
-        undoSnapshot = d.undoSnapshot;
+        String et = d.editorText != null ? d.editorText : "";
+        runWithProgrammaticEditorChange(() -> editor.setText(et));
+        if (et.isEmpty()) {
+            undoSnapshot = d.undoSnapshot;
+            undoClearEligible = undoSnapshot != null && !undoSnapshot.isEmpty();
+        } else {
+            undoSnapshot = null;
+            undoClearEligible = false;
+        }
         highlightNonAsciiChars = d.highlightNonAscii;
         refreshToolbarState();
         refreshComposeBrandLogoVisibility();
@@ -176,7 +190,6 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         savedTextsBtn = view.findViewById(R.id.basic_compose_saved_texts);
         saveLibraryBtn = view.findViewById(R.id.basic_compose_save_library);
         clearBtn = view.findViewById(R.id.basic_compose_clear);
-        redoBtn = view.findViewById(R.id.basic_compose_redo);
         sendBtn = view.findViewById(R.id.basic_compose_send);
         actionsRow = view.findViewById(R.id.basic_compose_actions);
         sendProgressWrap = view.findViewById(R.id.basic_compose_send_progress_wrap);
@@ -184,8 +197,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         sendProgressLabel = view.findViewById(R.id.basic_compose_send_progress_label);
         composeBrandLogo = view.findViewById(R.id.basic_compose_brand_logo);
 
-        clearBtn.setOnClickListener(v -> onClearClicked());
-        redoBtn.setOnClickListener(v -> onRedoClicked());
+        clearBtn.setOnClickListener(v -> onClearOrUndoClearClicked());
         sendBtn.setOnClickListener(v -> onSendClicked());
         if (savedTextsBtn != null) {
             savedTextsBtn.setOnClickListener(v -> onSavedTextsClicked());
@@ -204,6 +216,13 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
 
                     @Override
                     public void afterTextChanged(Editable s) {
+                        if (!programmaticEditorChange
+                                && undoClearEligible
+                                && s != null
+                                && s.length() > 0) {
+                            undoClearEligible = false;
+                            undoSnapshot = null;
+                        }
                         refreshToolbarState();
                         refreshComposeBrandLogoVisibility();
                         refreshEditorNonAsciiHighlights(false);
@@ -259,12 +278,12 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     }
 
     /**
-     * Portrait: always show Undo / Clear / Send and let the editor fill the available compose area
+     * Portrait: always show Clear / undo-clear / Send and let the editor fill the available compose area
      * so there is no large dead gap above the action row.
      *
      * <p>Landscape: while the IME is open (non-zero bottom IME inset), hide the action row and let
      * the editor use {@code MATCH_PARENT} so typing space is maximized. When the keyboard is
-     * dismissed or minimized (IME inset back to 0), show the row again so Send / Clear / Undo stay
+     * dismissed or minimized (IME inset back to 0), show the row again so Send / Clear / undo-clear stay
      * reachable without rotating to portrait.
      */
     private void refreshComposeLayoutState(@NonNull View root) {
@@ -402,24 +421,46 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         Toast.makeText(requireContext(), R.string.ime_saved_text_saved, Toast.LENGTH_SHORT).show();
     }
 
-    private void onClearClicked() {
+    private void runWithProgrammaticEditorChange(@NonNull Runnable r) {
+        programmaticEditorChange = true;
+        try {
+            r.run();
+        } finally {
+            programmaticEditorChange = false;
+        }
+    }
+
+    private void onClearOrUndoClearClicked() {
         if (sending || editor == null) {
             return;
         }
-        Editable cur = editor.getText();
-        if (cur != null && cur.length() > 0) {
-            undoSnapshot = cur.toString();
+        if (undoClearEligible && undoSnapshot != null && !undoSnapshot.isEmpty()) {
+            performUndoClear();
+            return;
         }
-        editor.setText("");
+        Editable cur = editor.getText();
+        if (cur == null || cur.length() == 0) {
+            return;
+        }
+        undoSnapshot = cur.toString();
+        undoClearEligible = true;
+        runWithProgrammaticEditorChange(() -> editor.setText(""));
         refreshToolbarState();
     }
 
-    private void onRedoClicked() {
+    private void performUndoClear() {
         if (sending || editor == null || undoSnapshot == null) {
             return;
         }
-        editor.setText(undoSnapshot);
+        final String snap = undoSnapshot;
+        runWithProgrammaticEditorChange(
+                () -> {
+                    editor.setText(snap);
+                    int len = editor.getText() != null ? editor.getText().length() : 0;
+                    editor.setSelection(len);
+                });
         undoSnapshot = null;
+        undoClearEligible = false;
         refreshToolbarState();
     }
 
@@ -666,6 +707,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                                                     .show();
                                         } else {
                                             undoSnapshot = null;
+                                            undoClearEligible = false;
                                             highlightNonAsciiChars = false;
                                             refreshEditorNonAsciiHighlights(false);
                                             Toast.makeText(
@@ -808,7 +850,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     }
 
     private void refreshToolbarState() {
-        if (sendBtn == null || clearBtn == null || redoBtn == null || saveLibraryBtn == null) {
+        if (sendBtn == null || clearBtn == null || saveLibraryBtn == null) {
             return;
         }
         if (!sending) {
@@ -820,6 +862,15 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         ImeComposeSendGate.SendAssessment assessment = ImeComposeSendGate.assess(cm, t);
         boolean canSend = assessment.canSend();
         boolean showWarning = canSend && assessment.warningInfo != null;
+        boolean showNonAsciiWarningInKmPro =
+                showWarning
+                        && isEmbeddedInKmPro()
+                        && assessment.warningInfo != null
+                        && assessment.warningInfo.hasNonAscii;
+        boolean darkMode =
+                (sendBtn.getResources().getConfiguration().uiMode
+                                & Configuration.UI_MODE_NIGHT_MASK)
+                        == Configuration.UI_MODE_NIGHT_YES;
 
         int primary =
                 MaterialColors.getColor(
@@ -847,6 +898,9 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         ColorStateList primaryIcon = ColorStateList.valueOf(primary);
         ColorStateList warningIcon = ColorStateList.valueOf(warning);
         ColorStateList mutedIcon = ColorStateList.valueOf(onSurface);
+        int white = ContextCompat.getColor(sendBtn.getContext(), android.R.color.white);
+        ColorStateList whiteStroke = ColorStateList.valueOf(white);
+        ColorStateList whiteIcon = ColorStateList.valueOf(white);
 
         if (editor != null) {
             // Frame border uses state_activated in basic_compose_editor_background: show shape theme
@@ -878,24 +932,35 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             sendBtn.setIconTint(primaryIcon);
             clearBtn.setEnabled(false);
             clearBtn.setAlpha(0.45f);
-            redoBtn.setEnabled(false);
-            redoBtn.setAlpha(0.45f);
         } else {
             sendBtn.setText("");
             sendBtn.setIconResource(R.drawable.ic_compose_send_24);
             sendBtn.setContentDescription(getString(R.string.compose_send));
             sendBtn.setEnabled(true);
             sendBtn.setAlpha(canSend ? 1f : 0.45f);
-            boolean canClear = !t.isEmpty();
-            clearBtn.setEnabled(canClear);
-            clearBtn.setAlpha(canClear ? 1f : 0.45f);
-            boolean canRedo = undoSnapshot != null && !undoSnapshot.isEmpty();
-            redoBtn.setEnabled(canRedo);
-            redoBtn.setAlpha(canRedo ? 1f : 0.45f);
+            boolean showUndoClear =
+                    undoClearEligible
+                            && undoSnapshot != null
+                            && !undoSnapshot.isEmpty()
+                            && t.isEmpty();
+            boolean canClearOrUndo = showUndoClear || !t.isEmpty();
+            if (showUndoClear) {
+                clearBtn.setIconResource(R.drawable.ic_compose_undo_24);
+                clearBtn.setContentDescription(getString(R.string.compose_redo_clear));
+            } else {
+                clearBtn.setIconResource(R.drawable.ic_compose_clear_24);
+                clearBtn.setContentDescription(getString(R.string.compose_clear));
+            }
+            clearBtn.setEnabled(canClearOrUndo);
+            clearBtn.setAlpha(canClearOrUndo ? 1f : 0.45f);
 
             if (!canSend) {
                 sendBtn.setStrokeColor(outlineStroke);
                 sendBtn.setIconTint(mutedIcon);
+            } else if (showNonAsciiWarningInKmPro && darkMode) {
+                // Keep this clearly actionable in dark KM Pro Compose when non-ASCII warning is present.
+                sendBtn.setStrokeColor(whiteStroke);
+                sendBtn.setIconTint(whiteIcon);
             } else if (showWarning) {
                 sendBtn.setStrokeColor(warningStroke);
                 sendBtn.setIconTint(warningIcon);
@@ -1000,8 +1065,13 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (editor == null || sending) {
             return;
         }
-        editor.setText(content);
-        editor.setSelection(content.length());
+        undoSnapshot = null;
+        undoClearEligible = false;
+        runWithProgrammaticEditorChange(
+                () -> {
+                    editor.setText(content);
+                    editor.setSelection(content.length());
+                });
         refreshToolbarState();
     }
 
