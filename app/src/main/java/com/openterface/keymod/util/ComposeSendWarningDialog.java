@@ -48,6 +48,8 @@ public final class ComposeSendWarningDialog {
                 onPreview,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -69,6 +71,7 @@ public final class ComposeSendWarningDialog {
                 onPreview,
                 targetOs,
                 onSendWithUnicodeHostEntry,
+                null,
                 null);
     }
 
@@ -82,6 +85,30 @@ public final class ComposeSendWarningDialog {
             @Nullable String targetOs,
             @Nullable Runnable onSendWithUnicodeHostEntry,
             @Nullable Runnable onPreviewUnicodeHostEntry) {
+        show(
+                context,
+                warningInfo,
+                bufferText,
+                onSendAnyway,
+                onCheck,
+                onPreview,
+                targetOs,
+                onSendWithUnicodeHostEntry,
+                onPreviewUnicodeHostEntry,
+                null);
+    }
+
+    public static void show(
+            @NonNull Context context,
+            @NonNull ImeComposeSendGate.WarningInfo warningInfo,
+            @Nullable String bufferText,
+            @NonNull Runnable onSendAnyway,
+            @NonNull Runnable onCheck,
+            @NonNull Runnable onPreview,
+            @Nullable String targetOs,
+            @Nullable Runnable onSendWithUnicodeHostEntry,
+            @Nullable Runnable onPreviewUnicodeHostEntry,
+            @Nullable Runnable onMacUnicodeHexAudit) {
         final boolean showUnicodeHostEntry =
                 warningInfo.hasNonAscii && onSendWithUnicodeHostEntry != null;
         final boolean useTabbed = showUnicodeHostEntry && bufferText != null;
@@ -151,12 +178,22 @@ public final class ComposeSendWarningDialog {
                 });
         if (unicodeInfoButton != null) {
             unicodeInfoButton.setOnClickListener(
-                    v ->
-                            new MaterialAlertDialogBuilder(context)
-                                    .setTitle(R.string.compose_send_warning_unicode_info_title)
-                                    .setMessage(unicodeHostSetupHint(context, targetOsForHint))
-                                    .setPositiveButton(android.R.string.ok, null)
-                                    .show());
+                    v -> {
+                        MaterialAlertDialogBuilder info =
+                                new MaterialAlertDialogBuilder(context)
+                                        .setTitle(R.string.compose_send_warning_unicode_info_title)
+                                        .setMessage(unicodeHostSetupHint(context, targetOsForHint))
+                                        .setPositiveButton(android.R.string.ok, null);
+                        if ("macos".equals(targetOsForHint) && onMacUnicodeHexAudit != null) {
+                            info.setNeutralButton(
+                                    R.string.unicode_hex_audit_entry,
+                                    (dialog, which) -> {
+                                        dialog.dismiss();
+                                        onMacUnicodeHexAudit.run();
+                                    });
+                        }
+                        info.show();
+                    });
         }
         if (unicodeHostEntryButton != null) {
             unicodeHostEntryButton.setOnClickListener(

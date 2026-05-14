@@ -43,6 +43,7 @@ import com.openterface.keymod.prefs.KmProEmbeddedComposeDraftHolder;
 import com.openterface.keymod.util.ComposeSendPreviewDialog;
 import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
+import com.openterface.keymod.util.MacUnicodeHexAuditFlow;
 import com.openterface.keymod.util.ImeComposeSendGate;
 import com.openterface.keymod.util.NonAsciiTextHighlighter;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -585,7 +586,10 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                     }
                     ComposeSendPreviewDialog.showUnicodeHostPlan(
                             requireContext(), preview, ma.getTargetOs());
-                });
+                },
+                "macos".equalsIgnoreCase(ma.getTargetOs()) && cm != null
+                        ? () -> MacUnicodeHexAuditFlow.start(ma, cm)
+                        : null);
     }
 
     private void showUnicodeHostSendConfirmDialog(
