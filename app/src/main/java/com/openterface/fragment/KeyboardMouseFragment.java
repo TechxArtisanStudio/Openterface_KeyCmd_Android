@@ -61,6 +61,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private TextView tabTouch;
     @Nullable private TextView tabNum;
     @Nullable private ImageButton chromeSetup;
+    @Nullable private ImageButton chromeModeGuide;
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
     @Nullable private LinearLayout chromeConnectionWrap;
@@ -351,6 +352,7 @@ public final class KeyboardMouseFragment extends Fragment {
         tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
         tabNum = root.findViewById(R.id.basic_km_tab_numpad);
         chromeSetup = root.findViewById(R.id.basic_km_setup_button);
+        chromeModeGuide = root.findViewById(R.id.basic_km_mode_guide);
         chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
         chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
         chromeConnectionIcon = root.findViewById(R.id.basic_km_connection_icon);
@@ -375,6 +377,15 @@ public final class KeyboardMouseFragment extends Fragment {
         }
         if (chromeSetup != null) {
             chromeSetup.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
+        }
+        if (chromeModeGuide != null) {
+            chromeModeGuide.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openModeGuideFromEmbeddedChrome();
+                        }
+                    });
         }
         if (chromeTargetOs != null) {
             chromeTargetOs.setOnClickListener(

@@ -66,6 +66,18 @@
         android:tint="@color/text_secondary" />
 
     <ImageButton
+        android:id="@+id/basic_km_mode_guide"
+        android:layout_width="@dimen/header_icon_size"
+        android:layout_height="@dimen/header_icon_size"
+        android:layout_marginEnd="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/mode_guide_header_cd"
+        android:padding="@dimen/button_icon_padding"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_mode_guide_24"
+        android:tint="@color/text_secondary" />
+
+    <ImageButton
         android:id="@+id/basic_km_setup_button"
         android:layout_width="@dimen/header_icon_size"
         android:layout_height="@dimen/header_icon_size"

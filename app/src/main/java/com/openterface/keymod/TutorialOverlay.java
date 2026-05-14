@@ -2,6 +2,8 @@ package com.openterface.keymod;
 
 import android.app.Activity;
 import android.content.Context;
+
+import androidx.annotation.Nullable;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -35,6 +37,10 @@ public class TutorialOverlay extends FrameLayout {
 
     private Step[] steps;
     private int currentStep = 0;
+    /** When false, {@link #dismiss()} does not set {@link #KEY_TUTORIAL_SHOWN} (used for non-Basic mode tours). */
+    private boolean markBasicQuickStartPrefOnDismiss = true;
+    @Nullable
+    private Runnable onDismissExtra;
 
     public static boolean isShown(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -140,6 +146,19 @@ public class TutorialOverlay extends FrameLayout {
         showCurrentStep();
     }
 
+    /**
+     * Default true (KM Basic quick start). Set false for per-mode guides so completing them does not
+     * mark the Basic tutorial pref.
+     */
+    public void setMarkBasicQuickStartPrefOnDismiss(boolean mark) {
+        this.markBasicQuickStartPrefOnDismiss = mark;
+    }
+
+    /** Runs once when the overlay is removed (Done, Skip, or last step finished). */
+    public void setOnDismissExtra(@Nullable Runnable onDismissExtra) {
+        this.onDismissExtra = onDismissExtra;
+    }
+
     private void showCurrentStep() {
         if (steps == null || currentStep >= steps.length) {
             dismiss();
@@ -169,23 +188,28 @@ public class TutorialOverlay extends FrameLayout {
         final int delay = step.delayMs();
         final int insetTop = dpToPx(step.insetTopDp());
         final int insetBottom = dpToPx(step.insetBottomDp());
-        postDelayed(() -> {
-            if (finalTarget != null) {
-                int[] overlayPos = new int[2];
-                getLocationOnScreen(overlayPos);
-                int[] targetPos = new int[2];
-                finalTarget.getLocationOnScreen(targetPos);
+        postDelayed(
+                () -> {
+                    if (finalTarget != null) {
+                        int[] overlayPos = new int[2];
+                        getLocationOnScreen(overlayPos);
+                        int[] targetPos = new int[2];
+                        finalTarget.getLocationOnScreen(targetPos);
 
-                highlightRect.set(
-                        targetPos[0] - overlayPos[0] - insetTop,
-                        targetPos[1] - overlayPos[1] - insetTop,
-                        targetPos[0] - overlayPos[0] + finalTarget.getWidth() + insetTop,
-                        targetPos[1] - overlayPos[1] + finalTarget.getHeight() + insetBottom
-                );
-                highlightView.setHighlightRect(highlightRect);
-                positionTooltip(finalTarget);
-            }
-        }, delay);
+                        highlightRect.set(
+                                targetPos[0] - overlayPos[0] - insetTop,
+                                targetPos[1] - overlayPos[1] - insetTop,
+                                targetPos[0] - overlayPos[0] + finalTarget.getWidth() + insetTop,
+                                targetPos[1] - overlayPos[1] + finalTarget.getHeight() + insetBottom);
+                        highlightView.setHighlightRect(highlightRect);
+                        positionTooltip(finalTarget);
+                    } else {
+                        highlightRect.setEmpty();
+                        highlightView.setHighlightRect(highlightRect);
+                        positionTooltipFallback();
+                    }
+                },
+                delay);
     }
 
     private void positionTooltip(View targetView) {
@@ -207,6 +231,15 @@ public class TutorialOverlay extends FrameLayout {
         tooltipCard.setLayoutParams(params);
     }
 
+    /** When no highlight target is visible (e.g. wrong submode), keep the card readable at the bottom. */
+    private void positionTooltipFallback() {
+        LayoutParams params = (LayoutParams) tooltipCard.getLayoutParams();
+        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        params.topMargin = 0;
+        params.bottomMargin = dpToPx(24);
+        tooltipCard.setLayoutParams(params);
+    }
+
     private void advance() {
         if (currentStep < steps.length - 1) {
             currentStep++;
@@ -217,7 +250,14 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     private void dismiss() {
-        markShown(getContext());
+        if (markBasicQuickStartPrefOnDismiss) {
+            markShown(getContext());
+        }
+        if (onDismissExtra != null) {
+            Runnable r = onDismissExtra;
+            onDismissExtra = null;
+            r.run();
+        }
         ViewGroup parent = (ViewGroup) getParent();
         if (parent != null) {
             parent.removeView(this);

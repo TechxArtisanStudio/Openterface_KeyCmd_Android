@@ -80,7 +80,7 @@ import com.openterface.serial.UsbDeviceManager;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
-import com.google.android.material.color.MaterialColors;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
 
@@ -182,7 +182,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Nullable
     private ImeSavedTextFragment.Host imeSavedTextHost;
     @Nullable
-    private ImageButton kmProSetupHeaderButton;
+    private ImageButton modeGuideHeaderButton;
+    private final Handler modeGuideHandler = new Handler(Looper.getMainLooper());
+    @Nullable
+    private Runnable pendingModeGuideRunnable;
     @Nullable
     private HorizontalScrollView kmProHeaderTabsScroll;
     @Nullable
@@ -546,6 +549,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     protected void onDestroy() {
         getSupportFragmentManager().unregisterFragmentLifecycleCallbacks(chromeFragmentCallbacks);
+        modeGuideHandler.removeCallbacksAndMessages(null);
         stopHostLockPolling();
         if (connectionManager != null) {
             connectionManager.removeConnectionStateListener(connectionStateListener);
@@ -602,6 +606,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
         kmProSetupHeaderButton = findViewById(R.id.km_pro_setup_header_button);
+        modeGuideHeaderButton = findViewById(R.id.mode_guide_header_button);
+        if (modeGuideHeaderButton != null) {
+            modeGuideHeaderButton.setOnClickListener(v -> openModeGuideSheet());
+        }
         applyHeaderRightClusterNavInsets();
         setupKmProHeaderSubmodeTabs();
 
@@ -678,6 +686,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             hideImeSavedTextOverlay();
         }
         applyKmProHeaderSubmodeChrome(f);
+        updateModeGuideHeaderVisibility(f);
+        scheduleDeferredModeGuideCheck(f);
     }
 
     private void setupKmProHeaderSubmodeTabs() {
@@ -961,6 +971,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      */
     public void refreshHeaderSetupGearChrome() {
         updateKmProHeaderSetupChrome();
+        updateModeGuideHeaderVisibility(
+                getSupportFragmentManager().findFragmentById(R.id.fragment_container));
     }
 
     private void updateKmProHeaderSetupChrome() {
@@ -2162,7 +2174,166 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return bluetoothService;
     }
 
-    private static void closeDrawerIfOpen(android.content.Context context) {
+    public void openModeGuideSheet() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(f);
+        if (mode == null) {
+            return;
+        }
+        BottomSheetDialog sheet = new BottomSheetDialog(this);
+        sheet.setContentView(R.layout.bottom_sheet_mode_guide);
+        TextView title = sheet.findViewById(R.id.mode_guide_sheet_title);
+        if (title != null) {
+            title.setText(modeGuideSheetTitleFor(mode));
+        }
+        View replay = sheet.findViewById(R.id.mode_guide_replay_button);
+        if (replay != null) {
+            replay.setOnClickListener(
+                    v -> {
+                        sheet.dismiss();
+                        showModeTutorialOverlay(mode, false);
+                    });
+        }
+        View close = sheet.findViewById(R.id.mode_guide_close_button);
+        if (close != null) {
+            close.setOnClickListener(v -> sheet.dismiss());
+        }
+        sheet.show();
+    }
+
+    /** Called from KM Basic / Gamepad embedded chrome (activity header hidden there). */
+    public void openModeGuideFromEmbeddedChrome() {
+        openModeGuideSheet();
+    }
+
+    private CharSequence modeGuideSheetTitleFor(ModeGuidePrefs.GuideHostMode mode) {
+        switch (mode) {
+            case KM_BASIC:
+                return getString(R.string.mode_guide_sheet_title_basic);
+            case KM_PRO:
+                return getString(R.string.mode_guide_sheet_title_pro);
+            case PRESENTATION:
+                return getString(R.string.mode_guide_sheet_title_presentation);
+            case GAMEPAD:
+                return getString(R.string.mode_guide_sheet_title_gamepad);
+            case SHORTCUT_HUB:
+                return getString(R.string.mode_guide_sheet_title_shortcut_hub);
+            default:
+                return getString(R.string.app_name);
+        }
+    }
+
+    private void updateModeGuideHeaderVisibility(@Nullable Fragment host) {
+        if (modeGuideHeaderButton == null) {
+            return;
+        }
+        boolean show = ModeGuidePrefs.supportsHeaderModeGuideButton(host);
+        modeGuideHeaderButton.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void scheduleDeferredModeGuideCheck(@Nullable final Fragment host) {
+        if (pendingModeGuideRunnable != null) {
+            modeGuideHandler.removeCallbacks(pendingModeGuideRunnable);
+        }
+        pendingModeGuideRunnable =
+                () -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    Fragment current = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                    if (current != host) {
+                        return;
+                    }
+                    tryAutoShowFirstRunModeGuide(current);
+                };
+        modeGuideHandler.postDelayed(pendingModeGuideRunnable, 650);
+    }
+
+    private boolean isTutorialOverlayShowing() {
+        ViewGroup root = findViewById(android.R.id.content);
+        if (root == null) {
+            return false;
+        }
+        for (int i = 0; i < root.getChildCount(); i++) {
+            if (root.getChildAt(i) instanceof TutorialOverlay) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void tryAutoShowFirstRunModeGuide(@NonNull Fragment host) {
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(host);
+        if (mode == null || mode == ModeGuidePrefs.GuideHostMode.KM_BASIC) {
+            return;
+        }
+        if (ModeGuidePrefs.isModeGuideCompleted(this, mode)) {
+            return;
+        }
+        showModeTutorialOverlay(mode, true);
+    }
+
+    /**
+     * @param markCompletionOnDismiss when true (first auto-run), marks this mode’s guide pref when
+     *     the overlay is dismissed or completed.
+     */
+    public void showModeTutorialOverlay(
+            @NonNull ModeGuidePrefs.GuideHostMode mode, boolean markCompletionOnDismiss) {
+        if (mode == ModeGuidePrefs.GuideHostMode.KM_BASIC) {
+            showKmBasicQuickStartOverlay(markCompletionOnDismiss);
+            return;
+        }
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        TutorialOverlay overlay = new TutorialOverlay(this);
+        overlay.setMarkBasicQuickStartPrefOnDismiss(false);
+        if (markCompletionOnDismiss) {
+            overlay.setOnDismissExtra(() -> ModeGuidePrefs.markModeGuideCompleted(MainActivity.this, mode));
+        }
+        TutorialOverlay.Step[] steps;
+        switch (mode) {
+            case KM_PRO:
+                steps = ModeTutorialSteps.kmProGuide(this);
+                break;
+            case PRESENTATION:
+                steps = ModeTutorialSteps.presentationGuide(this);
+                break;
+            case GAMEPAD:
+                steps = ModeTutorialSteps.gamepadGuide(this);
+                break;
+            case SHORTCUT_HUB:
+                steps = ModeTutorialSteps.shortcutHubGuide(this);
+                break;
+            default:
+                return;
+        }
+        overlay.setSteps(steps);
+        ViewGroup root = findViewById(android.R.id.content);
+        root.addView(
+                overlay,
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void showKmBasicQuickStartOverlay(boolean markBasicPrefOnDismiss) {
+        if (isTutorialOverlayShowing()) {
+            return;
+        }
+        TutorialOverlay overlay = new TutorialOverlay(this);
+        overlay.setMarkBasicQuickStartPrefOnDismiss(markBasicPrefOnDismiss);
+        overlay.setSteps(ModeTutorialSteps.kmBasicQuickStart(this));
+        ViewGroup root = findViewById(android.R.id.content);
+        root.addView(
+                overlay,
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    public static void closeDrawerIfOpen(android.content.Context context) {
         if (!(context instanceof android.app.Activity)) {
             return;
         }
@@ -2174,78 +2345,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     private void showTutorial() {
-        TutorialOverlay overlay = new TutorialOverlay(this);
-
-        overlay.setSteps(new TutorialOverlay.Step[]{
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.basic_km_connection, R.id.connection_container};
-                }
-                public String description() { return getString(R.string.tutorial_desc_connection); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    closeDrawerIfOpen(context);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.basic_km_target_os, R.id.target_os_header_button};
-                }
-                public String description() { return getString(R.string.tutorial_desc_target_os); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    closeDrawerIfOpen(context);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{
-                            R.id.basic_km_submode_tabs_row,
-                            R.id.basic_km_tab_keyboard,
-                            R.id.basic_km_tab_touchpad,
-                            R.id.basic_km_tab_numpad
-                    };
-                }
-                public String description() { return getString(R.string.tutorial_desc_submode_tabs); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    closeDrawerIfOpen(context);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{
-                            R.id.keyboard_view,
-                            R.id.keyboard_view_left,
-                            R.id.basic_km_tab_keyboard
-                    };
-                }
-                public String description() { return getString(R.string.tutorial_desc_keyboard_modes); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public void onShow(android.content.Context context) {
-                    closeDrawerIfOpen(context);
-                }
-                public int delayMs() { return 400; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.basic_km_menu_button, R.id.menu_button};
-                }
-                public String description() { return getString(R.string.tutorial_desc_menu); }
-                public String buttonText() { return getString(R.string.tutorial_done); }
-                public void onShow(android.content.Context context) {
-                    closeDrawerIfOpen(context);
-                }
-                public int delayMs() { return 400; }
-            }
-        });
-
-        // Add overlay to activity root so it appears above both content and drawer
-        ViewGroup root = findViewById(android.R.id.content);
-        root.addView(overlay, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        showKmBasicQuickStartOverlay(true);
     }
 }

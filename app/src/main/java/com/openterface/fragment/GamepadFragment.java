@@ -580,6 +580,16 @@ public class GamepadFragment extends Fragment {
                         }
                     });
         }
+        ImageButton modeGuide = root.findViewById(R.id.gamepad_mode_guide);
+        if (modeGuide != null) {
+            modeGuide.setOnClickListener(
+                    v -> {
+                        MainActivity ma = mainActivity();
+                        if (ma != null) {
+                            ma.openModeGuideFromEmbeddedChrome();
+                        }
+                    });
+        }
         refreshGamepadEmbeddedChrome();
     }
 
