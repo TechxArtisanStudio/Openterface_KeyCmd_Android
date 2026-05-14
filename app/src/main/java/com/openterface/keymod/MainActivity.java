@@ -81,6 +81,7 @@ import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.color.MaterialColors;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
 
@@ -181,6 +182,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private View imeSavedTextOverlay;
     @Nullable
     private ImeSavedTextFragment.Host imeSavedTextHost;
+    @Nullable
+    private ImageButton kmProSetupHeaderButton;
     @Nullable
     private ImageButton modeGuideHeaderButton;
     private final Handler modeGuideHandler = new Handler(Looper.getMainLooper());
