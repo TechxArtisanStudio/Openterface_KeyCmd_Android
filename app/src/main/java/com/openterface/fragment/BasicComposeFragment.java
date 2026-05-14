@@ -27,6 +27,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import com.openterface.keymod.ConnectionManager;
@@ -438,13 +439,14 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
             return;
         }
         if (assessment.warningInfo != null) {
-            showComposeSendWarningDialog(cm, assessment.warningInfo, text, editorIsSourceBuffer);
+            showComposeSendWarningDialog(ma, cm, assessment.warningInfo, text, editorIsSourceBuffer);
             return;
         }
-        startSend(ma, cm, text, editorIsSourceBuffer);
+        startSend(ma, cm, text, editorIsSourceBuffer, false);
     }
 
     private void showComposeSendWarningDialog(
+            @NonNull MainActivity ma,
             @Nullable ConnectionManager cm,
             @NonNull ImeComposeSendGate.WarningInfo warningInfo,
             @NonNull String pendingSendText,
@@ -452,12 +454,37 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (editor == null || sending) {
             return;
         }
+        final Runnable sendWithUnicodeHostEntry =
+                isEmbeddedInKmPro() && warningInfo.hasNonAscii
+                        ? () -> {
+                            MainActivity maNow = mainActivity();
+                            if (maNow == null || editor == null || sending) {
+                                return;
+                            }
+                            String now =
+                                    editorIsSourceBuffer
+                                            ? (editor.getText() != null ? editor.getText().toString() : "")
+                                            : pendingSendText;
+                            ImeComposeSendGate.SendAssessment reassess =
+                                    ImeComposeSendGate.assess(cm, now);
+                            if (reassess.hardBlockReasonResId != null) {
+                                Toast.makeText(
+                                                requireContext(),
+                                                reassess.hardBlockReasonResId,
+                                                Toast.LENGTH_SHORT)
+                                        .show();
+                                refreshToolbarState();
+                                return;
+                            }
+                            showUnicodeHostSendConfirmDialog(maNow, cm, now, editorIsSourceBuffer);
+                        }
+                        : null;
         ComposeSendWarningDialog.show(
                 requireContext(),
                 warningInfo,
                 () -> {
-                    MainActivity ma = mainActivity();
-                    if (ma == null || editor == null || sending) {
+                    MainActivity ma2 = mainActivity();
+                    if (ma2 == null || editor == null || sending) {
                         return;
                     }
                     String now =
@@ -472,7 +499,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                         refreshToolbarState();
                         return;
                     }
-                    startSend(ma, cm, now, editorIsSourceBuffer);
+                    startSend(ma2, cm, now, editorIsSourceBuffer, false);
                 },
                 () -> {
                     highlightNonAsciiChars = true;
@@ -492,20 +519,43 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                         return;
                     }
                     ComposeSendPreviewDialog.show(requireContext(), preview);
-                });
+                },
+                ma.getTargetOs(),
+                sendWithUnicodeHostEntry);
+    }
+
+    private void showUnicodeHostSendConfirmDialog(
+            @NonNull MainActivity ma,
+            @Nullable ConnectionManager cm,
+            @NonNull String text,
+            boolean clearEditorAfterSuccess) {
+        if (!isAdded()) {
+            return;
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.compose_unicode_confirm_title)
+                .setMessage(R.string.compose_unicode_confirm_message)
+                .setIcon(R.drawable.ic_experiment_24px)
+                .setNegativeButton(R.string.compose_unicode_confirm_cancel, null)
+                .setPositiveButton(
+                        R.string.compose_unicode_confirm_continue,
+                        (dialog, which) ->
+                                startSend(ma, cm, text, clearEditorAfterSuccess, true))
+                .show();
     }
 
     private void startSend(
             @NonNull MainActivity ma,
             @Nullable ConnectionManager cm,
             @NonNull String text,
-            boolean clearEditorAfterSuccess) {
+            boolean clearEditorAfterSuccess,
+            boolean allowUnicode) {
         cancelSend.set(false);
         sending = true;
 
         final String targetOs = ma.getTargetOs();
         final int sentLen = text.length();
-        final int totalUnits = HidTextKeystrokeSender.countSendUnits(text, false, targetOs);
+        final int totalUnits = HidTextKeystrokeSender.countSendUnits(text, allowUnicode, targetOs);
         final boolean showSendProgress = totalUnits >= COMPOSE_SEND_PROGRESS_MIN_UNITS;
         sendProgressUiActive = showSendProgress;
         lastComposeSendRemainingForA11y = showSendProgress ? totalUnits : -1;
@@ -557,7 +607,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                             try {
                                 result =
                                         HidTextKeystrokeSender.send(
-                                                text, cm, targetOs, false, cancelSend, progressListener);
+                                                text, cm, targetOs, allowUnicode, cancelSend, progressListener);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 result = HidTextKeystrokeSender.Result.CANCELLED;

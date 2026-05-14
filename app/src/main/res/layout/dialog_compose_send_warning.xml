@@ -62,4 +62,37 @@
         android:minHeight="46dp"
         android:text="@string/compose_send_warning_send_anyway" />
 
+    <LinearLayout
+        android:id="@+id/compose_send_warning_unicode_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/compose_send_warning_unicode_host_entry_button"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="46dp"
+            android:text="@string/compose_send_warning_send_unicode_short"
+            app:icon="@drawable/ic_experiment_24px"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp"
+            app:iconTint="?attr/colorOnSecondaryContainer" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/compose_send_warning_unicode_info_button"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="@string/compose_send_warning_unicode_info_cd"
+            app:icon="@drawable/ic_touchpad_info_24"
+            app:iconTint="?attr/colorOnSurface" />
+    </LinearLayout>
+
 </LinearLayout>
