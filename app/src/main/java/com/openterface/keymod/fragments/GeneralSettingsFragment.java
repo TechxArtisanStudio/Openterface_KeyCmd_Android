@@ -1,19 +1,22 @@
 package com.openterface.keymod.fragments;
 
 import android.content.SharedPreferences;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
-import android.widget.Spinner;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
@@ -45,18 +48,29 @@ public class GeneralSettingsFragment extends Fragment {
             ThemeManager.FAMILY_INDIGO
     };
 
+    private static final int[] THEME_FAMILY_SWATCH_COLORS = {
+            R.color.theme_accent_orange,
+            R.color.theme_accent_blue,
+            R.color.theme_accent_green,
+            R.color.theme_accent_pink,
+            R.color.theme_accent_purple,
+            R.color.theme_accent_red,
+            R.color.theme_accent_teal,
+            R.color.theme_accent_indigo
+    };
+
     private CheckBox autoConnectCheckBox;
     private CheckBox keepScreenOnCheckBox;
     private CheckBox hapticFeedbackCheckBox;
     private CheckBox orientationLockCheckBox;
     private Spinner languageSpinner;
-    private Spinner themeFamilySpinner;
+    private LinearLayout themeFamilySwatches;
     private CheckBox themeFollowSystemCheckBox;
     private RadioGroup themeModeGroup;
     private SeekBar touchpadScrollSensitivitySeekBar;
     private TextView touchpadScrollSensitivityValueText;
     private boolean isLoadingSettings;
-    private boolean ignoreNextThemeSelectionEvent;
+    private int themeFamilySelectedIndex;
     /** Spinner index 0 = follow system; 1..n match R.array.language_codes order. */
     private String[] localeSpinnerTags;
 
@@ -67,13 +81,13 @@ public class GeneralSettingsFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings_general, container, false);
-        
+
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-        
+
         initializeViews(view);
         loadSettings();
         setupListeners();
-        
+
         return view;
     }
 
@@ -83,12 +97,12 @@ public class GeneralSettingsFragment extends Fragment {
         hapticFeedbackCheckBox = view.findViewById(R.id.haptic_feedback_checkbox);
         orientationLockCheckBox = view.findViewById(R.id.orientation_lock_checkbox);
         languageSpinner = view.findViewById(R.id.language_spinner);
-        themeFamilySpinner = view.findViewById(R.id.theme_family_spinner);
+        themeFamilySwatches = view.findViewById(R.id.theme_family_swatches);
         themeFollowSystemCheckBox = view.findViewById(R.id.theme_follow_system_checkbox);
         themeModeGroup = view.findViewById(R.id.theme_mode_group);
         touchpadScrollSensitivitySeekBar = view.findViewById(R.id.touchpad_scroll_sensitivity_seekbar);
         touchpadScrollSensitivityValueText = view.findViewById(R.id.touchpad_scroll_sensitivity_value_text);
-        
+
         String followLabel = getString(R.string.app_language_follow_system);
         String[] langNames = getResources().getStringArray(R.array.language_names);
         String[] langCodes = getResources().getStringArray(R.array.language_codes);
@@ -103,11 +117,34 @@ public class GeneralSettingsFragment extends Fragment {
         langAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         languageSpinner.setAdapter(langAdapter);
 
+        populateThemeFamilySwatches();
+    }
+
+    private void populateThemeFamilySwatches() {
+        themeFamilySwatches.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
         String[] themeFamilyLabels = getResources().getStringArray(R.array.theme_color_family_names);
-        ArrayAdapter<String> themeAdapter = new ArrayAdapter<>(requireContext(),
-                R.layout.item_theme_family_spinner, themeFamilyLabels);
-        themeAdapter.setDropDownViewResource(R.layout.item_theme_family_spinner_dropdown);
-        themeFamilySpinner.setAdapter(themeAdapter);
+        for (int i = 0; i < THEME_FAMILY_VALUES.length; i++) {
+            View swatch = inflater.inflate(R.layout.item_theme_family_swatch, themeFamilySwatches, false);
+            View root = swatch.findViewById(R.id.theme_family_swatch_root);
+            View colorView = swatch.findViewById(R.id.theme_family_swatch_color);
+            int color = ContextCompat.getColor(requireContext(), THEME_FAMILY_SWATCH_COLORS[i]);
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(color);
+            colorView.setBackground(dot);
+            root.setContentDescription(themeFamilyLabels[i]);
+            int index = i;
+            root.setOnClickListener(v -> {
+                if (isLoadingSettings || themeFamilySelectedIndex == index) {
+                    return;
+                }
+                themeFamilySelectedIndex = index;
+                updateThemeFamilySwatchSelection();
+                applyThemeFromUi();
+            });
+            themeFamilySwatches.addView(swatch);
+        }
     }
 
     private void loadSettings() {
@@ -117,7 +154,7 @@ public class GeneralSettingsFragment extends Fragment {
         keepScreenOnCheckBox.setChecked(prefs.getBoolean(PREF_KEEP_SCREEN_ON, true));
         hapticFeedbackCheckBox.setChecked(prefs.getBoolean(PREF_HAPTIC_FEEDBACK, true));
         orientationLockCheckBox.setChecked(prefs.getBoolean(PREF_ORIENTATION_LOCK, false));
-        
+
         int localeIndex = indexForLocaleTag(AppLocaleManager.getPersistedLocaleTag(requireContext()));
         languageSpinner.setSelection(localeIndex);
 
@@ -128,7 +165,8 @@ public class GeneralSettingsFragment extends Fragment {
         touchpadScrollSensitivityValueText.setText(String.format("%.1fx", sensitivityPercent / 100f));
 
         String family = prefs.getString(ThemeManager.PREF_THEME_COLOR_FAMILY, ThemeManager.FAMILY_ORANGE);
-        themeFamilySpinner.setSelection(getThemeFamilyIndex(family));
+        themeFamilySelectedIndex = getThemeFamilyIndex(family);
+        updateThemeFamilySwatchSelection();
 
         boolean followSystem = prefs.getBoolean(ThemeManager.PREF_THEME_FOLLOW_SYSTEM, false);
         themeFollowSystemCheckBox.setChecked(followSystem);
@@ -138,6 +176,23 @@ public class GeneralSettingsFragment extends Fragment {
         themeModeGroup.setEnabled(!followSystem);
         viewModeChildrenEnabled(!followSystem);
         isLoadingSettings = false;
+    }
+
+    private void updateThemeFamilySwatchSelection() {
+        if (themeFamilySwatches == null) {
+            return;
+        }
+        int n = themeFamilySwatches.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View root = themeFamilySwatches.getChildAt(i).findViewById(R.id.theme_family_swatch_root);
+            if (root == null) {
+                continue;
+            }
+            boolean selected = i == themeFamilySelectedIndex;
+            root.setBackgroundResource(selected
+                    ? R.drawable.theme_family_swatch_ring_selected
+                    : R.drawable.theme_family_swatch_ring_idle);
+        }
     }
 
     private void setupListeners() {
@@ -188,20 +243,6 @@ public class GeneralSettingsFragment extends Fragment {
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        themeFamilySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                if (isLoadingSettings || ignoreNextThemeSelectionEvent) {
-                    ignoreNextThemeSelectionEvent = false;
-                    return;
-                }
-                applyThemeFromUi();
-            }
-
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-        });
-
         themeFollowSystemCheckBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isLoadingSettings) {
                 return;
@@ -233,10 +274,6 @@ public class GeneralSettingsFragment extends Fragment {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
-
-        // Spinner emits one initial selection callback when listener is attached.
-        // Skip that first callback to avoid an immediate theme-triggered recreation loop.
-        ignoreNextThemeSelectionEvent = true;
     }
 
     private void viewModeChildrenEnabled(boolean enabled) {
@@ -274,7 +311,7 @@ public class GeneralSettingsFragment extends Fragment {
     }
 
     private void applyThemeFromUi() {
-        String family = getThemeFamilyValue(themeFamilySpinner.getSelectedItemPosition());
+        String family = getThemeFamilyValue(themeFamilySelectedIndex);
         boolean followSystem = themeFollowSystemCheckBox.isChecked();
         String mode = themeModeGroup.getCheckedRadioButtonId() == R.id.theme_mode_light
                 ? ThemeManager.MODE_LIGHT : ThemeManager.MODE_DARK;
