@@ -25,7 +25,7 @@
         android:focusable="false"
         android:importantForAccessibility="no" />
 
-    <!-- Menu + customize + cycle preset + active preset + spacer + connection (top); top margin applied in code with status bar insets -->
+    <!-- Menu + customize + … + spacer + [creator chip] + mode guide + connection (top); top margin applied in code with status bar insets -->
     <LinearLayout
         android:id="@+id/gamepad_chrome_bar"
         android:layout_width="match_parent"
@@ -129,18 +129,6 @@
             app:iconPadding="0dp"
             app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
-        <ImageButton
-            android:id="@+id/gamepad_mode_guide"
-            android:layout_width="@dimen/header_icon_size"
-            android:layout_height="@dimen/header_icon_size"
-            android:layout_marginStart="@dimen/spacing_tiny"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/mode_guide_header_cd"
-            android:padding="@dimen/button_icon_padding"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_mode_guide_24"
-            android:tint="?attr/colorOnSurfaceVariant" />
-
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
@@ -168,6 +156,19 @@
             app:backgroundTint="@android:color/transparent"
             tools:text="Creator"
             tools:visibility="visible" />
+
+        <ImageButton
+            android:id="@+id/gamepad_mode_guide"
+            android:layout_width="@dimen/header_icon_size"
+            android:layout_height="@dimen/header_icon_size"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:layout_marginEnd="@dimen/spacing_tiny"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/mode_guide_header_cd"
+            android:padding="@dimen/button_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_mode_guide_24"
+            android:tint="?attr/colorOnSurfaceVariant" />
 
         <LinearLayout
             android:id="@+id/gamepad_chrome_connection_wrap"
