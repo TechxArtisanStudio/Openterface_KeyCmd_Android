@@ -185,6 +185,7 @@
     <string name="profile_builtin_default_description">Common shortcuts for any app</string>
     <string name="launch_panel_welcome_prefix">Welcome to</string>
     <string name="launch_panel_subtitle">Turn Your Phone into a Smart Controller</string>
+    <string name="launch_panel_quick_start_hint">After you tap Start: connect your hardware from the top bar, then set target OS to match the computer you control.</string>
     <string name="launch_panel_land_subtitle">Turn Your Phone into a Smart Controller</string>
     <string name="launch_panel_credit">Learn more at openterface.com
 by TechxArtisan</string>
@@ -195,13 +196,11 @@ by TechxArtisan</string>
     <string name="tutorial_next">Next</string>
     <string name="tutorial_done">Done</string>
     <string name="tutorial_step_indicator">Step %1$d/%2$d: </string>
-    <string name="tutorial_desc_menu">Tap here to open the menu: switch modes, open Welcome &amp; Guide (mode picker and tutorial), or Settings.</string>
-    <string name="tutorial_desc_bluetooth_header">Tap the Bluetooth icon to connect via USB or Bluetooth. Green signal bars appear when connected.</string>
-    <string name="tutorial_desc_drawer_modes">Open the menu to choose your preferred input mode: Keyboard &amp; Mouse, Presentation, Shortcuts, Macros, Voice, or Gamepad.</string>
-    <string name="tutorial_desc_target_os">Tap the target OS icon in the header to choose macOS, Windows, or Linux for correct key mappings.</string>
-    <string name="tutorial_desc_keyboard_modes">Tap ABC, !?#, or 123 keys on the keyboard to switch between letter, number, and symbol layouts.</string>
-    <string name="tutorial_desc_shortcut_row">The keyboard shortcuts row at the top can be scrolled left or right to reveal more options.</string>
-    <string name="tutorial_desc_touchpad">Use the touchpad to control the cursor. Long press to start drag; tap to release.</string>
+    <string name="tutorial_desc_connection">Tap here to connect. Choose USB (cable) or Bluetooth (device list). Allow Bluetooth or nearby-device access if Android asks. When connected, the icon shows the active link and uses your accent color.</string>
+    <string name="tutorial_desc_target_os">Tap the target computer icon and pick macOS, Windows, or Linux—the system you are controlling—so keys and modifiers map correctly. If typing feels wrong, check this first.</string>
+    <string name="tutorial_desc_submode_tabs">Use these tabs to switch between the full keyboard, touchpad for the pointer, and numpad.</string>
+    <string name="tutorial_desc_keyboard_modes">On the keyboard, tap ABC, !?#, or 123 to switch between letter, number, and symbol layers.</string>
+    <string name="tutorial_desc_menu">Tap the menu when you need Welcome &amp; Guide (replay this tour), Settings, or other control modes.</string>
 
     <!-- MainActivity connection toasts -->
     <string name="main_toast_auto_connecting_bluetooth">Auto-connecting to Bluetooth…</string>

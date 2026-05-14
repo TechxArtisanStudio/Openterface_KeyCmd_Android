@@ -54,6 +54,18 @@
             android:gravity="center"
             android:textAlignment="center" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/launch_panel_quick_start_hint"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:lineSpacingMultiplier="1.15" />
+
     </LinearLayout>
 
     <!-- Mode cards: scroll when header + footer leave too little height for weighted cells -->

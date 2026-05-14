@@ -23,7 +23,7 @@ import androidx.cardview.widget.CardView;
 public class TutorialOverlay extends FrameLayout {
 
     public static final String PREFS_NAME = "TutorialPrefs";
-    public static final String KEY_TUTORIAL_SHOWN = "tutorial_shown_v1";
+    public static final String KEY_TUTORIAL_SHOWN = "tutorial_shown_v2";
 
     private final View dimView;
     private final HighlightView highlightView;

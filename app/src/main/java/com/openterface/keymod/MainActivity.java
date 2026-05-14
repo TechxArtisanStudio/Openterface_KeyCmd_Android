@@ -459,8 +459,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             }
         }, 500);
 
-        // Show beginner tutorial on first launch
-        if (!TutorialOverlay.isShown(this)) {
+        // Show beginner tutorial on first launch (Basic Keyboard & Mouse only; steps target that UI)
+        if (!TutorialOverlay.isShown(this)
+                && LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(currentNavMode)) {
             new Handler().postDelayed(this::showTutorial, 800);
         }
     }
@@ -2142,69 +2143,84 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return bluetoothService;
     }
 
+    private static void closeDrawerIfOpen(android.content.Context context) {
+        if (!(context instanceof android.app.Activity)) {
+            return;
+        }
+        androidx.drawerlayout.widget.DrawerLayout drawer =
+                ((android.app.Activity) context).findViewById(R.id.drawer_layout);
+        if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) {
+            drawer.closeDrawer(android.view.Gravity.START);
+        }
+    }
+
     private void showTutorial() {
         TutorialOverlay overlay = new TutorialOverlay(this);
 
         overlay.setSteps(new TutorialOverlay.Step[]{
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() {
-                    return new int[]{R.id.menu_button, R.id.basic_km_menu_button};
+                    return new int[]{R.id.basic_km_connection, R.id.connection_container};
                 }
-                public String description() { return getString(R.string.tutorial_desc_menu); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() {
-                    return new int[]{R.id.connection_container, R.id.basic_km_connection};
-                }
-                public String description() { return getString(R.string.tutorial_desc_bluetooth_header); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.nav_keyboard_mouse}; }
-                public String description() { return getString(R.string.tutorial_desc_drawer_modes); }
+                public String description() { return getString(R.string.tutorial_desc_connection); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null) drawer.openDrawer(android.view.Gravity.START);
+                    closeDrawerIfOpen(context);
                 }
                 public int delayMs() { return 400; }
             },
             new TutorialOverlay.Step() {
                 public int[] targetViewIds() {
-                    return new int[]{R.id.target_os_header_button, R.id.basic_km_target_os};
+                    return new int[]{R.id.basic_km_target_os, R.id.target_os_header_button};
                 }
                 public String description() { return getString(R.string.tutorial_desc_target_os); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) {
-                        drawer.closeDrawer(android.view.Gravity.START);
-                    }
+                    closeDrawerIfOpen(context);
                 }
                 public int delayMs() { return 400; }
             },
             new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.keyboard_view, R.id.keyboard_view_left}; }
+                public int[] targetViewIds() {
+                    return new int[]{
+                            R.id.basic_km_submode_tabs_row,
+                            R.id.basic_km_tab_keyboard,
+                            R.id.basic_km_tab_touchpad,
+                            R.id.basic_km_tab_numpad
+                    };
+                }
+                public String description() { return getString(R.string.tutorial_desc_submode_tabs); }
+                public String buttonText() { return getString(R.string.tutorial_next); }
+                public void onShow(android.content.Context context) {
+                    closeDrawerIfOpen(context);
+                }
+                public int delayMs() { return 400; }
+            },
+            new TutorialOverlay.Step() {
+                public int[] targetViewIds() {
+                    return new int[]{
+                            R.id.keyboard_view,
+                            R.id.keyboard_view_left,
+                            R.id.basic_km_tab_keyboard
+                    };
+                }
                 public String description() { return getString(R.string.tutorial_desc_keyboard_modes); }
                 public String buttonText() { return getString(R.string.tutorial_next); }
                 public void onShow(android.content.Context context) {
-                    androidx.drawerlayout.widget.DrawerLayout drawer = ((android.app.Activity) context).findViewById(R.id.drawer_layout);
-                    if (drawer != null && drawer.isDrawerOpen(android.view.Gravity.START)) drawer.closeDrawer(android.view.Gravity.START);
+                    closeDrawerIfOpen(context);
                 }
                 public int delayMs() { return 400; }
             },
             new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.keyboard_view}; }
-                public String description() { return getString(R.string.tutorial_desc_shortcut_row); }
-                public String buttonText() { return getString(R.string.tutorial_next); }
-                public int insetTopDp() { return 0; }
-                public int insetBottomDp() { return -200; }
-            },
-            new TutorialOverlay.Step() {
-                public int[] targetViewIds() { return new int[]{R.id.touchPad}; }
-                public String description() { return getString(R.string.tutorial_desc_touchpad); }
+                public int[] targetViewIds() {
+                    return new int[]{R.id.basic_km_menu_button, R.id.menu_button};
+                }
+                public String description() { return getString(R.string.tutorial_desc_menu); }
                 public String buttonText() { return getString(R.string.tutorial_done); }
+                public void onShow(android.content.Context context) {
+                    closeDrawerIfOpen(context);
+                }
+                public int delayMs() { return 400; }
             }
         });
 
