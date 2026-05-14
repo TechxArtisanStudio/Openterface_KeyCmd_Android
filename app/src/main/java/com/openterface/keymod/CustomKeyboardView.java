@@ -3457,8 +3457,9 @@ public class CustomKeyboardView extends LinearLayout {
                 com.google.android.material.R.attr.colorPrimaryContainer,
                 ThemeManager.getColorPrimaryContainer(ctx));
         int popupBg = ContextCompat.getColor(ctx, R.color.background_light);
-        // ~60% primary-container hue: clearly distinct from bare popup, weaker than solid selected pill.
-        return ColorUtils.blendARGB(container, popupBg, 0.40f);
+        // Heavily toward popup base with a faint primary-container tint (opaque blend; translucent
+        // fills can fail on some PopupWindow surfaces).
+        return ColorUtils.blendARGB(container, popupBg, 0.72f);
     }
 
     private static void setAlternateCardinalIdleBackground(TextView tv, int washArgb, float cornerRadiusPx) {

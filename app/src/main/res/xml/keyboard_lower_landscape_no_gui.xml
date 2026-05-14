@@ -25,7 +25,7 @@
     <!-- Row2: Fn+a–l+Del (forward delete). Split (mid=6): left Fn+asdfg, right hjkl+Del. -->
     <Row>
         <Key android:codes="F005" android:keyLabel="Fn" android:keyWidth="9.5%p" android:horizontalGap="1.1%p"/>
-        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,,€,,£,," custom:keyCornerHint="¥" android:keyWidth="10.6%p"/>
+        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,£,,€,,," custom:keyCornerHint="¥" android:keyWidth="10.6%p"/>
         <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates=",,`,~" custom:keyCornerHint="`" android:keyWidth="8.35%p"/>
         <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates=",,-,_" custom:keyCornerHint="-" android:keyWidth="8.35%p"/>
         <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates=",,+,=" custom:keyCornerHint="+" android:keyWidth="8.35%p"/>
