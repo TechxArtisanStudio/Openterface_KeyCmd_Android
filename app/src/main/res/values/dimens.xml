@@ -12,6 +12,11 @@
     <dimen name="header_padding">8dp</dimen>
     <dimen name="header_elevation">4dp</dimen>
     <dimen name="header_icon_size">40dp</dimen>
+    <!-- Trailing cluster (target OS, mode guide, setup, connection): tighter than menu / title row. -->
+    <dimen name="header_right_cluster_icon_size">36dp</dimen>
+    <dimen name="header_right_cluster_icon_padding">8dp</dimen>
+    <dimen name="header_right_cluster_button_gap">0dp</dimen>
+    <dimen name="header_right_cluster_connection_padding">2dp</dimen>
     <!-- Bluetooth / connection glyph inside header_right_cluster (KM Pro + KM Basic chrome). -->
     <dimen name="header_connection_icon_size">18dp</dimen>
     <!-- KM Pro header submode tabs: slightly smaller than header_right_cluster icons for density. -->
