@@ -460,7 +460,9 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                                                             getString(R.string.compose_sent, sentLen),
                                                             Toast.LENGTH_SHORT)
                                                     .show();
-                                            if (clearEditorAfterSuccess && editor != null) {
+                                            if (clearEditorAfterSuccess
+                                                    && editor != null
+                                                    && !isEmbeddedInKmPro()) {
                                                 editor.setText("");
                                             }
                                             refreshToolbarState();
