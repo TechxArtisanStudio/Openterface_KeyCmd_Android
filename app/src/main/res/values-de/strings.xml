@@ -21,12 +21,12 @@ von TechxArtisan</string>
     <string name="tutorial_next">Weiter</string>
     <string name="tutorial_done">Fertig</string>
     <string name="tutorial_step_indicator">Schritt %1$d/%2$d: </string>
-    <string name="tutorial_desc_connection">Tippen Sie hier, um eine Verbindung herzustellen. Wählen Sie USB (Kabel) oder Bluetooth (Geräteliste). Erlauben Sie Bluetooth oder Geräte in der Nähe, falls Android danach fragt. Bei Verbindung zeigt das Symbol den aktiven Link und die Akzentfarbe des Themes.</string>
-    <string name="tutorial_desc_target_os">Tippen Sie auf das Ziel-Computer-Symbol und wählen Sie macOS, Windows oder Linux – das System, das Sie steuern – damit Tasten und Modifier passen. Wenn die Eingabe falsch wirkt, prüfen Sie zuerst diese Einstellung.</string>
-    <string name="tutorial_desc_submode_tabs">Mit diesen Tabs wechseln Sie zwischen voller Tastatur, Touchpad (Zeiger) und Ziffernblock.</string>
-    <string name="tutorial_desc_keyboard_modes">Auf der Tastatur tippen Sie auf ABC, !?# oder 123, um zwischen Buchstaben-, Zahlen- und Symbol-Ebenen zu wechseln.</string>
-    <string name="tutorial_desc_menu">Tippen Sie auf das Menü, um die Seitenleiste zu öffnen: Willkommen &amp; Anleitung (diese Tour erneut), Einstellungen oder weitere Steuerungsmodi.</string>
-    <string name="mode_guide_header_cd">Modusführer und Tour erneut abspielen</string>
+    <string name="tutorial_desc_connection">Zum Verbinden tippen: USB (Kabel) oder Bluetooth (Geräteliste). Hinweisen folgen. Verbunden = Icon mit Akzentfarbe.</string>
+    <string name="tutorial_desc_target_os">Computer-Symbol: macOS, Windows oder Linux wählen – Ihr Zielsystem. Falsche Tasten? Zuerst hier prüfen.</string>
+    <string name="tutorial_desc_submode_tabs">Hier zwischen Tastatur, Touchpad (Zeiger) und Ziffernblock wechseln.</string>
+    <string name="tutorial_desc_keyboard_modes">Mit ABC, !?# und 123 die Buchstaben-, Symbol- und Zahlenebenen wechseln.</string>
+    <string name="tutorial_desc_menu">Menü öffnet die Seitenleiste: Willkommen &amp; Anleitung (Tour), Einstellungen und weitere Modi.</string>
+    <string name="mode_guide_header_cd">Modusführer öffnen und diese Tour erneut starten</string>
     <string name="mode_guide_sheet_title_basic">Tastatur &amp; Maus (Basic)</string>
     <string name="mode_guide_sheet_title_pro">Tastatur &amp; Maus Pro</string>
     <string name="mode_guide_sheet_title_presentation">Präsentation</string>
@@ -35,13 +35,13 @@ von TechxArtisan</string>
     <string name="mode_guide_sheet_body">Spielen Sie die kurze Einführung für diesen Modus erneut ab, oder schließen Sie, um fortzufahren.</string>
     <string name="mode_guide_replay_tour">Tour erneut abspielen</string>
     <string name="mode_guide_close">Schließen</string>
-    <string name="mode_tutorial_pro_step_connection">Verbinden Sie oben per USB oder Bluetooth, damit Tasten an den Zielcomputer gesendet werden.</string>
-    <string name="mode_tutorial_pro_step_target_os">Stellen Sie das Zielsystem auf den Computer ein, den Sie steuern, damit Tastenkürzel und Modifier passen.</string>
-    <string name="mode_tutorial_pro_step_submodes">Mit diesen Symbolen wechseln Sie zwischen Tastatur, Verfassen und Ziffernblock.</string>
-    <string name="mode_tutorial_pro_step_setup">Öffnen Sie die Einstellungen, um die Schnellleiste, Fallback-Hinweise und das aktuelle Kurzbefehl-Hub-Profil anzupassen.</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">Oben über den Buchstaben liegt das Kurzbefehl-Feld: bis zu drei Zeilen mit einem seitwärts scrollbaren Kurzbefehl-Hub-Profilstreifen sowie Favoriten und festen Kurzbefehlen. Tippen Sie einen Slot, um den Kurzbefehl an den Host zu senden. Mit „+“ legen Sie einen neuen Kurzbefehl an. Einige Modifikatortasten unterstützen langes Drücken für Sperr- oder Haltehinweise—beachten Sie den Streifen.</string>
-    <string name="mode_tutorial_pro_step_compose_editor">Im Verfassen-Modus erhalten Sie einen scrollbaren Mehrzeilen-Editor für längere Texte statt Einzeltasten. Die Tour wechselt für diesen Schritt automatisch dorthin; über die Registerkarte „Tastatur“ kehren Sie jederzeit zurück.</string>
-    <string name="mode_tutorial_pro_step_compose_actions">Die Aktionsleiste: Rückgängig/Wiederholen, Feld leeren, Text in Ihrer Bibliothek „Gespeichert“ ablegen, „Gespeichert“ öffnen, um ältere Texte zu laden, und Senden, um den aktuellen Text per USB oder Bluetooth an den Host zu übertragen.</string>
+    <string name="mode_tutorial_pro_step_connection">Oben USB oder Bluetooth verbinden, damit Eingaben beim Host ankommen.</string>
+    <string name="mode_tutorial_pro_step_target_os">Ziel-OS an den gesteuerten PC anpassen, damit Kurzbefehle und Modifier stimmen.</string>
+    <string name="mode_tutorial_pro_step_submodes">Hier zwischen Tastatur, Verfassen und Ziffernblock wechseln.</string>
+    <string name="mode_tutorial_pro_step_setup">Einstellungen: Schnellleiste, Hinweise und aktives Kurzbefehl-Hub-Profil.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">Kurzbefehlzeilen über den Buchstaben—seitwärts scrollen. Slot tippen zum Senden; „+“ neu anlegen. Manche Modifier: Long-Press bei Hinweis.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">Verfassen = Mehrzeilen-Editor für längere Texte. Dieser Schritt wechselt automatisch—Tab „Tastatur“ zum Zurückkehren.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">Rückgängig/Wiederholen, leeren, in „Gespeichert“ legen, Gespeichert öffnen, dann Senden per USB/Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Wischen Sie im oberen Karussell, um die Präsentations-App zu wählen; die Tastenkürzel passen sich an.</string>
     <string name="mode_tutorial_presentation_step_nav">Mit „Weiter“ und „Zurück“ senden Sie Folientasten an den Host.</string>
     <string name="mode_tutorial_presentation_step_actions">„Abspielen“ startet die Diashow; „Schwarz“ blendet die Folie für das Publikum aus.</string>

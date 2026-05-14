@@ -2,6 +2,7 @@ package com.openterface.keymod;
 
 import android.app.Activity;
 import android.content.Context;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.Nullable;
 import android.graphics.Canvas;
@@ -143,6 +144,7 @@ public class TutorialOverlay extends FrameLayout {
     public void setSteps(Step[] steps) {
         this.steps = steps;
         this.currentStep = 0;
+        hideImeForOverlay();
         showCurrentStep();
     }
 
@@ -164,6 +166,8 @@ public class TutorialOverlay extends FrameLayout {
             dismiss();
             return;
         }
+
+        hideImeForOverlay();
 
         Step step = steps[currentStep];
         step.onShow(getContext());
@@ -190,6 +194,7 @@ public class TutorialOverlay extends FrameLayout {
         final int insetBottom = dpToPx(step.insetBottomDp());
         postDelayed(
                 () -> {
+                    hideImeForOverlay();
                     if (finalTarget != null) {
                         int[] overlayPos = new int[2];
                         getLocationOnScreen(overlayPos);
@@ -238,6 +243,34 @@ public class TutorialOverlay extends FrameLayout {
         params.topMargin = 0;
         params.bottomMargin = dpToPx(24);
         tooltipCard.setLayoutParams(params);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        hideImeForOverlay();
+    }
+
+    /**
+     * Dismisses the soft keyboard so it does not cover the tooltip or highlights in Keyboard &amp; Mouse
+     * modes (Compose, IME surfaces, etc.).
+     */
+    private void hideImeForOverlay() {
+        Context c = getContext();
+        if (!(c instanceof Activity)) {
+            return;
+        }
+        Activity activity = (Activity) c;
+        android.view.Window window = activity.getWindow();
+        if (window == null) {
+            return;
+        }
+        View decor = window.getDecorView();
+        InputMethodManager imm =
+                (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(decor.getWindowToken(), 0);
+        }
     }
 
     private void advance() {

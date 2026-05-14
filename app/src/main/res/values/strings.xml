@@ -195,14 +195,14 @@ by TechxArtisan</string>
     <string name="tutorial_next">Next</string>
     <string name="tutorial_done">Done</string>
     <string name="tutorial_step_indicator">Step %1$d/%2$d: </string>
-    <string name="tutorial_desc_connection">Tap here to connect. Choose USB (cable) or Bluetooth (device list). Allow Bluetooth or nearby-device access if Android asks. When connected, the icon shows the active link and uses your accent color.</string>
-    <string name="tutorial_desc_target_os">Tap the target computer icon and pick macOS, Windows, or Linux—the system you are controlling—so keys and modifiers map correctly. If typing feels wrong, check this first.</string>
-    <string name="tutorial_desc_submode_tabs">Use these tabs to switch between the full keyboard, touchpad for the pointer, and numpad.</string>
-    <string name="tutorial_desc_keyboard_modes">On the keyboard, tap ABC, !?#, or 123 to switch between letter, number, and symbol layers.</string>
-    <string name="tutorial_desc_menu">Tap the menu when you need Welcome &amp; Guide (replay this tour), Settings, or other control modes.</string>
+    <string name="tutorial_desc_connection">Tap to connect via USB (cable) or Bluetooth (device list). Allow any prompts. When linked, the icon shows connected state with your accent color.</string>
+    <string name="tutorial_desc_target_os">Tap the computer icon and pick the OS you control—macOS, Windows, or Linux—so keys map correctly. Wrong keys? Check this first.</string>
+    <string name="tutorial_desc_submode_tabs">Switch between full keyboard, touchpad (pointer), and numpad here.</string>
+    <string name="tutorial_desc_keyboard_modes">Use ABC, !?#, and 123 on the keyboard to change letter, symbol, and number layers.</string>
+    <string name="tutorial_desc_menu">Open the side menu for Welcome &amp; Guide (replay tour), Settings, and other modes.</string>
 
     <!-- Mode guide (header info icon + per-mode first-run tours) -->
-    <string name="mode_guide_header_cd">Mode guide and replay tour</string>
+    <string name="mode_guide_header_cd">Open mode guide to replay this mode’s tour</string>
     <string name="mode_guide_sheet_title_basic">Keyboard &amp; Mouse (Basic)</string>
     <string name="mode_guide_sheet_title_pro">Keyboard &amp; Mouse Pro</string>
     <string name="mode_guide_sheet_title_presentation">Presentation</string>
@@ -211,13 +211,13 @@ by TechxArtisan</string>
     <string name="mode_guide_sheet_body">Replay the short guided tour for this mode, or close and continue.</string>
     <string name="mode_guide_replay_tour">Replay tour</string>
     <string name="mode_guide_close">Close</string>
-    <string name="mode_tutorial_pro_step_connection">Connect from the top bar (USB or Bluetooth) so keys reach your target computer.</string>
-    <string name="mode_tutorial_pro_step_target_os">Set target OS to match the computer you control so shortcuts and modifiers are correct.</string>
-    <string name="mode_tutorial_pro_step_submodes">Use these icons to switch between keyboard, compose, and numpad surfaces.</string>
-    <string name="mode_tutorial_pro_step_setup">Open setup to change strip display, alternate hints, and the active Shortcut Hub profile.</string>
-    <string name="mode_tutorial_pro_step_keyboard_strip">The shortcut panel sits above the letter keys: up to three rows include a Shortcut Hub profile strip you can scroll sideways, plus favorites and fixed shortcuts. Tap a slot to send that shortcut to the host. Use the + control to create a new shortcut. Some modifier keys support long-press for lock or hold hints—watch the strip for cues.</string>
-    <string name="mode_tutorial_pro_step_compose_editor">Compose mode gives you a scrollable multi-line editor so you can type or paste longer text instead of tapping key-by-key. The tour switches here automatically for this step; use the Keyboard tab anytime to return.</string>
-    <string name="mode_tutorial_pro_step_compose_actions">The action row: undo/redo, clear the field, save text to your Saved library, open Saved texts to load earlier clips, and Send to transmit the current text to the host over your USB or Bluetooth link.</string>
+    <string name="mode_tutorial_pro_step_connection">Connect USB or Bluetooth from the top bar so input reaches the host.</string>
+    <string name="mode_tutorial_pro_step_target_os">Match target OS to the computer you control so shortcuts and modifiers are correct.</string>
+    <string name="mode_tutorial_pro_step_submodes">Switch between keyboard, Compose, and Numpad here.</string>
+    <string name="mode_tutorial_pro_step_setup">Open setup for shortcut strip options, hints, and the active Shortcut Hub profile.</string>
+    <string name="mode_tutorial_pro_step_keyboard_strip">Shortcut rows sit above the letters—scroll sideways. Tap a slot to send it; + creates one. Some modifiers use long-press when hints appear.</string>
+    <string name="mode_tutorial_pro_step_compose_editor">Compose is a multi-line editor for longer text. This step opens it automatically—use the Keyboard tab to return.</string>
+    <string name="mode_tutorial_pro_step_compose_actions">Undo/redo, clear, save to Saved, open Saved texts, then Send to the host over USB or Bluetooth.</string>
     <string name="mode_tutorial_presentation_step_tools">Swipe the top carousel to pick your presentation app; shortcuts adapt to that tool.</string>
     <string name="mode_tutorial_presentation_step_nav">Use Next and Previous to send slide keys to the host.</string>
     <string name="mode_tutorial_presentation_step_actions">Play starts the slideshow; Black screen hides the slide for the audience.</string>
