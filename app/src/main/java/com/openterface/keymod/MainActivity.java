@@ -407,7 +407,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         super.onCreate(savedInstanceState);
         Intent launchIntent = getIntent();
         String earlyLaunchMode = launchIntent.getStringExtra("launch_mode");
-        String earlyKbSub = launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        String earlyKbSub =
+                KeyboardMouseFragment.normalizeKmBasicSubmode(
+                        launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
         if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
@@ -438,7 +440,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
 
         // Handle launch mode from LaunchPanelActivity
-        pendingKbMouseSubmode = getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE);
+        pendingKbMouseSubmode =
+                KeyboardMouseFragment.normalizeKmBasicSubmode(
+                        getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
         String launchMode = getIntent().getStringExtra("launch_mode");
         if (launchMode != null) {
             handleLaunchMode(launchMode);
@@ -1788,7 +1792,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
     /**
      * {@code launch_mode == null} matches the onCreate branch that defaults to KM Basic; extras can
-     * still request numpad/compose without {@code launch_mode}.
+     * still request numpad, touchpad, or settings without {@code launch_mode}. Legacy compose extra is
+     * normalized to keyboard before this runs.
      */
     private static boolean shouldLockLandscapeForKmBasicKeyboardIntent(
             @Nullable String launchMode, @Nullable String kbInitialSubmode) {
@@ -1928,7 +1933,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
             updateNavSelection();
             consumePendingKbMouseSubmode();
-            showKeyboardMouseFragment(KeyboardMouseFragment.SUBMODE_COMPOSE);
+            showKeyboardMouseFragment(null);
             return;
         }
 

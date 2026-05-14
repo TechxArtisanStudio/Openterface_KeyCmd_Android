@@ -131,8 +131,15 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- KM Pro touchpad L/M/R row: same visuals as Basic mouse row; separate name for Pro call sites. -->
-    <style name="Widget.KeyCmd.ProTouchpadMouseButton" parent="Widget.KeyCmd.BasicTouchpadMouseButton" />
+    <!-- KM Pro touchpad L/M/R: flat Material keycap (key_background), not KM Basic textured mouse drawable. -->
+    <style name="Widget.KeyCmd.ProTouchpadMouseButton" parent="@android:style/Widget.TextView">
+        <item name="android:background">@drawable/key_background</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:layout_margin">2dp</item>
+    </style>
 
     <style name="Widget.KeyCmd.BasicComposeActionButton" parent="Widget.Material3.Button.OutlinedButton">
         <item name="android:textColor">?attr/colorOnSurface</item>

@@ -35,8 +35,8 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 
 /**
  * Standard &quot;Keyboard &amp; Mouse&quot; mode: KM Basic full-screen sub-modes (keyboard, numpad,
- * touchpad, compose; Basic preferences open from the setup icon in the chrome strip). Pro
- * composite experience lives in {@link CompositeFragment}.
+ * touchpad; Basic preferences open from the setup icon in the chrome strip). Compose &amp; Send is
+ * Keyboard &amp; Mouse Pro only ({@link CompositeFragment}).
  */
 public final class KeyboardMouseFragment extends Fragment {
 
@@ -48,6 +48,7 @@ public final class KeyboardMouseFragment extends Fragment {
     public static final String SUBMODE_KEYBOARD = "keyboard";
     public static final String SUBMODE_NUMPAD = "numpad";
     public static final String SUBMODE_TOUCHPAD = "touchpad";
+    /** Legacy intents / saved state only; KM Basic no longer hosts this submode. */
     public static final String SUBMODE_COMPOSE = "compose";
     public static final String SUBMODE_SETTINGS = "settings";
 
@@ -59,7 +60,6 @@ public final class KeyboardMouseFragment extends Fragment {
     @Nullable private TextView tabKeyboard;
     @Nullable private TextView tabTouch;
     @Nullable private TextView tabNum;
-    @Nullable private TextView tabIme;
     @Nullable private ImageButton chromeSetup;
     @Nullable private ImageButton chromeTargetOs;
     @Nullable private ImageView chromeConnectionIcon;
@@ -70,7 +70,7 @@ public final class KeyboardMouseFragment extends Fragment {
     private final KmBasicHoldLockController holdLockController = new KmBasicHoldLockController();
 
     /**
-     * Compose &amp; Send and Touchpad: allow only normal and reverse portrait. {@link
+     * Touchpad: allow only normal and reverse portrait. {@link
      * ActivityInfo#SCREEN_ORIENTATION_SENSOR_PORTRAIT} often omits upside-down; {@link
      * ActivityInfo#SCREEN_ORIENTATION_FULL_SENSOR} allows landscape, which we avoid by driving {@link
      * ActivityInfo#SCREEN_ORIENTATION_PORTRAIT} / {@link ActivityInfo#SCREEN_ORIENTATION_REVERSE_PORTRAIT}
@@ -103,15 +103,29 @@ public final class KeyboardMouseFragment extends Fragment {
         return f;
     }
 
+    /**
+     * KM Basic no longer exposes Compose &amp; Send; map legacy {@link #SUBMODE_COMPOSE} requests to
+     * keyboard.
+     */
+    @Nullable
+    public static String normalizeKmBasicSubmode(@Nullable String submode) {
+        if (SUBMODE_COMPOSE.equals(submode)) {
+            return SUBMODE_KEYBOARD;
+        }
+        return submode;
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
-            currentSubmode = savedInstanceState.getString(STATE_SUBMODE, SUBMODE_KEYBOARD);
+            currentSubmode =
+                    normalizeKmBasicSubmode(
+                            savedInstanceState.getString(STATE_SUBMODE, SUBMODE_KEYBOARD));
         } else {
             Bundle args = getArguments();
             if (args != null && args.containsKey(ARG_INITIAL_SUBMODE)) {
-                String s = args.getString(ARG_INITIAL_SUBMODE);
+                String s = normalizeKmBasicSubmode(args.getString(ARG_INITIAL_SUBMODE));
                 if (s != null && isKnownSubmode(s)) {
                     currentSubmode = s;
                 }
@@ -217,9 +231,8 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     /**
-     * Full-width PC keyboard is only practical in landscape. Touchpad and Compose &amp; Send allow
-     * only the two portrait directions (see portrait-pair listener). Numpad and settings follow
-     * full rotation.
+     * Full-width PC keyboard is only practical in landscape. Touchpad allows only the two portrait
+     * directions (see portrait-pair listener). Numpad and settings follow full rotation.
      */
     private void applyOrientationForCurrentSubmode() {
         Activity activity = getActivity();
@@ -238,7 +251,7 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     private boolean isPortraitPairLockedSubmode() {
-        return SUBMODE_TOUCHPAD.equals(currentSubmode) || SUBMODE_COMPOSE.equals(currentSubmode);
+        return SUBMODE_TOUCHPAD.equals(currentSubmode);
     }
 
     private void disablePortraitPairOrientationListener() {
@@ -337,7 +350,6 @@ public final class KeyboardMouseFragment extends Fragment {
         tabKeyboard = root.findViewById(R.id.basic_km_tab_keyboard);
         tabTouch = root.findViewById(R.id.basic_km_tab_touchpad);
         tabNum = root.findViewById(R.id.basic_km_tab_numpad);
-        tabIme = root.findViewById(R.id.basic_km_tab_ime);
         chromeSetup = root.findViewById(R.id.basic_km_setup_button);
         chromeTargetOs = root.findViewById(R.id.basic_km_target_os);
         chromeConnectionWrap = root.findViewById(R.id.basic_km_connection);
@@ -360,9 +372,6 @@ public final class KeyboardMouseFragment extends Fragment {
         }
         if (tabNum != null) {
             tabNum.setOnClickListener(v -> requestSubmode(SUBMODE_NUMPAD));
-        }
-        if (tabIme != null) {
-            tabIme.setOnClickListener(v -> requestSubmode(SUBMODE_COMPOSE));
         }
         if (chromeSetup != null) {
             chromeSetup.setOnClickListener(v -> requestSubmode(SUBMODE_SETTINGS));
@@ -421,8 +430,6 @@ public final class KeyboardMouseFragment extends Fragment {
             ((BasicNumPadFragment) child).onHostPortChanged(newPort);
         } else if (child instanceof BasicTouchpadFragment) {
             ((BasicTouchpadFragment) child).onHostPortChanged(newPort);
-        } else if (child instanceof BasicComposeFragment) {
-            ((BasicComposeFragment) child).onHostPortChanged(newPort);
         }
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();
@@ -463,9 +470,6 @@ public final class KeyboardMouseFragment extends Fragment {
         if (tabNum != null) {
             tabNum.setSelected(SUBMODE_NUMPAD.equals(currentSubmode));
         }
-        if (tabIme != null) {
-            tabIme.setSelected(SUBMODE_COMPOSE.equals(currentSubmode));
-        }
         if (chromeSetup != null) {
             boolean settings = SUBMODE_SETTINGS.equals(currentSubmode);
             chromeSetup.setSelected(settings);
@@ -485,6 +489,7 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     private void showSubmode(@NonNull String submode) {
+        submode = normalizeKmBasicSubmode(submode);
         if (!isKnownSubmode(submode)) {
             submode = SUBMODE_KEYBOARD;
         }
@@ -536,8 +541,6 @@ public final class KeyboardMouseFragment extends Fragment {
                 return BasicNumPadFragment.instantiateWithPort(port);
             case SUBMODE_TOUCHPAD:
                 return BasicTouchpadFragment.instantiateWithPort(port);
-            case SUBMODE_COMPOSE:
-                return BasicComposeFragment.instantiateWithPort(port);
             case SUBMODE_SETTINGS:
                 return new KeyboardMouseSettingsFragment();
             default:
@@ -549,7 +552,6 @@ public final class KeyboardMouseFragment extends Fragment {
         return SUBMODE_KEYBOARD.equals(s)
                 || SUBMODE_NUMPAD.equals(s)
                 || SUBMODE_TOUCHPAD.equals(s)
-                || SUBMODE_COMPOSE.equals(s)
                 || SUBMODE_SETTINGS.equals(s);
     }
 
