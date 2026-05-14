@@ -163,6 +163,24 @@
             app:iconTint="?attr/colorOnSurface" />
     </LinearLayout>
 
+    <FrameLayout
+        android:id="@+id/basic_compose_km_pro_shortcut_strip_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/compose_shortcut_strip_height"
+        android:layout_marginTop="6dp"
+        android:visibility="gone">
+
+        <com.openterface.keymod.CustomKeyboardView
+            android:id="@+id/basic_compose_km_pro_shortcut_strip"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="@dimen/keyboard_outer_padding_top"
+            android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
+            android:keyBackground="@drawable/key_background"
+            android:theme="@style/ButtonTheme"
+            app:showGuiHidKey="false" />
+    </FrameLayout>
+
     <ImageView
         android:id="@+id/basic_compose_brand_logo"
         android:layout_width="wrap_content"

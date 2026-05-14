@@ -2,13 +2,17 @@ package com.openterface.keymod.util;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -85,6 +89,7 @@ public final class ComposeSendWarningDialog {
                 useTabbed ? R.layout.dialog_compose_send_warning_tabbed : R.layout.dialog_compose_send_warning;
 
         View content = LayoutInflater.from(context).inflate(layoutRes, null, false);
+        applyComposeSendWarningInsets(context, content);
         TextView message = content.findViewById(R.id.compose_send_warning_message);
         View inlineActions = content.findViewById(R.id.compose_send_warning_inline_actions);
         View checkButton = content.findViewById(R.id.compose_send_warning_check_button);
@@ -175,7 +180,89 @@ public final class ComposeSendWarningDialog {
                     dialog.dismiss();
                     onSendAnyway.run();
                 });
+        Window window = dialog.getWindow();
+        if (window != null) {
+            // Let our card / root define the panel color (Material default surface reads brown in dark).
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialog.setOnShowListener(
+                d -> {
+                    clearMaterialCustomPanelHorizontalPull((AlertDialog) d);
+                    applyComposeSendWarningInsets(context, content);
+                    content.post(() -> applyComposeSendWarningInsets(context, content));
+                });
         dialog.show();
+    }
+
+    /**
+     * Material alert can reset custom-view margins; re-apply our gutters and card padding so
+     * horizontal spacing matches {@code dialog_compose_send_warning_tabbed.xml} / {@code dialog_compose_send_warning.xml}.
+     */
+    private static void applyComposeSendWarningInsets(@NonNull Context context, @NonNull View content) {
+        Resources res = context.getResources();
+        View tabbedRoot = content.findViewById(R.id.compose_send_warning_tabbed_root);
+        if (tabbedRoot != null) {
+            int gutterH = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_h);
+            int gutterTop = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_top);
+            int gutterBottom = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_bottom);
+            tabbedRoot.setPaddingRelative(gutterH, gutterTop, gutterH, gutterBottom);
+
+            MaterialCardView card = content.findViewById(R.id.compose_send_warning_tabbed_card);
+            if (card != null) {
+                int ch = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_card_padding_h);
+                int ctop = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_card_padding_top);
+                int cbottom = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_card_padding_bottom);
+                card.setContentPadding(ch, ctop, ch, cbottom);
+                if (card.getChildCount() > 0) {
+                    View column = card.getChildAt(0);
+                    int inner = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_inner_padding_h);
+                    column.setPaddingRelative(
+                            inner, column.getPaddingTop(), inner, column.getPaddingBottom());
+                }
+            }
+            return;
+        }
+        View simpleRoot = content.findViewById(R.id.compose_send_warning_simple_root);
+        if (simpleRoot != null) {
+            int gutterH = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_h);
+            int gutterTop = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_top);
+            int gutterBottom = res.getDimensionPixelSize(R.dimen.compose_send_warning_tabbed_dialog_gutter_bottom);
+            simpleRoot.setPaddingRelative(gutterH, gutterTop, gutterH, gutterBottom);
+            View body = content.findViewById(R.id.compose_send_warning_simple_body);
+            if (body != null) {
+                int bh = res.getDimensionPixelSize(R.dimen.compose_send_warning_dialog_body_padding_h);
+                int bt = res.getDimensionPixelSize(R.dimen.compose_send_warning_dialog_body_padding_top);
+                int bb = res.getDimensionPixelSize(R.dimen.compose_send_warning_dialog_body_padding_bottom);
+                body.setPaddingRelative(bh, bt, bh, bb);
+            }
+        }
+    }
+
+    /** Material M3 alert may apply horizontal pull on the custom panel; zero it so our root gutters hold. */
+    private static void clearMaterialCustomPanelHorizontalPull(@NonNull AlertDialog dialog) {
+        View custom = dialog.findViewById(com.google.android.material.R.id.custom);
+        if (custom == null) {
+            custom = dialog.findViewById(android.R.id.custom);
+        }
+        if (custom != null) {
+            ViewGroup.LayoutParams lp = custom.getLayoutParams();
+            if (lp instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams m = (ViewGroup.MarginLayoutParams) lp;
+                m.leftMargin = 0;
+                m.rightMargin = 0;
+                custom.setLayoutParams(m);
+            }
+        }
+        View panel = dialog.findViewById(com.google.android.material.R.id.customPanel);
+        if (panel != null) {
+            ViewGroup.LayoutParams lp2 = panel.getLayoutParams();
+            if (lp2 instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams m2 = (ViewGroup.MarginLayoutParams) lp2;
+                m2.leftMargin = 0;
+                m2.rightMargin = 0;
+                panel.setLayoutParams(m2);
+            }
+        }
     }
 
     private static void wireDualModeUi(@NonNull View content) {
@@ -223,12 +310,12 @@ public final class ComposeSendWarningDialog {
         }
         float density = card.getResources().getDisplayMetrics().density;
         if (unicodeMode) {
-            card.setStrokeWidth((int) (density + 0.5f));
+            int strokePx = Math.max(2, (int) (2f * density + 0.5f));
+            card.setStrokeWidth(strokePx);
             int primary =
                     MaterialColors.getColor(
                             card, com.google.android.material.R.attr.colorPrimary, Color.TRANSPARENT);
-            int strokeArgb = (0xCC << 24) | (primary & 0x00FFFFFF);
-            card.setStrokeColor(ColorStateList.valueOf(strokeArgb));
+            card.setStrokeColor(ColorStateList.valueOf(primary));
         } else {
             card.setStrokeWidth(0);
         }

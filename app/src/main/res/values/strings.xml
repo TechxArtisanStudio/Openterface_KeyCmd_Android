@@ -597,8 +597,9 @@ by TechxArtisan</string>
     <string name="compose_send_warning_mode_switch_ascii_cd">Switch to ASCII send</string>
     <string name="compose_send_warning_switch_to_ascii">Send via ASCII</string>
     <string name="compose_send_warning_switch_to_ascii_cd">Switch to ASCII-only send</string>
-    <string name="compose_send_warning_unicode_mode_intro">Sends the full message using the host’s Unicode entry method. The host must be set up correctly—tap (i) beside Preview for setup and risks.</string>
-    <string name="compose_send_warning_unicode_preview_hint">Tap Preview for the full step-by-step send plan.</string>
+    <string name="compose_send_warning_unicode_mode_intro">Sends the full message using the host’s Unicode entry method. The host must be set up correctly—tap (i) beside Preview Unicode for setup and risks.</string>
+    <string name="compose_send_warning_unicode_preview_hint">Tap Preview Unicode for the full step-by-step send plan.</string>
+    <string name="compose_send_warning_preview_unicode">Preview Unicode</string>
     <string name="compose_send_warning_preview_unicode_cd">Preview Unicode host send plan</string>
     <string name="compose_send_preview_unicode_title">Unicode send preview</string>
     <string name="compose_send_preview_unicode_summary_title">Unicode path summary</string>

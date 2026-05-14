@@ -10,10 +10,20 @@
     <dimen name="compose_send_warning_tab_body_height">264dp</dimen>
     <!-- Tabbed send-risk dialog: scroll area for ASCII details + expandable Unicode section -->
     <dimen name="compose_send_warning_tabbed_scroll_height">280dp</dimen>
-    <!-- Tabbed "Review send risks" card: comfortable padding (Material dialog body + KeyCmd compose rhythm). -->
-    <dimen name="compose_send_warning_tabbed_card_padding_h">24dp</dimen>
-    <dimen name="compose_send_warning_tabbed_card_padding_top">20dp</dimen>
-    <dimen name="compose_send_warning_tabbed_card_padding_bottom">24dp</dimen>
+    <!-- Tabbed "Review send risks": keep total horizontal inset modest (gutter + card margin + contentPadding only). -->
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_h">10dp</dimen>
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_top">8dp</dimen>
+    <dimen name="compose_send_warning_tabbed_dialog_gutter_bottom">12dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_margin_h">6dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_margin_v">4dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_h">20dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_top">18dp</dimen>
+    <dimen name="compose_send_warning_tabbed_card_padding_bottom">22dp</dimen>
+    <dimen name="compose_send_warning_tabbed_inner_padding_h">0dp</dimen>
+    <!-- Non-tabbed: outer gutter + body padding (same order of magnitude as tabbed). -->
+    <dimen name="compose_send_warning_dialog_body_padding_h">20dp</dimen>
+    <dimen name="compose_send_warning_dialog_body_padding_top">16dp</dimen>
+    <dimen name="compose_send_warning_dialog_body_padding_bottom">20dp</dimen>
     <dimen name="compose_send_warning_tabbed_title_body_gap">16dp</dimen>
     <dimen name="compose_send_warning_tabbed_block_gap">16dp</dimen>
     <dimen name="compose_send_warning_tabbed_body_line_spacing_extra">4dp</dimen>

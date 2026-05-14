@@ -31,9 +31,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.CustomKeyboardView;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.compose.SavedTextItem;
 import com.openterface.keymod.compose.SavedTextRepository;
 import com.openterface.keymod.prefs.KmProComposeDraftRetentionPrefs;
@@ -89,6 +91,10 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
     @Nullable private LinearProgressIndicator sendProgressBar;
     @Nullable private android.widget.TextView sendProgressLabel;
     @Nullable private View composeBrandLogo;
+    /** KM Pro Compose: same top strip as full keyboard; null when not embedded. */
+    @Nullable private CustomKeyboardView kmProShortcutStrip;
+    @Nullable private View kmProShortcutStripWrap;
+    @Nullable private MainActivity.OnTargetOsChangeListener kmProStripOsListener;
     @Nullable private String undoSnapshot;
     private final AtomicBoolean cancelSend = new AtomicBoolean(false);
     private volatile boolean sending;
@@ -209,11 +215,14 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         refreshComposeLayoutState(view);
         view.post(() -> refreshComposeLayoutState(view));
 
+        setupKmProEmbeddedShortcutStripIfNeeded(view);
+
         restoreKmProEmbeddedDraftIfNeeded();
     }
 
     @Override
     public void onDestroyView() {
+        tearDownKmProEmbeddedShortcutStripIfNeeded();
         hideSendProgressUi();
         sendProgressWrap = null;
         sendProgressBar = null;
@@ -782,6 +791,10 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         if (composeBrandLogo == null || editor == null) {
             return;
         }
+        if (isEmbeddedInKmPro()) {
+            composeBrandLogo.setVisibility(View.GONE);
+            return;
+        }
         Editable text = editor.getText();
         WindowInsetsCompat windowInsets = ViewCompat.getRootWindowInsets(editor);
         boolean imeVisible =
@@ -904,6 +917,71 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
 
     public void onHostPortChanged(@Nullable UsbSerialPort newPort) {
         port = newPort;
+        if (kmProShortcutStrip != null) {
+            kmProShortcutStrip.setPort(newPort);
+        }
+    }
+
+    /**
+     * KM Pro embedded Compose: apply the same USB port and swipe-up hold-lock controller as the
+     * main {@link CustomKeyboardView} slot.
+     */
+    public void syncKmProEmbeddedShortcutStripFromCompositeHost(
+            @Nullable UsbSerialPort hostPort, @Nullable KmBasicHoldLockController holdLockController) {
+        if (!isEmbeddedInKmPro() || kmProShortcutStrip == null) {
+            return;
+        }
+        kmProShortcutStrip.setPort(hostPort);
+        kmProShortcutStrip.setHoldLockController(holdLockController);
+    }
+
+    @Nullable
+    public CustomKeyboardView getKmProEmbeddedShortcutStripOrNull() {
+        return kmProShortcutStrip;
+    }
+
+    private void setupKmProEmbeddedShortcutStripIfNeeded(@NonNull View root) {
+        kmProShortcutStripWrap = root.findViewById(R.id.basic_compose_km_pro_shortcut_strip_wrap);
+        kmProShortcutStrip = root.findViewById(R.id.basic_compose_km_pro_shortcut_strip);
+        if (!isEmbeddedInKmPro()
+                || kmProShortcutStripWrap == null
+                || kmProShortcutStrip == null) {
+            return;
+        }
+        kmProShortcutStripWrap.setVisibility(View.VISIBLE);
+        kmProShortcutStrip.setShortcutsStripOnly(true);
+        kmProShortcutStrip.setShowExtraPortraitKeys(false);
+        kmProShortcutStrip.setPort(port);
+        kmProShortcutStrip.reloadForCurrentOrientation();
+        if (requireActivity() instanceof MainActivity) {
+            MainActivity ma = (MainActivity) requireActivity();
+            kmProStripOsListener =
+                    os -> {
+                        if (kmProShortcutStrip != null) {
+                            kmProShortcutStrip.reloadForTargetOs();
+                        }
+                    };
+            ma.addOsChangeListener(kmProStripOsListener);
+            kmProShortcutStrip.setOnTopModeShortcutListener(ma::switchToLaunchMode);
+        }
+        Fragment host = getParentFragment();
+        if (host instanceof CompositeFragment) {
+            ((CompositeFragment) host).syncKmProComposeShortcutStripFromKeyboardHost();
+        }
+    }
+
+    private void tearDownKmProEmbeddedShortcutStripIfNeeded() {
+        MainActivity ma = mainActivity();
+        if (kmProStripOsListener != null && ma != null) {
+            ma.removeOsChangeListener(kmProStripOsListener);
+        }
+        kmProStripOsListener = null;
+        if (kmProShortcutStrip != null) {
+            kmProShortcutStrip.setOnTopModeShortcutListener(null);
+            kmProShortcutStrip.setHoldLockController(null);
+        }
+        kmProShortcutStrip = null;
+        kmProShortcutStripWrap = null;
     }
 
     // --- ImeSavedTextFragment.Host ---

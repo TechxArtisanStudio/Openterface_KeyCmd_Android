@@ -1269,8 +1269,9 @@
     <string name="compose_send_warning_mode_switch_ascii_cd">切换到仅 ASCII 发送</string>
     <string name="compose_send_warning_switch_to_ascii">通过 ASCII 发送</string>
     <string name="compose_send_warning_switch_to_ascii_cd">切换到仅 ASCII 发送</string>
-    <string name="compose_send_warning_unicode_mode_intro">使用主机 Unicode 输入方式发送全文。主机必须事先正确设置——点按「预览」旁的 (i) 了解设置与风险。</string>
-    <string name="compose_send_warning_unicode_preview_hint">点按「预览」查看完整分步发送计划。</string>
+    <string name="compose_send_warning_unicode_mode_intro">使用主机 Unicode 输入方式发送全文。主机必须事先正确设置——点按「预览 Unicode」旁的 (i) 了解设置与风险。</string>
+    <string name="compose_send_warning_unicode_preview_hint">点按「预览 Unicode」查看完整分步发送计划。</string>
+    <string name="compose_send_warning_preview_unicode">预览 Unicode</string>
     <string name="compose_send_warning_preview_unicode_cd">预览 Unicode 主机发送计划</string>
     <string name="compose_send_preview_unicode_title">Unicode 发送预览</string>
     <string name="compose_send_preview_unicode_summary_title">Unicode 路径摘要</string>

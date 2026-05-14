@@ -1,18 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/compose_send_warning_tabbed_card"
+    android:id="@+id/compose_send_warning_tabbed_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardBackgroundColor="?attr/colorSurface"
-    app:cardElevation="0dp"
-    app:contentPaddingBottom="@dimen/compose_send_warning_tabbed_card_padding_bottom"
-    app:contentPaddingEnd="@dimen/compose_send_warning_tabbed_card_padding_h"
-    app:contentPaddingStart="@dimen/compose_send_warning_tabbed_card_padding_h"
-    app:contentPaddingTop="@dimen/compose_send_warning_tabbed_card_padding_top"
-    app:shapeAppearance="?attr/shapeAppearanceCornerMedium"
-    app:strokeColor="?attr/colorPrimary"
-    app:strokeWidth="0dp">
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingStart="@dimen/compose_send_warning_tabbed_dialog_gutter_h"
+    android:paddingTop="@dimen/compose_send_warning_tabbed_dialog_gutter_top"
+    android:paddingEnd="@dimen/compose_send_warning_tabbed_dialog_gutter_h"
+    android:paddingBottom="@dimen/compose_send_warning_tabbed_dialog_gutter_bottom">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/compose_send_warning_tabbed_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/compose_send_warning_tabbed_card_margin_h"
+        android:layout_marginVertical="@dimen/compose_send_warning_tabbed_card_margin_v"
+        app:cardBackgroundColor="@color/card_background"
+        app:cardElevation="0dp"
+        app:contentPaddingBottom="@dimen/compose_send_warning_tabbed_card_padding_bottom"
+        app:contentPaddingEnd="@dimen/compose_send_warning_tabbed_card_padding_h"
+        app:contentPaddingStart="@dimen/compose_send_warning_tabbed_card_padding_h"
+        app:contentPaddingTop="@dimen/compose_send_warning_tabbed_card_padding_top"
+        app:shapeAppearance="?attr/shapeAppearanceCornerMedium"
+        app:strokeColor="?attr/colorPrimary"
+        app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,7 +38,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingBottom="@dimen/spacing_small">
+            android:paddingBottom="@dimen/spacing_medium">
 
             <TextView
                 android:id="@+id/compose_send_warning_custom_title"
@@ -188,7 +201,7 @@
                     android:contentDescription="@string/compose_send_warning_preview_unicode_cd"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="@string/compose_send_warning_preview"
+                    android:text="@string/compose_send_warning_preview_unicode"
                     app:icon="@drawable/search_check_2_24px"
                     app:iconGravity="textStart"
                     app:iconPadding="6dp"
@@ -207,4 +220,5 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

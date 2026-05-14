@@ -1269,8 +1269,9 @@
     <string name="compose_send_warning_mode_switch_ascii_cd">切換為僅 ASCII 傳送</string>
     <string name="compose_send_warning_switch_to_ascii">透過 ASCII 傳送</string>
     <string name="compose_send_warning_switch_to_ascii_cd">切換為僅 ASCII 傳送</string>
-    <string name="compose_send_warning_unicode_mode_intro">使用主機 Unicode 輸入方式傳送全文。主機必須事先正確設定——點按「預覽」旁的 (i) 了解設定與風險。</string>
-    <string name="compose_send_warning_unicode_preview_hint">點按「預覽」查看完整分步傳送計畫。</string>
+    <string name="compose_send_warning_unicode_mode_intro">使用主機 Unicode 輸入方式傳送全文。主機必須事先正確設定——點按「預覽 Unicode」旁的 (i) 了解設定與風險。</string>
+    <string name="compose_send_warning_unicode_preview_hint">點按「預覽 Unicode」查看完整分步傳送計畫。</string>
+    <string name="compose_send_warning_preview_unicode">預覽 Unicode</string>
     <string name="compose_send_warning_preview_unicode_cd">預覽 Unicode 主機傳送計畫</string>
     <string name="compose_send_warning_tab_hid_steps">預估 HID 步數（本次傳送）：%1$d</string>
     <string name="compose_send_warning_tab_hid_steps_unicode">預估 HID 步數（Unicode 路徑）：%1$d</string>
