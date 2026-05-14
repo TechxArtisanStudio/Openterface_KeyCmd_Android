@@ -20,7 +20,7 @@
     </Row>
 
     <Row>
-        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,£,,€,,," custom:keyCornerHint="¥" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
+        <Key android:codes="04" android:keyLabel="a" custom:keySymbolLabel="A" custom:keyAlternates="¥,,£,€" custom:keyCornerHint="¥" android:keyWidth="12.7%p" android:horizontalGap="1%p"/>
         <Key android:codes="16" android:keyLabel="s" custom:keySymbolLabel="S" custom:keyAlternates="#" custom:keyCornerHint="#" android:keyWidth="9.35%p"/>
         <Key android:codes="07" android:keyLabel="d" custom:keySymbolLabel="D" custom:keyAlternates="$,€,¥,£" custom:keyCornerHint="$" android:keyWidth="9.35%p"/>
         <Key android:codes="09" android:keyLabel="f" custom:keySymbolLabel="F" custom:keyAlternates="%" custom:keyCornerHint="%" android:keyWidth="9.35%p"/>
