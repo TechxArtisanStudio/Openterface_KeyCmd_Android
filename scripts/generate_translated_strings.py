@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 One-off generator: reads app/src/main/res/values/strings.xml and writes
-values-{es,fr,de,ja,ko,it,ru,zh-rCN}/strings.xml using translate.googleapis.com (client=gtx).
+values-{es,fr,de,ja,ko,it,ru,pt-rBR,zh-rCN}/strings.xml using translate.googleapis.com (client=gtx).
 
 Skips CDATA / raw-HTML strings (help blocks) — copies English verbatim.
 Skips empty bodies.
@@ -25,6 +25,7 @@ LOCALES = {
     "ko": "ko",
     "it": "it",
     "ru": "ru",
+    "pt-rBR": "pt-BR",
     "zh-rCN": "zh-CN",
 }
 # Rare separator (Unicode record separator); must not appear in source strings.

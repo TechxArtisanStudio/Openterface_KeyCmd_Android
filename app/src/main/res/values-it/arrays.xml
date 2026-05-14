@@ -11,6 +11,7 @@
         <item>Coreano</item>
         <item>Italiano</item>
         <item>Russo</item>
+        <item>Portoghese (Brasile)</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>Rilevamento automatico</item>

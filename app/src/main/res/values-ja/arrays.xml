@@ -11,6 +11,7 @@
         <item>韓国語</item>
         <item>イタリア語</item>
         <item>ロシア語</item>
+        <item>ポルトガル語（ブラジル）</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>自動検出</item>

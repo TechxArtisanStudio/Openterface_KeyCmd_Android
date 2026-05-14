@@ -11,6 +11,7 @@
         <item>韩语</item>
         <item>意大利语</item>
         <item>俄语</item>
+        <item>巴西葡萄牙语</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>自动检测</item>

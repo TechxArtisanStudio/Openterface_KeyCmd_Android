@@ -11,6 +11,7 @@
         <item>Корейский</item>
         <item>Итальянский</item>
         <item>Русский</item>
+        <item>Португальский (Бразилия)</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>Автоопределение</item>

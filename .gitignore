@@ -19,3 +19,5 @@ Emulator_Downloads/
 
 # Local adb logcat capture (KM Pro touch/HID debugging)
 kmpro-touch-debug.log
+
+__pycache__/
