@@ -610,7 +610,6 @@
     <string name="gamepad_customize_cd">自定义布局</string>
     <string name="gamepad_cycle_next_preset_cd">下一个布局</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">将布局恢复为出厂默认</string>
-    <string name="gamepad_edit_session_title">移动模块</string>
     <string name="gamepad_presets_sheet_title">布局列表</string>
     <string name="gamepad_presets_sheet_back_cd">关闭布局列表</string>
     <string name="gamepad_presets_new_layout">从当前布局新建</string>
@@ -849,9 +848,8 @@
     <string name="gamepad_dpad_split_outer_summary">四块方向键外角靠近模块中心或边缘的距离。键大小固定。若向内移动且分离间距很宽，可能会自动收紧间距以保持布局有效。</string>
     <string name="gamepad_dpad_split_outer_title">与主键区的距离</string>
     <string name="gamepad_edit_canvas_menu_title">背景</string>
-    <string name="gamepad_edit_done">完成</string>
     <string name="gamepad_edit_mode_off">编辑</string>
-    <string name="gamepad_edit_mode_on">正在编辑</string>
+    <string name="gamepad_edit_mode_on">正在编辑布局，再点按结束</string>
     <string name="gamepad_key_picker_title">选择按键</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">重新添加左鼠标键（L）</string>
     <string name="gamepad_menu_add_touchpad_mouse_m">重新添加中鼠标键（M）</string>

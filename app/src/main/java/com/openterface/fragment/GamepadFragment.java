@@ -355,8 +355,6 @@ public class GamepadFragment extends Fragment {
     @Nullable
     private View gamepadToolbarScrim;
     @Nullable
-    private View gamepadEditSessionBar;
-    @Nullable
     private LinearLayout gamepadEditToolbarRow;
     @Nullable
     private MaterialButton gamepadPresetsToolbarButton;
@@ -515,12 +513,6 @@ public class GamepadFragment extends Fragment {
             gamepadExportCreatorChip.setOnClickListener(v -> showEditExportCreatorDialog());
         }
 
-        gamepadEditSessionBar = view.findViewById(R.id.gamepad_edit_session_bar);
-        MaterialButton sessionDone = view.findViewById(R.id.gamepad_edit_session_done);
-        if (sessionDone != null) {
-            sessionDone.setOnClickListener(v -> exitLayoutEditSession());
-        }
-
         wireGamepadEmbeddedChrome(view);
         applyGamepadToolbarTopInsets(view);
         updateGamepadToolbarScrimForBackground();
@@ -621,7 +613,6 @@ public class GamepadFragment extends Fragment {
     private void applyGamepadToolbarTopInsets(@NonNull View root) {
         View chromeBar = root.findViewById(R.id.gamepad_chrome_bar);
         View toggleRow = root.findViewById(R.id.toggle_row);
-        View editBar = root.findViewById(R.id.gamepad_edit_session_bar);
         ViewCompat.setOnApplyWindowInsetsListener(
                 root,
                 (v, windowInsets) -> {
@@ -635,7 +626,6 @@ public class GamepadFragment extends Fragment {
                     refreshGamepadToolbarScrimHeight();
                     setFrameLayoutTopMargin(chromeBar, top);
                     setFrameLayoutTopMargin(toggleRow, top);
-                    setFrameLayoutTopMargin(editBar, top);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(root);
@@ -4078,20 +4068,6 @@ public class GamepadFragment extends Fragment {
         dialog.show();
     }
 
-    private void exitLayoutEditSession() {
-        if (editModeMaterialButton != null) {
-            editModeMaterialButton.setChecked(false);
-        }
-        View v = getView();
-        if (v != null) {
-            View sessionBar = v.findViewById(R.id.gamepad_edit_session_bar);
-            if (sessionBar != null) {
-                sessionBar.setVisibility(View.GONE);
-            }
-        }
-        Log.d(TAG, "Exited layout edit / move session");
-    }
-
     private void showConfigDialog(String componentId) {
         if (componentId != null && componentId.startsWith("stick_")) {
             stickConfigModuleId = componentId;
@@ -6922,9 +6898,6 @@ public class GamepadFragment extends Fragment {
 
     private void setEditModeToolbarExtrasVisible(boolean visible) {
         int vis = visible ? View.VISIBLE : View.GONE;
-        if (gamepadEditSessionBar != null) {
-            gamepadEditSessionBar.setVisibility(vis);
-        }
         if (gamepadEditToolbarRow != null) {
             gamepadEditToolbarRow.setVisibility(vis);
         }
@@ -7045,7 +7018,7 @@ public class GamepadFragment extends Fragment {
         dlg.show();
     }
 
-    /** TalkBack: distinguish customize (off) vs editing (on). */
+    /** TalkBack: customize (off) vs editing (on); when on, string states tap again to exit. */
     private void applyEditModeToggleContentDescription() {
         if (editModeMaterialButton == null) {
             return;

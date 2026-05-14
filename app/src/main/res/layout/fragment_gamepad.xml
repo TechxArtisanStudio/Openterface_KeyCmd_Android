@@ -191,44 +191,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Slim bar while repositioning modules (move mode) -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/gamepad_edit_session_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_marginHorizontal="@dimen/spacing_small"
-        android:layout_marginTop="0dp"
-        android:visibility="gone"
-        app:cardCornerRadius="@dimen/gamepad_toolbar_corner_radius"
-        app:cardElevation="4dp"
-        app:contentPadding="@dimen/spacing_small"
-        tools:visibility="visible">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/gamepad_edit_session_done"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gamepad_edit_done"
-                android:textAllCaps="false" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/spacing_small"
-                android:layout_weight="1"
-                android:text="@string/gamepad_edit_session_title"
-                android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
     <!-- Edit-only: background, add module, mapping hints (centered when visible) -->
     <LinearLayout
         android:id="@+id/toggle_row"

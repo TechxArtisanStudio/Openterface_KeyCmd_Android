@@ -811,13 +811,9 @@ par TechxArtisan</string>
     ]]></string>
     <string name="gamepad_edit_canvas_menu_title"><![CDATA[Arrière-plan
     ]]></string>
-    <string name="gamepad_edit_done"><![CDATA[Done
-    ]]></string>
     <string name="gamepad_edit_mode_off"><![CDATA[Edit
     ]]></string>
-    <string name="gamepad_edit_mode_on"><![CDATA[Editing
-    ]]></string>
-    <string name="gamepad_edit_session_title"><![CDATA[Move modules
+    <string name="gamepad_edit_mode_on"><![CDATA[Disposition en cours d’édition, appuyez de nouveau pour terminer
     ]]></string>
     <string name="gamepad_key_picker_title"><![CDATA[Select key
     ]]></string>

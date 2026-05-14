@@ -888,8 +888,7 @@ by TechxArtisan</string>
     <string name="gamepad_toast_edit_layout_hint">Drag components to reposition, tap Done when finished.</string>
     <string name="gamepad_toast_image_load_failed">Failed to load image</string>
     <string name="gamepad_edit_mode_off">Edit</string>
-    <string name="gamepad_edit_mode_on">Editing</string>
-    <string name="gamepad_edit_done">Done</string>
+    <string name="gamepad_edit_mode_on">Editing layout, tap again to finish</string>
     <string name="gamepad_customize_cd">Customize layout</string>
     <string name="gamepad_edit_background_cd">Canvas background</string>
     <string name="gamepad_edit_add_module_cd">Add module</string>
@@ -912,7 +911,6 @@ by TechxArtisan</string>
     <string name="gamepad_module_config_gesture_sensitivity_open">Preset-wide timing…</string>
     <string name="gamepad_cycle_next_preset_cd">Next layout</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">Reset layout to factory default</string>
-    <string name="gamepad_edit_session_title">Move modules</string>
     <string name="gamepad_presets_sheet_title">Layouts</string>
     <string name="gamepad_presets_sheet_back_cd">Close layouts list</string>
     <string name="gamepad_presets_new_layout">New layout from current</string>

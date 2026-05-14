@@ -629,7 +629,6 @@
     <string name="gamepad_customize_cd">自訂版面</string>
     <string name="gamepad_cycle_next_preset_cd">下一個版面</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">將版面還原為出廠預設</string>
-    <string name="gamepad_edit_session_title">移動模組</string>
     <string name="gamepad_presets_sheet_title">版面列表</string>
     <string name="gamepad_presets_sheet_back_cd">關閉版面列表</string>
     <string name="gamepad_presets_new_layout">從目前版面新增</string>
@@ -868,9 +867,8 @@
     <string name="gamepad_dpad_split_outer_summary">四塊方嚮鍵外角靠近模塊中心或邊緣的距離。鍵大小固定。若嚮內移動且分離間距很寬，可能會自動收緊間距以保持佈侷有效。</string>
     <string name="gamepad_dpad_split_outer_title">與主鍵區的距離</string>
     <string name="gamepad_edit_canvas_menu_title">背景</string>
-    <string name="gamepad_edit_done">完成</string>
     <string name="gamepad_edit_mode_off">編輯</string>
-    <string name="gamepad_edit_mode_on">正在編輯</string>
+    <string name="gamepad_edit_mode_on">正在編輯版面，再點一下即可結束</string>
     <string name="gamepad_key_picker_title">選擇按鍵</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">重新添加左滑鼠鍵（L）</string>
     <string name="gamepad_menu_add_touchpad_mouse_m">重新添加中滑鼠鍵（M）</string>

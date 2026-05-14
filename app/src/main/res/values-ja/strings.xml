@@ -457,7 +457,6 @@ TechxArtisan により</string>
     <string name="gamepad_customize_cd">レイアウトをカスタマイズ</string>
     <string name="gamepad_cycle_next_preset_cd">次のレイアウト</string>
     <string name="gamepad_toolbar_reset_active_preset_cd">レイアウトを初期設定に戻す</string>
-    <string name="gamepad_edit_session_title">モジュールを移動</string>
     <string name="gamepad_presets_sheet_title">レイアウト</string>
     <string name="gamepad_presets_sheet_back_cd">レイアウト一覧を閉じる</string>
     <string name="gamepad_presets_new_layout">現在のレイアウトから新規</string>
@@ -842,11 +841,9 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_edit_canvas_menu_title"><![CDATA[背景
     ]]></string>
-    <string name="gamepad_edit_done"><![CDATA[Done
-    ]]></string>
     <string name="gamepad_edit_mode_off"><![CDATA[Edit
     ]]></string>
-    <string name="gamepad_edit_mode_on"><![CDATA[Editing
+    <string name="gamepad_edit_mode_on"><![CDATA[レイアウトを編集中。終了するにはもう一度タップ
     ]]></string>
     <string name="gamepad_key_picker_title"><![CDATA[Select key
     ]]></string>
