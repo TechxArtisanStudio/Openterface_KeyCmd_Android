@@ -9,6 +9,7 @@
         <item>독일어</item>
         <item>일본어</item>
         <item>한국어</item>
+        <item>이탈리아어</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>자동 감지</item>

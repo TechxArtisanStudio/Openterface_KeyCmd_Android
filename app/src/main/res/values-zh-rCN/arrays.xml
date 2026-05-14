@@ -9,6 +9,7 @@
         <item>德语</item>
         <item>日语</item>
         <item>韩语</item>
+        <item>意大利语</item>
     </string-array>
     <string-array name="voice_language_names">
         <item>自动检测</item>

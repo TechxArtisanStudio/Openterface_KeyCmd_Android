@@ -10,6 +10,7 @@
         <item>Deutsch</item>
         <item>日本語</item>
         <item>한국어</item>
+        <item>Italiano</item>
     </string-array>
 
     <string-array name="language_codes">
@@ -21,6 +22,7 @@
         <item>de</item>
         <item>ja</item>
         <item>ko</item>
+        <item>it</item>
     </string-array>
 
     <!-- Voice Language Arrays -->
