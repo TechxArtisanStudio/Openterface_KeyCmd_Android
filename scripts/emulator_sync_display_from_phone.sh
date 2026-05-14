@@ -5,8 +5,8 @@ set -euo pipefail
 # Sync emulator display size/density from a connected physical Android phone.
 #
 # Usage:
-#   ./scripts/sync_emulator_display_from_phone.sh
-#   ./scripts/sync_emulator_display_from_phone.sh <phone_serial> <emulator_serial>
+#   ./scripts/emulator_sync_display_from_phone.sh
+#   ./scripts/emulator_sync_display_from_phone.sh <phone_serial> <emulator_serial>
 #
 # Notes:
 # - Defaults to first connected physical device and first connected emulator.

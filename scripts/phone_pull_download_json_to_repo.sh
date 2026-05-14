@@ -2,18 +2,19 @@
 
 set -euo pipefail
 
-# Pull the emulator's public Downloads folder into this repo's Emulator_Downloads/
-# (merge: same basenames overwrite on the host).
+# Pull *.json files from a connected physical phone's Download folder into this
+# repo's Emulator_Downloads/ (top-level files only, not subfolders).
 #
 # Usage:
-#   ./scripts/pull_emulator_downloads.sh
-#   ./scripts/pull_emulator_downloads.sh <emulator_serial>
+#   ./scripts/phone_pull_download_json_to_repo.sh
+#   ./scripts/phone_pull_download_json_to_repo.sh <device_serial>
 #
 # Optional environment variables:
 #   REMOTE_DOWNLOAD_PATH   Path on device (default: /sdcard/Download)
 #   LOCAL_DOWNLOADS_DIR    Host destination (default: <repo>/Emulator_Downloads)
 #
-# Requires: adb, and an emulator in "device" state (see ./scripts/start_emulator.sh).
+# Requires: adb, USB debugging, and a non-emulator device in "device" state
+# (same device discovery as ./scripts/scrcpy_mirror_device.sh).
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -37,12 +38,14 @@ DEST="${LOCAL_DOWNLOADS_DIR:-$ROOT_DIR/Emulator_Downloads}"
 
 SERIAL="${1:-}"
 if [[ -z "$SERIAL" ]]; then
-  SERIAL="$(adb devices | awk 'NR>1 && $2=="device" && $1 ~ /^emulator-/ { print $1; exit }')"
+  SERIAL="$(
+    adb devices | awk 'NR>1 && $2=="device" && $1 !~ /^emulator-/ { print $1; exit }'
+  )"
 fi
 
 if [[ -z "$SERIAL" ]]; then
-  echo "Error: no emulator in 'device' state found."
-  echo "Start one with ./scripts/start_emulator.sh or pass a serial: $0 emulator-5554"
+  echo "Error: no connected physical Android phone found."
+  echo "Tip: connect phone, enable USB debugging, accept RSA prompt, or pass serial: $0 <serial>"
   adb devices
   exit 1
 fi
@@ -60,23 +63,25 @@ fi
 
 mkdir -p "$DEST"
 
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/emulator-downloads.XXXXXX")"
-cleanup() {
-  rm -rf "$WORK"
-}
-trap cleanup EXIT
+json_names=()
+while IFS= read -r name; do
+  name="${name//$'\r'/}"
+  [[ -z "$name" ]] && continue
+  json_names[${#json_names[@]}]="$name"
+done < <(
+  adb -s "$SERIAL" shell "ls -1 '$REMOTE' 2>/dev/null" | tr -d '\r' | grep -E '\.json$' || true
+)
 
-echo "==> Pulling $REMOTE from $SERIAL ..."
-adb -s "$SERIAL" pull "$REMOTE" "$WORK"
-
-PULLED="$WORK/$(basename "$REMOTE")"
-if [[ ! -d "$PULLED" ]]; then
-  echo "Error: unexpected pull layout under $WORK (expected $(basename "$REMOTE")/)."
-  ls -la "$WORK" || true
-  exit 1
+if [[ ${#json_names[@]} -eq 0 ]]; then
+  echo "No .json files found in $SERIAL:$REMOTE"
+  exit 0
 fi
 
-echo "==> Merging into $DEST ..."
-cp -a "$PULLED/." "$DEST/"
+echo "==> Pulling ${#json_names[@]} JSON file(s) from $SERIAL:$REMOTE into $DEST ..."
+for name in "${json_names[@]}"; do
+  [[ -z "$name" ]] && continue
+  echo "    $name"
+  adb -s "$SERIAL" pull "$REMOTE/$name" "$DEST/"
+done
 
-echo "==> Done. Emulator Download merged into: $DEST"
+echo "==> Done."

@@ -6,14 +6,14 @@ set -euo pipefail
 # then mirror/control the phone on desktop with scrcpy.
 #
 # Usage:
-#   ./scripts/install_and_control_phone.sh
-#   ./scripts/install_and_control_phone.sh <device_serial>
+#   ./scripts/phone_install_debug_and_scrcpy.sh
+#   ./scripts/phone_install_debug_and_scrcpy.sh <device_serial>
 #
 # Optional env vars:
 #   SCRCPY_OPTS="--max-fps=60 --bit-rate=8M"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INSTALL_SCRIPT="$ROOT_DIR/scripts/install_to_phone.sh"
+INSTALL_SCRIPT="$ROOT_DIR/scripts/phone_install_debug_apk.sh"
 
 ANDROID_HOME_DEFAULT="/opt/homebrew/share/android-commandlinetools"
 export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_HOME_DEFAULT}"

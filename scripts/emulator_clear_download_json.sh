@@ -6,13 +6,13 @@ set -euo pipefail
 # (/sdcard/Download by default). Does not recurse into subdirectories.
 #
 # Usage:
-#   ./scripts/clear_emulator_downloads_json.sh
-#   ./scripts/clear_emulator_downloads_json.sh <emulator_serial>
+#   ./scripts/emulator_clear_download_json.sh
+#   ./scripts/emulator_clear_download_json.sh <emulator_serial>
 #
 # Optional environment variables:
 #   REMOTE_DOWNLOAD_PATH   Path on device (default: /sdcard/Download)
 #
-# Requires: adb, and an emulator in "device" state (see ./scripts/start_emulator.sh).
+# Requires: adb, and an emulator in "device" state (see ./scripts/emulator_start_avd.sh).
 
 ANDROID_HOME_DEFAULT="/opt/homebrew/share/android-commandlinetools"
 export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_HOME_DEFAULT}"
@@ -38,7 +38,7 @@ fi
 
 if [[ -z "$SERIAL" ]]; then
   echo "Error: no emulator in 'device' state found."
-  echo "Start one with ./scripts/start_emulator.sh or pass a serial: $0 emulator-5554"
+  echo "Start one with ./scripts/emulator_start_avd.sh or pass a serial: $0 emulator-5554"
   adb devices
   exit 1
 fi

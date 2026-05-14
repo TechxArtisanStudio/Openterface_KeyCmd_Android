@@ -6,8 +6,8 @@ set -euo pipefail
 # Prefers a physical USB device; if none, uses the first online device (e.g. emulator).
 #
 # Usage:
-#   ./scripts/start_control_phone.sh
-#   ./scripts/start_control_phone.sh <device_serial>
+#   ./scripts/scrcpy_mirror_device.sh
+#   ./scripts/scrcpy_mirror_device.sh <device_serial>
 #
 # Optional env vars:
 #   SCRCPY_OPTS="--max-fps=60 --bit-rate=8M"

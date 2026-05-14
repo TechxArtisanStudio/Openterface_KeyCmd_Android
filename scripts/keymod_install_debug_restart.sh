@@ -2,11 +2,16 @@
 
 set -euo pipefail
 
-# Reinstall and restart KeyMod on an Android device/emulator.
+# Install debug KeyMod (Gradle installDebug) and relaunch the app on any ADB target.
+# Default serial is emulator-5554; pass another serial for a phone or different emulator.
 # Defaults are tuned for this project on this Mac setup.
 #
 # For README screenshots across locales (emulator + adb), see the testing repo:
 #   ../Openterface_KeyMod_Android_testing/scripts/capture_readme_i18n_screenshots.sh
+#
+# Usage:
+#   ./scripts/keymod_install_debug_restart.sh
+#   ./scripts/keymod_install_debug_restart.sh <device_serial>
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLEW="$ROOT_DIR/gradlew"

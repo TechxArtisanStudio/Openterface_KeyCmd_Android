@@ -2,19 +2,19 @@
 
 set -euo pipefail
 
-# Pull *.json files from a connected physical phone's Download folder into this
-# repo's Emulator_Downloads/ (top-level files only, not subfolders).
+# Push this repo's Emulator_Downloads/ into a connected physical phone's public
+# Downloads directory (/sdcard/Download by default).
 #
 # Usage:
-#   ./scripts/pull_phone_downloads_json.sh
-#   ./scripts/pull_phone_downloads_json.sh <device_serial>
+#   ./scripts/phone_push_repo_downloads.sh
+#   ./scripts/phone_push_repo_downloads.sh <device_serial>
 #
 # Optional environment variables:
 #   REMOTE_DOWNLOAD_PATH   Path on device (default: /sdcard/Download)
-#   LOCAL_DOWNLOADS_DIR    Host destination (default: <repo>/Emulator_Downloads)
+#   LOCAL_DOWNLOADS_DIR    Host folder to push from (default: <repo>/Emulator_Downloads)
 #
 # Requires: adb, USB debugging, and a non-emulator device in "device" state
-# (same discovery as ./scripts/control_phone.sh).
+# (same device discovery as ./scripts/scrcpy_mirror_device.sh).
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -34,7 +34,7 @@ if ! command -v adb >/dev/null 2>&1; then
 fi
 
 REMOTE="${REMOTE_DOWNLOAD_PATH:-/sdcard/Download}"
-DEST="${LOCAL_DOWNLOADS_DIR:-$ROOT_DIR/Emulator_Downloads}"
+SRC="${LOCAL_DOWNLOADS_DIR:-$ROOT_DIR/Emulator_Downloads}"
 
 SERIAL="${1:-}"
 if [[ -z "$SERIAL" ]]; then
@@ -61,27 +61,21 @@ if ! adb -s "$SERIAL" shell "test -d '$REMOTE'" </dev/null; then
   exit 1
 fi
 
-mkdir -p "$DEST"
+if [[ ! -d "$SRC" ]]; then
+  echo "Error: local source is not a directory: $SRC"
+  echo "Create it or set LOCAL_DOWNLOADS_DIR to an existing folder."
+  exit 1
+fi
 
-json_names=()
-while IFS= read -r name; do
-  name="${name//$'\r'/}"
-  [[ -z "$name" ]] && continue
-  json_names[${#json_names[@]}]="$name"
-done < <(
-  adb -s "$SERIAL" shell "ls -1 '$REMOTE' 2>/dev/null" | tr -d '\r' | grep -E '\.json$' || true
-)
-
-if [[ ${#json_names[@]} -eq 0 ]]; then
-  echo "No .json files found in $SERIAL:$REMOTE"
+shopt -s nullglob dotglob
+entries=( "$SRC"/* )
+shopt -u nullglob dotglob
+if [[ ${#entries[@]} -eq 0 ]]; then
+  echo "Nothing to push: $SRC is empty."
   exit 0
 fi
 
-echo "==> Pulling ${#json_names[@]} JSON file(s) from $SERIAL:$REMOTE into $DEST ..."
-for name in "${json_names[@]}"; do
-  [[ -z "$name" ]] && continue
-  echo "    $name"
-  adb -s "$SERIAL" pull "$REMOTE/$name" "$DEST/"
-done
+echo "==> Pushing contents of $SRC to phone $SERIAL:$REMOTE ..."
+adb -s "$SERIAL" push "$SRC/." "$REMOTE/"
 
-echo "==> Done."
+echo "==> Done. Repo Emulator_Downloads merged into phone Download: $SERIAL:$REMOTE"

@@ -5,9 +5,9 @@ set -euo pipefail
 # Start Android emulator for this project.
 #
 # Usage:
-#   ./scripts/start_emulator.sh
-#   ./scripts/start_emulator.sh <avd_name>
-#   ./scripts/start_emulator.sh <avd_name> --headless
+#   ./scripts/emulator_start_avd.sh
+#   ./scripts/emulator_start_avd.sh <avd_name>
+#   ./scripts/emulator_start_avd.sh <avd_name> --headless
 #
 # Defaults:
 #   avd_name: KeyMod_API_35

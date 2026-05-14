@@ -6,14 +6,14 @@ set -euo pipefail
 # (/sdcard/Download by default; merges with adb push).
 #
 # Usage:
-#   ./scripts/push_emulator_downloads.sh
-#   ./scripts/push_emulator_downloads.sh <emulator_serial>
+#   ./scripts/emulator_push_repo_downloads.sh
+#   ./scripts/emulator_push_repo_downloads.sh <emulator_serial>
 #
 # Optional environment variables:
 #   REMOTE_DOWNLOAD_PATH   Path on device (default: /sdcard/Download)
 #   LOCAL_DOWNLOADS_DIR    Host folder to push from (default: <repo>/Emulator_Downloads)
 #
-# Requires: adb, and an emulator in "device" state (see ./scripts/start_emulator.sh).
+# Requires: adb, and an emulator in "device" state (see ./scripts/emulator_start_avd.sh).
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -42,7 +42,7 @@ fi
 
 if [[ -z "$SERIAL" ]]; then
   echo "Error: no emulator in 'device' state found."
-  echo "Start one with ./scripts/start_emulator.sh or pass a serial: $0 emulator-5554"
+  echo "Start one with ./scripts/emulator_start_avd.sh or pass a serial: $0 emulator-5554"
   adb devices
   exit 1
 fi
