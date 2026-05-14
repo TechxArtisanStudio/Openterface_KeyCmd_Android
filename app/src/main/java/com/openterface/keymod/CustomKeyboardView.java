@@ -262,6 +262,12 @@ public class CustomKeyboardView extends LinearLayout {
     /** Pairs each gaming repeat tap with {@link #sendReleaseData} (same as KM Basic {@code tapKey}). */
     private final Runnable gamingTapReleaseRunnable = this::sendReleaseData;
 
+    /**
+     * Coalesced all-keys-released after ordinary taps (KM Basic {@code physicalKeyReleaseRunnable}
+     * parity): one pending post per burst so rapid keys do not stack competing release threads.
+     */
+    private final Runnable keyboardTapReleaseRunnable = this::sendReleaseData;
+
     /** Split keyboard mode: which half to render (for landscape split mode with touchpad in middle) */
     public static final int SPLIT_NONE = 0;
     public static final int SPLIT_LEFT = 1;
@@ -3150,33 +3156,39 @@ public class CustomKeyboardView extends LinearLayout {
                     setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingObj = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
-                    if (pendingObj instanceof Runnable) {
+                    final boolean hadPendingAlternatesRunnable = pendingObj instanceof Runnable;
+                    if (hadPendingAlternatesRunnable) {
                         Runnable pending = (Runnable) pendingObj;
                         longPressHandler.removeCallbacks(pending);
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, null);
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
                         stopGamingKeyRepeat();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         gamingHoldActive[0] = false;
                         return true;
                     }
                     if (isAlternatePopupVisible()) {
                         commitCurrentAlternateSelection();
                         dismissAlternatesPopup();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         return true;
                     }
                     boolean suppressTapUp = holdRepeatSuppressUpTap;
                     if (shouldRepeatOnLongPress(key)) {
                         stopRepeatingDelete();
                     }
-                    if (!suppressTapUp && isTouchInsideViewSlopForTapUp(v, event)) {
+                    // Short tap on alternates-capable keys: commit even if UP is outside the key
+                    // (e.g. glide K→J — same stream still delivers UP to K with x/y past the cap).
+                    boolean commitShortTapAlternatesKey =
+                            hadPendingAlternatesRunnable && shouldEnableAlternates(key);
+                    if (!suppressTapUp
+                            && (isTouchInsideViewSlopForTapUp(v, event) || commitShortTapAlternatesKey)) {
                         handleKeyPress(key);
                     }
                     holdRepeatSuppressUpTap = false;
-                    repeatHandler.postDelayed(this::sendReleaseData, 30);
-                    return false;
+                    scheduleKeyboardTapRelease();
+                    return true;
                 }
                 case MotionEvent.ACTION_CANCEL: {
                     kmProKeyPreview.dismiss();
@@ -3184,14 +3196,15 @@ public class CustomKeyboardView extends LinearLayout {
                     setParentDisallowInterceptTouchEvent(v, false);
                     v.setPressed(false);
                     Object pendingCancel = v.getTag(R.id.tag_custom_keyboard_pending_alternates);
-                    if (pendingCancel instanceof Runnable) {
+                    final boolean hadPendingAlternatesOnCancel = pendingCancel instanceof Runnable;
+                    if (hadPendingAlternatesOnCancel) {
                         Runnable pending = (Runnable) pendingCancel;
                         longPressHandler.removeCallbacks(pending);
                         v.setTag(R.id.tag_custom_keyboard_pending_alternates, null);
                     }
                     if (gamingTouch && gamingHoldActive[0]) {
                         stopGamingKeyRepeat();
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         gamingHoldActive[0] = false;
                         return true;
                     }
@@ -3202,8 +3215,14 @@ public class CustomKeyboardView extends LinearLayout {
                     if (shouldRepeatOnLongPress(key)) {
                         stopRepeatingDelete();
                     }
+                    boolean suppressTapCancel = holdRepeatSuppressUpTap;
+                    if (!suppressTapCancel
+                            && hadPendingAlternatesOnCancel
+                            && shouldEnableAlternates(key)) {
+                        handleKeyPress(key);
+                    }
                     holdRepeatSuppressUpTap = false;
-                    repeatHandler.postDelayed(this::sendReleaseData, 30);
+                    scheduleKeyboardTapRelease();
                     return false;
                 }
                 default:
@@ -5649,7 +5668,7 @@ public class CustomKeyboardView extends LinearLayout {
                                     elapsed < MAC_CAPS_MIN_TAP_HOLD_MS
                                             ? MAC_CAPS_MIN_TAP_HOLD_MS - elapsed
                                             : 0;
-                            repeatHandler.postDelayed(this::sendReleaseData, delay);
+                            scheduleKeyboardTapRelease(delay);
                         } else {
                             sendReleaseData();
                         }
@@ -5679,7 +5698,7 @@ public class CustomKeyboardView extends LinearLayout {
                             refreshVisibleTopPanelButtonStates();
                             post(this::refreshBuiltInModifierKeyCapsFromTree);
                             holdLockPopupAnchorView = null;
-                            repeatHandler.postDelayed(this::sendReleaseData, 30);
+                            scheduleKeyboardTapRelease();
                             return true;
                         }
                         if (isProMomentaryChordMode()) {
@@ -5720,7 +5739,7 @@ public class CustomKeyboardView extends LinearLayout {
                             }
                             holdLockPopupAnchorView = null;
                         }
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                     } else {
                         dismissProHoldLockPopup();
                         if (isProMomentaryChordMode() && proChordSustainBootByView.containsKey(v)) {
@@ -5839,7 +5858,7 @@ public class CustomKeyboardView extends LinearLayout {
                             refreshVisibleTopPanelButtonStates();
                             post(this::refreshBuiltInModifierKeyCapsFromTree);
                             holdLockPopupAnchorView = null;
-                            repeatHandler.postDelayed(this::sendReleaseData, 30);
+                            scheduleKeyboardTapRelease();
                             return true;
                         }
                     }
@@ -5879,7 +5898,7 @@ public class CustomKeyboardView extends LinearLayout {
                     v.performClick();
                     refreshVisibleTopPanelButtonStates();
                     post(this::refreshBuiltInModifierKeyCapsFromTree);
-                    repeatHandler.postDelayed(this::sendReleaseData, 30);
+                    scheduleKeyboardTapRelease();
                     return true;
                 case MotionEvent.ACTION_CANCEL:
                     v.setPressed(false);
@@ -6032,7 +6051,7 @@ public class CustomKeyboardView extends LinearLayout {
                         performKeyHapticFeedback(v);
                         v.performClick();
                         handleKeyPress(key);
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                     }
                     return true;
                 default:
@@ -6129,7 +6148,7 @@ public class CustomKeyboardView extends LinearLayout {
                         if (!stripSuppressTapUp) {
                             handleKeyPress(key);
                         }
-                        repeatHandler.postDelayed(this::sendReleaseData, 30);
+                        scheduleKeyboardTapRelease();
                         holdRepeatSuppressUpTap = false;
                     } else {
                         holdRepeatSuppressUpTap = false;
@@ -6864,10 +6883,7 @@ public class CustomKeyboardView extends LinearLayout {
                             performKeyHapticFeedback(v);
                         }
                         if (event.getAction() == MotionEvent.ACTION_UP) {
-                            repeatHandler.postDelayed(() -> {
-                                sendReleaseData();
-                                Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
-                            }, 30);
+                            scheduleKeyboardTapRelease();
                         }
                         return false;
                     });
@@ -6894,10 +6910,7 @@ public class CustomKeyboardView extends LinearLayout {
                             performKeyHapticFeedback(v);
                         }
                         if (event.getAction() == MotionEvent.ACTION_UP) {
-                            repeatHandler.postDelayed(() -> {
-                                sendReleaseData();
-                                Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
-                            }, 30);
+                            scheduleKeyboardTapRelease();
                         }
                         return false;
                     });
@@ -6973,12 +6986,7 @@ public class CustomKeyboardView extends LinearLayout {
                             performKeyHapticFeedback(v);
                         }
                         if (event.getAction() == MotionEvent.ACTION_UP) {
-                            repeatHandler.postDelayed(
-                                    () -> {
-                                        sendReleaseData();
-                                        Log.d(TAG, "Sent key release for extra key: " + entry.key.label);
-                                    },
-                                    30);
+                            scheduleKeyboardTapRelease();
                         }
                         return false;
                     });
@@ -7019,10 +7027,7 @@ public class CustomKeyboardView extends LinearLayout {
                     performKeyHapticFeedback(v);
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
-                    repeatHandler.postDelayed(() -> {
-                        sendReleaseData();
-                        Log.d(TAG, "Sent key release for extra key: " + plusKey.label);
-                    }, 30);
+                    scheduleKeyboardTapRelease();
                 }
                 return false;
             });
@@ -7052,10 +7057,7 @@ public class CustomKeyboardView extends LinearLayout {
                     performKeyHapticFeedback(v);
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
-                    repeatHandler.postDelayed(() -> {
-                        sendReleaseData();
-                        Log.d(TAG, "Sent key release for extra key: " + spaceKey.label);
-                    }, 30);
+                    scheduleKeyboardTapRelease();
                 }
                 return false;
             });
@@ -7686,32 +7688,26 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     public void sendReleaseData() {
-        new Thread(() -> {
-            try {
-                String releaseSendMSData = "57AB00020800000000000000000C";
-                if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
-                    try {
-                        byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                        Thread.sleep(10);
-                        bluetoothService.sendData(releaseSendKBDataBytes);
-                        Log.d(TAG, "Sent Bluetooth release data");
-                    } catch (InterruptedException e) {
-                        Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
-                    }
-                } else if (port != null) {
-                    try {
-                        byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
-                        Thread.sleep(10);
-                        port.write(releaseSendKBDataBytes, 20);
-                        Log.d(TAG, "Sent USB release data");
-                    } catch (IOException | InterruptedException e) {
-                        Log.e(TAG, "Error sending USB release data: " + e.getMessage());
-                    }
-                }
-            } finally {
-                post(this::reassertKeyboardAfterHidRelease);
-            }
-        }).start();
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
+        Log.d(TAG, "Sent keyboard release (all keys)");
+        post(this::reassertKeyboardAfterHidRelease);
+    }
+
+    /** Same as {@link #scheduleKeyboardTapRelease(long)} with the default post-tap delay. */
+    private void scheduleKeyboardTapRelease() {
+        scheduleKeyboardTapRelease(30L);
+    }
+
+    /**
+     * Cancels any pending coalesced or gaming delayed release, then schedules one all-keys-released
+     * (mirrors KM Basic {@code scheduleReleaseAfterPhysicalKey}).
+     */
+    private void scheduleKeyboardTapRelease(long delayMs) {
+        repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
+        repeatHandler.postDelayed(keyboardTapReleaseRunnable, delayMs);
     }
 
     private int parseHex(String hex) {
@@ -7894,6 +7890,7 @@ public class CustomKeyboardView extends LinearLayout {
      * host does not see separate presses (unlike KM Basic {@code tapKey}).
      */
     private void sendHidKeyTapForGamingRepeat(Key key) {
+        repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
         repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
         sendHidKeyDataForKey(key);
         repeatHandler.postDelayed(gamingTapReleaseRunnable, 30);
