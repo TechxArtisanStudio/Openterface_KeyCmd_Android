@@ -35,6 +35,8 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
 import com.openterface.keymod.compose.SavedTextItem;
 import com.openterface.keymod.compose.SavedTextRepository;
+import com.openterface.keymod.prefs.KmProComposeDraftRetentionPrefs;
+import com.openterface.keymod.prefs.KmProEmbeddedComposeDraftHolder;
 import com.openterface.keymod.util.ComposeSendPreviewDialog;
 import com.openterface.keymod.util.ComposeSendWarningDialog;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
@@ -113,6 +115,42 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         return a != null && a.getBoolean(ARG_EMBEDDED_IN_KM_PRO, false);
     }
 
+    private void saveKmProEmbeddedDraftIfNeeded() {
+        if (!isEmbeddedInKmPro() || getContext() == null) {
+            return;
+        }
+        if (!KmProComposeDraftRetentionPrefs.read(requireContext())) {
+            return;
+        }
+        if (sending) {
+            return;
+        }
+        if (editor == null) {
+            return;
+        }
+        String text = editor.getText() != null ? editor.getText().toString() : "";
+        KmProEmbeddedComposeDraftHolder.saveFromEmbeddedEditor(text, undoSnapshot, highlightNonAsciiChars);
+    }
+
+    private void restoreKmProEmbeddedDraftIfNeeded() {
+        if (!isEmbeddedInKmPro() || getContext() == null || editor == null) {
+            return;
+        }
+        if (!KmProComposeDraftRetentionPrefs.read(requireContext())) {
+            return;
+        }
+        KmProEmbeddedComposeDraftHolder.Snapshot d = KmProEmbeddedComposeDraftHolder.consumeDraft();
+        if (d == null) {
+            return;
+        }
+        editor.setText(d.editorText);
+        undoSnapshot = d.undoSnapshot;
+        highlightNonAsciiChars = d.highlightNonAscii;
+        refreshToolbarState();
+        refreshComposeBrandLogoVisibility();
+        refreshEditorNonAsciiHighlights(false);
+    }
+
     @Nullable
     @Override
     public View onCreateView(
@@ -169,6 +207,8 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         setupBasicComposeImeInsets(view);
         refreshComposeLayoutState(view);
         view.post(() -> refreshComposeLayoutState(view));
+
+        restoreKmProEmbeddedDraftIfNeeded();
     }
 
     @Override
@@ -306,6 +346,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
 
     @Override
     public void onPause() {
+        saveKmProEmbeddedDraftIfNeeded();
         if (getActivity() != null) {
             getActivity().getWindow().setSoftInputMode(ACTIVITY_SOFT_INPUT_MODE);
         }

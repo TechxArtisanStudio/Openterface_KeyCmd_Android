@@ -44,6 +44,9 @@
     <string name="km_pro_settings_section_alternate_hints_summary">When on, letter keys show small long-press hint glyphs and support the alternates popup. When off, those keys use hold-to-repeat (gaming style).</string>
     <string name="km_pro_settings_section_key_tap_preview">Key tap preview</string>
     <string name="km_pro_settings_section_key_tap_preview_summary">While you hold a key, show a floating label above it (same style as Keyboard &amp; Mouse Basic). On by default; turn off for a minimal look.</string>
+    <string name="km_pro_settings_section_compose_draft_retention">Compose buffer while switching tabs</string>
+    <string name="km_pro_settings_section_compose_draft_retention_summary">When Compose is embedded in Keyboard &amp; Mouse Pro, remember the long text (and clear/undo state) while you switch to Keyboard or NumPad. Stored in memory only for this app session. On by default.</string>
+    <string name="km_pro_settings_compose_draft_retention_switch">Remember compose text when switching submodes</string>
     <string name="km_pro_settings_section_touchpad">Touchpad</string>
     <string name="km_pro_settings_section_touchpad_summary">Pad + mouse keys: move the pointer and two-finger scroll on the pad; use L, M, and R for clicks and drag (same hold-swipe-to-lock as Keyboard &amp; Mouse Basic). Hybrid: full pad gestures plus the strip, with L/M/R flashing on pad taps and L held while you drag from the pad.</string>
     <string name="km_pro_touchpad_mode_gestures">Gestures only</string>

@@ -31,6 +31,8 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
+import com.openterface.keymod.prefs.KmProComposeDraftRetentionPrefs;
+import com.openterface.keymod.prefs.KmProEmbeddedComposeDraftHolder;
 import com.openterface.keymod.prefs.KmProKeyTapPreviewPrefs;
 import com.openterface.keymod.prefs.KmProTouchpadPrefs;
 import com.openterface.keymod.prefs.TopShortcutDisplayModePrefs;
@@ -56,6 +58,8 @@ public class KmProSettingsFragment extends Fragment {
     @Nullable
     private SwitchCompat gestureStatusSwitch;
     @Nullable
+    private SwitchCompat composeDraftRetentionSwitch;
+    @Nullable
     private SeekBar scrollStripSensitivitySeekBar;
     @Nullable
     private TextView scrollStripSensitivityValueText;
@@ -79,6 +83,7 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressTouchpadModeToggleCallback;
     private boolean suppressScrollStripPrefsCallback;
     private boolean suppressGestureStatusPrefsCallback;
+    private boolean suppressComposeDraftRetentionCallback;
     private boolean loadingModifierPrefs;
 
     @Nullable
@@ -103,6 +108,7 @@ public class KmProSettingsFragment extends Fragment {
         chordSustainSwitch = view.findViewById(R.id.km_pro_chord_sustain_switch);
         profileInputLayout = view.findViewById(R.id.km_pro_profile_input_layout);
         profileDropdown = view.findViewById(R.id.km_pro_profile_dropdown);
+        composeDraftRetentionSwitch = view.findViewById(R.id.km_pro_compose_draft_retention_switch);
 
         profileAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
@@ -150,6 +156,19 @@ public class KmProSettingsFragment extends Fragment {
                 KmProKeyTapPreviewPrefs.write(requireContext(), enabled);
                 notifyKmProKeyTapPreviewFromPrefs();
             });
+        }
+
+        if (composeDraftRetentionSwitch != null) {
+            composeDraftRetentionSwitch.setOnCheckedChangeListener(
+                    (buttonView, isChecked) -> {
+                        if (suppressComposeDraftRetentionCallback) {
+                            return;
+                        }
+                        KmProComposeDraftRetentionPrefs.write(requireContext(), isChecked);
+                        if (!isChecked) {
+                            KmProEmbeddedComposeDraftHolder.clear();
+                        }
+                    });
         }
 
         if (touchpadModeToggle != null) {
@@ -312,6 +331,7 @@ public class KmProSettingsFragment extends Fragment {
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
         syncKeyTapPreviewToggleFromPrefs();
+        syncComposeDraftRetentionSwitchFromPrefs();
         syncTouchpadModeToggleFromPrefs();
         syncGestureStatusSwitchFromPrefs();
         syncScrollStripControlsFromPrefs();
@@ -367,6 +387,16 @@ public class KmProSettingsFragment extends Fragment {
         suppressKeyTapPreviewToggleCallback = true;
         keyTapPreviewToggle.check(buttonId);
         suppressKeyTapPreviewToggleCallback = false;
+    }
+
+    private void syncComposeDraftRetentionSwitchFromPrefs() {
+        if (composeDraftRetentionSwitch == null) {
+            return;
+        }
+        suppressComposeDraftRetentionCallback = true;
+        composeDraftRetentionSwitch.setChecked(
+                KmProComposeDraftRetentionPrefs.read(requireContext()));
+        suppressComposeDraftRetentionCallback = false;
     }
 
     private void updateGamingKeyBehaviorSectionVisibility() {

@@ -1928,6 +1928,8 @@ public class CompositeFragment extends Fragment {
         }
         Fragment existing = getChildFragmentManager().findFragmentByTag(TAG_KM_PRO_COMPOSE);
         if (existing != null) {
+            // Always remove: compose host can be destroyed on split/normal layout swaps; draft is
+            // retained in-memory by BasicComposeFragment when enabled (see KmProComposeDraftRetentionPrefs).
             getChildFragmentManager().beginTransaction().remove(existing).commitAllowingStateLoss();
         }
         Activity a = getActivity();
