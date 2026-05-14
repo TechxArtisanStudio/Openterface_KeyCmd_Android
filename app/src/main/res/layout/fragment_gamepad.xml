@@ -111,24 +111,6 @@
             app:iconTint="@color/gamepad_edit_toggle_icon_tint"
             tools:text="Default" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/gamepad_gesture_sensitivity_btn"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
-            android:layout_marginStart="@dimen/spacing_tiny"
-            android:contentDescription="@string/gamepad_gesture_sensitivity_btn_cd"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
-            app:icon="@drawable/ic_tune_24"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp"
-            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
-
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
@@ -156,6 +138,24 @@
             app:backgroundTint="@android:color/transparent"
             tools:text="Creator"
             tools:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/gamepad_gesture_sensitivity_btn"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_height="@dimen/gamepad_toolbar_button_min_height"
+            android:layout_marginStart="@dimen/spacing_tiny"
+            android:contentDescription="@string/gamepad_gesture_sensitivity_btn_cd"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:backgroundTint="@color/gamepad_edit_toggle_background_tint"
+            app:icon="@drawable/ic_tune_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/gamepad_edit_toggle_icon_tint" />
 
         <ImageButton
             android:id="@+id/gamepad_mode_guide"

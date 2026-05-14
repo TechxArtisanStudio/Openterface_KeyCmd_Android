@@ -355,6 +355,8 @@ public class GamepadFragment extends Fragment {
     @Nullable
     private View gamepadToolbarScrim;
     @Nullable
+    private View gamepadEditSessionBar;
+    @Nullable
     private LinearLayout gamepadEditToolbarRow;
     @Nullable
     private MaterialButton gamepadPresetsToolbarButton;
@@ -513,6 +515,7 @@ public class GamepadFragment extends Fragment {
             gamepadExportCreatorChip.setOnClickListener(v -> showEditExportCreatorDialog());
         }
 
+        gamepadEditSessionBar = view.findViewById(R.id.gamepad_edit_session_bar);
         MaterialButton sessionDone = view.findViewById(R.id.gamepad_edit_session_done);
         if (sessionDone != null) {
             sessionDone.setOnClickListener(v -> exitLayoutEditSession());
@@ -556,6 +559,28 @@ public class GamepadFragment extends Fragment {
     public void onDestroyView() {
         getChildFragmentManager().removeOnBackStackChangedListener(gamepadLayoutsBackStackChangedListener);
         super.onDestroyView();
+    }
+
+    /** Enables Customize for {@link com.openterface.keymod.MainActivity#ensureGamepadEditModeForGuide()} (mode tour). */
+    public void enterEditModeForTour() {
+        if (!isAdded() || editModeMaterialButton == null) {
+            return;
+        }
+        if (!editModeMaterialButton.isChecked()) {
+            editModeMaterialButton.setChecked(true);
+        } else {
+            setEditModeToolbarExtrasVisible(true);
+        }
+    }
+
+    /** Restores play mode after {@link com.openterface.keymod.MainActivity#ensureGamepadEditModeExitForGuide()}. */
+    public void exitEditModeForTour() {
+        if (!isAdded() || editModeMaterialButton == null) {
+            return;
+        }
+        if (editModeMaterialButton.isChecked()) {
+            editModeMaterialButton.setChecked(false);
+        }
     }
 
     private void wireGamepadEmbeddedChrome(@NonNull View root) {
@@ -6897,6 +6922,9 @@ public class GamepadFragment extends Fragment {
 
     private void setEditModeToolbarExtrasVisible(boolean visible) {
         int vis = visible ? View.VISIBLE : View.GONE;
+        if (gamepadEditSessionBar != null) {
+            gamepadEditSessionBar.setVisibility(vis);
+        }
         if (gamepadEditToolbarRow != null) {
             gamepadEditToolbarRow.setVisibility(vis);
         }

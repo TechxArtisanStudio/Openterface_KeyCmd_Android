@@ -47,8 +47,9 @@ par TechxArtisan</string>
     <string name="mode_tutorial_presentation_step_actions">« Lecture » démarre le diaporama ; « Noir » masque la diapositive pour le public.</string>
     <string name="mode_tutorial_presentation_step_timer">La carte minuteur aide le rythme ; touchez pour ajuster les options du minuteur.</string>
     <string name="mode_tutorial_gamepad_step_connection">Touchez l’icône de connexion et connectez-vous en USB ou Bluetooth avant d’envoyer les entrées manette.</string>
-    <string name="mode_tutorial_gamepad_step_customize">« Personnaliser » modifie la disposition ; touchez « Terminé » pour enregistrer.</string>
+    <string name="mode_tutorial_gamepad_step_customize">« Personnaliser » active le mode déplacement et modifie la disposition.</string>
     <string name="mode_tutorial_gamepad_step_presets">Changez de préréglage ou touchez les puces pour d’autres dispositions enregistrées.</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">Faites glisser les modules sur le pad vers de nouveaux emplacements. Touchez « Terminé » dans la barre fine quand vous avez fini : Personnaliser se désactive et les positions sont enregistrées.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Utilisez sticks et boutons comme sur une console portable ; le mappage suit le préréglage actif.</string>
     <string name="mode_tutorial_hub_step_profiles">Créez ou importez des profils pour organiser des jeux de raccourcis par application.</string>
     <string name="mode_tutorial_hub_step_open_profile">Touchez une ligne de profil pour l’ouvrir. L’étape suivante ouvre automatiquement le profil Par défaut pour montrer l’intérieur.</string>

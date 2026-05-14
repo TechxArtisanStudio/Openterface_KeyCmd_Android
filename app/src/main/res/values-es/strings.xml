@@ -47,8 +47,9 @@ por TechxArtisan</string>
     <string name="mode_tutorial_presentation_step_actions">«Reproducir» inicia la presentación; «Negro» oculta la diapositiva para la audiencia.</string>
     <string name="mode_tutorial_presentation_step_timer">La tarjeta del temporizador ayuda con el ritmo; pulse para ajustar opciones.</string>
     <string name="mode_tutorial_gamepad_step_connection">Pulse el icono de conexión y conéctese por USB o Bluetooth antes de enviar entradas del mando.</string>
-    <string name="mode_tutorial_gamepad_step_customize">«Personalizar» edita el diseño; pulse «Hecho» para guardar.</string>
+    <string name="mode_tutorial_gamepad_step_customize">«Personalizar» activa el modo mover y edita el diseño.</string>
     <string name="mode_tutorial_gamepad_step_presets">Cambie de preajuste o pulse las etiquetas para otros diseños guardados.</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">Arrastre los módulos por el panel a nuevas posiciones. Pulse «Hecho» en la barra fina al terminar: se desactiva Personalizar y se guardan las posiciones.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Use sticks y botones como en una portátil; el mapeo sigue el preajuste activo.</string>
     <string name="mode_tutorial_hub_step_profiles">Cree o importe perfiles para organizar conjuntos de accesos directos por aplicación.</string>
     <string name="mode_tutorial_hub_step_open_profile">Pulse una fila de perfil para abrirlo. El siguiente paso abre automáticamente el perfil Predeterminado para mostrar el interior.</string>

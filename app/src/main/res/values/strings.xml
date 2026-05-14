@@ -223,8 +223,9 @@ by TechxArtisan</string>
     <string name="mode_tutorial_presentation_step_actions">Play starts the slideshow; Black screen hides the slide for the audience.</string>
     <string name="mode_tutorial_presentation_step_timer">The timer card tracks pace; tap it to adjust timer options.</string>
     <string name="mode_tutorial_gamepad_step_connection">Tap the connection icon to link USB or Bluetooth before sending gamepad input.</string>
-    <string name="mode_tutorial_gamepad_step_customize">Use Customize to edit layout, then Done to save.</string>
+    <string name="mode_tutorial_gamepad_step_customize">Use Customize to enter move mode and edit the layout.</string>
     <string name="mode_tutorial_gamepad_step_presets">Cycle presets or open the chip to pick another saved layout.</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">Drag modules on the pad to new spots. Tap Done on the slim bar when you are finished—Customize turns off and positions save.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Use sticks and buttons like a handheld controller; mapping follows your preset.</string>
     <string name="mode_tutorial_hub_step_profiles">Create or import profiles to organize shortcut sets for different apps.</string>
     <string name="mode_tutorial_hub_step_open_profile">Tap a profile row to open it. The next step opens the Default profile automatically so you can see what is inside.</string>

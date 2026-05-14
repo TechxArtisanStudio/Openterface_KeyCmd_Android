@@ -135,19 +135,28 @@ public final class ModeTutorialSteps {
                     false),
             step(
                     activity,
-                    new int[] {R.id.edit_mode_toggle},
-                    R.string.mode_tutorial_gamepad_step_customize,
-                    false),
-            step(
-                    activity,
                     new int[] {R.id.gamepad_presets_btn, R.id.gamepad_active_preset_chip},
                     R.string.mode_tutorial_gamepad_step_presets,
                     false),
             step(
                     activity,
+                    new int[] {R.id.edit_mode_toggle},
+                    R.string.mode_tutorial_gamepad_step_customize,
+                    false),
+            step(
+                    activity,
+                    new int[] {R.id.gamepad_view},
+                    R.string.mode_tutorial_gamepad_step_rearrange,
+                    false,
+                    500,
+                    () -> activity.ensureGamepadEditModeForGuide()),
+            step(
+                    activity,
                     new int[] {R.id.gamepad_view},
                     R.string.mode_tutorial_gamepad_step_sticks,
-                    true)
+                    true,
+                    280,
+                    () -> activity.ensureGamepadEditModeExitForGuide())
         };
     }
 

@@ -1,19 +1,25 @@
 package com.openterface.fragment;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.pm.ActivityInfo;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.Display;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.OrientationEventListener;
+import android.view.Surface;
 import android.view.View;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -172,6 +178,14 @@ public class PresentationFragment extends Fragment {
 
     private PopOutTouchPadDialog popOutTouchPad;
 
+    /**
+     * Locks to normal and reverse portrait only (no landscape), matching {@link KeyboardMouseFragment}
+     * touchpad portrait-pair behavior. {@link ActivityInfo#SCREEN_ORIENTATION_SENSOR_PORTRAIT} alone is
+     * unreliable on some devices.
+     */
+    private OrientationEventListener portraitPairOrientationListener;
+    private int lastPortraitPairLock = Integer.MIN_VALUE;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -200,6 +214,18 @@ public class PresentationFragment extends Fragment {
         }
 
         return view;
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (!isAdded()) {
+            return;
+        }
+        if (portraitPairOrientationListener != null
+                && portraitPairOrientationListener.canDetectOrientation()) {
+            syncPresentationPortraitLockFromDisplayRotation();
+        }
     }
 
     @Override
@@ -1102,6 +1128,96 @@ public class PresentationFragment extends Fragment {
         }
     }
 
+    private void ensurePresentationPortraitPairListenerEnabled() {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (portraitPairOrientationListener == null) {
+            portraitPairOrientationListener =
+                    new OrientationEventListener(
+                            activity.getApplicationContext(), SensorManager.SENSOR_DELAY_NORMAL) {
+                        @Override
+                        public void onOrientationChanged(int orientation) {
+                            Activity a = getActivity();
+                            if (!isAdded() || a == null) {
+                                return;
+                            }
+                            updatePresentationPortraitLockFromSensorDegrees(orientation);
+                        }
+                    };
+        }
+        if (!portraitPairOrientationListener.canDetectOrientation()) {
+            lastPortraitPairLock = Integer.MIN_VALUE;
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            return;
+        }
+        syncPresentationPortraitLockFromDisplayRotation();
+        portraitPairOrientationListener.enable();
+    }
+
+    private void disablePresentationPortraitPairListener() {
+        if (portraitPairOrientationListener != null) {
+            portraitPairOrientationListener.disable();
+        }
+        lastPortraitPairLock = Integer.MIN_VALUE;
+    }
+
+    private void syncPresentationPortraitLockFromDisplayRotation() {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        int lock;
+        switch (displayRotationCompat(activity)) {
+            case Surface.ROTATION_180:
+                lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+                break;
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_90:
+            case Surface.ROTATION_270:
+            default:
+                lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                break;
+        }
+        applyPresentationPortraitLockIfChanged(activity, lock);
+    }
+
+    private static int displayRotationCompat(@NonNull Activity activity) {
+        Display display = activity.getDisplay();
+        if (display != null) {
+            return display.getRotation();
+        }
+        return activity.getWindowManager().getDefaultDisplay().getRotation();
+    }
+
+    private void updatePresentationPortraitLockFromSensorDegrees(int orientationDegrees) {
+        if (orientationDegrees == OrientationEventListener.ORIENTATION_UNKNOWN) {
+            return;
+        }
+        Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        int lock;
+        if (orientationDegrees >= 315 || orientationDegrees < 45) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        } else if (orientationDegrees >= 135 && orientationDegrees < 225) {
+            lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
+        } else {
+            lock = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        }
+        applyPresentationPortraitLockIfChanged(activity, lock);
+    }
+
+    private void applyPresentationPortraitLockIfChanged(@NonNull Activity activity, int lock) {
+        if (lock == lastPortraitPairLock) {
+            return;
+        }
+        lastPortraitPairLock = lock;
+        activity.setRequestedOrientation(lock);
+    }
+
     private int dp(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -1109,14 +1225,12 @@ public class PresentationFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (getActivity() != null) {
-            getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
-        }
+        ensurePresentationPortraitPairListenerEnabled();
     }
 
     @Override
     public void onPause() {
-        super.onPause();
+        disablePresentationPortraitPairListener();
         if (getActivity() != null) {
             getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
@@ -1130,6 +1244,7 @@ public class PresentationFragment extends Fragment {
             appSwitcherActive = false;
             btnLaser.setTextColor(ContextCompat.getColor(requireContext(), R.color.presentation_button_content));
         }
+        super.onPause();
     }
 
     @Override

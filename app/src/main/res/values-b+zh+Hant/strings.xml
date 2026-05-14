@@ -149,8 +149,9 @@
     <string name="mode_tutorial_presentation_step_actions">「播放」開始放映；「黑畫面」可向觀眾隱藏目前投影片。</string>
     <string name="mode_tutorial_presentation_step_timer">計時卡片協助掌握節奏；點按可調整計時選項。</string>
     <string name="mode_tutorial_gamepad_step_connection">點按連線圖示，先以 USB 或藍牙連線再送出控制器輸入。</string>
-    <string name="mode_tutorial_gamepad_step_customize">使用「自訂」編輯版面，完成後點「完成」儲存。</string>
+    <string name="mode_tutorial_gamepad_step_customize">使用「自訂」進入移動模式並編輯版面。</string>
     <string name="mode_tutorial_gamepad_step_presets">切換預設組或點按標籤選擇其他已儲存版面。</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">在手柄畫布上將模組拖到新位置。完成後點細條列上的「完成」—會關閉自訂並儲存位置。</string>
     <string name="mode_tutorial_gamepad_step_sticks">使用搖桿與按鍵如同掌上型主機，對應隨目前預設組而定。</string>
     <string name="mode_tutorial_hub_step_profiles">建立或匯入設定檔，為不同 App 整理捷徑組合。</string>
     <string name="mode_tutorial_hub_step_open_profile">點按設定檔列即可開啟。下一步教學會自動開啟預設設定檔，方便檢視內部功能。</string>

@@ -47,8 +47,9 @@ von TechxArtisan</string>
     <string name="mode_tutorial_presentation_step_actions">„Abspielen“ startet die Diashow; „Schwarz“ blendet die Folie für das Publikum aus.</string>
     <string name="mode_tutorial_presentation_step_timer">Die Timer-Karte hilft beim Timing; tippen Sie, um Timer-Optionen anzupassen.</string>
     <string name="mode_tutorial_gamepad_step_connection">Tippen Sie auf das Verbindungssymbol und verbinden Sie per USB oder Bluetooth, bevor Sie Gamepad-Eingaben senden.</string>
-    <string name="mode_tutorial_gamepad_step_customize">Mit „Anpassen“ bearbeiten Sie das Layout; tippen Sie auf „Fertig“, um zu speichern.</string>
+    <string name="mode_tutorial_gamepad_step_customize">Mit „Anpassen“ aktivieren Sie den Verschiebemodus und bearbeiten das Layout.</string>
     <string name="mode_tutorial_gamepad_step_presets">Wechseln Sie Presets oder tippen Sie auf Chips, um andere gespeicherte Layouts zu wählen.</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">Ziehen Sie Module auf dem Pad an neue Stellen. Tippen Sie zum Schluss in der schmalen Leiste auf „Fertig“: Anpassen wird beendet und Positionen gespeichert.</string>
     <string name="mode_tutorial_gamepad_step_sticks">Nutzen Sie Sticks und Tasten wie auf einem Handheld; die Zuordnung folgt dem aktuellen Preset.</string>
     <string name="mode_tutorial_hub_step_profiles">Erstellen oder importieren Sie Profile, um Kurzbefehl-Sets für verschiedene Apps zu organisieren.</string>
     <string name="mode_tutorial_hub_step_open_profile">Tippen Sie auf eine Profilzeile, um es zu öffnen. Im nächsten Schritt öffnet die Tour automatisch das Standardprofil, damit Sie den Inhalt sehen.</string>

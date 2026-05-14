@@ -47,8 +47,9 @@ TechxArtisan により</string>
     <string name="mode_tutorial_presentation_step_actions">「再生」でスライドショーを開始し、「ブラック」で観客向けに画面を隠します。</string>
     <string name="mode_tutorial_presentation_step_timer">タイマーカードで時間配分を管理し、タップしてオプションを調整します。</string>
     <string name="mode_tutorial_gamepad_step_connection">接続アイコンをタップし、USB または Bluetooth で接続してからゲームパッド入力を送ります。</string>
-    <string name="mode_tutorial_gamepad_step_customize">「カスタマイズ」でレイアウトを編集し、「完了」で保存します。</string>
+    <string name="mode_tutorial_gamepad_step_customize">「カスタマイズ」で移動モードに入り、レイアウトを編集します。</string>
     <string name="mode_tutorial_gamepad_step_presets">プリセットを切り替えるか、チップをタップして別の保存レイアウトを選びます。</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">パッド上のモジュールをドラッグして位置を変えます。終わったら上の細いバーの「完了」で保存し、カスタマイズを終了します。</string>
     <string name="mode_tutorial_gamepad_step_sticks">スティックとボタンは携帯ゲーム機のように使え、割り当ては現在のプリセットに従います。</string>
     <string name="mode_tutorial_hub_step_profiles">プロファイルを作成または取り込み、アプリごとにショートカット集を整理します。</string>
     <string name="mode_tutorial_hub_step_open_profile">プロファイルの行をタップして開きます。次のステップではツアーが自動的にデフォルトのプロファイルを開き、中身を案内します。</string>

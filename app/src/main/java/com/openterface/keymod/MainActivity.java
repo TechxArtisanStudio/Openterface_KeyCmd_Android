@@ -2210,6 +2210,24 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
     }
 
+    /** Turns on Gamepad Customize so the tour can highlight move mode and the pad surface. */
+    public void ensureGamepadEditModeForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof GamepadFragment) {
+            ((GamepadFragment) f).enterEditModeForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
+    /** Returns Gamepad to play mode after a tour step that temporarily enabled Customize. */
+    public void ensureGamepadEditModeExitForGuide() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof GamepadFragment) {
+            ((GamepadFragment) f).exitEditModeForTour();
+            getSupportFragmentManager().executePendingTransactions();
+        }
+    }
+
     public void openModeGuideSheet() {
         Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         ModeGuidePrefs.GuideHostMode mode = ModeGuidePrefs.guideModeForTopFragment(f);

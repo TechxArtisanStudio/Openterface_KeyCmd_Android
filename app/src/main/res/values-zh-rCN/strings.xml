@@ -149,8 +149,9 @@
     <string name="mode_tutorial_presentation_step_actions">「播放」开始放映；「黑屏」可向观众隐藏当前幻灯片。</string>
     <string name="mode_tutorial_presentation_step_timer">计时卡片用于掌握节奏；点按可调整计时选项。</string>
     <string name="mode_tutorial_gamepad_step_connection">点按连接图标，先通过 USB 或蓝牙连接再发送手柄输入。</string>
-    <string name="mode_tutorial_gamepad_step_customize">使用「自定义」编辑布局，完成后点「完成」保存。</string>
+    <string name="mode_tutorial_gamepad_step_customize">使用「自定义」进入移动模式并编辑布局。</string>
     <string name="mode_tutorial_gamepad_step_presets">切换预设或点按芯片选择其他已保存布局。</string>
+    <string name="mode_tutorial_gamepad_step_rearrange">在手柄画布上将模块拖到新位置。完成后点细条栏上的「完成」—将关闭自定义并保存位置。</string>
     <string name="mode_tutorial_gamepad_step_sticks">使用摇杆与按键如同掌机手柄，映射随当前预设而定。</string>
     <string name="mode_tutorial_hub_step_profiles">创建或导入配置文件，为不同应用整理快捷方式集。</string>
     <string name="mode_tutorial_hub_step_open_profile">点按配置文件行即可打开。下一步教程会自动打开默认配置文件，便于查看内部功能。</string>
