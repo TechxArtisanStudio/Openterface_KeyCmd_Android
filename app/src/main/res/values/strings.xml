@@ -454,6 +454,8 @@ by TechxArtisan</string>
     <string name="connection_signal_strength_cd">Signal strength</string>
     <string name="connection_medium_usb">USB</string>
     <string name="connection_medium_bluetooth">Bluetooth</string>
+    <string name="connection_header_bluetooth_searching">Bluetooth searching</string>
+    <string name="connection_header_bluetooth_connected">Bluetooth connected</string>
     <string name="connection_status_connected_line">%1$s — %2$s</string>
     <string name="connection_toast_usb_disconnected">USB disconnected</string>
     <string name="connection_toast_usb_connected">USB connected</string>

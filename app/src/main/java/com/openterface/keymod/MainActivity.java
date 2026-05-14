@@ -1101,14 +1101,20 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             return;
         }
         icon.setImageResource(connectionHeaderIconRes(type, state));
-        icon.setColorFilter(headerConnectionClusterTint(state), PorterDuff.Mode.SRC_IN);
+        icon.setColorFilter(headerConnectionClusterTint(type, state), PorterDuff.Mode.SRC_IN);
         int cdRes;
         switch (type) {
             case USB:
                 cdRes = R.string.connection_medium_usb;
                 break;
             case BLUETOOTH:
-                cdRes = R.string.connection_medium_bluetooth;
+                if (state == ConnectionManager.ConnectionState.CONNECTING) {
+                    cdRes = R.string.connection_header_bluetooth_searching;
+                } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
+                    cdRes = R.string.connection_header_bluetooth_connected;
+                } else {
+                    cdRes = R.string.connection_medium_bluetooth;
+                }
                 break;
             default:
                 cdRes = R.string.connection;
@@ -1348,12 +1354,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }, 1000); // 1 second delay
     }
     
-    /** Same tint as the header Bluetooth icon for a given connection state. */
-    private int headerConnectionClusterTint(ConnectionManager.ConnectionState state) {
+    /**
+     * Header connection icon tint: theme primary when connected; green while Bluetooth is
+     * connecting/searching; orange while USB is connecting; idle grey otherwise.
+     */
+    private int headerConnectionClusterTint(
+            ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         switch (state) {
             case CONNECTED:
                 return ThemeManager.getColorPrimary(this);
             case CONNECTING:
+                if (type == ConnectionManager.ConnectionType.BLUETOOTH) {
+                    return ContextCompat.getColor(this, R.color.connected);
+                }
                 return ContextCompat.getColor(this, R.color.connecting);
             default:
                 return ContextCompat.getColor(this, R.color.header_connection_idle);
@@ -1382,17 +1395,17 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 if (state == ConnectionManager.ConnectionState.CONNECTED) {
                     return R.drawable.bluetooth_connected_24px;
                 }
-                return R.drawable.bluetooth_24px;
+                return R.drawable.ic_bluetooth;
             case NONE:
             default:
-                return R.drawable.bluetooth_24px;
+                return R.drawable.ic_bluetooth;
         }
     }
 
     private void updateConnectionButton(ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         if (connectionButton == null) return;
 
-        int connectionTint = headerConnectionClusterTint(state);
+        int connectionTint = headerConnectionClusterTint(type, state);
         int neutralTint = headerNeutralActionTint();
         connectionButton.setImageResource(connectionHeaderIconRes(type, state));
         connectionButton.setColorFilter(connectionTint, PorterDuff.Mode.SRC_IN);
@@ -1402,7 +1415,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 cdRes = R.string.connection_medium_usb;
                 break;
             case BLUETOOTH:
-                cdRes = R.string.connection_medium_bluetooth;
+                if (state == ConnectionManager.ConnectionState.CONNECTING) {
+                    cdRes = R.string.connection_header_bluetooth_searching;
+                } else if (state == ConnectionManager.ConnectionState.CONNECTED) {
+                    cdRes = R.string.connection_header_bluetooth_connected;
+                } else {
+                    cdRes = R.string.connection_medium_bluetooth;
+                }
                 break;
             default:
                 cdRes = R.string.connection;
