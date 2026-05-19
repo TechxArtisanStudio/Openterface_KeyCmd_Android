@@ -57,10 +57,9 @@ public class BasicKeyboardFragment extends Fragment {
     /**
      * Applies {@link R.dimen#basic_keyboard_content_inset} (start), {@link
      * R.dimen#basic_keyboard_content_inset_end} (end), and {@link R.dimen#basic_keyboard_content_inset_bottom}
-     * plus {@link WindowInsetsCompat.Type#navigationBars()} on each axis. Some hosts still lay out
-     * edge-to-edge under the nav strip (overlap); others already inset the window — when the
-     * system has consumed nav insets at the root, {@code bars.right} and {@code bars.bottom} are often
-     * zero here so we do not double-pad. Dimens are read inside the listener so rotation stays
+     * plus {@link WindowInsetsCompat.Type#navigationBars()} <strong>bottom</strong> only. Landscape
+     * side insets (nav + cutout) are handled once on {@link KeyboardMouseFragment}'s root so we do not
+     * double-stack horizontal system insets here. Dimens are read inside the listener so rotation stays
      * correct with {@code configChanges}. Re-install on {@link #onConfigurationChanged}.
      */
     private void installKeyboardContentInsets(@NonNull BasicPhysicalKeyboardView keyboard) {
@@ -79,9 +78,9 @@ public class BasicKeyboardFragment extends Fragment {
                                     .getDimensionPixelSize(R.dimen.basic_keyboard_content_inset_bottom);
                     ViewCompat.setPaddingRelative(
                             v,
-                            baseStart + bars.left,
+                            baseStart,
                             v.getPaddingTop(),
-                            baseEnd + bars.right,
+                            baseEnd,
                             baseBottom + bars.bottom);
                     return windowInsets;
                 });
