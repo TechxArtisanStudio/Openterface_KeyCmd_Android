@@ -1,0 +1,10 @@
+# Minimal flow to validate runner + LaunchPanel on emulator.
+PREPARE_CAPTURE
+ORIENTATION portrait
+WAIT 2
+SCREENSHOT demo-welcome-mode-selection
+ORIENTATION landscape
+ORIENTATION landscape
+WAIT 3.5
+SCREENSHOT demo-welcome-mode-selection-landscape
+ORIENTATION portrait
