@@ -33,3 +33,21 @@ All Gradle commands run from `/agent/repos/Openterface_KeyCmd_Android`.
 - **Source compatibility is Java 8** (`sourceCompatibility = 1.8`) even though JDK 21 is used for compilation. This triggers deprecation warnings from javac that are safe to ignore.
 - **Release builds require signing secrets** (keystore, passwords). Debug builds work without them.
 - The `gradlew` wrapper auto-downloads Gradle 8.9 on first run if not cached.
+
+### Emulator (optional)
+
+The Android emulator can run in this environment **without KVM** (no nested virtualization). It is extremely slow with software rendering but functional for basic app testing.
+
+To set up and run:
+```
+sdkmanager --sdk_root=/opt/android-sdk "emulator" "system-images;android-34;google_apis;x86_64"
+echo "no" | avdmanager create avd -n keycmd_test -k "system-images;android-34;google_apis;x86_64" -d "pixel" --force
+emulator -avd keycmd_test -no-window -no-audio -no-accel -gpu swiftshader_indirect -no-boot-anim -memory 2048 -skin 720x1280
+```
+
+Key caveats:
+- **Cold boot takes ~8-10 minutes** without hardware acceleration. Wait for `adb shell getprop sys.boot_completed` to return `1`.
+- **System UI ANR dialogs appear frequently** due to slow rendering; always tap "Wait" — the app itself runs fine.
+- Run `adb shell svc power stayon true` after boot to prevent screen sleep.
+- Install APK with `adb install app/build/outputs/apk/debug/KeyCmd-debug.apk`.
+- Launch with `adb shell am start -n com.openterface.keymod/.LaunchPanelActivity`.
