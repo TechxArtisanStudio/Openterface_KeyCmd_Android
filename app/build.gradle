@@ -162,4 +162,8 @@ dependencies {
     
     // Gson for JSON serialization
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Glide for image loading (GIF/PNG/WebP) in help guide overlays
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 }
