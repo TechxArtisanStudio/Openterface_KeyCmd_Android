@@ -6,27 +6,52 @@
       "steps": [
         { "id": "connection", "image": "jpeg", "fallback": "png" },
         { "id": "target_os", "image": "jpeg", "fallback": "png" },
-        { "id": "submode_tabs", "image": "jpeg", "fallback": "png" }
+        { "id": "submode_tabs", "image": "jpeg", "fallback": "png" },
+        { "id": "keyboard_modes", "image": "jpeg", "fallback": "png" },
+        { "id": "modifier_hold_swipe", "image": "jpeg", "fallback": "png" },
+        { "id": "menu", "image": "jpeg", "fallback": "png" }
       ]
     },
     "km_pro": {
       "steps": [
-        { "id": "keyboard_strip", "image": "jpeg", "fallback": "png" }
+        { "id": "connection", "image": "jpeg", "fallback": "png" },
+        { "id": "target_os", "image": "jpeg", "fallback": "png" },
+        { "id": "submodes", "image": "jpeg", "fallback": "png" },
+        { "id": "setup", "image": "jpeg", "fallback": "png" },
+        { "id": "keyboard_strip", "image": "jpeg", "fallback": "png" },
+        { "id": "modifier_hold_swipe", "image": "jpeg", "fallback": "png" },
+        { "id": "compose_editor", "image": "jpeg", "fallback": "png" },
+        { "id": "compose_actions", "image": "jpeg", "fallback": "png" }
       ]
     },
     "presentation": {
       "steps": [
-        { "id": "tools", "image": "jpeg", "fallback": "png" }
+        { "id": "tools", "image": "jpeg", "fallback": "png" },
+        { "id": "nav", "image": "jpeg", "fallback": "png" },
+        { "id": "actions", "image": "jpeg", "fallback": "png" },
+        { "id": "timer", "image": "jpeg", "fallback": "png" }
       ]
     },
     "gamepad": {
       "steps": [
-        { "id": "customize", "image": "jpeg", "fallback": "png" }
+        { "id": "connection", "image": "jpeg", "fallback": "png" },
+        { "id": "presets", "image": "jpeg", "fallback": "png" },
+        { "id": "customize", "image": "jpeg", "fallback": "png" },
+        { "id": "rearrange", "image": "jpeg", "fallback": "png" },
+        { "id": "sticks", "image": "jpeg", "fallback": "png" }
       ]
     },
     "shortcut_hub": {
       "steps": [
-        { "id": "profiles", "image": "jpeg", "fallback": "png" }
+        { "id": "profiles", "image": "jpeg", "fallback": "png" },
+        { "id": "open_profile", "image": "jpeg", "fallback": "png" },
+        { "id": "detail_intro", "image": "jpeg", "fallback": "png" },
+        { "id": "favorites_list", "image": "jpeg", "fallback": "png" },
+        { "id": "browse_category", "image": "jpeg", "fallback": "png" },
+        { "id": "add_shortcut_toolbar", "image": "jpeg", "fallback": "png" },
+        { "id": "detail_setup_gear", "image": "jpeg", "fallback": "png" },
+        { "id": "connection", "image": "jpeg", "fallback": "png" },
+        { "id": "replay_hint", "image": "jpeg", "fallback": "png" }
       ]
     }
   }

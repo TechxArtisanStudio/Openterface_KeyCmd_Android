@@ -2476,6 +2476,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (markCompletionOnDismiss) {
             overlay.setOnDismissExtra(() -> ModeGuidePrefs.markModeGuideCompleted(MainActivity.this, mode));
         }
+
+        String modeKey = getModeKeyForGuideHostMode(mode);
         TutorialOverlay.Step[] steps;
         switch (mode) {
             case KM_PRO:
@@ -2493,7 +2495,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             default:
                 return;
         }
-        overlay.setSteps(steps);
+
+        // Load help image config asynchronously, then set steps on overlay
+        loadHelpConfigAndApplyWithSteps(overlay, modeKey, steps);
+
         ViewGroup root = findViewById(android.R.id.content);
         root.addView(
                 overlay,
@@ -2507,12 +2512,53 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         TutorialOverlay overlay = new TutorialOverlay(this);
         overlay.setMarkBasicQuickStartPrefOnDismiss(markBasicPrefOnDismiss);
-        overlay.setSteps(ModeTutorialSteps.kmBasicQuickStart(this));
+
+        TutorialOverlay.Step[] steps = ModeTutorialSteps.kmBasicQuickStart(this);
+
+        // Load help image config asynchronously, then set steps on overlay
+        loadHelpConfigAndApplyWithSteps(overlay, "km_basic", steps);
+
         ViewGroup root = findViewById(android.R.id.content);
         root.addView(
                 overlay,
                 new ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    /**
+     * Load help config from assets, then apply config + steps to the overlay.
+     * This ensures config is ready before steps are set (which triggers image loading).
+     */
+    private void loadHelpConfigAndApplyWithSteps(
+            final TutorialOverlay overlay, final String modeKey, final TutorialOverlay.Step[] steps) {
+        new Thread(() -> {
+            HelpImageConfig config = HelpImageConfigManager.getInstance(this).loadLocalTestConfig();
+            runOnUiThread(() -> {
+                if (config != null) {
+                    overlay.setConfig(config, modeKey);
+                }
+                overlay.setSteps(steps);
+            });
+        }).start();
+    }
+
+    /**
+     * Returns the mode key string matching the help-image config’s mode identifier.
+     */
+    @Nullable
+    private static String getModeKeyForGuideHostMode(@NonNull ModeGuidePrefs.GuideHostMode mode) {
+        switch (mode) {
+            case KM_PRO:
+                return "km_pro";
+            case PRESENTATION:
+                return "presentation";
+            case GAMEPAD:
+                return "gamepad";
+            case SHORTCUT_HUB:
+                return "shortcut_hub";
+            default:
+                return null;
+        }
     }
 
     public static void closeDrawerIfOpen(android.content.Context context) {

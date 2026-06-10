@@ -409,12 +409,17 @@ public class TutorialOverlay extends FrameLayout {
      * Shows a loading indicator while downloading, then displays the image with Glide.
      */
     private void loadHelpImage(Step step) {
-        if (config == null || currentModeKey == null || step.imageKey() == null) {
+        String imageKey = step.imageKey();
+        android.util.Log.d("TutorialOverlay", "loadHelpImage: config=" + (config != null)
+                + ", modeKey=" + currentModeKey + ", imageKey=" + imageKey);
+        if (config == null || currentModeKey == null || imageKey == null) {
+            android.util.Log.d("TutorialOverlay", "  → skipping: missing config/modeKey/imageKey");
             hideImageArea();
             return;
         }
 
-        String imageUrl = config.getImageUrl(currentModeKey, step.imageKey());
+        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
+        android.util.Log.d("TutorialOverlay", "  → imageUrl=" + imageUrl);
         if (imageUrl == null) {
             hideImageArea();
             return;
@@ -425,6 +430,7 @@ public class TutorialOverlay extends FrameLayout {
         // If already cached, load immediately
         File cached = downloader.getCachedFile(imageUrl);
         if (cached != null) {
+            android.util.Log.d("TutorialOverlay", "  → cache hit, size=" + cached.length());
             showImage(cached);
             return;
         }
