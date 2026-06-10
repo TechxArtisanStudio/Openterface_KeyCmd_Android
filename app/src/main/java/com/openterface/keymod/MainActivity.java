@@ -76,7 +76,6 @@ import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.help.HelpImageConfig;
 import com.openterface.keymod.help.HelpImageConfigManager;
-import com.openterface.keymod.help.HelpImageDownloader;
 import java.io.File;
 import com.openterface.keymod.hid.Ch9329HostLockQuery;
 import com.openterface.keymod.hid.Ch9329InboundParser;
@@ -476,56 +475,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 && LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(currentNavMode)) {
             new Handler().postDelayed(this::showTutorial, 800);
         }
-
-        // ===== TEMP: Test help image config and download =====
-        testHelpImageConfig();
-    }
-
-    /**
-     * Temporary test code for help image config/download.
-     * Remove this method and its call once CDN integration is verified.
-     */
-    private void testHelpImageConfig() {
-        new Thread(() -> {
-            // 1. Test config loading from assets
-            HelpImageConfigManager mgr = HelpImageConfigManager.getInstance(this);
-            HelpImageConfig config = mgr.loadLocalTestConfig();
-            if (config != null) {
-                Log.d("HelpImageTest", "✅ Config loaded from assets, version=" + config.version);
-                Log.d("HelpImageTest", "  baseUrl=" + config.baseUrl);
-                Log.d("HelpImageTest", "  modes count=" + config.modes.size());
-
-                // 2. Test image URL resolution
-                for (String modeKey : config.modes.keySet()) {
-                    HelpImageConfig.ModeConfig mode = config.modes.get(modeKey);
-                    if (mode == null || mode.steps == null) continue;
-                    for (HelpImageConfig.StepConfig step : mode.steps) {
-                        String url = config.getImageUrl(modeKey, step.id);
-                        Log.d("HelpImageTest", "  " + modeKey + "/" + step.id + " → " + url);
-                    }
-                }
-            } else {
-                Log.e("HelpImageTest", "❌ Failed to load config from assets");
-                return;
-            }
-
-            // 3. Test image download with a real URL
-            HelpImageDownloader downloader = HelpImageDownloader.getInstance(this);
-            String testUrl = "https://httpbin.org/image/png";
-            Log.d("HelpImageTest", "⬇️ Downloading test image: " + testUrl);
-            downloader.download(testUrl, new HelpImageDownloader.Callback() {
-                @Override
-                public void onSuccess(File localFile) {
-                    Log.d("HelpImageTest", "✅ Download success: " + localFile.getAbsolutePath()
-                            + " (" + localFile.length() + " bytes)");
-                }
-
-                @Override
-                public void onError(Exception error) {
-                    Log.e("HelpImageTest", "❌ Download failed: " + error.getMessage(), error);
-                }
-            });
-        }).start();
     }
 
     @Override
