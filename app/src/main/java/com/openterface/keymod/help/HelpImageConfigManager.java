@@ -69,6 +69,26 @@ public final class HelpImageConfigManager {
     // ---- Public API ----
 
     /**
+     * Load test config from assets (local-only, no network required).
+     */
+    @Nullable
+    public HelpImageConfig loadLocalTestConfig() {
+        try (InputStream is = appContext.getAssets().open("help_config.json")) {
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(is, StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            return HelpImageConfig.fromJson(sb.toString());
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to load test config from assets", e);
+            return null;
+        }
+    }
+
+    /**
      * Returns the best available config synchronously.
      * <ol>
      *   <li>If a config is already cached in memory, return it immediately.</li>

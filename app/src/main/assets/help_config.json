@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "baseUrl": "https://httpbin.org/image/",
+  "modes": {
+    "km_basic": {
+      "steps": [
+        { "id": "connection", "image": "jpeg", "fallback": "png" },
+        { "id": "target_os", "image": "jpeg", "fallback": "png" },
+        { "id": "submode_tabs", "image": "jpeg", "fallback": "png" }
+      ]
+    },
+    "km_pro": {
+      "steps": [
+        { "id": "keyboard_strip", "image": "jpeg", "fallback": "png" }
+      ]
+    },
+    "presentation": {
+      "steps": [
+        { "id": "tools", "image": "jpeg", "fallback": "png" }
+      ]
+    },
+    "gamepad": {
+      "steps": [
+        { "id": "customize", "image": "jpeg", "fallback": "png" }
+      ]
+    },
+    "shortcut_hub": {
+      "steps": [
+        { "id": "profiles", "image": "jpeg", "fallback": "png" }
+      ]
+    }
+  }
+}
