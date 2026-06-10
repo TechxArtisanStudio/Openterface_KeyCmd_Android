@@ -144,4 +144,10 @@
     <color name="gamepad_face_b_body">#FFF7B2B7</color>
     <color name="gamepad_face_x_body">#FFA9CCEB</color>
     <color name="gamepad_face_y_body">#FFF7E89F</color>
+
+    <!-- Terminal theme -->
+    <color name="terminal_background">#FF0A0A0A</color>
+    <color name="terminal_toolbar_background">#FF1A1A1A</color>
+    <color name="terminal_status_text">#FFAAAAAA</color>
+    <color name="terminal_bottom_bar">#FF1A1A1A</color>
 </resources>

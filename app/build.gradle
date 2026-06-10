@@ -162,4 +162,7 @@ dependencies {
     
     // Gson for JSON serialization
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    // SSH client for Terminal feature
+    implementation 'com.github.mwiede:jsch:0.2.17'
 }

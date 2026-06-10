@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Connect to SSH"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Transport Selection -->
+    <RadioGroup
+        android:id="@+id/terminal_transport_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <RadioButton
+            android:id="@+id/transport_usb"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_transport_usb"
+            android:textSize="14sp" />
+
+        <RadioButton
+            android:id="@+id/transport_ble"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_transport_ble"
+            android:textSize="14sp" />
+
+    </RadioGroup>
+
+    <!-- Target Host -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_host"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary" />
+
+        <EditText
+            android:id="@+id/terminal_host_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:inputType="textUri"
+            android:text="192.168.11.1"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Port -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_port"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary" />
+
+        <EditText
+            android:id="@+id/terminal_port_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:inputType="number"
+            android:text="22"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Username -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_username"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary" />
+
+        <EditText
+            android:id="@+id/terminal_username_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:inputType="text"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Password -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_password"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary" />
+
+        <EditText
+            android:id="@+id/terminal_password_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:inputType="textPassword"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- Remember credentials -->
+    <CheckBox
+        android:id="@+id/terminal_remember_credentials"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Remember credentials"
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp" />
+
+</LinearLayout>
+
+</ScrollView>
