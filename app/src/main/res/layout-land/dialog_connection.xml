@@ -120,7 +120,7 @@
                         android:id="@+id/bluetooth_status_icon"
                         android:layout_width="20dp"
                         android:layout_height="20dp"
-                        android:src="@drawable/bluetooth_24px"
+                        android:src="@drawable/ic_bluetooth_24"
                         android:contentDescription="@string/connection_status" />
 
                     <ImageView

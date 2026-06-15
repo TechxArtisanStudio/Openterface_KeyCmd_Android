@@ -1142,6 +1142,17 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 break;
         }
         icon.setContentDescription(getString(cdRes));
+
+        // Rotation animation for Bluetooth connecting
+        if (type == ConnectionManager.ConnectionType.BLUETOOTH
+                && state == ConnectionManager.ConnectionState.CONNECTING) {
+            android.view.animation.Animation spin =
+                    android.view.animation.AnimationUtils.loadAnimation(
+                            this, R.anim.connection_spinning);
+            icon.startAnimation(spin);
+        } else {
+            icon.clearAnimation();
+        }
     }
 
     public void notifyBasicChromeFragments() {
@@ -1376,19 +1387,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
     
     /**
-     * Header connection icon tint: theme primary when connected; green while Bluetooth is
-     * connecting/searching; orange while USB is connecting; idle grey otherwise.
+     * Header connection icon tint: theme primary when connected; idle grey otherwise.
      */
     private int headerConnectionClusterTint(
             ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         switch (state) {
             case CONNECTED:
                 return ThemeManager.getColorPrimary(this);
-            case CONNECTING:
-                if (type == ConnectionManager.ConnectionType.BLUETOOTH) {
-                    return ContextCompat.getColor(this, R.color.connected);
-                }
-                return ContextCompat.getColor(this, R.color.connecting);
             default:
                 return ContextCompat.getColor(this, R.color.header_connection_idle);
         }
@@ -1411,10 +1416,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 return R.drawable.ic_usb_off_24;
             case BLUETOOTH:
                 if (state == ConnectionManager.ConnectionState.CONNECTING) {
-                    return R.drawable.bluetooth_searching_24px;
+                    return R.drawable.ic_bluetooth_connecting_24;
                 }
                 if (state == ConnectionManager.ConnectionState.CONNECTED) {
-                    return R.drawable.bluetooth_connected_24px;
+                    return R.drawable.ic_bluetooth_connected_24;
                 }
                 return R.drawable.ic_bluetooth;
             case NONE:
@@ -1458,13 +1463,23 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 if (signalBars != null) {
                     signalBars.setVisibility(View.GONE);
                 }
+                connectionButton.clearAnimation();
                 break;
             case CONNECTING:
                 if (signalBars != null) signalBars.setVisibility(View.GONE);
+                if (type == ConnectionManager.ConnectionType.BLUETOOTH) {
+                    android.view.animation.Animation spin =
+                            android.view.animation.AnimationUtils.loadAnimation(
+                                    this, R.anim.connection_spinning);
+                    connectionButton.startAnimation(spin);
+                } else {
+                    connectionButton.clearAnimation();
+                }
                 break;
             case ERROR:
             case DISCONNECTED:
                 if (signalBars != null) signalBars.setVisibility(View.GONE);
+                connectionButton.clearAnimation();
                 break;
         }
         notifyBasicChromeFragments();
