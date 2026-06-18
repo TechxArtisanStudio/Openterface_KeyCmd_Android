@@ -1,6 +1,5 @@
 package com.openterface.terminal;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,13 +12,23 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ArrayAdapter;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
@@ -34,6 +43,7 @@ public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
 
+    private View rootView;
     private TerminalView terminalView;
     private TerminalSession terminalSession;
 
@@ -43,9 +53,11 @@ public class TerminalFragment extends Fragment {
     private Button tabBtn;
     private TextView statusText;
     private LinearLayout connectionOverlay;
+    private LinearLayout bottomBar;
 
     private MainActivity mainActivity;
     private TerminalPrefs prefs;
+    private CredentialManager credentialManager;
 
     // SSH connection state
     private SshClient sshClient;
@@ -73,6 +85,8 @@ public class TerminalFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
 
         prefs = new TerminalPrefs(requireContext());
+        credentialManager = new CredentialManager(requireContext());
+        credentialManager.migrateFromTerminalPrefs(requireContext());
         initViews(view);
         initTerminal();
         setupListeners();
@@ -82,6 +96,7 @@ public class TerminalFragment extends Fragment {
     }
 
     private void initViews(View view) {
+        rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
         ctrlBtn = view.findViewById(R.id.terminal_ctrl_btn);
@@ -89,6 +104,7 @@ public class TerminalFragment extends Fragment {
         tabBtn = view.findViewById(R.id.terminal_tab_btn);
         statusText = view.findViewById(R.id.terminal_status);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
+        bottomBar = view.findViewById(R.id.terminal_bottom_bar);
     }
 
     private void initTerminal() {
@@ -98,6 +114,7 @@ public class TerminalFragment extends Fragment {
                 prefs.getScrollbackSize()
         );
         terminalView.setTerminalSession(terminalSession);
+        terminalView.setFontSize(prefs.getFontSize());
     }
 
     private void setupListeners() {
@@ -135,6 +152,19 @@ public class TerminalFragment extends Fragment {
                 terminalView.showKeyboard();
             }
         });
+
+        // Handle IME insets to keep bottom bar above the keyboard
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+            Insets imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime());
+            if (imeInsets.bottom > 0) {
+                // IME is visible, add bottom padding to push bottom bar above IME
+                rootView.setPadding(0, 0, 0, imeInsets.bottom);
+            } else {
+                // IME is hidden, remove padding
+                rootView.setPadding(0, 0, 0, 0);
+            }
+            return insets;
+        });
     }
 
     private void updateConnectionState() {
@@ -163,12 +193,72 @@ public class TerminalFragment extends Fragment {
         EditText portInput = dialogView.findViewById(R.id.terminal_port_input);
         EditText usernameInput = dialogView.findViewById(R.id.terminal_username_input);
         EditText passwordInput = dialogView.findViewById(R.id.terminal_password_input);
-        CheckBox rememberCredentials = dialogView.findViewById(R.id.terminal_remember_credentials);
+        Spinner profileSpinner = dialogView.findViewById(R.id.terminal_profile_spinner);
 
-        // Pre-fill from prefs
-        hostInput.setText(prefs.getLastHost());
-        usernameInput.setText(prefs.getLastUsername());
-        passwordInput.setText(prefs.getLastPassword());
+        // Build profile list for spinner
+        List<CredentialProfile> profiles = credentialManager.getAllProfiles();
+        List<String> profileLabels = new ArrayList<>();
+        profileLabels.add(getString(R.string.credential_new_connection));
+        CredentialProfile[] profileArray = new CredentialProfile[profiles.size()];
+        for (int i = 0; i < profiles.size(); i++) {
+            CredentialProfile p = profiles.get(i);
+            profileArray[i] = p;
+            profileLabels.add(p.getDisplayLabel());
+        }
+
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, profileLabels);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        profileSpinner.setAdapter(spinnerAdapter);
+
+        // Pre-select active profile if present
+        CredentialProfile activeProfile = credentialManager.getActiveProfile();
+        int initialSelection = 0; // "New connection…"
+        if (activeProfile != null) {
+            for (int i = 0; i < profileArray.length; i++) {
+                if (profileArray[i] != null && profileArray[i].getId().equals(activeProfile.getId())) {
+                    initialSelection = i + 1;
+                    break;
+                }
+            }
+        }
+
+        // Track which profile was selected (1-based index into profileLabels, 0 = new)
+        final int[] selectedProfileIndex = {initialSelection};
+
+        // Auto-fill fields from selected profile
+        if (initialSelection > 0 && profileArray[initialSelection - 1] != null) {
+            CredentialProfile ap = profileArray[initialSelection - 1];
+            hostInput.setText(ap.getHost());
+            portInput.setText(String.valueOf(ap.getPort()));
+            usernameInput.setText(ap.getUsername());
+            passwordInput.setText(ap.getPassword());
+        } else {
+            // Fall back to legacy prefs for new connections
+            hostInput.setText(prefs.getLastHost());
+            usernameInput.setText(prefs.getLastUsername());
+            passwordInput.setText(prefs.getLastPassword());
+        }
+
+        profileSpinner.setSelection(initialSelection);
+        profileSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                selectedProfileIndex[0] = position;
+                if (position > 0 && profileArray[position - 1] != null) {
+                    CredentialProfile selected = profileArray[position - 1];
+                    hostInput.setText(selected.getHost());
+                    portInput.setText(String.valueOf(selected.getPort()));
+                    usernameInput.setText(selected.getUsername());
+                    passwordInput.setText(selected.getPassword());
+                }
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                selectedProfileIndex[0] = 0;
+            }
+        });
 
         // Check transport availability and set defaults
         boolean usbAvailable = isUsbEcmAvailable();
@@ -180,12 +270,15 @@ public class TerminalFragment extends Fragment {
         } else if (bleAvailable && !usbAvailable) {
             transportGroup.check(R.id.transport_ble);
             dialogView.findViewById(R.id.transport_usb).setEnabled(false);
+        } else if (bleAvailable) {
+            // Both available — prefer BLE-Eth when BLE is already connected
+            transportGroup.check(R.id.transport_ble);
         } else if (!usbAvailable && !bleAvailable) {
             Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.terminal_connect)
                 .setView(dialogView)
                 .setPositiveButton(R.string.terminal_connect, (dialog, which) -> {
@@ -209,18 +302,38 @@ public class TerminalFragment extends Fragment {
                         return;
                     }
 
+                    final int finalPort = port;
                     boolean useUsb = transportGroup.getCheckedRadioButtonId() == R.id.transport_usb;
 
-                    // Save prefs if requested
-                    if (rememberCredentials.isChecked()) {
-                        prefs.setLastHost(host);
-                        prefs.setLastUsername(username);
-                        prefs.setLastPassword(password);
+                    // Offer to save changes if an existing profile is selected
+                    int spIdx = selectedProfileIndex[0];
+                    if (spIdx > 0 && profileArray[spIdx - 1] != null) {
+                        CredentialProfile existing = profileArray[spIdx - 1];
+                        boolean changed = !existing.getHost().equals(host)
+                                || existing.getPort() != finalPort
+                                || !existing.getUsername().equals(username)
+                                || !existing.getPassword().equals(password);
+                        if (changed) {
+                            new MaterialAlertDialogBuilder(requireContext())
+                                    .setMessage(getString(R.string.credential_save_changes_prompt, existing.getName()))
+                                    .setPositiveButton(R.string.credential_save, (d2, w2) -> {
+                                        existing.setHost(host);
+                                        existing.setPort(finalPort);
+                                        existing.setUsername(username);
+                                        existing.setPassword(password);
+                                        credentialManager.updateProfile(existing);
+                                        connect(host, finalPort, username, password, useUsb);
+                                    })
+                                    .setNegativeButton(android.R.string.cancel, (d2, w2) ->
+                                            connect(host, finalPort, username, password, useUsb))
+                                    .show();
+                            return;
+                        }
                     }
 
-                    Log.d(TAG, "Dialog positive: host=" + host + " port=" + port
+                    Log.d(TAG, "Dialog positive: host=" + host + " port=" + finalPort
                             + " user=" + username + " useUsb=" + useUsb);
-                    connect(host, port, username, password, useUsb);
+                    connect(host, finalPort, username, password, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();

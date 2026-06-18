@@ -6,7 +6,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
@@ -32,6 +35,12 @@ public class TerminalView extends View {
     private long cursorBlinkLast = 0;
     private static final long CURSOR_BLINK_INTERVAL = 500; // ms
 
+    // Pinch-to-zoom
+    private ScaleGestureDetector scaleDetector;
+    private GestureDetector gestureDetector;
+    private static final float MIN_FONT_SIZE = 6f;
+    private static final float MAX_FONT_SIZE = 48f;
+
     // Color scheme
     private static final int DEFAULT_BG = Color.BLACK;
     private static final int DEFAULT_FG = 0xFFD0D0D0; // light gray for readability
@@ -49,7 +58,15 @@ public class TerminalView extends View {
 
     private void init() {
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTypeface(android.graphics.Typeface.MONOSPACE);
+        // Load bundled Noto Sans Mono font for better Unicode support
+        try {
+            android.graphics.Typeface monoTypeface = android.graphics.Typeface.createFromAsset(
+                getContext().getAssets(), "fonts/NotoSansMono.ttf");
+            textPaint.setTypeface(monoTypeface);
+        } catch (Exception e) {
+            // Fallback to system monospace if bundled font fails to load
+            textPaint.setTypeface(android.graphics.Typeface.MONOSPACE);
+        }
         textPaint.setTextSize(fontSize);
         textPaint.setColor(DEFAULT_FG);
 
@@ -63,7 +80,37 @@ public class TerminalView extends View {
         setFocusableInTouchMode(true);
         setBackgroundColor(DEFAULT_BG);
 
+        scaleDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                float newFontSize = fontSize * detector.getScaleFactor();
+                newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, newFontSize));
+                setFontSize(newFontSize);
+                return true;
+            }
+
+            @Override
+            public void onScaleEnd(ScaleGestureDetector detector) {
+                new TerminalPrefs(getContext()).setFontSize(fontSize);
+            }
+        });
+
+        gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                showKeyboard();
+                return true;
+            }
+        });
+
         measureCharSize();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        scaleDetector.onTouchEvent(event);
+        gestureDetector.onTouchEvent(event);
+        return true;
     }
 
     public void setTerminalSession(TerminalSession session) {
@@ -118,21 +165,50 @@ public class TerminalView extends View {
         for (int row = 0; row < drawRows; row++) {
             char[] line = session.getLineChars(row);
             if (line == null) continue;
+            CellAttribute[] lineAttrs = session.getLineAttrs(row);
 
             for (int col = 0; col < drawCols; col++) {
                 char ch = line[col];
-                if (ch == 0 || ch == ' ') continue; // blank
+                CellAttribute attr = (lineAttrs != null && col < lineAttrs.length)
+                    ? lineAttrs[col] : CellAttribute.DEFAULT;
 
-                textPaint.setColor(DEFAULT_FG);
                 float x = col * charWidth;
                 float y = row * charHeight + textOffsetY;
+
+                // Resolve inverse: swap fg/bg
+                int fg = attr.fgColor;
+                int bg = attr.bgColor;
+                if (attr.inverse) {
+                    int tmp = fg;
+                    fg = bg;
+                    bg = tmp;
+                }
+
+                // Draw background cell if non-default
+                if (bg != CellAttribute.DEFAULT_BG) {
+                    bgPaint.setColor(bg);
+                    canvas.drawRect(x, row * charHeight, x + charWidth, (row + 1) * charHeight, bgPaint);
+                }
+
+                // Skip blank cells (no glyph to draw)
+                if (ch == 0 || ch == ' ') continue;
+
+                // Map characters missing from DroidSansMono to visual equivalents
+                ch = mapMissingGlyph(ch);
+
+                // Configure paint for this cell
+                textPaint.setColor(fg);
+                textPaint.setFakeBoldText(attr.bold);
+                textPaint.setTextSkewX(attr.italic ? -0.25f : 0);
+                textPaint.setUnderlineText(attr.underline);
+
                 canvas.drawText(String.valueOf(ch), x, y, textPaint);
             }
         }
 
-        // Draw cursor
+        // Draw cursor (respect DEC private mode 25)
         updateCursorBlink();
-        if (cursorVisible) {
+        if (cursorVisible && session.isCursorVisible()) {
             int cx = session.getCursorX();
             int cy = session.getCursorY();
             if (cx < drawCols && cy < drawRows) {
@@ -140,6 +216,21 @@ public class TerminalView extends View {
                 float y = cy * charHeight;
                 canvas.drawRect(x, y, x + charWidth, y + charHeight, cursorPaint);
             }
+        }
+    }
+
+    /**
+     * Map characters that are missing from the font to visual equivalents.
+     * DroidSansMono lacks U+23F4/23F5/23F6/23F7 (media control triangles).
+     * We map them to similar-looking geometric shapes that ARE in the font.
+     */
+    private char mapMissingGlyph(char ch) {
+        switch (ch) {
+            case '\u23F5': return '\u25B6'; // ⏵ → ▶ (black right-pointing triangle)
+            case '\u23F4': return '\u25C0'; // ⏴ → ◀ (black left-pointing triangle)
+            case '\u23F6': return '\u25B2'; // ⏶ → ▲ (black up-pointing triangle)
+            case '\u23F7': return '\u25BC'; // ⏷ → ▼ (black down-pointing triangle)
+            default: return ch;
         }
     }
 
@@ -171,6 +262,9 @@ public class TerminalView extends View {
      * E.g., Enter -> \r, Tab -> \t, Escape -> 0x1B, arrow keys -> CSI sequences.
      */
     private byte[] keyToByteSequence(int keyCode, KeyEvent event) {
+        // Application cursor keys mode (DECCKM): send SS3 sequences (ESC O A/B/C/D)
+        boolean appMode = (session != null && session.isApplicationCursorKeys());
+
         switch (keyCode) {
             case KeyEvent.KEYCODE_ENTER:
                 return new byte[]{'\r'};
@@ -179,13 +273,13 @@ public class TerminalView extends View {
             case KeyEvent.KEYCODE_ESCAPE:
                 return new byte[]{0x1B};
             case KeyEvent.KEYCODE_DPAD_UP:
-                return "\033[A".getBytes();
+                return appMode ? "\033OA".getBytes() : "\033[A".getBytes();
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                return "\033[B".getBytes();
+                return appMode ? "\033OB".getBytes() : "\033[B".getBytes();
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                return "\033[D".getBytes();
+                return appMode ? "\033OD".getBytes() : "\033[D".getBytes();
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                return "\033[C".getBytes();
+                return appMode ? "\033OC".getBytes() : "\033[C".getBytes();
             case KeyEvent.KEYCODE_DEL:
                 return new byte[]{0x7F}; // Backspace
             case KeyEvent.KEYCODE_FORWARD_DEL:

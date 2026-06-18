@@ -134,7 +134,8 @@ public class SshClient {
             // Set terminal size
             int cols = terminalSession.getColumns();
             int rows = terminalSession.getRows();
-            ((ChannelShell) shellChannel).setPtySize(cols, rows, cols * 8, rows * 16);
+            // Set terminal type — must be xterm-256color for TUI apps (Ink/React/Neovim)
+            ((ChannelShell) shellChannel).setPtyType("xterm-256color", cols, rows, cols * 8, rows * 16);
 
             InputStream in = shellChannel.getInputStream();
             OutputStream out = shellChannel.getOutputStream();
@@ -169,6 +170,18 @@ public class SshClient {
                 } catch (IOException e) {
                     if (listener != null) {
                         listener.onError("SSH write failed: " + e.getMessage());
+                    }
+                }
+            });
+
+            // Response callback: bind terminal responses (CPR, DA1, etc.) to SSH output
+            terminalSession.setResponseSender(data -> {
+                try {
+                    out.write(data);
+                    out.flush();
+                } catch (IOException e) {
+                    if (listener != null) {
+                        listener.onError("SSH response write failed: " + e.getMessage());
                     }
                 }
             });

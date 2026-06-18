@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Thread-safe unidirectional byte pipe built on a blocking queue.
@@ -162,7 +163,14 @@ public class QueuePipe {
             System.arraycopy(buf, off, copy, 0, len);
 
             try {
-                queue.put(copy);
+                // Use offer() with timeout so we can check closed flag periodically.
+                // This prevents deadlock when the reader has disappeared.
+                while (!writerClosed) {
+                    if (queue.offer(copy, 1, TimeUnit.SECONDS)) {
+                        return;
+                    }
+                }
+                throw new IOException("Pipe output stream closed");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Write interrupted", e);
@@ -170,14 +178,14 @@ public class QueuePipe {
         }
 
         @Override
-        public void flush() throws IOException {
-            // No-op: queue entries are visible to the reader immediately on put().
-        }
-
-        @Override
         public void close() throws IOException {
             writerClosed = true;
             signalEndOfStream();
+        }
+
+        @Override
+        public void flush() throws IOException {
+            // No-op: queue entries are visible to the reader immediately on put().
         }
     }
 }

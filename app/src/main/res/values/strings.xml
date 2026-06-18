@@ -1489,4 +1489,24 @@ by TechxArtisan</string>
     <string name="touch_pad_compact_initial">TouchPad\nButtons: up (no drag)\nTouch: idle</string>
     <string name="touch_pad_brand_content_description">Openterface</string>
     <string name="touch_pad_info_content_description">Show touchpad gesture help</string>
+
+    <!-- Credential Manager -->
+    <string name="credential_manager">Credentials</string>
+    <string name="credential_add">+ Add Profile</string>
+    <string name="credential_edit">Edit</string>
+    <string name="credential_delete">Delete</string>
+    <string name="credential_name_hint">e.g. My Server</string>
+    <string name="credential_no_profiles">No saved credential profiles.\nTap "Add Profile" to create one.</string>
+    <string name="credential_save">Save</string>
+    <string name="credential_cancel">Cancel</string>
+    <string name="credential_confirm_delete">Delete this profile? This cannot be undone.</string>
+    <string name="credential_profile_name_required">Profile name is required</string>
+    <string name="credential_host_required">Host is required</string>
+    <string name="credential_username_required">Username is required</string>
+    <string name="credential_saved">Profile saved</string>
+    <string name="credential_deleted">Profile deleted</string>
+    <string name="credential_set_active">Set as active</string>
+    <string name="credential_new_connection">New connection…</string>
+    <string name="credential_save_changes_prompt">Save changes to profile "%s"?</string>
+    <string name="settings_tab_credentials">Credentials</string>
 </resources>
