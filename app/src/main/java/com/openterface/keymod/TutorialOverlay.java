@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.view.inputmethod.InputMethodManager;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -15,10 +16,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.cardview.widget.CardView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.openterface.keymod.help.HelpImageConfig;
+import com.openterface.keymod.help.HelpImageConfigManager;
+import com.openterface.keymod.help.HelpImageDownloader;
+
+import java.io.File;
 
 /**
  * Beginner tutorial overlay that highlights views step-by-step.
@@ -31,10 +42,15 @@ public class TutorialOverlay extends FrameLayout {
     private final View dimView;
     private final HighlightView highlightView;
     private final CardView tooltipCard;
+    private final ImageView helpImageView;
+    private final ProgressBar loadingIndicator;
     private final TextView tooltipText;
     private final Button nextButton;
     private final Button skipButton;
     private final Rect highlightRect = new Rect();
+
+    private HelpImageConfig config;
+    private String currentModeKey;
 
     private Step[] steps;
     private int currentStep = 0;
@@ -84,6 +100,27 @@ public class TutorialOverlay extends FrameLayout {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(padding, padding, padding, padding);
         content.setBackgroundColor(surfaceColor);
+
+        // Help image area (GIF/PNG overlay)
+        helpImageView = new ImageView(context);
+        helpImageView.setAdjustViewBounds(true);
+        helpImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        helpImageView.setMaxHeight(dpToPx(180));
+        helpImageView.setVisibility(View.GONE);
+        helpImageView.setBackgroundColor(0x00000000);
+        LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        imageParams.bottomMargin = dpToPx(8);
+        content.addView(helpImageView, imageParams);
+
+        // Loading indicator
+        loadingIndicator = new ProgressBar(context);
+        loadingIndicator.setVisibility(View.GONE);
+        LinearLayout.LayoutParams loadingParams = new LinearLayout.LayoutParams(
+                dpToPx(32), dpToPx(32));
+        loadingParams.gravity = Gravity.CENTER_HORIZONTAL;
+        loadingParams.bottomMargin = dpToPx(4);
+        content.addView(loadingIndicator, loadingParams);
 
         tooltipText = new TextView(context);
         tooltipText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
@@ -161,6 +198,15 @@ public class TutorialOverlay extends FrameLayout {
         this.onDismissExtra = onDismissExtra;
     }
 
+    /**
+     * Set the help-image config and mode key so the overlay can show images
+     * alongside each step's text. Call before {@link #setSteps(Step[])}.
+     */
+    public void setConfig(@NonNull HelpImageConfig config, @NonNull String modeKey) {
+        this.config = config;
+        this.currentModeKey = modeKey;
+    }
+
     private void showCurrentStep() {
         if (steps == null || currentStep >= steps.length) {
             dismiss();
@@ -180,6 +226,9 @@ public class TutorialOverlay extends FrameLayout {
         } else {
             nextButton.setText(getContext().getString(R.string.tutorial_next));
         }
+
+        // Load help image for this step
+        loadHelpImage(step);
 
         // Find the target view
         View targetView = null;
@@ -350,6 +399,71 @@ public class TutorialOverlay extends FrameLayout {
         default int delayMs() { return 0; }
         default int insetTopDp() { return 8; }
         default int insetBottomDp() { return 8; }
+        /** Returns the help-image key for this step, or null if no image is associated. */
+        @Nullable
+        default String imageKey() { return null; }
+    }
+
+    /**
+     * Load the help image for the given step (if a config and imageKey are available).
+     * Shows a loading indicator while downloading, then displays the image with Glide.
+     */
+    private void loadHelpImage(Step step) {
+        String imageKey = step.imageKey();
+        if (config == null || currentModeKey == null || imageKey == null) {
+            hideImageArea();
+            return;
+        }
+
+        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
+        if (imageUrl == null) {
+            hideImageArea();
+            return;
+        }
+
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+
+        // If already cached, load immediately
+        File cached = downloader.getCachedFile(imageUrl);
+        if (cached != null) {
+            showImage(cached);
+            return;
+        }
+
+        // Show loading indicator and download
+        helpImageView.setVisibility(View.GONE);
+        loadingIndicator.setVisibility(View.VISIBLE);
+
+        downloader.download(imageUrl, new HelpImageDownloader.Callback() {
+            @Override
+            public void onSuccess(File localFile) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    showImage(localFile);
+                });
+            }
+
+            @Override
+            public void onError(Exception error) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    hideImageArea();
+                });
+            }
+        });
+    }
+
+    private void showImage(File localFile) {
+        helpImageView.setVisibility(View.VISIBLE);
+        Glide.with(getContext())
+                .load(localFile)
+                .diskCacheStrategy(DiskCacheStrategy.NONE) // already cached by downloader
+                .into(helpImageView);
+    }
+
+    private void hideImageArea() {
+        helpImageView.setVisibility(View.GONE);
+        loadingIndicator.setVisibility(View.GONE);
     }
 
     private int dpToPx(int dp) {
