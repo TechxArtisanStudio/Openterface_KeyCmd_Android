@@ -1,7 +1,6 @@
 package com.openterface.keymod.gamepad;
 
 import android.content.Context;
-import android.util.Base64;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -134,7 +133,7 @@ public final class GamepadLayoutPresetBackgroundCodec {
         }
         L.backgroundImageEncoding = GamepadLayoutPresetConstants.BACKGROUND_EMBED_ENCODING_BASE64;
         L.backgroundImageMediaType = mime;
-        L.backgroundImageData = Base64.encodeToString(raw, Base64.NO_WRAP);
+        L.backgroundImageData = java.util.Base64.getEncoder().encodeToString(raw);
     }
 
     /** @see #injectEmbedForExport(File, GamepadLayoutPresetDocument, String) */
@@ -170,7 +169,7 @@ public final class GamepadLayoutPresetBackgroundCodec {
         }
         byte[] decoded;
         try {
-            decoded = Base64.decode(data, Base64.DEFAULT);
+            decoded = java.util.Base64.getDecoder().decode(data);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid backgroundImageData base64");
         }

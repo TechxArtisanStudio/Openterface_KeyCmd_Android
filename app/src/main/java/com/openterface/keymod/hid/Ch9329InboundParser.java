@@ -1,5 +1,7 @@
 package com.openterface.keymod.hid;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayDeque;
 import java.util.Iterator;
 
@@ -7,6 +9,8 @@ import java.util.Iterator;
  * Incrementally parses CH9329 UART frames (0x57 0xAB …) from inbound serial/BLE bytes.
  * When a successful {@code CMD_GET_INFO} response ({@code CMD == 0x81}, {@code LEN >= 3}) is seen,
  * forwards {@code DATA[2]} to {@link HostKeyboardLockLeds}.
+ * When a USB mode response ({@code CMD == 0xB0}) is seen, forwards the raw frame to
+ * {@link UsbModeResponseListener}.
  *
  * <p>Checksum: sum of all bytes except the final checksum byte, modulo 256, equals the final byte.
  */
@@ -14,8 +18,21 @@ public final class Ch9329InboundParser {
 
     private static final int MAX_BUFFER = 512;
     private static final int CMD_GET_INFO_ACK = 0x81;
+    private static final int CMD_USB_MODE_RESPONSE = 0xB0;
 
     private final ArrayDeque<Byte> buf = new ArrayDeque<>();
+
+    /** Listener for USB mode status responses (CMD 0xB0). */
+    public interface UsbModeResponseListener {
+        void onUsbModeResponse(byte[] frame);
+    }
+
+    @Nullable
+    private UsbModeResponseListener usbModeListener;
+
+    public void setUsbModeResponseListener(@Nullable UsbModeResponseListener listener) {
+        usbModeListener = listener;
+    }
 
     public synchronized void append(byte[] data, int len) {
         if (data == null || len <= 0) {
@@ -57,6 +74,12 @@ public final class Ch9329InboundParser {
             if (cmd == CMD_GET_INFO_ACK && len >= 3) {
                 int leds = frame[5 + 2] & 0xFF;
                 HostKeyboardLockLeds.get().applyFromHidLedByte(leds);
+            }
+            if (cmd == CMD_USB_MODE_RESPONSE) {
+                UsbModeResponseListener listener = usbModeListener;
+                if (listener != null) {
+                    listener.onUsbModeResponse(frame.clone());
+                }
             }
         }
     }

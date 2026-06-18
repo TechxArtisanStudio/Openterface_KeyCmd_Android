@@ -1,8 +1,11 @@
 package com.openterface.keymod.fragments;
 
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,16 +23,21 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.button.MaterialButton;
 import com.openterface.keymod.AppLocaleManager;
+import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.UsbModeManager;
+import com.openterface.keymod.hid.Ch9329InboundParser;
 
 /**
  * General Settings Fragment
  * - Connection preferences
  * - Display options
- * - Auto-connect settings
+ * - Device / USB firmware mode
  */
 public class GeneralSettingsFragment extends Fragment {
 
@@ -74,7 +82,55 @@ public class GeneralSettingsFragment extends Fragment {
     /** Spinner index 0 = follow system; 1..n match R.array.language_codes order. */
     private String[] localeSpinnerTags;
 
+    // Device / USB mode UI
+    private LinearLayout deviceStatusContainer;
+    private TextView deviceCurrentModeText;
+    private TextView deviceStoredModeText;
+    private TextView deviceSupportedModesText;
+    private TextView deviceDisconnectedText;
+    private TextView deviceSelectModeLabel;
+    private RadioGroup deviceModeRadioGroup;
+    private MaterialButton deviceRefreshButton;
+    private MaterialButton deviceApplyButton;
+    private MaterialButton deviceClearButton;
+
     private SharedPreferences prefs;
+
+    // USB mode state
+    private UsbModeManager.UsbModeStatus currentStatus;
+    private int selectedMode = UsbModeManager.MODE_HID_UAC_ACM;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // Connection state tracking
+    private boolean deviceConnected = false;
+
+    // Connection state listener to track USB/BLE connectivity
+    private final ConnectionManager.ConnectionStateListener connectionStateListener =
+            new ConnectionManager.ConnectionStateListener() {
+                @Override
+                public void onConnectionStateChanged(ConnectionManager.ConnectionType type,
+                                                     ConnectionManager.ConnectionState state) {
+                    boolean connected = (state == ConnectionManager.ConnectionState.CONNECTED);
+                    if (isAdded() && getActivity() != null) {
+                        getActivity().runOnUiThread(() -> setDeviceConnected(connected));
+                    }
+                }
+
+                @Override
+                public void onConnectionError(String error) {
+                    if (isAdded() && getActivity() != null) {
+                        getActivity().runOnUiThread(() -> setDeviceConnected(false));
+                    }
+                }
+            };
+
+    // USB mode response listener
+    private final Ch9329InboundParser.UsbModeResponseListener usbModeResponseListener = frame -> {
+        UsbModeManager.UsbModeStatus status = UsbModeManager.parseStatusResponse(frame);
+        if (status != null && isAdded() && getActivity() != null) {
+            getActivity().runOnUiThread(() -> onUsbModeStatusReceived(status));
+        }
+    };
 
     @Nullable
     @Override
@@ -87,8 +143,100 @@ public class GeneralSettingsFragment extends Fragment {
         initializeViews(view);
         loadSettings();
         setupListeners();
+        setupDeviceViews(view);
+
+        // Register for connection state changes — only when hosted by MainActivity
+        if (isMainActivity() && getConnectionManager() != null) {
+            getConnectionManager().addConnectionStateListener(connectionStateListener);
+            // Set initial connection state
+            setDeviceConnected(getConnectionManager().getCurrentConnectionState() == ConnectionManager.ConnectionState.CONNECTED);
+        }
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Re-register connection listener and USB mode listener in case activity was recreated
+        if (isMainActivity() && getConnectionManager() != null) {
+            getConnectionManager().addConnectionStateListener(connectionStateListener);
+            setDeviceConnected(getConnectionManager().getCurrentConnectionState() == ConnectionManager.ConnectionState.CONNECTED);
+        }
+        registerUsbModeResponseListener();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (isMainActivity() && getConnectionManager() != null) {
+            getConnectionManager().removeConnectionStateListener(connectionStateListener);
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (isMainActivity() && getConnectionManager() != null) {
+            getConnectionManager().removeConnectionStateListener(connectionStateListener);
+        }
+    }
+
+    /** Helper: return MainActivity only when host is actually MainActivity, otherwise null. */
+    @Nullable
+    private MainActivity getMainActivity() {
+        if (getActivity() instanceof MainActivity) {
+            return (MainActivity) getActivity();
+        }
+        return null;
+    }
+
+    /** Helper: true when host is MainActivity. */
+    private boolean isMainActivity() {
+        return getActivity() instanceof MainActivity;
+    }
+
+    /** Helper: get ConnectionManager from host MainActivity, or null. */
+    @Nullable
+    private ConnectionManager getConnectionManager() {
+        MainActivity activity = getMainActivity();
+        if (activity != null) {
+            return activity.getConnectionManager();
+        }
+        return null;
+    }
+
+    /** Helper: get BluetoothService from host MainActivity, or null. */
+    @Nullable
+    private BluetoothService getBluetoothService() {
+        MainActivity activity = getMainActivity();
+        if (activity != null) {
+            return activity.getBluetoothService();
+        }
+        return null;
+    }
+
+    private void setDeviceConnected(boolean connected) {
+        this.deviceConnected = connected;
+        updateDeviceUiForConnectionState();
+    }
+
+    private void updateDeviceUiForConnectionState() {
+        if (deviceStatusContainer == null) return;
+
+        boolean connected = deviceConnected;
+        deviceStatusContainer.setVisibility(connected ? View.VISIBLE : View.GONE);
+        deviceDisconnectedText.setVisibility(connected ? View.GONE : View.VISIBLE);
+        deviceSelectModeLabel.setVisibility(connected ? View.VISIBLE : View.GONE);
+        deviceModeRadioGroup.setVisibility(connected ? View.VISIBLE : View.GONE);
+        deviceRefreshButton.setVisibility(connected ? View.VISIBLE : View.GONE);
+        deviceApplyButton.setVisibility(connected ? View.VISIBLE : View.GONE);
+        deviceClearButton.setVisibility(connected ? View.VISIBLE : View.GONE);
+
+        deviceModeRadioGroup.setEnabled(connected);
+        deviceRefreshButton.setEnabled(connected);
+        deviceApplyButton.setEnabled(connected);
+        deviceClearButton.setEnabled(connected);
     }
 
     private void initializeViews(View view) {
@@ -275,6 +423,219 @@ public class GeneralSettingsFragment extends Fragment {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
     }
+
+    // ---------- Device / USB Mode ----------
+
+    private void setupDeviceViews(View view) {
+        deviceStatusContainer = view.findViewById(R.id.device_status_container);
+        deviceCurrentModeText = view.findViewById(R.id.device_current_mode_text);
+        deviceStoredModeText = view.findViewById(R.id.device_stored_mode_text);
+        deviceSupportedModesText = view.findViewById(R.id.device_supported_modes_text);
+        deviceDisconnectedText = view.findViewById(R.id.device_disconnected_text);
+        deviceSelectModeLabel = view.findViewById(R.id.device_select_mode_label);
+        deviceModeRadioGroup = view.findViewById(R.id.device_mode_radio_group);
+        deviceRefreshButton = view.findViewById(R.id.device_refresh_button);
+        deviceApplyButton = view.findViewById(R.id.device_apply_button);
+        deviceClearButton = view.findViewById(R.id.device_clear_button);
+
+        // Default selection: Mode 2 (firmware default)
+        deviceModeRadioGroup.check(R.id.device_mode_2);
+        deviceModeRadioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (isLoadingSettings) return;
+            selectedMode = radioIdToMode(checkedId);
+        });
+
+        deviceRefreshButton.setOnClickListener(v -> sendReadStatus());
+
+        deviceApplyButton.setOnClickListener(v -> showApplyRebootDialog());
+
+        deviceClearButton.setOnClickListener(v -> showClearConfigDialog());
+    }
+
+    private void sendReadStatus() {
+        MainActivity activity = getMainActivity();
+        if (activity == null) return;
+        ConnectionManager cm = activity.getConnectionManager();
+        if (cm == null || !cm.isConnected()) {
+            com.google.android.material.snackbar.Snackbar.make(requireView(),
+                    R.string.settings_device_error_not_connected,
+                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        deviceCurrentModeText.setText(R.string.settings_device_status_refreshing);
+
+        // Register the response listener before sending
+        registerUsbModeResponseListener();
+
+        UsbModeManager.readStatus(cm.getUsbPort(), activity.getBluetoothService());
+
+        // Timeout: if no response after 3s, show error
+        mainHandler.postDelayed(() -> {
+            if (currentStatus == null && isAdded()) {
+                deviceCurrentModeText.setText(R.string.settings_device_status_unknown);
+                com.google.android.material.snackbar.Snackbar.make(requireView(),
+                        R.string.settings_device_error_read_failed,
+                        com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show();
+            }
+        }, 3000);
+    }
+
+    private void registerUsbModeResponseListener() {
+        BluetoothService bt = getBluetoothService();
+        if (bt != null) {
+            bt.setUsbModeResponseListener(usbModeResponseListener);
+        }
+    }
+
+    private void onUsbModeStatusReceived(UsbModeManager.UsbModeStatus status) {
+        this.currentStatus = status;
+        if (deviceCurrentModeText != null) {
+            deviceCurrentModeText.setText(
+                    getString(R.string.settings_device_current_mode, UsbModeManager.modeName(status.activeMode)));
+        }
+        if (deviceStoredModeText != null) {
+            deviceStoredModeText.setText(
+                    getString(R.string.settings_device_stored_mode, UsbModeManager.modeName(status.storedMode)));
+        }
+        if (deviceSupportedModesText != null) {
+            deviceSupportedModesText.setText(
+                    getString(R.string.settings_device_supported_modes, status.capabilityMaskString()));
+        }
+
+        // Update radio group to match stored mode
+        if (status.storedMode >= 1 && status.storedMode <= 4) {
+            selectedMode = status.storedMode;
+            int radioId = modeToRadioId(status.storedMode);
+            if (deviceModeRadioGroup != null) {
+                isLoadingSettings = true;
+                deviceModeRadioGroup.check(radioId);
+                isLoadingSettings = false;
+            }
+        }
+
+        // Disable radio buttons for unsupported modes
+        if (deviceModeRadioGroup != null) {
+            setModeRadioEnabled(R.id.device_mode_1, status.isModeSupported(1));
+            setModeRadioEnabled(R.id.device_mode_2, status.isModeSupported(2));
+            setModeRadioEnabled(R.id.device_mode_3, status.isModeSupported(3));
+            setModeRadioEnabled(R.id.device_mode_4, status.isModeSupported(4));
+        }
+    }
+
+    private void setModeRadioEnabled(int radioId, boolean enabled) {
+        View radio = requireView().findViewById(radioId);
+        if (radio != null) {
+            radio.setEnabled(enabled);
+            radio.setAlpha(enabled ? 1.0f : 0.4f);
+        }
+    }
+
+    private void showApplyRebootDialog() {
+        if (!deviceConnected) {
+            com.google.android.material.snackbar.Snackbar.make(requireView(),
+                    R.string.settings_device_error_not_connected,
+                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+
+        String targetName = UsbModeManager.modeName(selectedMode);
+
+        // If the selected mode equals the current stored mode, offer just a reboot
+        if (currentStatus != null && currentStatus.storedMode == selectedMode) {
+            new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.settings_device_reboot_confirm_title)
+                    .setMessage(R.string.settings_device_reboot_only)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> sendReboot())
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+            return;
+        }
+
+        String message = getString(R.string.settings_device_reboot_confirm_message, targetName);
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.settings_device_reboot_confirm_title)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> sendWriteAndReboot())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void sendWriteAndReboot() {
+        MainActivity activity = getMainActivity();
+        if (activity == null) return;
+        ConnectionManager cm = activity.getConnectionManager();
+        if (cm == null || !cm.isConnected()) return;
+
+        UsbModeManager.writeMode(cm.getUsbPort(), activity.getBluetoothService(), selectedMode);
+
+        com.google.android.material.snackbar.Snackbar.make(requireView(),
+                R.string.settings_device_mode_applied,
+                com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show();
+
+        // Wait a bit then send reboot
+        mainHandler.postDelayed(() -> sendReboot(), 500);
+    }
+
+    private void sendReboot() {
+        MainActivity activity = getMainActivity();
+        if (activity == null) return;
+        ConnectionManager cm = activity.getConnectionManager();
+        if (cm == null || !cm.isConnected()) return;
+
+        UsbModeManager.reboot(cm.getUsbPort(), activity.getBluetoothService());
+
+        com.google.android.material.snackbar.Snackbar.make(requireView(),
+                R.string.settings_device_reboot_sent,
+                com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show();
+
+        // Reset status so stale data isn't shown
+        currentStatus = null;
+    }
+
+    private void showClearConfigDialog() {
+        if (!deviceConnected) return;
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.settings_device_clear_confirm_title)
+                .setMessage(R.string.settings_device_clear_confirm_message)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> sendClearConfig())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void sendClearConfig() {
+        MainActivity activity = getMainActivity();
+        if (activity == null) return;
+        ConnectionManager cm = activity.getConnectionManager();
+        if (cm == null || !cm.isConnected()) return;
+
+        UsbModeManager.clearMode(cm.getUsbPort(), activity.getBluetoothService());
+
+        com.google.android.material.snackbar.Snackbar.make(requireView(),
+                R.string.settings_device_config_cleared,
+                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show();
+
+        currentStatus = null;
+    }
+
+    private static int radioIdToMode(int radioId) {
+        if (radioId == R.id.device_mode_1) return UsbModeManager.MODE_HID_ACM;
+        if (radioId == R.id.device_mode_2) return UsbModeManager.MODE_HID_UAC_ACM;
+        if (radioId == R.id.device_mode_3) return UsbModeManager.MODE_HID_ACM_BRIDGE;
+        if (radioId == R.id.device_mode_4) return UsbModeManager.MODE_HID_ECM_BRIDGE;
+        return UsbModeManager.MODE_HID_UAC_ACM;
+    }
+
+    private static int modeToRadioId(int mode) {
+        if (mode == UsbModeManager.MODE_HID_ACM) return R.id.device_mode_1;
+        if (mode == UsbModeManager.MODE_HID_UAC_ACM) return R.id.device_mode_2;
+        if (mode == UsbModeManager.MODE_HID_ACM_BRIDGE) return R.id.device_mode_3;
+        if (mode == UsbModeManager.MODE_HID_ECM_BRIDGE) return R.id.device_mode_4;
+        return R.id.device_mode_2;
+    }
+
+    // ---------- Theme helpers ----------
 
     private void viewModeChildrenEnabled(boolean enabled) {
         for (int i = 0; i < themeModeGroup.getChildCount(); i++) {

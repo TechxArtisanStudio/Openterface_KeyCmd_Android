@@ -91,6 +91,35 @@
     <string name="settings_theme_mode_dark">Dark</string>
     <string name="settings_general_section_feedback">Feedback</string>
     <string name="settings_haptic_feedback">Haptic feedback</string>
+
+    <!-- Settings: Device / USB Mode (fragment_settings_general + GeneralSettingsFragment) -->
+    <string name="settings_device_section">Device</string>
+    <string name="settings_device_connect_to_view">Connect to device to view mode settings</string>
+    <string name="settings_device_current_mode">Current mode: %s</string>
+    <string name="settings_device_stored_mode">Stored mode: %s</string>
+    <string name="settings_device_supported_modes">Supported: %s</string>
+    <string name="settings_device_select_mode_label">Select firmware mode</string>
+    <string name="settings_device_mode_1">Mode 1 — HID + ACM</string>
+    <string name="settings_device_mode_2">Mode 2 — HID + UAC + ACM</string>
+    <string name="settings_device_mode_3">Mode 3 — HID + ACM Bridge</string>
+    <string name="settings_device_mode_4">Mode 4 — HID + ECM Bridge</string>
+    <string name="settings_device_refresh_status">Refresh Status</string>
+    <string name="settings_device_apply_reboot">Apply &amp; Reboot</string>
+    <string name="settings_device_clear_config">Clear Persistent Config</string>
+    <string name="settings_device_reboot_confirm_title">Reboot Device</string>
+    <string name="settings_device_reboot_confirm_message">This will change the firmware mode to %s and reboot the device. You will need to reconnect after the reboot. Continue?</string>
+    <string name="settings_device_clear_confirm_title">Clear Persistent Config</string>
+    <string name="settings_device_clear_confirm_message">This will erase the saved firmware mode setting. The device will use its compiled default mode after reboot. Continue?</string>
+    <string name="settings_device_reboot_only">Reboot device without changing mode?</string>
+    <string name="settings_device_status_refreshing">Refreshing…</string>
+    <string name="settings_device_status_unknown">Unknown</string>
+    <string name="settings_device_error_not_connected">Device not connected</string>
+    <string name="settings_device_error_read_failed">Failed to read mode status</string>
+    <string name="settings_device_error_write_failed">Failed to write mode</string>
+    <string name="settings_device_mode_applied">Mode change applied. Rebooting…</string>
+    <string name="settings_device_config_cleared">Persistent config cleared</string>
+    <string name="settings_device_reboot_sent">Reboot command sent</string>
+
     <string-array name="theme_color_family_names">
         <item>Orange</item>
         <item>Blue</item>
@@ -182,6 +211,21 @@
     <!-- Welcome & Guide (mode picker + tutorial); opened from launcher or side menu -->
     <string name="nav_welcome_guide">Welcome &amp; Guide</string>
     <string name="nav_welcome_guide_content_description">Welcome screen, mode picker, and tutorial</string>
+    <string name="top_mode_label_terminal">Terminal</string>
+    <string name="nav_terminal_cd">Terminal</string>
+    <string name="terminal_connect">Connect</string>
+    <string name="terminal_disconnect">Disconnect</string>
+    <string name="terminal_disconnected">Disconnected</string>
+    <string name="terminal_disconnected_hint">Connect device via USB (ECM Bridge mode) or BLE to use terminal</string>
+    <string name="terminal_transport_usb">USB ECM Bridge</string>
+    <string name="terminal_transport_ble">BLE-Eth Tunnel</string>
+    <string name="terminal_host">Target Host</string>
+    <string name="terminal_port">Port</string>
+    <string name="terminal_username">Username</string>
+    <string name="terminal_password">Password</string>
+    <string name="terminal_connecting">Connecting...</string>
+    <string name="terminal_connected">Connected</string>
+    <string name="terminal_connection_failed">Connection failed</string>
     <string name="report_bug">Report a bug</string>
     <string name="report_bug_cd">Report a bug in a web form</string>
     <string name="report_bug_no_browser_toast">No app can open this link. Install a browser and try again.</string>
@@ -1445,4 +1489,24 @@ by TechxArtisan</string>
     <string name="touch_pad_compact_initial">TouchPad\nButtons: up (no drag)\nTouch: idle</string>
     <string name="touch_pad_brand_content_description">Openterface</string>
     <string name="touch_pad_info_content_description">Show touchpad gesture help</string>
+
+    <!-- Credential Manager -->
+    <string name="credential_manager">Credentials</string>
+    <string name="credential_add">+ Add Profile</string>
+    <string name="credential_edit">Edit</string>
+    <string name="credential_delete">Delete</string>
+    <string name="credential_name_hint">e.g. My Server</string>
+    <string name="credential_no_profiles">No saved credential profiles.\nTap "Add Profile" to create one.</string>
+    <string name="credential_save">Save</string>
+    <string name="credential_cancel">Cancel</string>
+    <string name="credential_confirm_delete">Delete this profile? This cannot be undone.</string>
+    <string name="credential_profile_name_required">Profile name is required</string>
+    <string name="credential_host_required">Host is required</string>
+    <string name="credential_username_required">Username is required</string>
+    <string name="credential_saved">Profile saved</string>
+    <string name="credential_deleted">Profile deleted</string>
+    <string name="credential_set_active">Set as active</string>
+    <string name="credential_new_connection">New connection…</string>
+    <string name="credential_save_changes_prompt">Save changes to profile "%s"?</string>
+    <string name="settings_tab_credentials">Credentials</string>
 </resources>

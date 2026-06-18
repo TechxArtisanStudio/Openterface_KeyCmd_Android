@@ -56,6 +56,8 @@ public class LaunchPanelActivity extends AppCompatActivity {
     public static final String MODE_VOICE = "voice";
     public static final String MODE_COMPOSE = "compose";
     public static final String MODE_PRESENTATION = "presentation";
+    /** Terminal mode: interactive SSH terminal over USB ECM or BLE-Eth tunnel. */
+    public static final String MODE_TERMINAL = "terminal";
 
     private CheckBox rememberChoiceCheckBox;
     private Button startButton;

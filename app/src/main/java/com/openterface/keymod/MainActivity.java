@@ -69,6 +69,7 @@ import com.openterface.fragment.KmProSettingsFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
+import com.openterface.terminal.TerminalFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
@@ -176,6 +177,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navMacros;
     private LinearLayout navVoice;
     private LinearLayout navPresentation;
+    private LinearLayout navTerminal;
     private ImageButton targetOsHeaderButton;
     @Nullable
     private View headerRightCluster;
@@ -602,6 +604,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         navMacros = findViewById(R.id.nav_macros);
         navVoice = findViewById(R.id.nav_voice);
         navPresentation = findViewById(R.id.nav_presentation);
+        navTerminal = findViewById(R.id.nav_terminal);
         setupDrawerImeBehavior();
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
@@ -1622,6 +1625,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 drawerLayout.closeDrawer(GravityCompat.START);
             });
         }
+        if (navTerminal != null) {
+            navTerminal.setOnClickListener(v -> {
+                currentNavMode = LaunchPanelActivity.MODE_TERMINAL;
+                updateNavSelection();
+                showTerminalFragment();
+                markDrawerCloseAsNavigation();
+                drawerLayout.closeDrawer(GravityCompat.START);
+            });
+        }
 
         // Welcome & Guide — returns to LaunchPanelActivity (mode picker + tutorial)
         View chooseModeButton = findViewById(R.id.choose_mode_button);
@@ -1771,6 +1783,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         if (navPresentation != null) {
             navPresentation.setSelected(LaunchPanelActivity.MODE_PRESENTATION.equals(currentNavMode));
+        }
+        if (navTerminal != null) {
+            navTerminal.setSelected(LaunchPanelActivity.MODE_TERMINAL.equals(currentNavMode));
         }
     }
 
@@ -1974,6 +1989,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         transaction.commit();
     }
 
+    private void showTerminalFragment() {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(R.id.fragment_container, new TerminalFragment());
+        transaction.commit();
+    }
+
     /** Switch primary content mode (same behavior as side nav). Used by top-strip PH shortcuts. */
     public void switchToLaunchMode(String mode) {
         handleLaunchMode(mode);
@@ -2030,6 +2052,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             case LaunchPanelActivity.MODE_PRESENTATION:
                 consumePendingKbMouseSubmode();
                 showPresentationFragment();
+                break;
+            case LaunchPanelActivity.MODE_TERMINAL:
+                consumePendingKbMouseSubmode();
+                showTerminalFragment();
                 break;
             default:
                 currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;

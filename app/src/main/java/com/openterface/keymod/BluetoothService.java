@@ -22,6 +22,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.regex.Matcher;
@@ -54,6 +57,260 @@ public class BluetoothService extends Service {
     private Ch9329InboundParser hostLockInboundParser;
     @Nullable
     private Disposable hostLockNotifyDisposable;
+
+    // ── BLE-Eth tunnel callbacks (shared characteristic FFF1) ─────────
+    public interface BleEthDataCallback {
+        void onBleEthData(byte[] data);
+    }
+    private final Set<BleEthDataCallback> bleEthCallbacks = new CopyOnWriteArraySet<>();
+    private Disposable bleEthNotifyDisposable;
+
+    private static final int BLE_ETH_TARGET_MTU = 247;
+    private static final int BLE_ETH_WRITE_TIMEOUT_MS = 5000;
+    private static final int BLE_ETH_INTER_CHUNK_DELAY_MS = 10;
+    private static final int SAFE_BLE_STREAM_CHUNK = 128;
+    private static final int BLE_ETH_FRAME_CMD_INDEX = 3;
+    private static final int BLE_ETH_CMD_CONNECT = 0x10;
+    private static final int BLE_ETH_CMD_DISCONNECT = 0x12;
+    private static final int BLE_ETH_CMD_INFO = 0x1F;
+
+    private final ExecutorService bleEthWriteExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "BleEth-WriteExecutor");
+        thread.setDaemon(true);
+        return thread;
+    });
+    @Nullable
+    private BluetoothGattCharacteristic bleEthWriteCharacteristic;
+
+    /** Register for BLE-Eth tunnel data notifications. */
+    public void addBleEthCallback(BleEthDataCallback callback) {
+        if (callback != null) {
+            bleEthCallbacks.add(callback);
+            Log.i(TAG, LOG_PREFIX + "BLE-Eth callback registered. Total callbacks: " + bleEthCallbacks.size());
+            // Note: We do NOT create a separate notification subscription here.
+            // The host lock notification (startHostLockBleNotifications) already subscribes
+            // to FFF1 and dispatches to BLE-Eth callbacks. Creating a second subscription
+            // would cause duplicate delivery and corrupt frame parsing for split frames.
+            if (hostLockNotifyDisposable != null) {
+                Log.d(TAG, LOG_PREFIX + "BLE-Eth callbacks will receive data via shared host lock subscription");
+            } else {
+                Log.w(TAG, LOG_PREFIX + "No active BLE notification subscription yet - callbacks will not receive data until connected");
+            }
+        }
+    }
+
+    /** Unregister a BLE-Eth data callback. */
+    public void removeBleEthCallback(BleEthDataCallback callback) {
+        if (callback != null) {
+            bleEthCallbacks.remove(callback);
+            Log.d(TAG, LOG_PREFIX + "BLE-Eth callback unregistered. Remaining callbacks: " + bleEthCallbacks.size());
+        }
+        if (bleEthCallbacks.isEmpty() && bleEthNotifyDisposable != null) {
+            Log.i(TAG, LOG_PREFIX + "No more BLE-Eth callbacks, stopping notifications");
+            stopBleEthNotifications();
+        }
+    }
+
+    private void startBleEthNotifications(RxBleConnection connection) {
+        if (bleEthNotifyDisposable != null) {
+            Log.w(TAG, LOG_PREFIX + "BLE-Eth notifications already active, skipping setup");
+            return;
+        }
+
+        Log.i(TAG, LOG_PREFIX + "Starting BLE-Eth notification subscription for characteristic " + NOTIFY_CHARACTERISTIC_UUID);
+
+        bleEthNotifyDisposable = connection.setupNotification(NOTIFY_CHARACTERISTIC_UUID)
+            .flatMap(notificationObservable -> {
+                Log.d(TAG, LOG_PREFIX + "BLE-Eth notification setup successful, subscribing to observable");
+                return notificationObservable;
+            })
+            .subscribe(
+                bytes -> {
+                    Log.d(TAG, LOG_PREFIX + "BLE-Eth notification received: " + bytes.length + " bytes: " + bytesToHex(bytes));
+                    int callbackCount = bleEthCallbacks.size();
+                    Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + callbackCount + " callbacks");
+                    for (BleEthDataCallback callback : bleEthCallbacks) {
+                        try {
+                            callback.onBleEthData(bytes);
+                        } catch (Exception e) {
+                            Log.e(TAG, LOG_PREFIX + "BLE-Eth callback threw exception: " + e.getMessage(), e);
+                        }
+                    }
+                },
+                error -> {
+                    Log.e(TAG, LOG_PREFIX + "BLE-Eth notification error: " + error.getClass().getSimpleName() + " - " + error.getMessage(), error);
+                    bleEthNotifyDisposable = null;
+                },
+                () -> {
+                    Log.w(TAG, LOG_PREFIX + "BLE-Eth notifications completed (unexpected)");
+                    bleEthNotifyDisposable = null;
+                }
+            );
+
+        connectionDisposables.add(bleEthNotifyDisposable);
+        Log.i(TAG, LOG_PREFIX + "BLE-Eth notification subscription added to connectionDisposables");
+    }
+
+    private void stopBleEthNotifications() {
+        if (bleEthNotifyDisposable != null) {
+            Log.d(TAG, LOG_PREFIX + "Stopping BLE-Eth notifications");
+            bleEthNotifyDisposable.dispose();
+            connectionDisposables.remove(bleEthNotifyDisposable);
+            bleEthNotifyDisposable = null;
+            Log.i(TAG, LOG_PREFIX + "BLE-Eth notifications stopped");
+        } else {
+            Log.d(TAG, LOG_PREFIX + "stopBleEthNotifications called but no active subscription");
+        }
+    }
+
+    /** Write raw data to the BLE characteristic. Control frames use acknowledged writes. */
+    public void writeBleEthData(byte[] data) {
+        if (activeConnection == null) {
+            Log.w(TAG, LOG_PREFIX + "Cannot write BLE-Eth data: no active connection");
+            return;
+        }
+        Log.d(TAG, LOG_PREFIX + "BLE-Eth TX " + data.length + " bytes: " + bytesToHex(data));
+
+        byte[] frame = Arrays.copyOf(data, data.length);
+        bleEthWriteExecutor.execute(() -> writeBleEthInternal(frame));
+    }
+
+    private void writeBleEthInternal(byte[] data) {
+        RxBleConnection connection = activeConnection;
+        if (connection == null) {
+            Log.w(TAG, LOG_PREFIX + "Skipping BLE-Eth write after disconnect");
+            return;
+        }
+
+        BluetoothGattCharacteristic characteristic = getBleEthWriteCharacteristic(connection);
+        if (characteristic == null) {
+            return;
+        }
+
+        boolean useAcknowledgedWrite = isControlFrame(data);
+
+        if (data.length <= SAFE_BLE_STREAM_CHUNK) {
+            writeBleEthChunk(connection, characteristic, data, useAcknowledgedWrite);
+            return;
+        }
+
+        writeBleEthFragmented(connection, characteristic, data);
+    }
+
+    private void writeBleEthFragmented(RxBleConnection connection,
+                                       BluetoothGattCharacteristic characteristic,
+                                       byte[] data) {
+        try {
+            int offset = 0;
+            while (offset < data.length) {
+                int chunkLen = Math.min(SAFE_BLE_STREAM_CHUNK, data.length - offset);
+                byte[] chunk = new byte[chunkLen];
+                System.arraycopy(data, offset, chunk, 0, chunkLen);
+                offset += chunkLen;
+                boolean lastChunk = offset >= data.length;
+                Log.d(TAG, LOG_PREFIX + "BLE-Eth TX chunk: " + chunk.length + " bytes"
+                        + (lastChunk ? " (last)" : ""));
+
+                if (!writeBleEthChunk(connection, characteristic, chunk, false)) {
+                    return;
+                }
+
+                if (!lastChunk) {
+                    Thread.sleep(BLE_ETH_INTER_CHUNK_DELAY_MS);
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, LOG_PREFIX + "BLE-Eth fragmented write interrupted");
+        }
+    }
+
+    @Nullable
+    private BluetoothGattCharacteristic getBleEthWriteCharacteristic(RxBleConnection connection) {
+        if (bleEthWriteCharacteristic != null) {
+            return bleEthWriteCharacteristic;
+        }
+
+        CountDownLatch characteristicLatch = new CountDownLatch(1);
+        final BluetoothGattCharacteristic[] characteristicHolder = new BluetoothGattCharacteristic[1];
+
+        connection.discoverServices()
+                .flatMap(services -> services.getCharacteristic(WRITE_CHARACTERISTIC_UUID))
+                .subscribe(
+                        characteristic -> {
+                            bleEthWriteCharacteristic = characteristic;
+                            characteristicHolder[0] = characteristic;
+                            characteristicLatch.countDown();
+                        },
+                        throwable -> {
+                            Log.e(TAG, LOG_PREFIX + "BLE-Eth get char error: " + throwable);
+                            characteristicLatch.countDown();
+                        }
+                );
+
+        try {
+            if (!characteristicLatch.await(BLE_ETH_WRITE_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                Log.e(TAG, LOG_PREFIX + "BLE-Eth get characteristic timed out");
+                return null;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, LOG_PREFIX + "BLE-Eth get characteristic interrupted");
+            return null;
+        }
+
+        if (characteristicHolder[0] == null) {
+            Log.e(TAG, LOG_PREFIX + "BLE-Eth write characteristic unavailable");
+        }
+        return characteristicHolder[0];
+    }
+
+    private boolean writeBleEthChunk(RxBleConnection connection,
+                                     BluetoothGattCharacteristic characteristic,
+                                     byte[] data,
+                                     boolean acknowledgedWrite) {
+        characteristic.setWriteType(acknowledgedWrite
+                ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+
+        CountDownLatch writeLatch = new CountDownLatch(1);
+        final boolean[] writeSucceeded = new boolean[1];
+
+        connection.writeCharacteristic(characteristic, data)
+                .subscribe(
+                        writtenBytes -> {
+                            writeSucceeded[0] = true;
+                            writeLatch.countDown();
+                        },
+                        throwable -> {
+                            Log.e(TAG, LOG_PREFIX + "BLE-Eth write error: " + throwable);
+                            writeLatch.countDown();
+                        }
+                );
+
+        try {
+            if (!writeLatch.await(BLE_ETH_WRITE_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                Log.e(TAG, LOG_PREFIX + "BLE-Eth write timed out");
+                return false;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, LOG_PREFIX + "BLE-Eth write interrupted");
+            return false;
+        }
+
+        return writeSucceeded[0];
+    }
+
+    private boolean isControlFrame(byte[] data) {
+        if (data == null || data.length <= BLE_ETH_FRAME_CMD_INDEX) {
+            return false;
+        }
+        int cmd = data[BLE_ETH_FRAME_CMD_INDEX] & 0xFF;
+        return cmd == BLE_ETH_CMD_CONNECT
+                || cmd == BLE_ETH_CMD_DISCONNECT
+                || cmd == BLE_ETH_CMD_INFO;
+    }
 
     public interface ConnectionStateListener {
         void onBluetoothConnecting(RxBleDevice device);
@@ -96,27 +353,51 @@ public class BluetoothService extends Service {
         }
     }
 
+    /**
+     * Set a listener for USB mode status responses (CMD 0xB0) on the BLE inbound parser.
+     * If the parser already exists and a connection is active, the listener is attached immediately.
+     */
+    public void setUsbModeResponseListener(@Nullable Ch9329InboundParser.UsbModeResponseListener listener) {
+        Ch9329InboundParser parser = hostLockInboundParser;
+        if (parser != null) {
+            parser.setUsbModeResponseListener(listener);
+        }
+    }
+
     private void startHostLockBleNotifications(@NonNull RxBleConnection connection) {
         stopHostLockBleNotifications();
-        if (hostLockInboundParser == null) {
-            return;
-        }
+        // Always set up the shared notification subscription on BLE connect.
+        // It dispatches to BOTH the host lock parser AND BLE-Eth callbacks.
+        // Without this, BLE-Eth won't receive any responses from the firmware.
         hostLockNotifyDisposable =
                 connection.setupNotification(NOTIFY_CHARACTERISTIC_UUID)
                         .flatMap(obs -> obs)
                         .subscribe(
                                 bytes -> {
-                                    if (hostLockInboundParser != null
-                                            && bytes != null
-                                            && bytes.length > 0) {
+                                    if (bytes == null || bytes.length == 0) return;
+                                    Log.d(TAG, LOG_PREFIX + "BLE RX " + bytes.length + " bytes: " + bytesToHex(bytes));
+                                    // 1) Dispatch to host lock inbound parser (existing use)
+                                    if (hostLockInboundParser != null) {
                                         hostLockInboundParser.append(bytes, bytes.length);
+                                    }
+                                    // 2) Dispatch ALL notifications to BLE-Eth callbacks.
+                                    //    The BLE-Eth frame parser (BleEthTransport) accumulates
+                                    //    partial bytes and only emits frames when a complete
+                                    //    57 AB header + payload + checksum is received.
+                                    //    Filtering here would drop continuation bytes and break
+                                    //    multi-notification frames.
+                                    if (!bleEthCallbacks.isEmpty()) {
+                                        Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + bleEthCallbacks.size() + " callbacks");
+                                        for (BleEthDataCallback cb : bleEthCallbacks) {
+                                            cb.onBleEthData(bytes);
+                                        }
                                     }
                                 },
                                 throwable ->
                                         Log.w(
                                                 TAG,
                                                 LOG_PREFIX
-                                                        + "Host lock BLE notify setup failed: "
+                                                        + "Shared notify subscription error: "
                                                         + throwable));
         if (hostLockNotifyDisposable != null) {
             connectionDisposables.add(hostLockNotifyDisposable);
@@ -249,10 +530,21 @@ public class BluetoothService extends Service {
                                 connectingDevices.remove(deviceAddress);
                             }
                             activeConnection = connection;
+                            bleEthWriteCharacteristic = null;
                             Log.d(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                             notifyBluetoothConnected(device);
                             startRssiPolling();
-                            startHostLockBleNotifications(connection);
+                            connection.requestMtu(BLE_ETH_TARGET_MTU)
+                                    .subscribe(
+                                            mtu -> {
+                                                Log.i(TAG, LOG_PREFIX + "BLE MTU negotiated: " + mtu);
+                                                startHostLockBleNotifications(connection);
+                                            },
+                                            throwable -> {
+                                                Log.w(TAG, LOG_PREFIX + "BLE MTU request failed, continuing: " + throwable);
+                                                startHostLockBleNotifications(connection);
+                                            }
+                                    );
                         },
                         throwable -> {
                             synchronized (connectingDevices) {
@@ -260,6 +552,7 @@ public class BluetoothService extends Service {
                             }
                             Log.e(TAG, LOG_PREFIX + "Connection error for device " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + "): " + throwable.toString());
                             activeConnection = null;
+                            bleEthWriteCharacteristic = null;
                             stopHostLockBleNotifications();
                             notifyBluetoothError(device, throwable.toString());
                             notifyBluetoothDisconnected(device);
@@ -371,11 +664,13 @@ public class BluetoothService extends Service {
     public void onDestroy() {
         super.onDestroy();
         connectionDisposables.dispose();
+        bleEthWriteExecutor.shutdownNow();
         stopRssiPolling();
         if (connectedDevice != null) {
             notifyBluetoothDisconnected(connectedDevice);
         }
         activeConnection = null;
+        bleEthWriteCharacteristic = null;
         connectedDevice = null;
         stopReconnect();
         Log.d(TAG, LOG_PREFIX + "BluetoothService destroyed");
@@ -388,6 +683,7 @@ public class BluetoothService extends Service {
             connectionDisposables.clear();
             stopRssiPolling();
             activeConnection = null;
+            bleEthWriteCharacteristic = null;
             connectedDevice = null;
             if (previousDevice != null) {
                 notifyBluetoothDisconnected(previousDevice);

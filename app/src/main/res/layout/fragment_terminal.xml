@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_background">
+
+    <!-- Toolbar -->
+    <LinearLayout
+        android:id="@+id/terminal_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/terminal_toolbar_background"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <TextView
+            android:id="@+id/terminal_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/terminal_disconnected"
+            android:textColor="@color/terminal_status_text"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/terminal_connect_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/terminal_connect"
+            android:textSize="12sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+
+    <!-- Terminal Display -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.openterface.terminal.TerminalView
+            android:id="@+id/terminal_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <!-- Connection overlay (shown when disconnected) -->
+        <LinearLayout
+            android:id="@+id/terminal_connection_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/terminal_background"
+            android:visibility="visible">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_terminal"
+                android:tint="@color/text_secondary"
+                android:importantForAccessibility="no"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/top_mode_label_terminal"
+                android:textSize="24sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/terminal_disconnected_hint"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:gravity="center"
+                android:padding="16dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <!-- Keyboard Toggle Row (Ctrl, Esc, Tab for on-screen access) -->
+    <LinearLayout
+        android:id="@+id/terminal_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/terminal_bottom_bar"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <Button
+            android:id="@+id/terminal_ctrl_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Ctrl"
+            android:textSize="12sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <Button
+            android:id="@+id/terminal_esc_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Esc"
+            android:textSize="12sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <Button
+            android:id="@+id/terminal_tab_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Tab"
+            android:textSize="12sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+
+</LinearLayout>
