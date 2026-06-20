@@ -85,6 +85,7 @@ public class SshClient {
     public void connect() {
         try {
             Log.d(TAG, "SSH connect start: host=" + host + " port=" + port
+                    + " user=" + username
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 

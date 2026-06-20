@@ -266,7 +266,9 @@ public class ConnectionManager {
             usbPort.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
 
             // HID helpers used to prefer BLE when still connected; tear down BLE once USB is live.
-            if (bluetoothService != null && bluetoothService.isConnected()) {
+            // Preserve BLE if BLE-ETH tunnel is active.
+            if (bluetoothService != null && bluetoothService.isConnected()
+                    && !bluetoothService.hasBleEthCallbacks()) {
                 Log.d(TAG, "Disconnecting Bluetooth after USB serial is ready");
                 bluetoothService.disconnect();
             }

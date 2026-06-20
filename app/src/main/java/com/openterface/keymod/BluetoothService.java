@@ -82,6 +82,11 @@ public class BluetoothService extends Service {
     @Nullable
     private BluetoothGattCharacteristic bleEthWriteCharacteristic;
 
+    /** Returns true if any BLE-Eth tunnel callbacks are registered (i.e. BLE-ETH session is active). */
+    public boolean hasBleEthCallbacks() {
+        return !bleEthCallbacks.isEmpty();
+    }
+
     /** Register for BLE-Eth tunnel data notifications. */
     public void addBleEthCallback(BleEthDataCallback callback) {
         if (callback != null) {

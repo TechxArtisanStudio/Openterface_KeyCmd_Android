@@ -218,7 +218,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                         // Update fragments with new port if USB connected.
                         if (type == ConnectionManager.ConnectionType.USB
                                 && state == ConnectionManager.ConnectionState.CONNECTED) {
-                            if (bluetoothService != null && bluetoothService.isConnected()) {
+                            if (bluetoothService != null && bluetoothService.isConnected()
+                                    && !bluetoothService.hasBleEthCallbacks()) {
                                 bluetoothService.disconnect();
                             }
                             port = connectionManager.getUsbPort();
@@ -364,8 +365,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
                 UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (device != null) {
-                    // Use ConnectionManager for USB setup; drop BLE so HID transports match USB.
-                    if (bluetoothService != null && bluetoothService.isConnected()) {
+                    // Preserve BLE if BLE-ETH tunnel is active; otherwise tear down BLE so HID transports match USB.
+                    if (bluetoothService != null && bluetoothService.isConnected()
+                            && !bluetoothService.hasBleEthCallbacks()) {
                         bluetoothService.disconnect();
                     }
                     if (connectionManager != null) {

@@ -332,7 +332,8 @@ public class TerminalFragment extends Fragment {
                     }
 
                     Log.d(TAG, "Dialog positive: host=" + host + " port=" + finalPort
-                            + " user=" + username + " useUsb=" + useUsb);
+                            + " user=" + username + " passLen=" + password.length()
+                            + " useUsb=" + useUsb);
                     connect(host, finalPort, username, password, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
@@ -526,7 +527,15 @@ public class TerminalFragment extends Fragment {
             public void onError(String message) {
                 Log.e(TAG, "BLE-Eth SSH error: " + message);
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": " + message);
+                    String displayMessage = message;
+                    if (message != null && message.contains("Auth fail")) {
+                        displayMessage = "Authentication failed. Check:\n"
+                                + "1. Username and password are correct\n"
+                                + "2. SSH server allows password authentication (PasswordAuthentication yes)\n"
+                                + "3. Account is not locked (fail2ban, pam_tally2)\n"
+                                + "Original: " + message;
+                    }
+                    statusText.setText(displayMessage);
                     isSshConnected = false;
                     updateConnectionState();
                 });
