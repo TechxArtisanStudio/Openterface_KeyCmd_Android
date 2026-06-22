@@ -35,6 +35,9 @@ import com.openterface.keymod.fragments.VoiceSettingsFragment;
  */
 public class SettingsActivity extends AppCompatActivity {
 
+    public static final String EXTRA_TAB_INDEX = "extra_tab_index";
+    public static final int TAB_CREDENTIALS = 4;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         AppLocaleManager.applyPersistedLocales(this);
@@ -79,6 +82,12 @@ public class SettingsActivity extends AppCompatActivity {
         };
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> tab.setText(tabTitles[position])).attach();
+
+        // Pre-select tab if launched from an external shortcut (e.g., terminal "Add Profile")
+        int tabIndex = getIntent().getIntExtra(EXTRA_TAB_INDEX, 0);
+        if (tabIndex > 0 && tabIndex < tabTitles.length) {
+            viewPager.setCurrentItem(tabIndex, false);
+        }
     }
 
     private void setupWindowInsets() {
