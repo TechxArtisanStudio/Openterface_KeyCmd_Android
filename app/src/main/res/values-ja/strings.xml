@@ -1778,4 +1778,9 @@ TechxArtisan により</string>
     <string name="header_km_pro_input_compose_disabled_landscape_cd">キーボードとマウス Pro では作成モードは縦向きのみ利用できます。</string>
     <string name="shortcut_hub_cd_create_profile">プロファイルを作成</string>
     <string name="shortcut_hub_cd_import_profile">プロファイルを読み込み</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">SSH に接続</string>
+    <string name="terminal_transport_label">転送方式</string>
+    <string name="terminal_host_username_required">ホストとユーザー名は必須です</string>
 </resources>

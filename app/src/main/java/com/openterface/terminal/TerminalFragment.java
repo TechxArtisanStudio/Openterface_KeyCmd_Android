@@ -9,16 +9,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ArrayAdapter;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -180,7 +176,7 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Show SSH connection dialog with transport selection and credentials.
+     * Show SSH connection dialog with device list and transport selection.
      */
     private void showConnectionDialog() {
         if (getContext() == null) return;
@@ -188,77 +184,37 @@ public class TerminalFragment extends Fragment {
         View dialogView = LayoutInflater.from(getContext())
                 .inflate(R.layout.terminal_connection_dialog, null);
 
+        // Bind UI elements
         RadioGroup transportGroup = dialogView.findViewById(R.id.terminal_transport_group);
-        EditText hostInput = dialogView.findViewById(R.id.terminal_host_input);
-        EditText portInput = dialogView.findViewById(R.id.terminal_port_input);
-        EditText usernameInput = dialogView.findViewById(R.id.terminal_username_input);
-        EditText passwordInput = dialogView.findViewById(R.id.terminal_password_input);
-        Spinner profileSpinner = dialogView.findViewById(R.id.terminal_profile_spinner);
+        RadioButton usbRadio = dialogView.findViewById(R.id.transport_usb);
+        RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
+        androidx.recyclerview.widget.RecyclerView deviceList = dialogView.findViewById(R.id.device_list);
+        TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
 
-        // Build profile list for spinner
+        // Load profiles
         List<CredentialProfile> profiles = credentialManager.getAllProfiles();
-        List<String> profileLabels = new ArrayList<>();
-        profileLabels.add(getString(R.string.credential_new_connection));
-        CredentialProfile[] profileArray = new CredentialProfile[profiles.size()];
-        for (int i = 0; i < profiles.size(); i++) {
-            CredentialProfile p = profiles.get(i);
-            profileArray[i] = p;
-            profileLabels.add(p.getDisplayLabel());
-        }
+        DeviceAdapter adapter = new DeviceAdapter(profiles);
 
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, profileLabels);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        profileSpinner.setAdapter(spinnerAdapter);
-
-        // Pre-select active profile if present
-        CredentialProfile activeProfile = credentialManager.getActiveProfile();
-        int initialSelection = 0; // "New connection…"
-        if (activeProfile != null) {
-            for (int i = 0; i < profileArray.length; i++) {
-                if (profileArray[i] != null && profileArray[i].getId().equals(activeProfile.getId())) {
-                    initialSelection = i + 1;
-                    break;
-                }
-            }
-        }
-
-        // Track which profile was selected (1-based index into profileLabels, 0 = new)
-        final int[] selectedProfileIndex = {initialSelection};
-
-        // Auto-fill fields from selected profile
-        if (initialSelection > 0 && profileArray[initialSelection - 1] != null) {
-            CredentialProfile ap = profileArray[initialSelection - 1];
-            hostInput.setText(ap.getHost());
-            portInput.setText(String.valueOf(ap.getPort()));
-            usernameInput.setText(ap.getUsername());
-            passwordInput.setText(ap.getPassword());
+        if (profiles.isEmpty()) {
+            // Show empty state
+            deviceList.setVisibility(View.GONE);
+            emptyText.setVisibility(View.VISIBLE);
         } else {
-            // Fall back to legacy prefs for new connections
-            hostInput.setText(prefs.getLastHost());
-            usernameInput.setText(prefs.getLastUsername());
-            passwordInput.setText(prefs.getLastPassword());
-        }
+            // Setup RecyclerView
+            deviceList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(getContext()));
+            deviceList.setAdapter(adapter);
 
-        profileSpinner.setSelection(initialSelection);
-        profileSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                selectedProfileIndex[0] = position;
-                if (position > 0 && profileArray[position - 1] != null) {
-                    CredentialProfile selected = profileArray[position - 1];
-                    hostInput.setText(selected.getHost());
-                    portInput.setText(String.valueOf(selected.getPort()));
-                    usernameInput.setText(selected.getUsername());
-                    passwordInput.setText(selected.getPassword());
+            // Pre-select active profile
+            CredentialProfile activeProfile = credentialManager.getActiveProfile();
+            if (activeProfile != null) {
+                for (int i = 0; i < profiles.size(); i++) {
+                    if (profiles.get(i).getId().equals(activeProfile.getId())) {
+                        adapter.setSelectedPosition(i);
+                        break;
+                    }
                 }
             }
-
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                selectedProfileIndex[0] = 0;
-            }
-        });
+        }
 
         // Check transport availability and set defaults
         boolean usbAvailable = isUsbEcmAvailable();
@@ -266,12 +222,11 @@ public class TerminalFragment extends Fragment {
 
         if (usbAvailable && !bleAvailable) {
             transportGroup.check(R.id.transport_usb);
-            dialogView.findViewById(R.id.transport_ble).setEnabled(false);
+            bleRadio.setEnabled(false);
         } else if (bleAvailable && !usbAvailable) {
             transportGroup.check(R.id.transport_ble);
-            dialogView.findViewById(R.id.transport_usb).setEnabled(false);
+            usbRadio.setEnabled(false);
         } else if (bleAvailable) {
-            // Both available — prefer BLE-Eth when BLE is already connected
             transportGroup.check(R.id.transport_ble);
         } else if (!usbAvailable && !bleAvailable) {
             Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
@@ -279,57 +234,31 @@ public class TerminalFragment extends Fragment {
         }
 
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.terminal_connect)
                 .setView(dialogView)
                 .setPositiveButton(R.string.terminal_connect, (dialog, which) -> {
-                    String host = hostInput.getText().toString().trim();
-                    String portStr = portInput.getText().toString().trim();
-                    String username = usernameInput.getText().toString().trim();
-                    String password = passwordInput.getText().toString();
-
-                    if (host.isEmpty() || username.isEmpty()) {
-                        Toast.makeText(getContext(), "Host and username are required", Toast.LENGTH_SHORT).show();
+                    if (profiles.isEmpty()) {
+                        Toast.makeText(getContext(), R.string.terminal_no_devices, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    int port = 22;
-                    try {
-                        if (!portStr.isEmpty()) {
-                            port = Integer.parseInt(portStr);
-                        }
-                    } catch (NumberFormatException e) {
-                        Toast.makeText(getContext(), "Invalid port number", Toast.LENGTH_SHORT).show();
+                    int selectedPos = adapter.getSelectedPosition();
+                    if (selectedPos < 0 || selectedPos >= profiles.size()) {
+                        Toast.makeText(getContext(), R.string.terminal_select_device, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    final int finalPort = port;
+                    CredentialProfile profile = profiles.get(selectedPos);
+                    String host = profile.getHost();
+                    int finalPort = profile.getPort();
+                    String username = profile.getUsername();
+                    String password = profile.getPassword();
+
+                    if (host == null || host.isEmpty() || username == null || username.isEmpty()) {
+                        Toast.makeText(getContext(), R.string.terminal_host_username_required, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
                     boolean useUsb = transportGroup.getCheckedRadioButtonId() == R.id.transport_usb;
-
-                    // Offer to save changes if an existing profile is selected
-                    int spIdx = selectedProfileIndex[0];
-                    if (spIdx > 0 && profileArray[spIdx - 1] != null) {
-                        CredentialProfile existing = profileArray[spIdx - 1];
-                        boolean changed = !existing.getHost().equals(host)
-                                || existing.getPort() != finalPort
-                                || !existing.getUsername().equals(username)
-                                || !existing.getPassword().equals(password);
-                        if (changed) {
-                            new MaterialAlertDialogBuilder(requireContext())
-                                    .setMessage(getString(R.string.credential_save_changes_prompt, existing.getName()))
-                                    .setPositiveButton(R.string.credential_save, (d2, w2) -> {
-                                        existing.setHost(host);
-                                        existing.setPort(finalPort);
-                                        existing.setUsername(username);
-                                        existing.setPassword(password);
-                                        credentialManager.updateProfile(existing);
-                                        connect(host, finalPort, username, password, useUsb);
-                                    })
-                                    .setNegativeButton(android.R.string.cancel, (d2, w2) ->
-                                            connect(host, finalPort, username, password, useUsb))
-                                    .show();
-                            return;
-                        }
-                    }
 
                     Log.d(TAG, "Dialog positive: host=" + host + " port=" + finalPort
                             + " user=" + username + " useUsb=" + useUsb);
@@ -337,6 +266,79 @@ public class TerminalFragment extends Fragment {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * Adapter for device selection list in connection dialog.
+     */
+    private class DeviceAdapter extends androidx.recyclerview.widget.RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder> {
+
+        private final List<CredentialProfile> profiles;
+        private int selectedPosition = 0;
+
+        DeviceAdapter(List<CredentialProfile> profiles) {
+            this.profiles = profiles;
+        }
+
+        void setSelectedPosition(int position) {
+            int oldPosition = selectedPosition;
+            selectedPosition = position;
+            notifyItemChanged(oldPosition);
+            notifyItemChanged(position);
+        }
+
+        int getSelectedPosition() {
+            return selectedPosition;
+        }
+
+        @NonNull
+        @Override
+        public DeviceViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_dialog_device, parent, false);
+            return new DeviceViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull DeviceViewHolder holder, int position) {
+            CredentialProfile profile = profiles.get(position);
+            holder.nameText.setText(profile.getDisplayLabel());
+            holder.detailsText.setText(profile.getShortDescription());
+            holder.radioButton.setChecked(position == selectedPosition);
+
+            // Highlight selected item
+            if (position == selectedPosition) {
+                holder.cardView.setStrokeColor(requireContext().getResources().getColor(R.color.text_primary));
+                holder.cardView.setStrokeWidth(2);
+            } else {
+                holder.cardView.setStrokeColor(requireContext().getResources().getColor(R.color.divider));
+                holder.cardView.setStrokeWidth(1);
+            }
+
+            holder.itemView.setOnClickListener(v -> {
+                setSelectedPosition(holder.getBindingAdapterPosition());
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return profiles.size();
+        }
+
+        class DeviceViewHolder extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
+            com.google.android.material.card.MaterialCardView cardView;
+            RadioButton radioButton;
+            TextView nameText;
+            TextView detailsText;
+
+            DeviceViewHolder(@NonNull View itemView) {
+                super(itemView);
+                cardView = itemView.findViewById(R.id.device_card);
+                radioButton = itemView.findViewById(R.id.device_radio);
+                nameText = itemView.findViewById(R.id.device_name);
+                detailsText = itemView.findViewById(R.id.device_details);
+            }
+        }
     }
 
     /**

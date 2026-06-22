@@ -1509,4 +1509,12 @@ by TechxArtisan</string>
     <string name="credential_new_connection">New connection…</string>
     <string name="credential_save_changes_prompt">Save changes to profile "%s"?</string>
     <string name="settings_tab_credentials">Credentials</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">Connect to SSH</string>
+    <string name="terminal_transport_label">Transport</string>
+    <string name="terminal_host_username_required">Host and username are required</string>
+    <string name="terminal_devices_label">Configured Devices</string>
+    <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
+    <string name="terminal_select_device">Please select a device</string>
 </resources>

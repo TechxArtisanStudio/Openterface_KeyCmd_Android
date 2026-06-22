@@ -1380,4 +1380,9 @@
     <string name="header_km_pro_input_compose_disabled_landscape_cd">键盘与鼠标专业版中，撰写模式仅在竖屏可用。</string>
     <string name="shortcut_hub_cd_create_profile">创建配置文件</string>
     <string name="shortcut_hub_cd_import_profile">导入配置文件</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">连接 SSH</string>
+    <string name="terminal_transport_label">传输方式</string>
+    <string name="terminal_host_username_required">主机地址和用户名不能为空</string>
 </resources>

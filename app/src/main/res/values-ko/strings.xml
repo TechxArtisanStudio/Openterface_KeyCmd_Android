@@ -1330,4 +1330,9 @@ by TechxArtisan</string>
     <string name="touch_pad_compact_initial">터치패드\n버튼: 위(드래그 없음)\n터치: 유휴</string>
     <string name="touch_pad_brand_content_description">Openterface</string>
     <string name="touch_pad_info_content_description">터치패드 제스처 도움말 표시</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">SSH 연결</string>
+    <string name="terminal_transport_label">전송 방식</string>
+    <string name="terminal_host_username_required">호스트 주소와 사용자 이름은 필수입니다</string>
 </resources>
