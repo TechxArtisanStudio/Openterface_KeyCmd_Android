@@ -122,6 +122,8 @@ public class CredentialSettingsFragment extends Fragment {
 
         // Track selected auth type
         final String[] selectedAuthType = {CredentialProfile.AUTH_TYPE_PASSWORD};
+        // Track if editing an existing SSH key
+        final boolean[] hasExistingKey = {false};
 
         authTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -151,7 +153,14 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText(String.valueOf(existingProfile.getPort()));
             usernameInput.setText(existingProfile.getUsername());
             passwordInput.setText(existingProfile.getPassword());
-            privateKeyInput.setText(existingProfile.getPrivateKey());
+            // Show "已导入 Key" placeholder instead of actual key content
+            if (existingProfile.isSshKeyAuth() && !existingProfile.getPrivateKey().isEmpty()) {
+                privateKeyInput.setHint(R.string.credential_key_imported);
+                privateKeyInput.setText("");
+                hasExistingKey[0] = true;
+            } else {
+                privateKeyInput.setText(existingProfile.getPrivateKey());
+            }
             keyPassphraseInput.setText(existingProfile.getKeyPassphrase());
             notesInput.setText(existingProfile.getNotes());
             // Set spinner to match existing auth type
@@ -195,9 +204,12 @@ public class CredentialSettingsFragment extends Fragment {
                         Toast.makeText(getContext(), R.string.credential_password_required, Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (CredentialProfile.AUTH_TYPE_SSH_KEY.equals(authType) && privateKey.isEmpty()) {
-                        Toast.makeText(getContext(), R.string.credential_private_key_required, Toast.LENGTH_SHORT).show();
-                        return;
+                    if (CredentialProfile.AUTH_TYPE_SSH_KEY.equals(authType)) {
+                        // Allow empty privateKey when editing existing key (keep original)
+                        if (privateKey.isEmpty() && !hasExistingKey[0]) {
+                            Toast.makeText(getContext(), R.string.credential_private_key_required, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
                     }
 
                     int port = 22;
@@ -214,7 +226,12 @@ public class CredentialSettingsFragment extends Fragment {
                         existingProfile.setUsername(username);
                         existingProfile.setPassword(password);
                         existingProfile.setAuthType(authType);
-                        existingProfile.setPrivateKey(privateKey);
+                        // Keep existing key when editing and privateKey field is empty
+                        if (privateKey.isEmpty() && hasExistingKey[0] && existingProfile.isSshKeyAuth()) {
+                            // Don't update privateKey, keep original
+                        } else {
+                            existingProfile.setPrivateKey(privateKey);
+                        }
                         existingProfile.setKeyPassphrase(keyPassphrase);
                         existingProfile.setNotes(notes);
                         credentialManager.updateProfile(existingProfile);
@@ -268,6 +285,21 @@ public class CredentialSettingsFragment extends Fragment {
             holder.nameText.setText(profile.getDisplayLabel());
             holder.detailsText.setText(profile.getShortDescription());
 
+            // Auth type icon
+            if (holder.authTypeIcon != null) {
+                if (CredentialProfile.AUTH_TYPE_SSH_KEY.equals(profile.getAuthType())) {
+                    holder.authTypeIcon.setImageResource(R.drawable.ic_vpn_key_24);
+                    holder.authTypeIcon.setVisibility(View.VISIBLE);
+                    holder.authTypeIcon.setContentDescription(
+                            holder.itemView.getContext().getString(R.string.credential_auth_type_ssh_key));
+                } else {
+                    holder.authTypeIcon.setImageResource(R.drawable.ic_lock_24);
+                    holder.authTypeIcon.setVisibility(View.VISIBLE);
+                    holder.authTypeIcon.setContentDescription(
+                            holder.itemView.getContext().getString(R.string.credential_auth_type_password));
+                }
+            }
+
             // Prevent loop: set checked without triggering listener
             holder.activeRadio.setOnCheckedChangeListener(null);
             holder.activeRadio.setChecked(profile.isActive());
@@ -302,6 +334,7 @@ public class CredentialSettingsFragment extends Fragment {
             RadioButton activeRadio;
             TextView nameText;
             TextView detailsText;
+            ImageView authTypeIcon;
             ImageButton editButton;
             ImageButton deleteButton;
 
@@ -310,6 +343,7 @@ public class CredentialSettingsFragment extends Fragment {
                 activeRadio = itemView.findViewById(R.id.credential_active_radio);
                 nameText = itemView.findViewById(R.id.credential_name);
                 detailsText = itemView.findViewById(R.id.credential_details);
+                authTypeIcon = itemView.findViewById(R.id.credential_auth_type_icon);
                 editButton = itemView.findViewById(R.id.credential_edit_button);
                 deleteButton = itemView.findViewById(R.id.credential_delete_button);
             }

@@ -1525,5 +1525,7 @@ by TechxArtisan</string>
     <string name="credential_auth_type_ssh_key">SSH Key</string>
     <string name="credential_password_required">Password is required</string>
     <string name="credential_private_key_required">Private key is required</string>
+    <string name="credential_key_imported">Key Imported</string>
+    <string name="credential_key_import_failed">Failed to import key file</string>
     <string name="credential_auth_type">Authentication Type</string>
 </resources>
