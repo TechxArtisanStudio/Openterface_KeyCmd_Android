@@ -394,9 +394,16 @@ public class TerminalFragment extends Fragment {
 
             @Override
             public void onError(String message) {
-                Log.e(TAG, "BLE-Eth SSH error: " + message);
+                Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": " + message);
+                    String displayMessage;
+                    if (message.contains("AUTH_FAILED")) {
+                        displayMessage = getString(R.string.terminal_auth_failed);
+                    } else {
+                        displayMessage = getFriendlyErrorMessage(message);
+                    }
+                    statusText.setText(displayMessage);
+                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
                     updateConnectionState();
                 });
@@ -537,9 +544,16 @@ public class TerminalFragment extends Fragment {
 
             @Override
             public void onError(String message) {
-                Log.e(TAG, "BLE-Eth SSH error: " + message);
+                Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": " + message);
+                    String displayMessage;
+                    if (message.contains("AUTH_FAILED")) {
+                        displayMessage = getString(R.string.terminal_auth_failed);
+                    } else {
+                        displayMessage = getFriendlyErrorMessage(message);
+                    }
+                    statusText.setText(displayMessage);
+                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
                     updateConnectionState();
                 });
@@ -591,9 +605,16 @@ public class TerminalFragment extends Fragment {
 
             @Override
             public void onError(String message) {
-                Log.e(TAG, "BLE-Eth SSH error: " + message);
+                Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": " + message);
+                    String displayMessage;
+                    if (message.contains("AUTH_FAILED")) {
+                        displayMessage = getString(R.string.terminal_auth_failed);
+                    } else {
+                        displayMessage = getFriendlyErrorMessage(message);
+                    }
+                    statusText.setText(displayMessage);
+                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
                     updateConnectionState();
                 });
@@ -667,6 +688,42 @@ public class TerminalFragment extends Fragment {
         if (mainActivity == null) return false;
         BluetoothService bluetoothService = mainActivity.getBluetoothService();
         return bluetoothService != null && bluetoothService.isConnected();
+    }
+
+    /**
+     * Convert technical error messages to user-friendly ones.
+     * @param errorMessage The raw error message from SSH client
+     * @return A user-friendly error message
+     */
+    private String getFriendlyErrorMessage(String errorMessage) {
+        if (errorMessage == null) {
+            return getString(R.string.terminal_connection_failed);
+        }
+
+        String lowerError = errorMessage.toLowerCase();
+
+        // Connection refused - target host is reachable but not accepting connections
+        if (lowerError.contains("connection refused") || lowerError.contains("refused")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_connection_refused);
+        }
+
+        // Connection timeout - network issue or host not responding
+        if (lowerError.contains("timeout") || lowerError.contains("timed out")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_connection_timeout);
+        }
+
+        // Unknown host - DNS resolution failed
+        if (lowerError.contains("unknownhost") || lowerError.contains("unknown host") || lowerError.contains("resolve")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_unknown_host);
+        }
+
+        // No route to host - network routing issue
+        if (lowerError.contains("no route") || lowerError.contains("network is unreachable")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_no_route);
+        }
+
+        // For other errors, show a generic message
+        return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_generic);
     }
 
     @Override

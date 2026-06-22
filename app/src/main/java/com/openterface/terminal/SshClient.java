@@ -146,11 +146,35 @@ public class SshClient {
 
         } catch (Exception e) {
             connected = false;
-            Log.e(TAG, "SSH connect failed: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+            String errorMessage = getSafeErrorMessage(e);
+            Log.e(TAG, "SSH connect failed: " + errorMessage, e);
             if (listener != null) {
-                listener.onError(e.getClass().getSimpleName() + ": " + e.getMessage());
+                listener.onError(errorMessage);
             }
         }
+    }
+
+    /**
+     * Get safe error message without leaking sensitive info like passwords.
+     */
+    private String getSafeErrorMessage(Exception e) {
+        String message = e.getMessage();
+        String className = e.getClass().getSimpleName();
+
+        // Check for authentication failure
+        if (message != null && (message.contains("Auth fail") ||
+            message.contains("auth fail") ||
+            message.contains("Authentication fail") ||
+            className.contains("Auth"))) {
+            return "AUTH_FAILED";
+        }
+
+        // For other exceptions, return generic message
+        if (message != null && message.length() > 100) {
+            return className + ": Connection error";
+        }
+
+        return className + ": " + (message != null ? message : "Unknown error");
     }
 
     /**

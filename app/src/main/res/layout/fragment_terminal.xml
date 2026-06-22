@@ -23,7 +23,10 @@
             android:layout_weight="1"
             android:text="@string/terminal_disconnected"
             android:textColor="@color/terminal_status_text"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:scrollHorizontally="false" />
 
         <Button
             android:id="@+id/terminal_connect_btn"

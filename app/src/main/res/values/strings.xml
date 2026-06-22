@@ -1528,4 +1528,12 @@ by TechxArtisan</string>
     <string name="credential_key_imported">Key Imported</string>
     <string name="credential_key_import_failed">Failed to import key file</string>
     <string name="credential_auth_type">Authentication Type</string>
+    <string name="terminal_auth_failed">Authentication failed. Please check your credentials in Settings.</string>
+
+    <!-- Terminal Error Messages -->
+    <string name="terminal_error_connection_refused">Connection refused by remote host</string>
+    <string name="terminal_error_connection_timeout">Connection timeout. Please check network</string>
+    <string name="terminal_error_unknown_host">Unknown host. Please check hostname</string>
+    <string name="terminal_error_no_route">Cannot reach remote host. Please check network</string>
+    <string name="terminal_error_generic">An error occurred while connecting</string>
 </resources>

@@ -1399,4 +1399,12 @@
     <string name="credential_import_key_file">导入密钥文件</string>
     <string name="credential_key_imported">密钥已导入 (%s)</string>
     <string name="credential_key_import_failed">密钥文件读取失败</string>
+    <string name="terminal_auth_failed">认证失败，请在设置中检查凭证。</string>
+
+    <!-- Terminal Error Messages -->
+    <string name="terminal_error_connection_refused">远程主机拒绝连接</string>
+    <string name="terminal_error_connection_timeout">连接超时，请检查网络</string>
+    <string name="terminal_error_unknown_host">未知主机，请检查主机名</string>
+    <string name="terminal_error_no_route">无法到达远程主机，请检查网络</string>
+    <string name="terminal_error_generic">连接时发生错误</string>
 </resources>
