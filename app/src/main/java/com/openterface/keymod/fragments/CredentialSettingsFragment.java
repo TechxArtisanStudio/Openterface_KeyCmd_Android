@@ -1,15 +1,19 @@
 package com.openterface.keymod.fragments;
 
-import android.app.AlertDialog;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CompoundButton;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.RadioButton;
+import android.widget.SearchView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,10 +24,15 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,6 +102,48 @@ public class CredentialSettingsFragment extends Fragment {
         EditText portInput = dialogView.findViewById(R.id.credential_port_input);
         EditText usernameInput = dialogView.findViewById(R.id.credential_username_input);
         EditText passwordInput = dialogView.findViewById(R.id.credential_password_input);
+        EditText privateKeyInput = dialogView.findViewById(R.id.credential_private_key_input);
+        EditText keyPassphraseInput = dialogView.findViewById(R.id.credential_key_passphrase_input);
+        EditText notesInput = dialogView.findViewById(R.id.credential_notes_input);
+        Spinner authTypeSpinner = dialogView.findViewById(R.id.credential_auth_type_spinner);
+        TextInputLayout passwordLayout = dialogView.findViewById(R.id.credential_password_layout);
+        TextInputLayout privateKeyLayout = dialogView.findViewById(R.id.credential_private_key_layout);
+        TextInputLayout keyPassphraseLayout = dialogView.findViewById(R.id.credential_key_passphrase_layout);
+
+        // Setup auth type spinner
+        String[] authTypeLabels = new String[]{
+                getString(R.string.credential_auth_type_password),
+                getString(R.string.credential_auth_type_ssh_key)
+        };
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, authTypeLabels);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        authTypeSpinner.setAdapter(spinnerAdapter);
+
+        // Track selected auth type
+        final String[] selectedAuthType = {CredentialProfile.AUTH_TYPE_PASSWORD};
+
+        authTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    selectedAuthType[0] = CredentialProfile.AUTH_TYPE_PASSWORD;
+                    passwordLayout.setVisibility(View.VISIBLE);
+                    privateKeyLayout.setVisibility(View.GONE);
+                    keyPassphraseLayout.setVisibility(View.GONE);
+                } else {
+                    selectedAuthType[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
+                    passwordLayout.setVisibility(View.GONE);
+                    privateKeyLayout.setVisibility(View.VISIBLE);
+                    keyPassphraseLayout.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // No-op
+            }
+        });
 
         if (existingProfile != null) {
             nameInput.setText(existingProfile.getName());
@@ -100,11 +151,21 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText(String.valueOf(existingProfile.getPort()));
             usernameInput.setText(existingProfile.getUsername());
             passwordInput.setText(existingProfile.getPassword());
+            privateKeyInput.setText(existingProfile.getPrivateKey());
+            keyPassphraseInput.setText(existingProfile.getKeyPassphrase());
+            notesInput.setText(existingProfile.getNotes());
+            // Set spinner to match existing auth type
+            if (existingProfile.isSshKeyAuth()) {
+                authTypeSpinner.setSelection(1);
+            } else {
+                authTypeSpinner.setSelection(0);
+            }
         } else {
             portInput.setText("22");
+            authTypeSpinner.setSelection(0);
         }
 
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(existingProfile != null ? R.string.credential_edit : R.string.credential_add)
                 .setView(dialogView)
                 .setPositiveButton(R.string.credential_save, (dialog, which) -> {
@@ -113,6 +174,10 @@ public class CredentialSettingsFragment extends Fragment {
                     String portStr = portInput.getText().toString().trim();
                     String username = usernameInput.getText().toString().trim();
                     String password = passwordInput.getText().toString();
+                    String privateKey = privateKeyInput.getText().toString();
+                    String keyPassphrase = keyPassphraseInput.getText().toString();
+                    String notes = notesInput.getText().toString().trim();
+                    String authType = selectedAuthType[0];
 
                     if (name.isEmpty()) {
                         Toast.makeText(getContext(), R.string.credential_profile_name_required, Toast.LENGTH_SHORT).show();
@@ -124,6 +189,14 @@ public class CredentialSettingsFragment extends Fragment {
                     }
                     if (username.isEmpty()) {
                         Toast.makeText(getContext(), R.string.credential_username_required, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (CredentialProfile.AUTH_TYPE_PASSWORD.equals(authType) && password.isEmpty()) {
+                        Toast.makeText(getContext(), R.string.credential_password_required, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (CredentialProfile.AUTH_TYPE_SSH_KEY.equals(authType) && privateKey.isEmpty()) {
+                        Toast.makeText(getContext(), R.string.credential_private_key_required, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
@@ -140,6 +213,10 @@ public class CredentialSettingsFragment extends Fragment {
                         existingProfile.setPort(port);
                         existingProfile.setUsername(username);
                         existingProfile.setPassword(password);
+                        existingProfile.setAuthType(authType);
+                        existingProfile.setPrivateKey(privateKey);
+                        existingProfile.setKeyPassphrase(keyPassphrase);
+                        existingProfile.setNotes(notes);
                         credentialManager.updateProfile(existingProfile);
                     } else {
                         CredentialProfile profile = new CredentialProfile();
@@ -148,6 +225,10 @@ public class CredentialSettingsFragment extends Fragment {
                         profile.setPort(port);
                         profile.setUsername(username);
                         profile.setPassword(password);
+                        profile.setAuthType(authType);
+                        profile.setPrivateKey(privateKey);
+                        profile.setKeyPassphrase(keyPassphrase);
+                        profile.setNotes(notes);
                         credentialManager.addProfile(profile);
                     }
 
@@ -199,7 +280,7 @@ public class CredentialSettingsFragment extends Fragment {
 
             holder.editButton.setOnClickListener(v -> showAddEditDialog(profile));
             holder.deleteButton.setOnClickListener(v -> {
-                new AlertDialog.Builder(requireContext())
+                new MaterialAlertDialogBuilder(requireContext())
                         .setTitle(R.string.credential_delete)
                         .setMessage(R.string.credential_confirm_delete)
                         .setPositiveButton(R.string.credential_delete, (dialog, which) -> {

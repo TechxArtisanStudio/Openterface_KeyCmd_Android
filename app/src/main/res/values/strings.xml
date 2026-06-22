@@ -1509,6 +1509,7 @@ by TechxArtisan</string>
     <string name="credential_new_connection">New connection…</string>
     <string name="credential_save_changes_prompt">Save changes to profile "%s"?</string>
     <string name="settings_tab_credentials">Credentials</string>
+    <string name="credential_import_key_file">Import Key File</string>
 
     <!-- Terminal SSH Connection Dialog -->
     <string name="terminal_connect_title">Connect to SSH</string>
@@ -1518,4 +1519,11 @@ by TechxArtisan</string>
     <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
     <string name="terminal_add_profile">Add Profile</string>
     <string name="terminal_select_device">Please select a device</string>
+
+    <!-- Credential Auth Type -->
+    <string name="credential_auth_type_password">Password</string>
+    <string name="credential_auth_type_ssh_key">SSH Key</string>
+    <string name="credential_password_required">Password is required</string>
+    <string name="credential_private_key_required">Private key is required</string>
+    <string name="credential_auth_type">Authentication Type</string>
 </resources>

@@ -1390,4 +1390,13 @@
     <string name="terminal_select_device">请选择设备</string>
     <string name="terminal_transport_label">传输方式</string>
     <string name="terminal_host_username_required">主机地址和用户名不能为空</string>
+
+    <!-- Credential Auth Type -->
+    <string name="credential_auth_type_password">密码</string>
+    <string name="credential_auth_type_ssh_key">SSH 密钥</string>
+    <string name="credential_password_required">密码为必填项</string>
+    <string name="credential_private_key_required">私钥为必填项</string>
+    <string name="credential_import_key_file">导入密钥文件</string>
+    <string name="credential_key_imported">密钥已导入 (%s)</string>
+    <string name="credential_key_import_failed">密钥文件读取失败</string>
 </resources>

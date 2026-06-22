@@ -6,6 +6,7 @@ import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.openterface.terminal.CredentialProfile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,10 +82,12 @@ public class SshClient {
 
     /**
      * Establish SSH connection. Call on background thread.
+     * Supports both password and public key authentication based on profile settings.
      */
-    public void connect() {
+    public void connect(CredentialProfile profile) {
         try {
             Log.d(TAG, "SSH connect start: host=" + host + " port=" + port
+                    + " authType=" + profile.getAuthType()
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 
@@ -93,13 +96,40 @@ public class SshClient {
             config.put("StrictHostKeyChecking", "no");
             config.put("compression.s2c", "none");
             config.put("compression.c2s", "none");
-            // Prefer keyboard-interactive and password auth
-            config.put("PreferredAuthentications", "keyboard-interactive,password");
-            config.put("PubkeyAuthentication", "no");
+
+            // Configure authentication based on authType
+            if (profile.isSshKeyAuth()) {
+                // Public key authentication
+                String privateKey = profile.getPrivateKey();
+                String passphrase = profile.getKeyPassphrase();
+
+                if (privateKey != null && !privateKey.isEmpty()) {
+                    // Add identity with optional passphrase
+                    byte[] privateKeyBytes = privateKey.getBytes();
+                    byte[] passphraseBytes = (passphrase != null && !passphrase.isEmpty())
+                        ? passphrase.getBytes() : null;
+                    jsch.addIdentity("ssh-key", privateKeyBytes, null, passphraseBytes);
+
+                    config.put("PreferredAuthentications", "publickey");
+                    config.put("PubkeyAuthentication", "yes");
+                    Log.d(TAG, "Using SSH key authentication");
+                } else {
+                    throw new Exception("Private key is empty for SSH key authentication");
+                }
+            } else {
+                // Password authentication
+                config.put("PreferredAuthentications", "keyboard-interactive,password");
+                config.put("PubkeyAuthentication", "no");
+                Log.d(TAG, "Using password authentication");
+            }
 
             session = jsch.getSession(username, host, port);
-            session.setPassword(password);
             session.setConfig(config);
+
+            // For password auth, set password on session
+            if (!profile.isSshKeyAuth()) {
+                session.setPassword(password);
+            }
 
             // Use custom SocketFactory if provided (for BLE-Eth tunnel)
             if (socketFactory != null) {
@@ -121,6 +151,16 @@ public class SshClient {
                 listener.onError(e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * Legacy method for backward compatibility. Uses password authentication.
+     */
+    public void connect() {
+        // Create a default profile with password auth
+        CredentialProfile profile = new CredentialProfile();
+        profile.setAuthType(CredentialProfile.AUTH_TYPE_PASSWORD);
+        connect(profile);
     }
 
     /**

@@ -7,18 +7,29 @@ import java.util.UUID;
  */
 public class CredentialProfile {
 
+    public static final String AUTH_TYPE_PASSWORD = "password";
+    public static final String AUTH_TYPE_SSH_KEY = "ssh_key";
+
     private String id;
     private String name;
     private String host;
     private int port;
     private String username;
     private String password;
+    private String authType;
+    private String privateKey;
+    private String keyPassphrase;
+    private String notes;
     private boolean isActive;
     private long createdAt;
     private long updatedAt;
 
     public CredentialProfile() {
         this.id = UUID.randomUUID().toString();
+        this.authType = AUTH_TYPE_PASSWORD;
+        this.privateKey = "";
+        this.keyPassphrase = "";
+        this.notes = "";
         this.createdAt = System.currentTimeMillis();
         this.updatedAt = this.createdAt;
     }
@@ -32,6 +43,10 @@ public class CredentialProfile {
         this.port = port;
         this.username = username;
         this.password = password;
+        this.authType = AUTH_TYPE_PASSWORD;
+        this.privateKey = "";
+        this.keyPassphrase = "";
+        this.notes = "";
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -54,6 +69,26 @@ public class CredentialProfile {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getAuthType() { return authType != null ? authType : AUTH_TYPE_PASSWORD; }
+    public void setAuthType(String authType) { this.authType = authType; }
+
+    public boolean isPasswordAuth() {
+        return AUTH_TYPE_PASSWORD.equals(getAuthType());
+    }
+
+    public boolean isSshKeyAuth() {
+        return AUTH_TYPE_SSH_KEY.equals(getAuthType());
+    }
+
+    public String getPrivateKey() { return privateKey != null ? privateKey : ""; }
+    public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
+
+    public String getKeyPassphrase() { return keyPassphrase != null ? keyPassphrase : ""; }
+    public void setKeyPassphrase(String keyPassphrase) { this.keyPassphrase = keyPassphrase; }
+
+    public String getNotes() { return notes != null ? notes : ""; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
