@@ -66,7 +66,19 @@
             android:gravity="center"
             android:padding="24dp"
             android:visibility="gone"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
+
+        <!-- Add Profile button (shown when empty) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/add_profile_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/terminal_add_profile"
+            android:textSize="14sp"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"
+            app:icon="@drawable/ic_add_24" />
 
         <!-- Transport type selection -->
         <TextView

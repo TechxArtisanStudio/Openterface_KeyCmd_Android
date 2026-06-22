@@ -1,6 +1,7 @@
 package com.openterface.terminal;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -24,12 +25,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.SettingsActivity;
 
 /**
  * Main fragment hosting the terminal UI.
@@ -190,15 +193,22 @@ public class TerminalFragment extends Fragment {
         RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
         androidx.recyclerview.widget.RecyclerView deviceList = dialogView.findViewById(R.id.device_list);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
+        MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
 
         // Load profiles
         List<CredentialProfile> profiles = credentialManager.getAllProfiles();
         DeviceAdapter adapter = new DeviceAdapter(profiles);
 
         if (profiles.isEmpty()) {
-            // Show empty state
+            // Show empty state with Add Profile button
             deviceList.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
+            addProfileBtn.setVisibility(View.VISIBLE);
+            addProfileBtn.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), SettingsActivity.class);
+                intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
+                requireContext().startActivity(intent);
+            });
         } else {
             // Setup RecyclerView
             deviceList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(getContext()));
@@ -214,6 +224,7 @@ public class TerminalFragment extends Fragment {
                     }
                 }
             }
+            addProfileBtn.setVisibility(View.GONE);
         }
 
         // Check transport availability and set defaults

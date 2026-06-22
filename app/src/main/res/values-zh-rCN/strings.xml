@@ -6,6 +6,7 @@
     <string name="settings_tab_voice">语音</string>
     <string name="settings_tab_ai">人工智能</string>
     <string name="settings_tab_history">AI 记录</string>
+    <string name="settings_tab_credentials">凭据</string>
     <string name="settings_language_section_title">语言</string>
     <string name="settings_app_language_label">应用语言</string>
     <string name="app_language_follow_system">遵循系统语言</string>
@@ -1383,6 +1384,10 @@
 
     <!-- Terminal SSH Connection Dialog -->
     <string name="terminal_connect_title">连接 SSH</string>
+    <string name="terminal_devices_label">已配置设备</string>
+    <string name="terminal_no_devices">暂无已配置设备。请在 设置 → 凭据 中添加。</string>
+    <string name="terminal_add_profile">添加凭据</string>
+    <string name="terminal_select_device">请选择设备</string>
     <string name="terminal_transport_label">传输方式</string>
     <string name="terminal_host_username_required">主机地址和用户名不能为空</string>
 </resources>

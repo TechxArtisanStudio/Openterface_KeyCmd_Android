@@ -1516,5 +1516,6 @@ by TechxArtisan</string>
     <string name="terminal_host_username_required">Host and username are required</string>
     <string name="terminal_devices_label">Configured Devices</string>
     <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
+    <string name="terminal_add_profile">Add Profile</string>
     <string name="terminal_select_device">Please select a device</string>
 </resources>
