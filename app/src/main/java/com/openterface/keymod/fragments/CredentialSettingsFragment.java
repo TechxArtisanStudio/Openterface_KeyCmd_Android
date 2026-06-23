@@ -42,12 +42,14 @@ import java.util.List;
  */
 public class CredentialSettingsFragment extends Fragment {
 
+    private SearchView searchView;
     private RecyclerView credentialList;
     private TextView emptyText;
     private MaterialButton addButton;
     private CredentialManager credentialManager;
     private CredentialAdapter adapter;
     private SensitivePageShield shield;
+    private List<CredentialProfile> allProfiles = new ArrayList<>();
 
     @Nullable
     @Override
@@ -58,17 +60,30 @@ public class CredentialSettingsFragment extends Fragment {
         credentialManager = new CredentialManager(requireContext());
         credentialManager.migrateFromTerminalPrefs(requireContext());
 
+        searchView = view.findViewById(R.id.credential_search_view);
         credentialList = view.findViewById(R.id.credential_list);
         emptyText = view.findViewById(R.id.credential_empty_text);
         addButton = view.findViewById(R.id.credential_add_button);
 
         credentialList.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new CredentialAdapter(loadProfiles());
+        adapter = new CredentialAdapter(new ArrayList<>());
         credentialList.setAdapter(adapter);
 
-        updateEmptyState();
-
         addButton.setOnClickListener(v -> showAddEditDialog(null));
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                filterProfiles(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterProfiles(newText);
+                return true;
+            }
+        });
 
         return view;
     }
@@ -108,7 +123,23 @@ public class CredentialSettingsFragment extends Fragment {
     }
 
     private void refreshList() {
-        adapter.setProfiles(loadProfiles());
+        allProfiles = loadProfiles();
+        filterProfiles(searchView.getQuery().toString());
+    }
+
+    private void filterProfiles(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            adapter.setProfiles(allProfiles);
+        } else {
+            String lowerQuery = query.trim().toLowerCase();
+            List<CredentialProfile> filtered = new ArrayList<>();
+            for (CredentialProfile profile : allProfiles) {
+                if (profile.getName().toLowerCase().contains(lowerQuery)) {
+                    filtered.add(profile);
+                }
+            }
+            adapter.setProfiles(filtered);
+        }
         updateEmptyState();
     }
 

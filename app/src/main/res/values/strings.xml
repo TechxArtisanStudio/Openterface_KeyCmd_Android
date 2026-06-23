@@ -1492,6 +1492,7 @@ by TechxArtisan</string>
 
     <!-- Credential Manager -->
     <string name="credential_manager">Credentials</string>
+    <string name="credential_search_hint">Search by name…</string>
     <string name="credential_add">+ Add Profile</string>
     <string name="credential_edit">Edit</string>
     <string name="credential_delete">Delete</string>
