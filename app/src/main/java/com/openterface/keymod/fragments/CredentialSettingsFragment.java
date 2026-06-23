@@ -27,6 +27,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.SensitivePageShield;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
 
@@ -46,6 +47,7 @@ public class CredentialSettingsFragment extends Fragment {
     private MaterialButton addButton;
     private CredentialManager credentialManager;
     private CredentialAdapter adapter;
+    private SensitivePageShield shield;
 
     @Nullable
     @Override
@@ -75,6 +77,29 @@ public class CredentialSettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         refreshList();
+        // Enable sensitive page shielding (prevent screenshots/screen recording)
+        if (shield == null) {
+            shield = new SensitivePageShield(requireActivity());
+        }
+        shield.enable();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // Disable shielding (restore screenshot capability when switching to other Tabs)
+        if (shield != null) {
+            shield.disable();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (shield != null) {
+            shield.release();
+            shield = null;
+        }
     }
 
     private List<CredentialProfile> loadProfiles() {

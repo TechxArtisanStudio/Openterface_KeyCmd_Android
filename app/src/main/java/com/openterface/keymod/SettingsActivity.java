@@ -47,6 +47,9 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         setupWindowInsets();
         applyNonImmersiveSystemBars();
+        // NOTE: FLAG_SECURE is now applied selectively by sensitive sub-fragments
+        // (CredentialSettingsFragment, AISettingsFragment) so non-sensitive tabs
+        // (General, Voice, History) remain screenshot-friendly.
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
