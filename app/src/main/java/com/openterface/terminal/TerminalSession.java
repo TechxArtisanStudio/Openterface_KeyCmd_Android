@@ -1,5 +1,9 @@
 package com.openterface.terminal;
 
+import android.util.Log;
+
+import com.openterface.keymod.BuildConfig;
+
 /**
  * Terminal session state: screen buffer, cursor, scrollback.
  * Implements VT100/ANSI escape sequence processing with color support.
@@ -112,15 +116,16 @@ public class TerminalSession {
      * Parses ANSI escape sequences and updates screen state.
      */
     public void append(byte[] data, int len) {
-        // Debug: log raw first 200 bytes per chunk
-        StringBuilder rawHex = new StringBuilder();
-        for (int i = 0; i < Math.min(len, 200); i++) {
-            int b = data[i] & 0xFF;
-            if (b == 0x1B) rawHex.append("\\e");
-            else if (b >= 0x20 && b < 0x7F) rawHex.append((char)b);
-            else rawHex.append(String.format("\\x%02X", b));
+        if (BuildConfig.DEBUG && len > 0) {
+            StringBuilder rawHex = new StringBuilder();
+            for (int i = 0; i < Math.min(len, 200); i++) {
+                int b = data[i] & 0xFF;
+                if (b == 0x1B) rawHex.append("\\e");
+                else if (b >= 0x20 && b < 0x7F) rawHex.append((char)b);
+                else rawHex.append(String.format("\\x%02X", b));
+            }
+            Log.d("TerminalSession", "RAW[" + len + "]: " + rawHex.toString());
         }
-        if (len > 0) android.util.Log.d("TerminalSession", "RAW[" + len + "]: " + rawHex.toString());
 
         ansiParser.parse(data, len, new AnsiEscapeParser.Callback() {
             @Override
@@ -345,14 +350,14 @@ public class TerminalSession {
 
             @Override
             public void onUnknownSequence(String sequence) {
-                android.util.Log.d("TerminalSession", "UNKNOWN: " + sequence);
+                // Don't log sequence content - could contain sensitive data from remote session
             }
         });
     }
 
     /** Handle DEC private mode set/reset */
     private void handleDecMode(int mode, boolean set) {
-        android.util.Log.d("TerminalSession", "handleDecMode(" + mode + ", " + set + ")");
+        // Don't log DEC mode details to avoid potential information leakage
         switch (mode) {
             case 1: // Application cursor keys
                 applicationCursorKeys = set;
@@ -490,9 +495,6 @@ public class TerminalSession {
 
     /** Write a single printable character at the cursor position. */
     private void writeChar(char ch) {
-        if (ch > 127) {
-            android.util.Log.d("TerminalSession", "writeChar: U+" + String.format("%04X", (int)ch) + " at col=" + cursorX + " row=" + cursorY);
-        }
         if (pendingWrap) {
             // Perform deferred line wrap
             cursorX = 0;

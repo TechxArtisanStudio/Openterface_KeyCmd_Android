@@ -309,8 +309,7 @@ public class TerminalFragment extends Fragment {
                     // Save selected profile as active
                     credentialManager.setActiveProfileId(profile.getId());
 
-                    Log.d(TAG, "Dialog positive: host=" + host + " port=" + finalPort
-                            + " user=" + username + " authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                    Log.d(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
                     connect(profile, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
@@ -321,8 +320,7 @@ public class TerminalFragment extends Fragment {
      * Connect to SSH via the selected transport.
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
-        Log.d(TAG, "connect called: host=" + profile.getHost() + " port=" + profile.getPort()
-                + " authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+        Log.d(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
         statusText.setText(R.string.terminal_connecting);
 
         if (useUsb) {
@@ -404,7 +402,7 @@ public class TerminalFragment extends Fragment {
     private void connectBleEth(CredentialProfile profile) {
         final String host = profile.getHost();
         final int port = profile.getPort();
-        Log.d(TAG, "connectBleEth called: host=" + host + " port=" + port);
+        Log.d(TAG, "connectBleEth called");
         if (mainActivity == null) {
             Log.e(TAG, "connectBleEth: mainActivity is null");
             return;
@@ -438,8 +436,7 @@ public class TerminalFragment extends Fragment {
         // from a previous stalled session, causing new CONNECT to fail.
         for (int cid = 0; cid <= 5; cid++) {
             byte[] cleanupFrame = buildDisconnectFrame(cid);
-            Log.d(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid
-                    + " frame=" + bytesToHex(cleanupFrame));
+            Log.d(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
             bluetoothService.writeBleEthData(cleanupFrame);
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }

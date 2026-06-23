@@ -105,8 +105,7 @@ public class SshClient {
      */
     public void connect(CredentialProfile profile) {
         try {
-            Log.d(TAG, "SSH connect start: host=" + host + " port=" + port
-                    + " authType=" + profile.getAuthType()
+            Log.d(TAG, "SSH connect start: authType=" + profile.getAuthType()
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 
@@ -166,7 +165,7 @@ public class SshClient {
         } catch (Exception e) {
             connected = false;
             String errorMessage = getSafeErrorMessage(e);
-            Log.e(TAG, "SSH connect failed: " + errorMessage, e);
+            Log.e(TAG, "SSH connect failed: " + errorMessage);
             if (listener != null) {
                 listener.onError(errorMessage);
             }

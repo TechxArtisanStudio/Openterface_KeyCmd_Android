@@ -81,7 +81,6 @@ public class AnsiEscapeParser {
                 utf8BytesRemaining--;
                 if (utf8BytesRemaining == 0) {
                     // Decoded a full codepoint — emit it
-                    android.util.Log.d("AnsiParser", "UTF-8 decoded: U+" + String.format("%04X", utf8Codepoint));
                     if (utf8Codepoint <= 0xFFFF) {
                         callback.onCharacter((char) utf8Codepoint);
                     } else {

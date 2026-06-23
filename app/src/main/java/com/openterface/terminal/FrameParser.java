@@ -1,5 +1,9 @@
 package com.openterface.terminal;
 
+import android.util.Log;
+
+import com.openterface.keymod.BuildConfig;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -123,8 +127,10 @@ public class FrameParser {
                     int addr = buf[2] & 0xFF;
                     byte[] payload = new byte[payloadLen];
                     System.arraycopy(buf, 5, payload, 0, payloadLen);
-                    android.util.Log.d("FrameParser", "Checksum OK! Frame: addr=0x" + Integer.toHexString(addr)
-                            + " cmd=0x" + Integer.toHexString(cmd) + " payloadLen=" + payloadLen);
+                    if (BuildConfig.DEBUG) {
+                        Log.d("FrameParser", "Checksum OK! Frame: addr=0x" + Integer.toHexString(addr)
+                                + " cmd=0x" + Integer.toHexString(cmd) + " payloadLen=" + payloadLen);
+                    }
                     receivedFrames.add(new ParsedFrame(addr, cmd, payload));
                 } else {
                     android.util.Log.w("FrameParser", "Checksum mismatch! Expected=0x" + Integer.toHexString(expected)
