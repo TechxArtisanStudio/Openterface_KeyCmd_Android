@@ -8,7 +8,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Fixed code-point lists for macOS Unicode Hex “排查”: each round uses {@link
+ * Fixed code-point lists for macOS Unicode Hex diagnostic: each round uses {@link
  * HidTextKeystrokeSender#sendUnicodeCharMacOS(int, com.openterface.keymod.ConnectionManager)}.
  * Union of hex digits across all rounds in a preset must cover {@code 0-9} and {@code a-f}.
  */

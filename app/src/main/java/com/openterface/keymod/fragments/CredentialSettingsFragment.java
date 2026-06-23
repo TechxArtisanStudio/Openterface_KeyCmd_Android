@@ -153,7 +153,7 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText(String.valueOf(existingProfile.getPort()));
             usernameInput.setText(existingProfile.getUsername());
             passwordInput.setText(existingProfile.getPassword());
-            // Show "已导入 Key" placeholder instead of actual key content
+            // Show "Imported Key" placeholder instead of actual key content
             if (existingProfile.isSshKeyAuth() && !existingProfile.getPrivateKey().isEmpty()) {
                 privateKeyInput.setHint(R.string.credential_key_imported);
                 privateKeyInput.setText("");

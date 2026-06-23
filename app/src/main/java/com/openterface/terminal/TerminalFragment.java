@@ -6,16 +6,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -179,7 +184,7 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Show SSH connection dialog with device list and transport selection.
+     * Show SSH connection dialog with profile dropdown and transport selection.
      */
     private void showConnectionDialog() {
         if (getContext() == null) return;
@@ -191,17 +196,16 @@ public class TerminalFragment extends Fragment {
         RadioGroup transportGroup = dialogView.findViewById(R.id.terminal_transport_group);
         RadioButton usbRadio = dialogView.findViewById(R.id.transport_usb);
         RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
-        androidx.recyclerview.widget.RecyclerView deviceList = dialogView.findViewById(R.id.device_list);
+        Spinner profileSpinner = dialogView.findViewById(R.id.profile_spinner);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
         MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
 
         // Load profiles
-        List<CredentialProfile> profiles = credentialManager.getAllProfiles();
-        DeviceAdapter adapter = new DeviceAdapter(profiles);
+        final List<CredentialProfile> profiles = credentialManager.getAllProfiles();
 
         if (profiles.isEmpty()) {
             // Show empty state with Add Profile button
-            deviceList.setVisibility(View.GONE);
+            profileSpinner.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {
@@ -210,16 +214,48 @@ public class TerminalFragment extends Fragment {
                 requireContext().startActivity(intent);
             });
         } else {
-            // Setup RecyclerView
-            deviceList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(getContext()));
-            deviceList.setAdapter(adapter);
+            // Setup Spinner with profile names
+            List<String> profileNames = new ArrayList<>();
+            for (CredentialProfile profile : profiles) {
+                profileNames.add(profile.getDisplayLabel() + "  (" + profile.getShortDescription() + ")");
+            }
+
+            // Resolve theme colorPrimary for spinner highlight
+            final TypedValue typedValue = new TypedValue();
+            requireContext().getTheme().resolveAttribute(
+                    com.google.android.material.R.attr.colorPrimary, typedValue, true);
+            final int themePrimary = typedValue.data;
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                    getContext(), R.layout.spinner_profile_item, profileNames) {
+                @Override
+                public View getDropDownView(int position, View convertView, @NonNull ViewGroup parent) {
+                    View view = super.getDropDownView(position, convertView, parent);
+                    // Highlight selected item with theme primary color
+                    if (position == profileSpinner.getSelectedItemPosition()) {
+                        view.setBackgroundColor(themePrimary);
+                        // Set white text on highlighted item
+                        if (view instanceof TextView) {
+                            ((TextView) view).setTextColor(0xFFFFFFFF);
+                        }
+                    } else {
+                        view.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                        if (view instanceof TextView) {
+                            ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary));
+                        }
+                    }
+                    return view;
+                }
+            };
+            adapter.setDropDownViewResource(R.layout.spinner_profile_dropdown);
+            profileSpinner.setAdapter(adapter);
 
             // Pre-select active profile
             CredentialProfile activeProfile = credentialManager.getActiveProfile();
             if (activeProfile != null) {
                 for (int i = 0; i < profiles.size(); i++) {
                     if (profiles.get(i).getId().equals(activeProfile.getId())) {
-                        adapter.setSelectedPosition(i);
+                        profileSpinner.setSelection(i);
                         break;
                     }
                 }
@@ -252,7 +288,7 @@ public class TerminalFragment extends Fragment {
                         return;
                     }
 
-                    int selectedPos = adapter.getSelectedPosition();
+                    int selectedPos = profileSpinner.getSelectedItemPosition();
                     if (selectedPos < 0 || selectedPos >= profiles.size()) {
                         Toast.makeText(getContext(), R.string.terminal_select_device, Toast.LENGTH_SHORT).show();
                         return;
@@ -262,7 +298,6 @@ public class TerminalFragment extends Fragment {
                     String host = profile.getHost();
                     int finalPort = profile.getPort();
                     String username = profile.getUsername();
-                    String password = profile.getPassword();
 
                     if (host == null || host.isEmpty() || username == null || username.isEmpty()) {
                         Toast.makeText(getContext(), R.string.terminal_host_username_required, Toast.LENGTH_SHORT).show();
@@ -271,105 +306,40 @@ public class TerminalFragment extends Fragment {
 
                     boolean useUsb = transportGroup.getCheckedRadioButtonId() == R.id.transport_usb;
 
+                    // Save selected profile as active
+                    credentialManager.setActiveProfileId(profile.getId());
+
                     Log.d(TAG, "Dialog positive: host=" + host + " port=" + finalPort
-                            + " user=" + username + " useUsb=" + useUsb);
-                    connect(host, finalPort, username, password, useUsb);
+                            + " user=" + username + " authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                    connect(profile, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
     /**
-     * Adapter for device selection list in connection dialog.
-     */
-    private class DeviceAdapter extends androidx.recyclerview.widget.RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder> {
-
-        private final List<CredentialProfile> profiles;
-        private int selectedPosition = 0;
-
-        DeviceAdapter(List<CredentialProfile> profiles) {
-            this.profiles = profiles;
-        }
-
-        void setSelectedPosition(int position) {
-            int oldPosition = selectedPosition;
-            selectedPosition = position;
-            notifyItemChanged(oldPosition);
-            notifyItemChanged(position);
-        }
-
-        int getSelectedPosition() {
-            return selectedPosition;
-        }
-
-        @NonNull
-        @Override
-        public DeviceViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_dialog_device, parent, false);
-            return new DeviceViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull DeviceViewHolder holder, int position) {
-            CredentialProfile profile = profiles.get(position);
-            holder.nameText.setText(profile.getDisplayLabel());
-            holder.detailsText.setText(profile.getShortDescription());
-            holder.radioButton.setChecked(position == selectedPosition);
-
-            // Highlight selected item
-            if (position == selectedPosition) {
-                holder.cardView.setStrokeColor(requireContext().getResources().getColor(R.color.text_primary));
-                holder.cardView.setStrokeWidth(2);
-            } else {
-                holder.cardView.setStrokeColor(requireContext().getResources().getColor(R.color.divider));
-                holder.cardView.setStrokeWidth(1);
-            }
-
-            holder.itemView.setOnClickListener(v -> {
-                setSelectedPosition(holder.getBindingAdapterPosition());
-            });
-        }
-
-        @Override
-        public int getItemCount() {
-            return profiles.size();
-        }
-
-        class DeviceViewHolder extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
-            com.google.android.material.card.MaterialCardView cardView;
-            RadioButton radioButton;
-            TextView nameText;
-            TextView detailsText;
-
-            DeviceViewHolder(@NonNull View itemView) {
-                super(itemView);
-                cardView = itemView.findViewById(R.id.device_card);
-                radioButton = itemView.findViewById(R.id.device_radio);
-                nameText = itemView.findViewById(R.id.device_name);
-                detailsText = itemView.findViewById(R.id.device_details);
-            }
-        }
-    }
-
-    /**
      * Connect to SSH via the selected transport.
      */
-    private void connect(String host, int port, String username, String password, boolean useUsb) {
-        Log.d(TAG, "connect called: host=" + host + " port=" + port + " useUsb=" + useUsb);
+    private void connect(CredentialProfile profile, boolean useUsb) {
+        Log.d(TAG, "connect called: host=" + profile.getHost() + " port=" + profile.getPort()
+                + " authType=" + profile.getAuthType() + " useUsb=" + useUsb);
         statusText.setText(R.string.terminal_connecting);
 
         if (useUsb) {
-            connectUsbEcm(host, port, username, password);
+            connectUsbEcm(profile);
         } else {
-            connectBleEth(host, port, username, password);
+            connectBleEth(profile);
         }
     }
 
     /**
      * Connect via USB ECM transport (direct socket).
      */
-    private void connectUsbEcm(String host, int port, String username, String password) {
+    private void connectUsbEcm(CredentialProfile profile) {
+        final String host = profile.getHost();
+        final int port = profile.getPort();
+        final String username = profile.getUsername();
+        final String password = profile.getPassword();
         usbEcmTransport = new UsbEcmTransport();
 
         // Set up transport listener BEFORE connect so the read thread can deliver data.
@@ -424,14 +394,16 @@ public class TerminalFragment extends Fragment {
 
             // Then establish SSH session over the TCP connection
             // Use the actual host from the dialog, not from prefs.
-            runSshSession(host, port, username, password, usbEcmTransport);
+            runSshSession(profile, usbEcmTransport);
         }).start();
     }
 
     /**
      * Connect via BLE-Eth transport. Uses the app's BluetoothService.
      */
-    private void connectBleEth(String host, int port, String username, String password) {
+    private void connectBleEth(CredentialProfile profile) {
+        final String host = profile.getHost();
+        final int port = profile.getPort();
         Log.d(TAG, "connectBleEth called: host=" + host + " port=" + port);
         if (mainActivity == null) {
             Log.e(TAG, "connectBleEth: mainActivity is null");
@@ -495,7 +467,7 @@ public class TerminalFragment extends Fragment {
         // Start SSH session on background thread (SocketFactory handles BLE-Eth connect)
         new Thread(() -> {
             Log.d(TAG, "BLE-Eth SSH connect thread started");
-            runSshSessionWithSocketFactory(host, port, username, password, bleEthTransport, bleEthSocketFactory);
+            runSshSessionWithSocketFactory(profile, bleEthTransport, bleEthSocketFactory);
             Log.d(TAG, "BLE-Eth SSH connect thread finished");
         }).start();
     }
@@ -503,10 +475,10 @@ public class TerminalFragment extends Fragment {
     /**
      * Run the SSH session with a custom SocketFactory (for BLE-Eth).
      */
-    private void runSshSessionWithSocketFactory(String host, int port, String username, String password,
+    private void runSshSessionWithSocketFactory(CredentialProfile profile,
                                                  TransportAdapter transport,
                                                  com.jcraft.jsch.SocketFactory socketFactory) {
-        sshClient = new SshClient(host, port, username, password, transport, socketFactory);
+        sshClient = new SshClient(profile, transport, socketFactory);
         sshClient.setListener(new SshClient.Listener() {
             @Override
             public void onConnected() {
@@ -566,8 +538,8 @@ public class TerminalFragment extends Fragment {
     /**
      * Run the SSH session over an established transport (USB ECM - direct socket).
      */
-    private void runSshSession(String host, int port, String username, String password, TransportAdapter transport) {
-        sshClient = new SshClient(host, port, username, password, transport);
+    private void runSshSession(CredentialProfile profile, TransportAdapter transport) {
+        sshClient = new SshClient(profile, transport);
         sshClient.setListener(new SshClient.Listener() {
             @Override
             public void onConnected() {

@@ -104,7 +104,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             };
 
     /**
-     * macOS distinguishes Caps tap (input-source / 中英 toggle) vs long-press (Caps Lock) by hold time.
+     * macOS distinguishes Caps tap (input-source / Chinese-English toggle) vs long-press (Caps Lock) by hold time.
      * Hold slightly above the host threshold so long-press reliably engages Caps Lock.
      */
     private static final long MAC_CAPS_LONG_PRESS_MS = 500L;
@@ -1076,7 +1076,7 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     /**
-     * KM Basic Caps on macOS: short hold (~30 ms) for input-source / 中英 toggle; long-press for Caps Lock.
+     * KM Basic Caps on macOS: short hold (~30 ms) for input-source / Chinese-English toggle; long-press for Caps Lock.
      * Other target OS: same as a normal tap (toggle Caps in one shot).
      */
     private void wireMacAwareCapsKey(View v, Supplier<String> previewText) {

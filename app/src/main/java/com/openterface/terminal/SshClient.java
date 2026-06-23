@@ -62,6 +62,25 @@ public class SshClient {
         this.socketFactory = socketFactory;
     }
 
+    public SshClient(CredentialProfile profile, TransportAdapter transport) {
+        this.host = profile.getHost();
+        this.port = profile.getPort();
+        this.username = profile.getUsername();
+        this.password = profile.getPassword();
+        this.transport = transport;
+        this.socketFactory = null;
+    }
+
+    public SshClient(CredentialProfile profile, TransportAdapter transport,
+                     com.jcraft.jsch.SocketFactory socketFactory) {
+        this.host = profile.getHost();
+        this.port = profile.getPort();
+        this.username = profile.getUsername();
+        this.password = profile.getPassword();
+        this.transport = transport;
+        this.socketFactory = socketFactory;
+    }
+
     public void setListener(Listener listener) {
         this.listener = listener;
     }

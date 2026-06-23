@@ -37,7 +37,7 @@
 
         </LinearLayout>
 
-        <!-- Device list label -->
+        <!-- Device/Profile selection label -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -46,13 +46,12 @@
             android:textColor="@color/text_secondary"
             android:layout_marginBottom="8dp" />
 
-        <!-- Device list RecyclerView -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/device_list"
+        <!-- Profile Spinner dropdown -->
+        <Spinner
+            android:id="@+id/profile_spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxHeight="240dp"
-            android:nestedScrollingEnabled="false"
+            android:minHeight="48dp"
             android:layout_marginBottom="16dp" />
 
         <!-- Empty state hint -->
