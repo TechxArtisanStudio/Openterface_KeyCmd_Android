@@ -37,6 +37,40 @@
 
         </LinearLayout>
 
+        <!-- Transport type selection -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/terminal_transport_label"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="4dp" />
+
+        <RadioGroup
+            android:id="@+id/terminal_transport_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <RadioButton
+                android:id="@+id/transport_usb"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/terminal_transport_usb"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/transport_ble"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/terminal_transport_ble"
+                android:textSize="14sp" />
+
+        </RadioGroup>
+
         <!-- Device/Profile selection label -->
         <TextView
             android:layout_width="match_parent"
@@ -78,40 +112,6 @@
             android:visibility="gone"
             android:layout_marginBottom="16dp"
             app:icon="@drawable/ic_add_24" />
-
-        <!-- Transport type selection -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/terminal_transport_label"
-            android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="4dp" />
-
-        <RadioGroup
-            android:id="@+id/terminal_transport_group"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-
-            <RadioButton
-                android:id="@+id/transport_usb"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/terminal_transport_usb"
-                android:textSize="14sp" />
-
-            <RadioButton
-                android:id="@+id/transport_ble"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/terminal_transport_ble"
-                android:textSize="14sp" />
-
-        </RadioGroup>
 
     </LinearLayout>
 
