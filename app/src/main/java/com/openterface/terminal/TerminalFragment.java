@@ -13,13 +13,16 @@ import android.view.ViewGroup;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -184,7 +187,7 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Show SSH connection dialog with profile dropdown and transport selection.
+     * Show SSH connection dialog with card-style device list and transport selection.
      */
     private void showConnectionDialog() {
         if (getContext() == null) return;
@@ -199,9 +202,12 @@ public class TerminalFragment extends Fragment {
         LinearLayout deviceListContainer = dialogView.findViewById(R.id.device_list_container);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
         MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
+        View titleContainer = dialogView.findViewById(R.id.title_container);
+        ImageView searchButton = dialogView.findViewById(R.id.search_device_button);
+        SearchView searchView = dialogView.findViewById(R.id.device_search_view);
 
-        // Load profiles
-        final List<CredentialProfile> profiles = credentialManager.getAllProfiles();
+        // Load all profiles
+        final List<CredentialProfile> allProfiles = credentialManager.getAllProfiles();
         final int[] selectedProfileIndex = {-1};
 
         // Resolve theme colors for card styling
@@ -210,9 +216,9 @@ public class TerminalFragment extends Fragment {
                 com.google.android.material.R.attr.colorPrimary, primaryTypedValue, true);
         final int themePrimary = primaryTypedValue.data;
 
-        if (profiles.isEmpty()) {
-            // Show empty state with Add Profile button
+        if (allProfiles.isEmpty()) {
             deviceListContainer.setVisibility(View.GONE);
+            titleContainer.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {
@@ -221,57 +227,43 @@ public class TerminalFragment extends Fragment {
                 requireContext().startActivity(intent);
             });
         } else {
-            final LayoutInflater cardInflater = LayoutInflater.from(getContext());
+            // Build initial list (no filter)
+            buildDeviceList(allProfiles, selectedProfileIndex, deviceListContainer,
+                    "", themePrimary);
 
-            for (int i = 0; i < profiles.size(); i++) {
-                final CredentialProfile profile = profiles.get(i);
-                final int index = i;
+            // Toggle search view visibility
+            searchButton.setOnClickListener(v -> {
+                boolean showing = searchView.getVisibility() == View.VISIBLE;
+                if (showing) {
+                    // Hide search, show title
+                    searchView.setVisibility(View.GONE);
+                    searchView.setQuery("", false);
+                    titleContainer.setVisibility(View.VISIBLE);
+                    buildDeviceList(allProfiles, selectedProfileIndex, deviceListContainer,
+                            "", themePrimary);
+                } else {
+                    // Show search, hide title
+                    titleContainer.setVisibility(View.GONE);
+                    searchView.setVisibility(View.VISIBLE);
+                    searchView.requestFocus();
+                }
+            });
 
-                View cardView = cardInflater.inflate(
-                        R.layout.item_dialog_device, deviceListContainer, false);
-
-                MaterialCardView card = cardView.findViewById(R.id.device_card);
-                ImageView radioIndicator = cardView.findViewById(R.id.device_radio);
-                TextView nameText = cardView.findViewById(R.id.device_name);
-                TextView descText = cardView.findViewById(R.id.device_details);
-
-                nameText.setText(profile.getDisplayLabel());
-                descText.setText(profile.getShortDescription());
-
-                // Apply initial (unselected) styling
-                applyUnselectedCardStyle(card, radioIndicator, nameText, descText);
-
-                // Pre-select active profile
-                CredentialProfile activeProfile = credentialManager.getActiveProfile();
-                boolean isActive = activeProfile != null
-                        && profile.getId().equals(activeProfile.getId());
-                if (isActive) {
-                    selectedProfileIndex[0] = index;
-                    applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+            // Filter list on search text change
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    return false;
                 }
 
-                card.setOnClickListener(v -> {
-                    int prevIndex = selectedProfileIndex[0];
-                    selectedProfileIndex[0] = index;
-
-                    // Reset previously selected card
-                    if (prevIndex >= 0 && prevIndex < deviceListContainer.getChildCount()) {
-                        View prevChild = deviceListContainer.getChildAt(prevIndex);
-                        if (prevChild instanceof MaterialCardView) {
-                            MaterialCardView prevCard = (MaterialCardView) prevChild;
-                            ImageView prevRadio = prevCard.findViewById(R.id.device_radio);
-                            TextView prevName = prevCard.findViewById(R.id.device_name);
-                            TextView prevDesc = prevCard.findViewById(R.id.device_details);
-                            applyUnselectedCardStyle(prevCard, prevRadio, prevName, prevDesc);
-                        }
-                    }
-
-                    // Apply selected style to this card
-                    applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
-                });
-
-                deviceListContainer.addView(cardView);
-            }
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    String query = newText != null ? newText.toLowerCase() : "";
+                    buildDeviceList(allProfiles, selectedProfileIndex, deviceListContainer,
+                            query, themePrimary);
+                    return true;
+                }
+            });
 
             addProfileBtn.setVisibility(View.GONE);
         }
@@ -296,17 +288,17 @@ public class TerminalFragment extends Fragment {
         new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
                 .setPositiveButton(R.string.terminal_connect, (dialog, which) -> {
-                    if (profiles.isEmpty()) {
+                    if (allProfiles.isEmpty()) {
                         Toast.makeText(getContext(), R.string.terminal_no_devices, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    if (selectedProfileIndex[0] < 0 || selectedProfileIndex[0] >= profiles.size()) {
+                    if (selectedProfileIndex[0] < 0 || selectedProfileIndex[0] >= allProfiles.size()) {
                         Toast.makeText(getContext(), R.string.terminal_select_device, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    CredentialProfile profile = profiles.get(selectedProfileIndex[0]);
+                    CredentialProfile profile = allProfiles.get(selectedProfileIndex[0]);
                     String host = profile.getHost();
                     int finalPort = profile.getPort();
                     String username = profile.getUsername();
@@ -326,6 +318,92 @@ public class TerminalFragment extends Fragment {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * Build the device card list inside the container, filtered by searchQuery.
+     * Pre-selects the active profile. Shows empty text if no matches.
+     */
+    private void buildDeviceList(List<CredentialProfile> allProfiles,
+                                  int[] selectedProfileIndex,
+                                  LinearLayout deviceListContainer,
+                                  String searchQuery, int themePrimary) {
+        deviceListContainer.removeAllViews();
+        selectedProfileIndex[0] = -1;
+
+        // Filter profiles by name or description
+        List<CredentialProfile> filtered = new ArrayList<>();
+        List<Integer> originalIndices = new ArrayList<>();
+        for (int i = 0; i < allProfiles.size(); i++) {
+            CredentialProfile p = allProfiles.get(i);
+            if (searchQuery.isEmpty()
+                    || p.getDisplayLabel().toLowerCase().contains(searchQuery)
+                    || p.getShortDescription().toLowerCase().contains(searchQuery)) {
+                filtered.add(p);
+                originalIndices.add(i);
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            TextView noMatch = new TextView(getContext());
+            noMatch.setText(R.string.terminal_no_match);
+            noMatch.setTextSize(14f);
+            noMatch.setTextColor(getResources().getColor(R.color.text_secondary));
+            noMatch.setGravity(android.view.Gravity.CENTER);
+            noMatch.setPadding(0, 24, 0, 24);
+            deviceListContainer.addView(noMatch);
+            return;
+        }
+
+        final LayoutInflater cardInflater = LayoutInflater.from(getContext());
+        CredentialProfile activeProfile = credentialManager.getActiveProfile();
+
+        for (int i = 0; i < filtered.size(); i++) {
+            final CredentialProfile profile = filtered.get(i);
+            final int originalIndex = originalIndices.get(i);
+
+            View cardView = cardInflater.inflate(
+                    R.layout.item_dialog_device, deviceListContainer, false);
+
+            MaterialCardView card = cardView.findViewById(R.id.device_card);
+            ImageView radioIndicator = cardView.findViewById(R.id.device_radio);
+            TextView nameText = cardView.findViewById(R.id.device_name);
+            TextView descText = cardView.findViewById(R.id.device_details);
+
+            nameText.setText(profile.getDisplayLabel());
+            descText.setText(profile.getShortDescription());
+
+            applyUnselectedCardStyle(card, radioIndicator, nameText, descText);
+
+            // Pre-select active profile
+            boolean isActive = activeProfile != null
+                    && profile.getId().equals(activeProfile.getId());
+            if (isActive) {
+                selectedProfileIndex[0] = originalIndex;
+                applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+            }
+
+            card.setOnClickListener(v -> {
+                int prevIndex = selectedProfileIndex[0];
+                selectedProfileIndex[0] = originalIndex;
+
+                // Reset previously selected card
+                if (prevIndex >= 0 && prevIndex < deviceListContainer.getChildCount()) {
+                    View prevChild = deviceListContainer.getChildAt(prevIndex);
+                    if (prevChild instanceof MaterialCardView) {
+                        MaterialCardView prevCard = (MaterialCardView) prevChild;
+                        ImageView prevRadio = prevCard.findViewById(R.id.device_radio);
+                        TextView prevName = prevCard.findViewById(R.id.device_name);
+                        TextView prevDesc = prevCard.findViewById(R.id.device_details);
+                        applyUnselectedCardStyle(prevCard, prevRadio, prevName, prevDesc);
+                    }
+                }
+
+                applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+            });
+
+            deviceListContainer.addView(cardView);
+        }
     }
 
     /**
