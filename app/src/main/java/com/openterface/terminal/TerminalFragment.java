@@ -10,17 +10,16 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -31,6 +30,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.BluetoothService;
@@ -196,16 +196,23 @@ public class TerminalFragment extends Fragment {
         RadioGroup transportGroup = dialogView.findViewById(R.id.terminal_transport_group);
         RadioButton usbRadio = dialogView.findViewById(R.id.transport_usb);
         RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
-        Spinner profileSpinner = dialogView.findViewById(R.id.profile_spinner);
+        LinearLayout deviceListContainer = dialogView.findViewById(R.id.device_list_container);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
         MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
 
         // Load profiles
         final List<CredentialProfile> profiles = credentialManager.getAllProfiles();
+        final int[] selectedProfileIndex = {-1};
+
+        // Resolve theme colors for card styling
+        final TypedValue primaryTypedValue = new TypedValue();
+        requireContext().getTheme().resolveAttribute(
+                com.google.android.material.R.attr.colorPrimary, primaryTypedValue, true);
+        final int themePrimary = primaryTypedValue.data;
 
         if (profiles.isEmpty()) {
             // Show empty state with Add Profile button
-            profileSpinner.setVisibility(View.GONE);
+            deviceListContainer.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {
@@ -214,52 +221,58 @@ public class TerminalFragment extends Fragment {
                 requireContext().startActivity(intent);
             });
         } else {
-            // Setup Spinner with profile names
-            List<String> profileNames = new ArrayList<>();
-            for (CredentialProfile profile : profiles) {
-                profileNames.add(profile.getDisplayLabel() + "  (" + profile.getShortDescription() + ")");
-            }
+            final LayoutInflater cardInflater = LayoutInflater.from(getContext());
 
-            // Resolve theme colorPrimary for spinner highlight
-            final TypedValue typedValue = new TypedValue();
-            requireContext().getTheme().resolveAttribute(
-                    com.google.android.material.R.attr.colorPrimary, typedValue, true);
-            final int themePrimary = typedValue.data;
+            for (int i = 0; i < profiles.size(); i++) {
+                final CredentialProfile profile = profiles.get(i);
+                final int index = i;
 
-            ArrayAdapter<String> adapter = new ArrayAdapter<String>(
-                    getContext(), R.layout.spinner_profile_item, profileNames) {
-                @Override
-                public View getDropDownView(int position, View convertView, @NonNull ViewGroup parent) {
-                    View view = super.getDropDownView(position, convertView, parent);
-                    // Highlight selected item with theme primary color
-                    if (position == profileSpinner.getSelectedItemPosition()) {
-                        view.setBackgroundColor(themePrimary);
-                        // Set white text on highlighted item
-                        if (view instanceof TextView) {
-                            ((TextView) view).setTextColor(0xFFFFFFFF);
-                        }
-                    } else {
-                        view.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-                        if (view instanceof TextView) {
-                            ((TextView) view).setTextColor(getResources().getColor(R.color.text_primary));
+                View cardView = cardInflater.inflate(
+                        R.layout.item_dialog_device, deviceListContainer, false);
+
+                MaterialCardView card = cardView.findViewById(R.id.device_card);
+                ImageView radioIndicator = cardView.findViewById(R.id.device_radio);
+                TextView nameText = cardView.findViewById(R.id.device_name);
+                TextView descText = cardView.findViewById(R.id.device_details);
+
+                nameText.setText(profile.getDisplayLabel());
+                descText.setText(profile.getShortDescription());
+
+                // Apply initial (unselected) styling
+                applyUnselectedCardStyle(card, radioIndicator, nameText, descText);
+
+                // Pre-select active profile
+                CredentialProfile activeProfile = credentialManager.getActiveProfile();
+                boolean isActive = activeProfile != null
+                        && profile.getId().equals(activeProfile.getId());
+                if (isActive) {
+                    selectedProfileIndex[0] = index;
+                    applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+                }
+
+                card.setOnClickListener(v -> {
+                    int prevIndex = selectedProfileIndex[0];
+                    selectedProfileIndex[0] = index;
+
+                    // Reset previously selected card
+                    if (prevIndex >= 0 && prevIndex < deviceListContainer.getChildCount()) {
+                        View prevChild = deviceListContainer.getChildAt(prevIndex);
+                        if (prevChild instanceof MaterialCardView) {
+                            MaterialCardView prevCard = (MaterialCardView) prevChild;
+                            ImageView prevRadio = prevCard.findViewById(R.id.device_radio);
+                            TextView prevName = prevCard.findViewById(R.id.device_name);
+                            TextView prevDesc = prevCard.findViewById(R.id.device_details);
+                            applyUnselectedCardStyle(prevCard, prevRadio, prevName, prevDesc);
                         }
                     }
-                    return view;
-                }
-            };
-            adapter.setDropDownViewResource(R.layout.spinner_profile_dropdown);
-            profileSpinner.setAdapter(adapter);
 
-            // Pre-select active profile
-            CredentialProfile activeProfile = credentialManager.getActiveProfile();
-            if (activeProfile != null) {
-                for (int i = 0; i < profiles.size(); i++) {
-                    if (profiles.get(i).getId().equals(activeProfile.getId())) {
-                        profileSpinner.setSelection(i);
-                        break;
-                    }
-                }
+                    // Apply selected style to this card
+                    applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+                });
+
+                deviceListContainer.addView(cardView);
             }
+
             addProfileBtn.setVisibility(View.GONE);
         }
 
@@ -288,13 +301,12 @@ public class TerminalFragment extends Fragment {
                         return;
                     }
 
-                    int selectedPos = profileSpinner.getSelectedItemPosition();
-                    if (selectedPos < 0 || selectedPos >= profiles.size()) {
+                    if (selectedProfileIndex[0] < 0 || selectedProfileIndex[0] >= profiles.size()) {
                         Toast.makeText(getContext(), R.string.terminal_select_device, Toast.LENGTH_SHORT).show();
                         return;
                     }
 
-                    CredentialProfile profile = profiles.get(selectedPos);
+                    CredentialProfile profile = profiles.get(selectedProfileIndex[0]);
                     String host = profile.getHost();
                     int finalPort = profile.getPort();
                     String username = profile.getUsername();
@@ -314,6 +326,69 @@ public class TerminalFragment extends Fragment {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * Apply selected card style: theme primary border + bullseye radio indicator.
+     * Uses MaterialCardView API so stroke/color are set via properties.
+     */
+    private void applySelectedCardStyle(MaterialCardView card, ImageView radio,
+                                         TextView nameText, TextView descText, int themePrimary) {
+        // Card: soft light-gray stroke via MaterialCardView stroke API
+        int strokeWidth = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 1.5f, getResources().getDisplayMetrics());
+        card.setStrokeWidth(strokeWidth);
+        card.setStrokeColor(0xFFBDBDBD);
+        card.setCardBackgroundColor(getResources().getColor(R.color.terminal_toolbar_background));
+
+        // Radio indicator: ring with inner dot (bullseye style)
+        GradientDrawable ringBg = new GradientDrawable();
+        ringBg.setShape(GradientDrawable.OVAL);
+        int radioSize = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
+        ringBg.setSize(radioSize, radioSize);
+        ringBg.setColor(android.graphics.Color.TRANSPARENT);
+        ringBg.setStroke(
+                (int) TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 2, getResources().getDisplayMetrics()),
+                themePrimary);
+
+        GradientDrawable dotBg = new GradientDrawable();
+        dotBg.setShape(GradientDrawable.OVAL);
+        dotBg.setColor(themePrimary);
+
+        int gap = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 5, getResources().getDisplayMetrics());
+        LayerDrawable radioBg = new LayerDrawable(
+                new android.graphics.drawable.Drawable[]{ringBg, dotBg});
+        radioBg.setLayerInset(1, gap, gap, gap, gap);
+        radio.setImageDrawable(radioBg);
+
+        nameText.setTextColor(getResources().getColor(R.color.text_primary));
+        descText.setTextColor(getResources().getColor(R.color.text_secondary));
+    }
+
+    /**
+     * Apply unselected card style: no stroke + hollow gray radio indicator.
+     */
+    private void applyUnselectedCardStyle(MaterialCardView card, ImageView radio,
+                                           TextView nameText, TextView descText) {
+        card.setStrokeWidth(0);
+        card.setCardBackgroundColor(getResources().getColor(R.color.terminal_toolbar_background));
+
+        GradientDrawable radioBg = new GradientDrawable();
+        radioBg.setShape(GradientDrawable.OVAL);
+        int radioSize = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
+        radioBg.setSize(radioSize, radioSize);
+        radioBg.setStroke(
+                (int) TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 2, getResources().getDisplayMetrics()),
+                getResources().getColor(R.color.gray_400));
+        radio.setImageDrawable(radioBg);
+
+        nameText.setTextColor(getResources().getColor(R.color.text_primary));
+        descText.setTextColor(getResources().getColor(R.color.text_secondary));
     }
 
     /**

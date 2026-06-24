@@ -46,12 +46,12 @@
             android:textColor="@color/text_secondary"
             android:layout_marginBottom="8dp" />
 
-        <!-- Profile Spinner dropdown -->
-        <Spinner
-            android:id="@+id/profile_spinner"
+        <!-- Device list: all configured devices shown as selectable card rows -->
+        <LinearLayout
+            android:id="@+id/device_list_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
+            android:orientation="vertical"
             android:layout_marginBottom="16dp" />
 
         <!-- Empty state hint -->
