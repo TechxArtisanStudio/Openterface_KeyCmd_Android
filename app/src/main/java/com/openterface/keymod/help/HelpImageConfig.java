@@ -98,6 +98,36 @@ public final class HelpImageConfig {
         return base + path;
     }
 
+    /**
+     * Build the full URL for a mode + step video.
+     *
+     * @param modeKey e.g. "km_basic", "km_pro"
+     * @param stepId  e.g. "target_os"
+     * @return video URL, or null if not configured
+     */
+    @Nullable
+    public String getVideoUrl(@NonNull String modeKey, @NonNull String stepId) {
+        ModeConfig mode = modes.get(modeKey);
+        if (mode == null || mode.steps == null) return null;
+        for (StepConfig step : mode.steps) {
+            if (stepId.equals(step.id) && step.video != null && !step.video.isEmpty()) {
+                String base = baseUrl;
+                if (!base.endsWith("/") && !step.video.startsWith("http")) {
+                    base = base + "/";
+                }
+                return base + step.video;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check whether a step has video configured.
+     */
+    public boolean hasVideo(@NonNull String modeKey, @NonNull String stepId) {
+        return getVideoUrl(modeKey, stepId) != null;
+    }
+
     // ---- nested models ----
 
     /**
@@ -123,5 +153,20 @@ public final class HelpImageConfig {
         /** Fallback static image if GIF fails. */
         @Nullable
         public String fallback;
+
+        // === Video fields ===
+        /** MP4 video remote URL or relative path. */
+        @Nullable
+        public String video;
+
+        /** Poster image shown while video loads. */
+        @Nullable
+        public String poster;
+
+        /** Whether to auto-play video (default: true). */
+        public boolean autoPlay = true;
+
+        /** Whether to loop video playback (default: false). */
+        public boolean loop = false;
     }
 }
