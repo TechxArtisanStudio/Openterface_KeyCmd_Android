@@ -170,4 +170,7 @@ dependencies {
     // Glide for image loading (GIF/PNG/WebP) in help guide overlays
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+
+    // ExoPlayer for MP4 video playback in tutorial overlay
+    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
 }
