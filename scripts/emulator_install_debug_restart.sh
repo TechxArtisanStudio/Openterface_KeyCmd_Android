@@ -6,8 +6,11 @@ set -euo pipefail
 # Default serial is emulator-5554; pass another serial for a phone or different emulator.
 # Defaults are tuned for this project on this Mac setup.
 #
-# For README screenshots across locales (emulator + adb), see the testing repo:
-#   ../Openterface_KeyMod_Android_testing/scripts/capture_readme_i18n_screenshots.sh
+# Screenshot automation (emulator + adb, API 33+):
+#   ./scripts/screenshot-capture/capture_welcome_i18n_screenshots.sh
+#   ./scripts/screenshot-capture/capture_readme_i18n_screenshots.sh
+#   ./scripts/screenshot-capture/capture_mode_page_screenshots.sh
+# See scripts/screenshot-capture/BEHAVIOR_RECORDING.md
 #
 # Usage:
 #   ./scripts/emulator_install_debug_restart.sh

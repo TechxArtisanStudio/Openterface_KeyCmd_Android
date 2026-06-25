@@ -1066,6 +1066,10 @@ di TechxArtisan</string>
     <string name="gamepad_config_duplicate_failed">Impossibile duplicare il modulo</string>
     <string name="gamepad_config_done">Fine</string>
     <string name="gamepad_key_picker_title">Tasto Seleziona</string>
+    <string name="gamepad_key_picker_modifier_keys">Tasti modificatori</string>
+    <string name="gamepad_key_picker_modifier_chord">Combina con tasto (facoltativo)</string>
+    <string name="gamepad_key_picker_modifier_left">Sinistra</string>
+    <string name="gamepad_key_picker_modifier_right">Destra</string>
     <string name="gamepad_key_picker_save">Salva</string>
     <string name="gamepad_key_picker_cd_arrow_up">Freccia su</string>
     <string name="gamepad_key_picker_cd_arrow_down">Freccia giù</string>

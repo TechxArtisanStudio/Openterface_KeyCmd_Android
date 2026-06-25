@@ -1228,6 +1228,10 @@ by TechxArtisan</string>
     <string name="gamepad_config_duplicate_failed">Could not duplicate module</string>
     <string name="gamepad_config_done">Done</string>
     <string name="gamepad_key_picker_title">Select key</string>
+    <string name="gamepad_key_picker_modifier_keys">Modifier keys</string>
+    <string name="gamepad_key_picker_modifier_chord">Combine with key (optional)</string>
+    <string name="gamepad_key_picker_modifier_left">Left</string>
+    <string name="gamepad_key_picker_modifier_right">Right</string>
     <string name="gamepad_key_picker_save">Save</string>
     <string name="gamepad_key_picker_cd_arrow_up">Up arrow key</string>
     <string name="gamepad_key_picker_cd_arrow_down">Down arrow key</string>

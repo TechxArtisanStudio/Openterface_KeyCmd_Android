@@ -834,6 +834,10 @@ von TechxArtisan</string>
     ]]></string>
     <string name="gamepad_key_picker_title"><![CDATA[Select key
     ]]></string>
+    <string name="gamepad_key_picker_modifier_keys">Modifier-Tasten</string>
+    <string name="gamepad_key_picker_modifier_chord">Mit Taste kombinieren (optional)</string>
+    <string name="gamepad_key_picker_modifier_left">Links</string>
+    <string name="gamepad_key_picker_modifier_right">Rechts</string>
     <string name="gamepad_menu_add_touchpad_mouse_l"><![CDATA[Re-add left mouse button (L)
     ]]></string>
     <string name="gamepad_menu_add_touchpad_mouse_m"><![CDATA[Re-add middle mouse button (M)

@@ -101,10 +101,10 @@ public class BasicNumPadFragment extends Fragment {
     }
 
     /**
-     * Matches KM Basic keyboard horizontal insets ({@code base + navigationBars}). Bottom uses {@link
-     * Math#max} of {@link R.dimen#basic_keyboard_content_inset_bottom} and {@code bars.bottom} so
-     * portrait does not stack two full nav clearances; landscape still gets {@code baseEnd +
-     * bars.right} for the side nav strip.
+     * Horizontal padding uses the fixed {@code basic_keyboard_content_inset} dimens; landscape side
+     * system insets are applied on {@link KeyboardMouseFragment}'s root. Bottom uses {@link Math#max}
+     * of {@link R.dimen#basic_keyboard_content_inset_bottom} and {@code bars.bottom} so portrait does
+     * not stack two full nav clearances.
      */
     private void installNumpadContentInsets(@NonNull View root) {
         ViewCompat.setOnApplyWindowInsetsListener(
@@ -123,9 +123,9 @@ public class BasicNumPadFragment extends Fragment {
                     int bottomPad = Math.max(baseBottom, bars.bottom);
                     ViewCompat.setPaddingRelative(
                             v,
-                            baseStart + bars.left,
+                            baseStart,
                             v.getPaddingTop(),
-                            baseEnd + bars.right,
+                            baseEnd,
                             bottomPad);
                     return windowInsets;
                 });

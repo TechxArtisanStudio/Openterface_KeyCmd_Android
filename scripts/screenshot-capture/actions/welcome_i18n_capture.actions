@@ -1,0 +1,16 @@
+# Welcome screen only (portrait + landscape). Caller launches LaunchPanel with show_panel.
+# Requires ACTION_TEST_SKIP_INITIAL_LAUNCH=1.
+
+PREPARE_CAPTURE
+
+ORIENTATION portrait
+WAIT 2
+SCREENSHOT demo-welcome-mode-selection
+
+ORIENTATION landscape
+LAUNCH_WELCOME
+ORIENTATION landscape
+WAIT 3.5
+SCREENSHOT demo-welcome-mode-selection-landscape
+
+ORIENTATION portrait
