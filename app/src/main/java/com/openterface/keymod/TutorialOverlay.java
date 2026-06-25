@@ -25,6 +25,10 @@ import androidx.cardview.widget.CardView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.openterface.keymod.help.HelpImageConfig;
 import com.openterface.keymod.help.HelpImageConfigManager;
 import com.openterface.keymod.help.HelpImageDownloader;
@@ -43,6 +47,7 @@ public class TutorialOverlay extends FrameLayout {
     private final HighlightView highlightView;
     private final CardView tooltipCard;
     private final ImageView helpImageView;
+    private final PlayerView helpVideoView;
     private final ProgressBar loadingIndicator;
     private final TextView tooltipText;
     private final Button nextButton;
@@ -51,6 +56,9 @@ public class TutorialOverlay extends FrameLayout {
 
     private HelpImageConfig config;
     private String currentModeKey;
+
+    @Nullable
+    private ExoPlayer videoPlayer;
 
     private Step[] steps;
     private int currentStep = 0;
@@ -112,6 +120,18 @@ public class TutorialOverlay extends FrameLayout {
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         imageParams.bottomMargin = dpToPx(8);
         content.addView(helpImageView, imageParams);
+
+        // Help video area (MP4 overlay)
+        helpVideoView = new PlayerView(context);
+        helpVideoView.setResizeMode(
+                com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        helpVideoView.setUseController(true);
+        helpVideoView.setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING);
+        helpVideoView.setVisibility(View.GONE);
+        LinearLayout.LayoutParams videoParams = new LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        videoParams.bottomMargin = dpToPx(8);
+        content.addView(helpVideoView, videoParams);
 
         // Loading indicator
         loadingIndicator = new ProgressBar(context);
@@ -227,8 +247,9 @@ public class TutorialOverlay extends FrameLayout {
             nextButton.setText(getContext().getString(R.string.tutorial_next));
         }
 
-        // Load help image for this step
-        loadHelpImage(step);
+        // Load help media for this step (video preferred, fallback to image)
+        stopVideo();
+        loadHelpMedia(step);
 
         // Find the target view
         View targetView = null;
@@ -405,19 +426,28 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * Load the help image for the given step (if a config and imageKey are available).
-     * Shows a loading indicator while downloading, then displays the image with Glide.
+     * Load help media for the given step (video preferred, fallback to image).
+     * If a video is configured, attempts to play it; on failure, falls back to image.
+     * If no video, loads image as before.
      */
-    private void loadHelpImage(Step step) {
+    private void loadHelpMedia(Step step) {
         String imageKey = step.imageKey();
         if (config == null || currentModeKey == null || imageKey == null) {
-            hideImageArea();
+            hideMediaArea();
             return;
         }
 
+        // 1. Try video first
+        String videoUrl = config.getVideoUrl(currentModeKey, imageKey);
+        if (videoUrl != null) {
+            showVideoWithUrl(videoUrl, imageKey);
+            return;
+        }
+
+        // 2. Fallback to image (existing logic)
         String imageUrl = config.getImageUrl(currentModeKey, imageKey);
         if (imageUrl == null) {
-            hideImageArea();
+            hideMediaArea();
             return;
         }
 
@@ -432,6 +462,7 @@ public class TutorialOverlay extends FrameLayout {
 
         // Show loading indicator and download
         helpImageView.setVisibility(View.GONE);
+        helpVideoView.setVisibility(View.GONE);
         loadingIndicator.setVisibility(View.VISIBLE);
 
         downloader.download(imageUrl, new HelpImageDownloader.Callback() {
@@ -447,23 +478,96 @@ public class TutorialOverlay extends FrameLayout {
             public void onError(Exception error) {
                 post(() -> {
                     loadingIndicator.setVisibility(View.GONE);
-                    hideImageArea();
+                    hideMediaArea();
                 });
             }
         });
     }
 
+    /**
+     * Load and play a video. On failure, fallback to the step's image.
+     */
+    private void showVideoWithUrl(String videoUrl, String imageKey) {
+        helpImageView.setVisibility(View.GONE);
+        loadingIndicator.setVisibility(View.GONE);
+        helpVideoView.setVisibility(View.VISIBLE);
+
+        // Initialize player lazily
+        if (videoPlayer == null) {
+            videoPlayer = new ExoPlayer.Builder(getContext()).build();
+            helpVideoView.setPlayer(videoPlayer);
+        }
+
+        MediaItem mediaItem = MediaItem.fromUri(videoUrl);
+        videoPlayer.setMediaItem(mediaItem);
+        videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
+        videoPlayer.addListener(new Player.Listener() {
+            @Override
+            public void onPlayerError(@NonNull com.google.android.exoplayer2.PlaybackException error) {
+                post(() -> fallbackToImage(imageKey));
+            }
+        });
+        videoPlayer.prepare();
+        videoPlayer.setPlayWhenReady(true);
+    }
+
+    /**
+     * When video playback fails, fall back to the step's image.
+     */
+    private void fallbackToImage(String imageKey) {
+        stopVideo();
+        if (config == null || currentModeKey == null) {
+            hideMediaArea();
+            return;
+        }
+        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
+        if (imageUrl == null) {
+            hideMediaArea();
+            return;
+        }
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+        File cached = downloader.getCachedFile(imageUrl);
+        if (cached != null) {
+            showImage(cached);
+        } else {
+            hideMediaArea();
+        }
+    }
+
+    /**
+     * Stop video playback and hide the video view.
+     */
+    private void stopVideo() {
+        if (videoPlayer != null) {
+            videoPlayer.stop();
+            videoPlayer.clearMediaItems();
+        }
+        helpVideoView.setVisibility(View.GONE);
+    }
+
     private void showImage(File localFile) {
         helpImageView.setVisibility(View.VISIBLE);
+        helpVideoView.setVisibility(View.GONE);
         Glide.with(getContext())
                 .load(localFile)
                 .diskCacheStrategy(DiskCacheStrategy.NONE) // already cached by downloader
                 .into(helpImageView);
     }
 
-    private void hideImageArea() {
+    private void hideMediaArea() {
         helpImageView.setVisibility(View.GONE);
+        helpVideoView.setVisibility(View.GONE);
         loadingIndicator.setVisibility(View.GONE);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        // Release ExoPlayer to prevent memory leaks
+        if (videoPlayer != null) {
+            videoPlayer.release();
+            videoPlayer = null;
+        }
     }
 
     private int dpToPx(int dp) {

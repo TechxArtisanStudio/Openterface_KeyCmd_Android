@@ -111,8 +111,12 @@ public final class HelpImageConfig {
         if (mode == null || mode.steps == null) return null;
         for (StepConfig step : mode.steps) {
             if (stepId.equals(step.id) && step.video != null && !step.video.isEmpty()) {
+                // Already an absolute URL — return directly
+                if (step.video.startsWith("http://") || step.video.startsWith("https://")) {
+                    return step.video;
+                }
                 String base = baseUrl;
-                if (!base.endsWith("/") && !step.video.startsWith("http")) {
+                if (!base.endsWith("/")) {
                     base = base + "/";
                 }
                 return base + step.video;

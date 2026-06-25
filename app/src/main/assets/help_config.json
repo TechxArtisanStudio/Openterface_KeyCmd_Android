@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "baseUrl": "https://httpbin.org/image/",
   "modes": {
     "km_basic": {
       "steps": [
         { "id": "connection", "image": "jpeg", "fallback": "png" },
-        { "id": "target_os", "image": "jpeg", "fallback": "png" },
+        { "id": "target_os", "video": "https://www.w3schools.com/html/movie.mp4", "image": "jpeg", "fallback": "png", "autoPlay": true, "loop": false },
         { "id": "submode_tabs", "image": "jpeg", "fallback": "png" },
         { "id": "keyboard_modes", "image": "jpeg", "fallback": "png" },
         { "id": "modifier_hold_swipe", "image": "jpeg", "fallback": "png" },
