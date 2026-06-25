@@ -1066,6 +1066,10 @@ by TechxArtisan</string>
     <string name="gamepad_config_duplicate_failed">모듈을 복제할 수 없습니다</string>
     <string name="gamepad_config_done">완료</string>
     <string name="gamepad_key_picker_title">선택 키</string>
+    <string name="gamepad_key_picker_modifier_keys">수정자 키</string>
+    <string name="gamepad_key_picker_modifier_chord">키와 조합(선택)</string>
+    <string name="gamepad_key_picker_modifier_left">왼쪽</string>
+    <string name="gamepad_key_picker_modifier_right">오른쪽</string>
     <string name="gamepad_key_picker_save">저장</string>
     <string name="gamepad_key_picker_cd_arrow_up">위쪽 화살표 키</string>
     <string name="gamepad_key_picker_cd_arrow_down">아래쪽 화살표 키</string>
