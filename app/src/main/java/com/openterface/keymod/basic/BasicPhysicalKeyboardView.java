@@ -1054,7 +1054,14 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
      */
     private View inflateArrowKey(LinearLayout row, @DrawableRes int iconRes, @StringRes int cdRes, float weight) {
         View v = LayoutInflater.from(getContext()).inflate(R.layout.basic_key_arrow_button, row, false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
+        // If the parent is vertical, weight applies to height and width should fill;
+        // if horizontal, weight applies to width and height should fill (original behavior).
+        LinearLayout.LayoutParams lp;
+        if (row.getOrientation() == VERTICAL) {
+            lp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, weight);
+        } else {
+            lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
+        }
         applyKeyCellMargins(lp, getContext());
         v.setLayoutParams(lp);
         ImageView icon = v.findViewById(R.id.basic_key_arrow_icon);
@@ -1365,50 +1372,53 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
     }
 
     /**
-     * Arrow keys in a 2×3 cluster (same total horizontal weight as four single keys on Mac):
-     * spacer / up / spacer on the top row; left / down / right on the bottom row. Icons use
-     * Material Symbols–style {@code keyboard_arrow_*_24} drawables.
+     * Arrow keys in a 3-column cluster (same total horizontal weight as four single keys on Mac).
+     * Left arrow and right arrow each span the full cluster height;
+     * up arrow and down arrow stack vertically in the middle column.
+     * Icons use Material Symbols style keyboard_arrow_*_24 drawables.
      */
     private View createArrowCluster(float horizontalWeight) {
         Context c = getContext();
+
+        // Root: horizontal cluster with three equal-weight columns.
         LinearLayout cluster = new LinearLayout(c);
-        cluster.setOrientation(VERTICAL);
+        cluster.setOrientation(HORIZONTAL);
         cluster.setBaselineAligned(false);
         LinearLayout.LayoutParams clusterLp =
                 new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, horizontalWeight);
         applyKeyCellMargins(clusterLp, c);
         cluster.setLayoutParams(clusterLp);
 
-        LinearLayout top = new LinearLayout(c);
-        top.setOrientation(HORIZONTAL);
-        top.setBaselineAligned(false);
-        top.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
-        addArrowRowSpacer(top, 1f);
-        View up = inflateArrowKey(top, R.drawable.keyboard_arrow_up_24, R.string.Up_arrow, 1f);
-        wireKeyedRepeatOrHold(up, 0x52, false, false, () -> "\u2191");
-        addArrowRowSpacer(top, 1f);
-
-        LinearLayout bottom = new LinearLayout(c);
-        bottom.setOrientation(HORIZONTAL);
-        bottom.setBaselineAligned(false);
-        bottom.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
-        View left = inflateArrowKey(bottom, R.drawable.keyboard_arrow_left_24, R.string.Left_arrow, 1f);
+        // Left column: left arrow spans both rows.
+        LinearLayout leftCol = newVerticalColumn(1f);
+        View left = inflateArrowKey(leftCol, R.drawable.keyboard_arrow_left_24, R.string.Left_arrow, 1f);
         wireKeyedRepeatOrHold(left, 0x50, false, false, () -> "\u2190");
-        View down = inflateArrowKey(bottom, R.drawable.keyboard_arrow_down_24, R.string.Down_arrow, 1f);
+
+        // Middle column: up on top, down on bottom (fill full column width).
+        LinearLayout middleCol = newVerticalColumn(1f);
+        View up = inflateArrowKey(middleCol, R.drawable.keyboard_arrow_up_24, R.string.Up_arrow, 1f);
+        wireKeyedRepeatOrHold(up, 0x52, false, false, () -> "\u2191");
+        View down = inflateArrowKey(middleCol, R.drawable.keyboard_arrow_down_24, R.string.Down_arrow, 1f);
         wireKeyedRepeatOrHold(down, 0x51, false, false, () -> "\u2193");
-        View right = inflateArrowKey(bottom, R.drawable.keyboard_arrow_right_24, R.string.Right_arrow, 1f);
+
+        // Right column: right arrow spans both rows.
+        LinearLayout rightCol = newVerticalColumn(1f);
+        View right = inflateArrowKey(rightCol, R.drawable.keyboard_arrow_right_24, R.string.Right_arrow, 1f);
         wireKeyedRepeatOrHold(right, 0x4F, false, false, () -> "\u2192");
 
-        cluster.addView(top);
-        cluster.addView(bottom);
+        cluster.addView(leftCol);
+        cluster.addView(middleCol);
+        cluster.addView(rightCol);
         return cluster;
     }
 
-    private void addArrowRowSpacer(LinearLayout row, float weight) {
-        Space s = new Space(getContext());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight);
-        s.setLayoutParams(lp);
-        row.addView(s);
+    private LinearLayout newVerticalColumn(float weight) {
+        Context c = getContext();
+        LinearLayout col = new LinearLayout(c);
+        col.setOrientation(VERTICAL);
+        col.setBaselineAligned(false);
+        col.setLayoutParams(new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight));
+        return col;
     }
 
     private void addMacBottomRow(LinearLayout row) {
