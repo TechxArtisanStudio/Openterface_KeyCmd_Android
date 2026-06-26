@@ -114,7 +114,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Right: scrollable grid; tutorial + credit pinned below -->
+    <!-- Right: scrollable grid + tutorial + credit -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -127,18 +127,25 @@
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="match_parent"
             android:clipToPadding="false"
             android:scrollbars="vertical"
-            android:fillViewport="true">
+            android:fillViewport="true"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="22dp"
+            android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
         <GridLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:columnCount="4"
             android:rowCount="2"
-            android:padding="8dp"
+            android:padding="@dimen/launch_panel_land_grid_padding"
             android:alignmentMode="alignMargins"
             android:useDefaultMargins="false">
 
@@ -149,7 +156,7 @@
                 android:layout_row="0"
                 android:layout_column="0"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -160,16 +167,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/keyboard_mouse"
@@ -197,7 +204,7 @@
                 android:layout_row="0"
                 android:layout_column="1"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -208,16 +215,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/keyboard_mouse_pro"
@@ -245,7 +252,7 @@
                 android:layout_row="0"
                 android:layout_column="2"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -256,16 +263,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/ic_presentation"
@@ -293,7 +300,7 @@
                 android:layout_row="0"
                 android:layout_column="3"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -304,16 +311,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/gamepad"
@@ -341,7 +348,7 @@
                 android:layout_row="1"
                 android:layout_column="0"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -352,16 +359,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/three_dots"
@@ -389,7 +396,7 @@
                 android:layout_row="1"
                 android:layout_column="1"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -400,16 +407,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/macros"
@@ -437,7 +444,7 @@
                 android:layout_row="1"
                 android:layout_column="2"
                 android:layout_columnWeight="1"
-                android:layout_margin="8dp"
+                android:layout_margin="@dimen/launch_panel_land_card_margin"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
                 app:cardBackgroundColor="@android:color/transparent"
@@ -448,16 +455,16 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="112dp"
+                    android:minHeight="@dimen/launch_panel_land_card_min_height"
                     android:orientation="vertical"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="@dimen/launch_panel_land_card_padding_h"
+                    android:paddingVertical="@dimen/launch_panel_land_card_padding_v"
                     android:gravity="center_horizontal"
                     android:background="@drawable/card_background_selector">
 
                     <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
+                        android:layout_width="@dimen/launch_panel_land_card_icon"
+                        android:layout_height="@dimen/launch_panel_land_card_icon"
                         android:adjustViewBounds="true"
                         android:scaleType="fitCenter"
                         android:src="@drawable/voice"
@@ -480,27 +487,28 @@
 
         </GridLayout>
 
-        </androidx.core.widget.NestedScrollView>
-
         <TextView
             android:id="@+id/show_tutorial_link"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="6dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp"
             android:text="@string/show_tutorial_link"
             android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="?attr/colorPrimary"
-            android:padding="8dp" />
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
 
         <TextView
             android:id="@+id/launch_panel_credit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="0dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="12dp"
             android:paddingHorizontal="20dp"
             android:gravity="center_horizontal"
             android:text="@string/launch_panel_credit"
@@ -509,6 +517,10 @@
             android:textColorLink="?attr/colorPrimary"
             android:autoLink="web"
             android:lineSpacingMultiplier="1.15" />
+
+        </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
 
     </LinearLayout>
 

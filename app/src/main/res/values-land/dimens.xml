@@ -20,4 +20,12 @@
     <dimen name="compose_shortcut_strip_height">108dp</dimen>
     <!-- KM Basic compose: shorter min height in landscape; column layout uses width for text. -->
     <dimen name="basic_compose_editor_min_height">72dp</dimen>
+
+    <!-- Welcome / LaunchPanel mode grid in landscape -->
+    <dimen name="launch_panel_land_card_min_height">92dp</dimen>
+    <dimen name="launch_panel_land_card_icon">40dp</dimen>
+    <dimen name="launch_panel_land_card_margin">5dp</dimen>
+    <dimen name="launch_panel_land_grid_padding">6dp</dimen>
+    <dimen name="launch_panel_land_card_padding_v">8dp</dimen>
+    <dimen name="launch_panel_land_card_padding_h">8dp</dimen>
 </resources>
