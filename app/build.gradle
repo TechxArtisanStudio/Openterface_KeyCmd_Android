@@ -92,6 +92,7 @@ android {
         setProperty("archivesBaseName", "KeyCmd")
 
         buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
+        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://cdn.openterface.com/help/config.json"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

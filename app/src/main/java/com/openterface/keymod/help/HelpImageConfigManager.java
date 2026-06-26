@@ -9,6 +9,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.BuildConfig;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,10 +36,6 @@ public final class HelpImageConfigManager {
 
     private static final String TAG = "HelpImageConfigMgr";
 
-    /** Where the config JSON is downloaded from. */
-    private static final String CONFIG_URL =
-            "https://cdn.openterface.com/help/config.json";
-
     /** Local cache file name. */
     private static final String CONFIG_FILE_NAME = "help_config.json";
 
@@ -50,12 +48,14 @@ public final class HelpImageConfigManager {
     private volatile HelpImageConfig cachedConfig;
 
     private final Context appContext;
+    private final String configUrl;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private static HelpImageConfigManager instance;
 
     private HelpImageConfigManager(Context context) {
         this.appContext = context.getApplicationContext();
+        this.configUrl = com.openterface.keymod.BuildConfig.HELP_CONFIG_URL;
     }
 
     @NonNull
@@ -113,16 +113,42 @@ public final class HelpImageConfigManager {
     /**
      * Async variant that always tries a fresh download, then invokes the callback.
      * The callback receives the new config, or the cached one if download failed.
+     * <p>
+     * If the config version changes, old cached resources are invalidated via
+     * {@link RemoteResourceStore#invalidateOldVersions}.
      */
     public void refreshAsync(@Nullable Callback callback) {
         new Thread(() -> {
+            String oldVersion = getCachedVersion();
+
             HelpImageConfig fresh = fetchFromNetworkBlocking();
             HelpImageConfig result = fresh != null ? fresh : getConfig();
             final HelpImageConfig finalResult = result;
+
+            // Invalidate old version cache on version upgrade
+            if (finalResult != null
+                    && !finalResult.version.equals(oldVersion)
+                    && !"0".equals(oldVersion)) {
+                Log.d(TAG, "Config version upgrade: " + oldVersion
+                        + " -> " + finalResult.version + ", invalidating old cache");
+                RemoteResourceStore.getInstance(appContext)
+                        .invalidateOldVersions(finalResult.version);
+            }
+
             if (callback != null) {
                 mainHandler.post(() -> callback.onConfigReady(finalResult));
             }
         }).start();
+    }
+
+    /**
+     * Returns the currently cached config version, or "0" if no config is loaded.
+     * Does NOT trigger a network fetch.
+     */
+    @NonNull
+    public String getCachedVersion() {
+        HelpImageConfig c = cachedConfig;
+        return c != null ? c.version : "0";
     }
 
     /**
@@ -186,7 +212,7 @@ public final class HelpImageConfigManager {
     private HelpImageConfig fetchFromNetworkBlocking() {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL(CONFIG_URL);
+            URL url = new URL(configUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
@@ -227,7 +253,7 @@ public final class HelpImageConfigManager {
     private String readRemoteVersionBlocking() {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL(CONFIG_URL);
+            URL url = new URL(configUrl);
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
