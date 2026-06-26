@@ -5,7 +5,7 @@
     "km_basic": {
       "steps": [
         { "id": "connection", "image": "jpeg", "fallback": "png" },
-        { "id": "target_os", "video": "https://www.w3schools.com/html/movie.mp4", "image": "jpeg", "fallback": "png", "autoPlay": true, "loop": false },
+        { "id": "target_os", "video": "https://github.com/TSTC123/test/releases/download/v1.0.0/target_os.mp4", "image": "jpeg", "fallback": "png", "autoPlay": true, "loop": false },
         { "id": "submode_tabs", "image": "jpeg", "fallback": "png" },
         { "id": "keyboard_modes", "image": "jpeg", "fallback": "png" },
         { "id": "modifier_hold_swipe", "image": "jpeg", "fallback": "png" },

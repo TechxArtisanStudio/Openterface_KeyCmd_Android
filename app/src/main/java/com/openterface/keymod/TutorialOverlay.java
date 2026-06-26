@@ -2,6 +2,8 @@ package com.openterface.keymod;
 
 import android.app.Activity;
 import android.content.Context;
+import android.net.Uri;
+import android.util.Log;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
@@ -485,7 +487,8 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * Load and play a video. On failure, fallback to the step's image.
+     * Load and play a video. Uses local cache if available, otherwise downloads first.
+     * On failure, fallback to the step's image.
      */
     private void showVideoWithUrl(String videoUrl, String imageKey) {
         helpImageView.setVisibility(View.GONE);
@@ -498,17 +501,58 @@ public class TutorialOverlay extends FrameLayout {
             helpVideoView.setPlayer(videoPlayer);
         }
 
-        MediaItem mediaItem = MediaItem.fromUri(videoUrl);
-        videoPlayer.setMediaItem(mediaItem);
-        videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+        File cachedVideo = downloader.getCachedVideoFile(videoUrl);
+
+        // Use cached video if available
+        if (cachedVideo != null) {
+            Log.d("TutorialOverlay", "Using cached video: " + cachedVideo.getAbsolutePath());
+            MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(cachedVideo));
+            videoPlayer.setMediaItem(mediaItem);
+            videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
+            addVideoErrorListener(imageKey);
+            videoPlayer.prepare();
+            videoPlayer.setPlayWhenReady(true);
+            return;
+        }
+
+        // Not cached — download first, then play from local file
+        Log.d("TutorialOverlay", "Downloading video: " + videoUrl);
+        loadingIndicator.setVisibility(View.VISIBLE);
+        downloader.downloadVideo(videoUrl, new HelpImageDownloader.Callback() {
+            @Override
+            public void onSuccess(@NonNull File localFile) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(localFile));
+                    videoPlayer.setMediaItem(mediaItem);
+                    videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
+                    addVideoErrorListener(imageKey);
+                    videoPlayer.prepare();
+                    videoPlayer.setPlayWhenReady(true);
+                });
+            }
+
+            @Override
+            public void onError(@NonNull Exception error) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    fallbackToImage(imageKey);
+                });
+            }
+        });
+    }
+
+    /**
+     * Add error listener to video player for fallback handling.
+     */
+    private void addVideoErrorListener(String imageKey) {
         videoPlayer.addListener(new Player.Listener() {
             @Override
             public void onPlayerError(@NonNull com.google.android.exoplayer2.PlaybackException error) {
                 post(() -> fallbackToImage(imageKey));
             }
         });
-        videoPlayer.prepare();
-        videoPlayer.setPlayWhenReady(true);
     }
 
     /**
