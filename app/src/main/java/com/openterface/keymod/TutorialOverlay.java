@@ -454,9 +454,10 @@ public class TutorialOverlay extends FrameLayout {
         }
 
         HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+        String version = config.version;
 
         // If already cached, load immediately
-        File cached = downloader.getCachedFile(imageUrl);
+        File cached = downloader.getCachedFile(imageUrl, version);
         if (cached != null) {
             showImage(cached);
             return;
@@ -467,7 +468,7 @@ public class TutorialOverlay extends FrameLayout {
         helpVideoView.setVisibility(View.GONE);
         loadingIndicator.setVisibility(View.VISIBLE);
 
-        downloader.download(imageUrl, new HelpImageDownloader.Callback() {
+        downloader.download(imageUrl, version, new HelpImageDownloader.Callback() {
             @Override
             public void onSuccess(File localFile) {
                 post(() -> {
@@ -502,7 +503,7 @@ public class TutorialOverlay extends FrameLayout {
         }
 
         HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
-        File cachedVideo = downloader.getCachedVideoFile(videoUrl);
+        File cachedVideo = downloader.getCachedVideoFile(videoUrl, config.version);
 
         // Use cached video if available
         if (cachedVideo != null) {
@@ -519,7 +520,7 @@ public class TutorialOverlay extends FrameLayout {
         // Not cached — download first, then play from local file
         Log.d("TutorialOverlay", "Downloading video: " + videoUrl);
         loadingIndicator.setVisibility(View.VISIBLE);
-        downloader.downloadVideo(videoUrl, new HelpImageDownloader.Callback() {
+        downloader.downloadVideo(videoUrl, config.version, new HelpImageDownloader.Callback() {
             @Override
             public void onSuccess(@NonNull File localFile) {
                 post(() -> {
@@ -570,7 +571,7 @@ public class TutorialOverlay extends FrameLayout {
             return;
         }
         HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
-        File cached = downloader.getCachedFile(imageUrl);
+        File cached = downloader.getCachedFile(imageUrl, config.version);
         if (cached != null) {
             showImage(cached);
         } else {
