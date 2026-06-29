@@ -9,6 +9,7 @@
 /.idea/assetWizardSettings.xml
 /.idea/AndroidProjectSystem.xml
 /.idea/runConfigurations.xml
+/.idea/gradle.xml
 /.idea/vcs.xml
 .DS_Store
 /build
