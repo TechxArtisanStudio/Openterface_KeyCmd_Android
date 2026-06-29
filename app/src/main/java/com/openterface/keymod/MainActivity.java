@@ -2516,18 +2516,33 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     }
 
     /**
-     * Load help config from assets, then apply config + steps to the overlay.
-     * This ensures config is ready before steps are set (which triggers image loading).
+     * Load help config using the production 3-tier cache pipeline (memory → disk → network),
+     * then apply config + steps to the overlay. Also triggers a background refresh to pick up
+     * any version updates from the CDN.
      */
     private void loadHelpConfigAndApplyWithSteps(
             final TutorialOverlay overlay, final String modeKey, final TutorialOverlay.Step[] steps) {
+        final HelpImageConfigManager configMgr = HelpImageConfigManager.getInstance(this);
         new Thread(() -> {
-            HelpImageConfig config = HelpImageConfigManager.getInstance(this).loadLocalTestConfig();
+            // 1. Get best available config (memory → disk → network) for fast first screen
+            HelpImageConfig config = configMgr.getConfig();
             runOnUiThread(() -> {
                 if (config != null) {
                     overlay.setConfig(config, modeKey);
                 }
                 overlay.setSteps(steps);
+            });
+
+            // 2. Background refresh to detect version updates from CDN
+            configMgr.refreshAsync(newVersion -> {
+                if (newVersion != null) {
+                    HelpImageConfig updatedConfig = configMgr.getConfig();
+                    runOnUiThread(() -> {
+                        if (updatedConfig != null) {
+                            overlay.setConfig(updatedConfig, modeKey);
+                        }
+                    });
+                }
             });
         }).start();
     }
