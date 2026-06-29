@@ -204,7 +204,7 @@
             android:id="@+id/nav_icon_shortcuts"
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/three_dots"
+            android:src="@drawable/shortcuts_hub"
             android:tint="?attr/colorPrimary" />
 
         <TextView

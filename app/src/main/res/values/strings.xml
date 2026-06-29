@@ -212,6 +212,8 @@
     <string name="nav_welcome_guide">Welcome &amp; Guide</string>
     <string name="nav_welcome_guide_content_description">Welcome screen, mode picker, and tutorial</string>
     <string name="top_mode_label_terminal">Terminal</string>
+    <string name="top_mode_label_agent">Agent</string>
+    <string name="launch_panel_agent_coming_soon">Agent mode is coming soon.</string>
     <string name="nav_terminal_cd">Terminal</string>
     <string name="terminal_connect">Connect</string>
     <string name="terminal_disconnect">Disconnect</string>
