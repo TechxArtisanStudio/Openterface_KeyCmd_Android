@@ -423,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         String earlyKbSub =
                 KeyboardMouseFragment.normalizeKmBasicSubmode(
                         launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
-        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
+        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub, this)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
@@ -1867,7 +1867,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * normalized to keyboard before this runs.
      */
     private static boolean shouldLockLandscapeForKmBasicKeyboardIntent(
-            @Nullable String launchMode, @Nullable String kbInitialSubmode) {
+            @Nullable String launchMode, @Nullable String kbInitialSubmode,
+            @NonNull android.content.Context context) {
+        // Skip landscape lock in portrait (touchpad mode preferred)
+        if (context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_PORTRAIT) {
+            return false;
+        }
         if (LaunchPanelActivity.MODE_KEYBOARD_MOUSE.equals(launchMode)) {
             return !KeyboardMouseFragment.SUBMODE_NUMPAD.equals(kbInitialSubmode)
                     && !KeyboardMouseFragment.SUBMODE_COMPOSE.equals(kbInitialSubmode)
@@ -2027,7 +2033,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         updateNavSelection();
         switch (mode) {
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
-                showKeyboardMouseFragment(consumePendingKbMouseSubmode());
+                if (getResources().getConfiguration().orientation
+                        == Configuration.ORIENTATION_PORTRAIT) {
+                    // Portrait: prefer touchpad submode on first launch of KM Basic
+                    consumePendingKbMouseSubmode();
+                    showKeyboardMouseFragment(KeyboardMouseFragment.SUBMODE_TOUCHPAD);
+                } else {
+                    showKeyboardMouseFragment(consumePendingKbMouseSubmode());
+                }
                 break;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
                 consumePendingKbMouseSubmode();
