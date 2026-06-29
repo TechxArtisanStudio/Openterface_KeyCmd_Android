@@ -159,6 +159,16 @@ public final class HelpImageDownloader {
     }
 
     /**
+     * Pre-load a batch of videos into the cache (fire and forget).
+     * Useful for warming the cache before a user visits a step with video.
+     */
+    public void preloadVideo(@NonNull Iterable<String> urls, @NonNull String configVersion) {
+        for (String url : urls) {
+            downloadVideo(url, configVersion, null);
+        }
+    }
+
+    /**
      * Check if a URL's image is already cached locally.
      */
     public boolean isCached(@NonNull String url, @NonNull String configVersion) {

@@ -29,6 +29,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.openterface.keymod.help.HelpImageConfig;
@@ -36,6 +37,8 @@ import com.openterface.keymod.help.HelpImageConfigManager;
 import com.openterface.keymod.help.HelpImageDownloader;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Beginner tutorial overlay that highlights views step-by-step.
@@ -68,6 +71,14 @@ public class TutorialOverlay extends FrameLayout {
     private boolean markBasicQuickStartPrefOnDismiss = true;
     @Nullable
     private Runnable onDismissExtra;
+
+    /** Current video error listener, tracked to prevent accumulation on the player. */
+    @Nullable
+    private Player.Listener currentVideoListener;
+
+    /** URL of the in-progress background video download (for cancellation on step change). */
+    @Nullable
+    private String backgroundVideoDownloadUrl;
 
     public static boolean isShown(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -229,6 +240,21 @@ public class TutorialOverlay extends FrameLayout {
         this.currentModeKey = modeKey;
     }
 
+    /**
+     * Look up the StepConfig for a given imageKey from the current mode.
+     * Used to read poster/autoPlay/loop fields.
+     */
+    @Nullable
+    private HelpImageConfig.StepConfig getStepConfig(String imageKey) {
+        if (config == null || currentModeKey == null || imageKey == null) return null;
+        HelpImageConfig.ModeConfig mode = config.modes.get(currentModeKey);
+        if (mode == null || mode.steps == null) return null;
+        for (HelpImageConfig.StepConfig sc : mode.steps) {
+            if (imageKey.equals(sc.id)) return sc;
+        }
+        return null;
+    }
+
     private void showCurrentStep() {
         if (steps == null || currentStep >= steps.length) {
             dismiss();
@@ -252,6 +278,9 @@ public class TutorialOverlay extends FrameLayout {
         // Load help media for this step (video preferred, fallback to image)
         stopVideo();
         loadHelpMedia(step);
+
+        // Preload media for upcoming steps in the background
+        preloadUpcomingSteps();
 
         // Find the target view
         View targetView = null;
@@ -488,76 +517,93 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * Load and play a video. Uses local cache if available, otherwise downloads first.
+     * Load and play a video. Uses local cache if available (instant start),
+     * otherwise streams from remote URL while downloading to cache in background.
      * On failure, fallback to the step's image.
      */
     private void showVideoWithUrl(String videoUrl, String imageKey) {
         helpImageView.setVisibility(View.GONE);
-        loadingIndicator.setVisibility(View.GONE);
         helpVideoView.setVisibility(View.VISIBLE);
 
-        // Initialize player lazily
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+        File cachedVideo = downloader.getCachedVideoFile(videoUrl, config.version);
+
+        if (cachedVideo != null) {
+            // Cached → play from local file (instant start)
+            Log.d("TutorialOverlay", "Using cached video: " + cachedVideo.getAbsolutePath());
+            playVideoFromUri(Uri.fromFile(cachedVideo), imageKey);
+            return;
+        }
+
+        // Not cached → show poster, stream from remote URL, cache in background
+        showPosterForStep(imageKey);
+        playVideoFromUri(Uri.parse(videoUrl), imageKey);
+
+        // Background download for next-time instant start
+        backgroundVideoDownloadUrl = videoUrl;
+        downloader.downloadVideo(videoUrl, config.version, new HelpImageDownloader.Callback() {
+            @Override
+            public void onSuccess(@NonNull File localFile) {
+                backgroundVideoDownloadUrl = null;
+                Log.d("TutorialOverlay", "Video cached for next time: " + localFile);
+            }
+
+            @Override
+            public void onError(@NonNull Exception error) {
+                backgroundVideoDownloadUrl = null;
+                Log.w("TutorialOverlay", "Background video cache failed", error);
+            }
+        });
+    }
+
+    /**
+     * Unified video playback: initializes player if needed, removes old listener,
+     * configures autoPlay/loop from StepConfig, and attaches a tracked error listener.
+     */
+    private void playVideoFromUri(Uri uri, String imageKey) {
         if (videoPlayer == null) {
             videoPlayer = new ExoPlayer.Builder(getContext()).build();
             helpVideoView.setPlayer(videoPlayer);
         }
 
-        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
-        File cachedVideo = downloader.getCachedVideoFile(videoUrl, config.version);
+        // Remove old listener to prevent accumulation
+        removeCurrentVideoListener();
 
-        // Use cached video if available
-        if (cachedVideo != null) {
-            Log.d("TutorialOverlay", "Using cached video: " + cachedVideo.getAbsolutePath());
-            MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(cachedVideo));
-            videoPlayer.setMediaItem(mediaItem);
-            videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
-            addVideoErrorListener(imageKey);
-            videoPlayer.prepare();
-            videoPlayer.setPlayWhenReady(true);
-            return;
-        }
+        // Read loop/autoPlay from StepConfig
+        HelpImageConfig.StepConfig stepConfig = getStepConfig(imageKey);
+        int repeatMode = (stepConfig != null && stepConfig.loop)
+                ? Player.REPEAT_MODE_ALL : Player.REPEAT_MODE_OFF;
+        boolean autoPlay = stepConfig == null || stepConfig.autoPlay;
 
-        // Not cached — download first, then play from local file
-        Log.d("TutorialOverlay", "Downloading video: " + videoUrl);
-        loadingIndicator.setVisibility(View.VISIBLE);
-        downloader.downloadVideo(videoUrl, config.version, new HelpImageDownloader.Callback() {
+        videoPlayer.setMediaItem(MediaItem.fromUri(uri));
+        videoPlayer.setRepeatMode(repeatMode);
+
+        // Attach tracked error listener for fallback
+        currentVideoListener = new Player.Listener() {
             @Override
-            public void onSuccess(@NonNull File localFile) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    MediaItem mediaItem = MediaItem.fromUri(Uri.fromFile(localFile));
-                    videoPlayer.setMediaItem(mediaItem);
-                    videoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
-                    addVideoErrorListener(imageKey);
-                    videoPlayer.prepare();
-                    videoPlayer.setPlayWhenReady(true);
-                });
+            public void onPlayerError(@NonNull PlaybackException error) {
+                post(() -> fallbackToImage(imageKey));
             }
+        };
+        videoPlayer.addListener(currentVideoListener);
 
-            @Override
-            public void onError(@NonNull Exception error) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    fallbackToImage(imageKey);
-                });
-            }
-        });
+        videoPlayer.prepare();
+        videoPlayer.setPlayWhenReady(autoPlay);
     }
 
     /**
-     * Add error listener to video player for fallback handling.
+     * Remove the current video error listener to prevent accumulation.
      */
-    private void addVideoErrorListener(String imageKey) {
-        videoPlayer.addListener(new Player.Listener() {
-            @Override
-            public void onPlayerError(@NonNull com.google.android.exoplayer2.PlaybackException error) {
-                post(() -> fallbackToImage(imageKey));
-            }
-        });
+    private void removeCurrentVideoListener() {
+        if (videoPlayer != null && currentVideoListener != null) {
+            videoPlayer.removeListener(currentVideoListener);
+        }
+        currentVideoListener = null;
     }
 
     /**
      * When video playback fails, fall back to the step's image.
+     * Downloads the fallback image if not cached.
      */
     private void fallbackToImage(String imageKey) {
         stopVideo();
@@ -574,15 +620,36 @@ public class TutorialOverlay extends FrameLayout {
         File cached = downloader.getCachedFile(imageUrl, config.version);
         if (cached != null) {
             showImage(cached);
-        } else {
-            hideMediaArea();
+            return;
         }
+        // Download fallback image (previously just hid the media area)
+        loadingIndicator.setVisibility(View.VISIBLE);
+        helpImageView.setVisibility(View.GONE);
+        downloader.download(imageUrl, config.version, new HelpImageDownloader.Callback() {
+            @Override
+            public void onSuccess(@NonNull File localFile) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    showImage(localFile);
+                });
+            }
+
+            @Override
+            public void onError(@NonNull Exception error) {
+                post(() -> {
+                    loadingIndicator.setVisibility(View.GONE);
+                    hideMediaArea();
+                });
+            }
+        });
     }
 
     /**
-     * Stop video playback and hide the video view.
+     * Stop video playback, remove error listener, and cancel background download marker.
      */
     private void stopVideo() {
+        removeCurrentVideoListener();
+        backgroundVideoDownloadUrl = null;
         if (videoPlayer != null) {
             videoPlayer.stop();
             videoPlayer.clearMediaItems();
@@ -599,6 +666,59 @@ public class TutorialOverlay extends FrameLayout {
                 .into(helpImageView);
     }
 
+    /**
+     * Show a poster image while the video is streaming/loading.
+     */
+    private void showPosterForStep(String imageKey) {
+        HelpImageConfig.StepConfig stepConfig = getStepConfig(imageKey);
+        if (stepConfig == null || stepConfig.poster == null || stepConfig.poster.isEmpty()) return;
+
+        String posterUrl;
+        if (stepConfig.poster.startsWith("http://") || stepConfig.poster.startsWith("https://")) {
+            posterUrl = stepConfig.poster;
+        } else {
+            String base = config.baseUrl;
+            if (!base.endsWith("/")) base += "/";
+            posterUrl = base + stepConfig.poster;
+        }
+
+        helpImageView.setVisibility(View.VISIBLE);
+        Glide.with(getContext())
+                .load(posterUrl)
+                .diskCacheStrategy(DiskCacheStrategy.DATA)
+                .into(helpImageView);
+    }
+
+    /**
+     * Preload media for the next 2 steps in the background (fire and forget).
+     */
+    private void preloadUpcomingSteps() {
+        if (config == null || currentModeKey == null || steps == null) return;
+        String version = config.version;
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+
+        List<String> imageUrls = new ArrayList<>();
+        List<String> videoUrls = new ArrayList<>();
+
+        for (int i = currentStep + 1; i <= Math.min(currentStep + 2, steps.length - 1); i++) {
+            String imageKey = steps[i].imageKey();
+            if (imageKey == null) continue;
+
+            String videoUrl = config.getVideoUrl(currentModeKey, imageKey);
+            if (videoUrl != null && !downloader.isVideoCached(videoUrl, version)) {
+                videoUrls.add(videoUrl);
+            }
+
+            String imageUrl = config.getImageUrl(currentModeKey, imageKey);
+            if (imageUrl != null && !downloader.isCached(imageUrl, version)) {
+                imageUrls.add(imageUrl);
+            }
+        }
+
+        if (!imageUrls.isEmpty()) downloader.preload(imageUrls, version);
+        if (!videoUrls.isEmpty()) downloader.preloadVideo(videoUrls, version);
+    }
+
     private void hideMediaArea() {
         helpImageView.setVisibility(View.GONE);
         helpVideoView.setVisibility(View.GONE);
@@ -608,6 +728,7 @@ public class TutorialOverlay extends FrameLayout {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        backgroundVideoDownloadUrl = null;
         // Release ExoPlayer to prevent memory leaks
         if (videoPlayer != null) {
             videoPlayer.release();
