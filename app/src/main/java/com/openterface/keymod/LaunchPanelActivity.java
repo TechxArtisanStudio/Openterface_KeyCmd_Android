@@ -35,6 +35,8 @@ public class LaunchPanelActivity extends AppCompatActivity {
     private static final String REMEMBER_CHOICE_KEY = "rememberChoice";
     private static final String LAST_MODE_KEY = "lastMode";
     public static final String SHOW_PANEL = "show_panel";
+    /** When true with {@code launch_mode}, skip the welcome UI and open MainActivity immediately (ADB/screenshots). */
+    public static final String AUTO_LAUNCH = "auto_launch";
 
     private static final String STATE_SELECTED_MODE = "state_selected_mode";
     private static final String STATE_REMEMBER_CHECKED = "state_remember_checked";
@@ -87,9 +89,19 @@ public class LaunchPanelActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
+        Intent launchIntent = getIntent();
+        if (launchIntent.getBooleanExtra(AUTO_LAUNCH, false)) {
+            String mode = launchIntent.getStringExtra("launch_mode");
+            if (mode != null) {
+                String terminalDemo = launchIntent.getStringExtra(MainActivity.EXTRA_TERMINAL_DEMO);
+                launchModeInternal(mode, null, terminalDemo);
+                return;
+            }
+        }
+
         // Skip launch panel only if auto-launch is enabled AND not explicitly requesting the panel
         boolean rememberChoice = prefs.getBoolean(REMEMBER_CHOICE_KEY, false);
-        boolean showPanel = getIntent().getBooleanExtra(SHOW_PANEL, false);
+        boolean showPanel = launchIntent.getBooleanExtra(SHOW_PANEL, false);
         if (rememberChoice && !showPanel) {
             String lastMode = prefs.getString(LAST_MODE_KEY, MODE_KEYBOARD_MOUSE);
             launchModeInternal(lastMode, null);
@@ -247,12 +259,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
     }
 
     private void launchMode(String selectedMode) {
-        if (MODE_AGENT.equals(selectedMode)) {
-            Toast.makeText(this, R.string.launch_panel_agent_coming_soon, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String primary = primaryLaunchModeFor(selectedMode);
+String primary = primaryLaunchModeFor(selectedMode);
         if (rememberChoiceCheckBox.isChecked()) {
             prefs.edit()
                 .putBoolean(REMEMBER_CHOICE_KEY, true)
@@ -271,19 +278,29 @@ public class LaunchPanelActivity extends AppCompatActivity {
         }
 
         String kbSub = kbMouseInitialSubmodeFor(selectedMode);
-        launchModeInternal(primary, kbSub);
+        launchModeInternal(primary, kbSub, null);
     }
 
-    private void launchModeInternal(@NonNull String primaryLaunchMode, @Nullable String kbMouseSubmode) {
+    private void launchModeInternal(
+            @NonNull String primaryLaunchMode,
+            @Nullable String kbMouseSubmode,
+            @Nullable String terminalDemoTransport) {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("launch_mode", primaryLaunchMode);
         if (kbMouseSubmode != null && MODE_KEYBOARD_MOUSE.equals(primaryLaunchMode)) {
             intent.putExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE, kbMouseSubmode);
         }
+        if (terminalDemoTransport != null) {
+            intent.putExtra(MainActivity.EXTRA_TERMINAL_DEMO, terminalDemoTransport);
+        }
 
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
+    }
+
+    private void launchModeInternal(@NonNull String primaryLaunchMode, @Nullable String kbMouseSubmode) {
+        launchModeInternal(primaryLaunchMode, kbMouseSubmode, null);
     }
 
     @NonNull

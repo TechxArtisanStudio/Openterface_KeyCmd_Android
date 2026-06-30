@@ -315,8 +315,18 @@
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"
                     android:gravity="center"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_shortcuts_summary"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:maxLines="2" />
 
             </LinearLayout>
 
@@ -364,8 +374,18 @@
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"
                     android:gravity="center"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_macros_summary"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:maxLines="2" />
 
             </LinearLayout>
 
@@ -413,8 +433,18 @@
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"
                     android:gravity="center"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_terminal_summary"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:maxLines="2" />
 
             </LinearLayout>
 
@@ -462,8 +492,18 @@
                     android:textStyle="bold"
                     android:textColor="@color/card_text_color"
                     android:gravity="center"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_agent_summary"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp"
+                    android:maxLines="2" />
 
             </LinearLayout>
 

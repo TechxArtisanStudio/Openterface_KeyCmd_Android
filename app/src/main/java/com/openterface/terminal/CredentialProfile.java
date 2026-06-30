@@ -13,6 +13,10 @@ public class CredentialProfile {
     private int port;
     private String username;
     private String password;
+    private String targetOs;
+    private String authMethod;
+    private String privateKey;
+    private String notes;
     private boolean isActive;
     private long createdAt;
     private long updatedAt;
@@ -32,6 +36,10 @@ public class CredentialProfile {
         this.port = port;
         this.username = username;
         this.password = password;
+        this.targetOs = "linux";
+        this.authMethod = "password";
+        this.privateKey = "";
+        this.notes = "";
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -54,6 +62,18 @@ public class CredentialProfile {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getTargetOs() { return targetOs != null ? targetOs : "linux"; }
+    public void setTargetOs(String targetOs) { this.targetOs = targetOs; }
+
+    public String getAuthMethod() { return authMethod != null ? authMethod : "password"; }
+    public void setAuthMethod(String authMethod) { this.authMethod = authMethod; }
+
+    public String getPrivateKey() { return privateKey != null ? privateKey : ""; }
+    public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
+
+    public String getNotes() { return notes != null ? notes : ""; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }

@@ -44,6 +44,9 @@
     <dimen name="km_pro_submode_tab_icon_size">32dp</dimen>
     <dimen name="km_pro_submode_tab_icon_padding">2dp</dimen>
     <dimen name="header_title_size">18sp</dimen>
+    <dimen name="header_keycmd_wordmark_height">24dp</dimen>
+    <dimen name="header_keycmd_wordmark_max_width">112dp</dimen>
+    <dimen name="header_title_mode_gap">8dp</dimen>
     
     <!-- Buttons -->
     <dimen name="button_icon_padding">12dp</dimen>
@@ -62,6 +65,53 @@
     <!-- Fragment -->
     <dimen name="fragment_padding">8dp</dimen>
     <dimen name="fragment_margin">8dp</dimen>
+
+    <!-- Terminal: comfortable touch chrome while leaving the terminal surface dominant. -->
+    <dimen name="terminal_toolbar_min_height">52dp</dimen>
+    <dimen name="terminal_bottom_bar_height">48dp</dimen>
+    <dimen name="terminal_bottom_bar_text_size">14sp</dimen>
+    <dimen name="terminal_empty_icon_size">60dp</dimen>
+    <dimen name="terminal_empty_title_size">24sp</dimen>
+    <dimen name="terminal_empty_summary_size">14sp</dimen>
+    <dimen name="terminal_empty_content_max_width">320dp</dimen>
+    <dimen name="terminal_empty_padding_h">24dp</dimen>
+    <dimen name="terminal_empty_padding_v">24dp</dimen>
+    <dimen name="terminal_empty_icon_margin_bottom">18dp</dimen>
+    <dimen name="terminal_empty_title_margin_bottom">8dp</dimen>
+    <dimen name="terminal_empty_summary_margin_bottom">24dp</dimen>
+    <dimen name="terminal_empty_button_width">248dp</dimen>
+    <dimen name="terminal_empty_button_height">44dp</dimen>
+    <dimen name="terminal_empty_button_gap">8dp</dimen>
+
+    <!-- Agent gate: portrait favors comfortable scan depth; landscape overrides tighten vertical rhythm. -->
+    <dimen name="agent_gate_padding_h">24dp</dimen>
+    <dimen name="agent_gate_padding_v">24dp</dimen>
+    <dimen name="agent_gate_icon_size">72dp</dimen>
+    <dimen name="agent_gate_icon_margin_top">24dp</dimen>
+    <dimen name="agent_gate_title_margin_top">16dp</dimen>
+    <dimen name="agent_gate_title_size">24sp</dimen>
+    <dimen name="agent_gate_subtitle_margin_top">12dp</dimen>
+    <dimen name="agent_gate_subtitle_size">15sp</dimen>
+    <dimen name="agent_gate_button_row_margin_top">28dp</dimen>
+    <dimen name="agent_gate_button_height">48dp</dimen>
+    <dimen name="agent_gate_button_gap">12dp</dimen>
+    <dimen name="agent_gate_button_gap_small">8dp</dimen>
+    <dimen name="agent_session_bar_padding_h">16dp</dimen>
+    <dimen name="agent_session_bar_padding_v">10dp</dimen>
+    <dimen name="agent_session_hint_size">13sp</dimen>
+    <dimen name="agent_input_bar_padding">12dp</dimen>
+    <dimen name="agent_input_padding_h">12dp</dimen>
+    <dimen name="agent_input_padding_v">10dp</dimen>
+    <dimen name="agent_send_button_size">48dp</dimen>
+    <dimen name="agent_send_button_margin_start">8dp</dimen>
+    <dimen name="agent_demo_picker_card_width">200dp</dimen>
+    <dimen name="agent_demo_picker_card_gap">10dp</dimen>
+    <dimen name="agent_demo_picker_card_padding_h">12dp</dimen>
+    <dimen name="agent_demo_picker_card_padding_v">12dp</dimen>
+    <dimen name="agent_demo_picker_card_title_size">15sp</dimen>
+    <dimen name="agent_demo_picker_card_tagline_size">12sp</dimen>
+    <dimen name="agent_demo_picker_padding_h">12dp</dimen>
+    <dimen name="agent_demo_picker_padding_bottom">12dp</dimen>
 
     <!-- KM Basic embedded chrome row: same fixed height as Pro `header_layout` (portrait/landscape follow @dimen/header_height). -->
     <dimen name="km_basic_chrome_row_height">@dimen/header_height</dimen>

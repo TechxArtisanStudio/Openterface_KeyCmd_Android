@@ -21,6 +21,7 @@ set -euo pipefail
 #   SCREENSHOT <label>
 #   ORIENTATION portrait|landscape   # locks rotation (OEM differences possible)
 #   LAUNCH_WELCOME
+#   LAUNCH_TERMINAL_DEMO usb|ble
 #   LAUNCH_KM_BASIC keyboard|touchpad|numpad
 #   PREPARE_CAPTURE   # writes shared_prefs flags via run-as (debug builds)
 #
@@ -137,6 +138,23 @@ launch_app() {
 launch_welcome() {
   adb_cmd shell am force-stop com.openterface.keymod >/dev/null 2>&1 || true
   adb_cmd shell am start -n "$APP_WELCOME_ACTIVITY" --ez show_panel true >/dev/null
+}
+
+launch_terminal_demo() {
+  local transport
+  transport="$(echo "${1:-ble}" | tr '[:upper:]' '[:lower:]')"
+  case "$transport" in
+    usb|ble) ;;
+    *)
+      echo "Error: LAUNCH_TERMINAL_DEMO expects usb|ble, got '${1:-}'"
+      return 1
+      ;;
+  esac
+  adb_cmd shell am force-stop com.openterface.keymod >/dev/null 2>&1 || true
+  adb_cmd shell am start -n "$APP_WELCOME_ACTIVITY" \
+    --es launch_mode terminal \
+    --es terminal_demo "$transport" \
+    --ez auto_launch true >/dev/null
 }
 
 launch_km_basic_with_taps() {
@@ -407,6 +425,9 @@ run_action_file() {
         ;;
       LAUNCH_WELCOME)
         launch_welcome
+        ;;
+      LAUNCH_TERMINAL_DEMO)
+        launch_terminal_demo "$rest"
         ;;
       LAUNCH_KM_BASIC)
         launch_km_basic "$rest"
