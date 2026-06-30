@@ -1274,6 +1274,10 @@ public class BasicPhysicalKeyboardView extends LinearLayout {
             final int idx = i;
             float w = i == labels.length - 1 ? 1.4f : 1f;
             View k = inflateKey(row, labels[idx], hints[idx], w);
+            // Preview X bias: left half → t=0 (max right), right half → t=1 (max left).
+            float t = (i <= 6) ? 0f : 1f;
+            k.setTag(R.id.basic_key_preview_offset_x, t);
+            k.setTag(R.id.basic_key_preview_no_extra_up, Boolean.TRUE);
             wireKeyedRepeatOrHold(
                     k,
                     codes[idx],
