@@ -95,20 +95,40 @@
                     android:layout_weight="1"
                     android:visibility="gone" />
 
-                <TextView
+                <LinearLayout
                     android:id="@+id/app_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="@dimen/spacing_small"
                     android:layout_marginEnd="@dimen/spacing_small"
-                    android:text="@string/app_name"
-                    android:textSize="@dimen/header_title_size"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:baselineAligned="false">
+
+                    <ImageView
+                        android:id="@+id/app_title_logo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="@dimen/header_keycmd_wordmark_height"
+                        android:maxWidth="@dimen/header_keycmd_wordmark_max_width"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@string/app_name"
+                        android:src="@drawable/ic_keycmd_wordmark"
+                        android:tint="@color/text_primary" />
+
+                    <TextView
+                        android:id="@+id/app_title_mode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/header_title_mode_gap"
+                        android:text="@string/top_mode_label_terminal"
+                        android:textSize="@dimen/header_title_size"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:visibility="gone" />
+                </LinearLayout>
 
                 <!-- Absorbs space when title + KM Pro tabs are hidden so target OS / setup / connection stay end-aligned. -->
                 <Space
@@ -164,14 +184,13 @@
                     <LinearLayout
                         android:id="@+id/connection_container"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:gravity="center"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:clickable="true"
                         android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:minWidth="@dimen/header_right_cluster_icon_size"
-                        android:minHeight="@dimen/header_right_cluster_icon_size"
                         android:padding="@dimen/header_right_cluster_connection_padding">
 
                         <ImageView
@@ -186,7 +205,7 @@
                             android:id="@+id/signal_bars"
                             android:layout_width="@dimen/header_connection_icon_size"
                             android:layout_height="@dimen/header_connection_icon_size"
-                            android:layout_marginTop="1dp"
+                            android:layout_marginStart="3dp"
                             android:src="@drawable/signal_cellular_alt_off_24px"
                             android:tint="?attr/colorPrimary"
                             android:visibility="gone"
@@ -279,7 +298,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="2"
                 android:background="@android:color/transparent"
-                android:drawableTop="@drawable/three_dots"
+                android:drawableTop="@drawable/shortcuts_hub"
                 android:scaleType="fitCenter"
                 android:text="@string/ShortCut"
                 android:textSize="12sp"

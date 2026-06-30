@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="@dimen/agent_demo_picker_card_width"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/agent_demo_picker_card_gap"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="@color/card_background"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/agent_demo_picker_card_padding_h"
+        android:paddingTop="@dimen/agent_demo_picker_card_padding_v"
+        android:paddingEnd="@dimen/agent_demo_picker_card_padding_h"
+        android:paddingBottom="@dimen/agent_demo_picker_card_padding_v">
+
+        <TextView
+            android:id="@+id/agent_demo_card_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/agent_demo_picker_card_title_size"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/agent_demo_card_tagline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/agent_demo_picker_card_tagline_size" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

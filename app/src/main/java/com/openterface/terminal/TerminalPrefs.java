@@ -16,18 +16,22 @@ public class TerminalPrefs {
     }
 
     public float getFontSize() {
-        return prefs.getFloat("font_size", 12f);
+        return prefs.getFloat("font_size", 16f);
     }
 
     public void setFontSize(float size) {
         prefs.edit().putFloat("font_size", size).apply();
     }
 
+    public boolean hasFontSizeOverride() {
+        return prefs.contains("font_size");
+    }
+
     public int getTerminalRows() { return prefs.getInt("rows", 24); }
     public int getTerminalCols() { return prefs.getInt("cols", 80); }
     public int getScrollbackSize() { return prefs.getInt("scrollback", 2000); }
 
-    public String getLastHost() { return prefs.getString("last_host", "192.168.11.1"); }
+    public String getLastHost() { return prefs.getString("last_host", CredentialManager.DEFAULT_KEYCMD_HOST); }
     public void setLastHost(String host) {
         prefs.edit().putString("last_host", host).apply();
     }

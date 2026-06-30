@@ -70,6 +70,11 @@ public class SettingsActivity extends AppCompatActivity {
 
         viewPager.setAdapter(new SettingsPagerAdapter(this));
 
+        int initialTab = getIntent().getIntExtra("settings_tab_index", 0);
+        if (initialTab > 0 && initialTab < 5) {
+            viewPager.setCurrentItem(initialTab, false);
+        }
+
         String[] tabTitles = new String[]{
                 getString(R.string.settings_tab_general),
                 getString(R.string.settings_tab_voice),
