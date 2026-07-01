@@ -95,23 +95,23 @@ public final class BasicKeyPreview {
         popupX += fRowOffsetX;
         popupX = Math.max(visible.left + margin, Math.min(popupX, visible.right - pw - margin));
 
-        boolean fRowKey = fRowTag instanceof Float || fRowTag instanceof Integer;
-        int extraUp =
-                fRowKey
-                        ? anchor.getResources()
-                                .getDimensionPixelSize(R.dimen.basic_key_preview_f_row_extra_up)
-                        : 0;
-
-        int aboveY = anchorTop - ph - gap - extraUp;
-        int belowY = anchorTop + anchorH + gap;
+        boolean noExtraUp = anchor.getTag(R.id.basic_key_preview_no_extra_up) != null;
 
         int popupY;
-        if (aboveY >= visible.top + margin) {
-            popupY = aboveY;
-        } else if (belowY + ph <= visible.bottom - margin) {
-            popupY = belowY;
+        if (noExtraUp) {
+            // F-row: center preview vertically on the key (same row height).
+            popupY = anchorTop + (anchorH - ph) / 2;
+            popupY = Math.max(visible.top + margin, Math.min(popupY, visible.bottom - ph - margin));
         } else {
-            popupY = Math.max(visible.top + margin, Math.min(aboveY, visible.bottom - ph - margin));
+            int aboveY = anchorTop - ph - gap;
+            int belowY = anchorTop + anchorH + gap;
+            if (aboveY >= visible.top + margin) {
+                popupY = aboveY;
+            } else if (belowY + ph <= visible.bottom - margin) {
+                popupY = belowY;
+            } else {
+                popupY = Math.max(visible.top + margin, Math.min(aboveY, visible.bottom - ph - margin));
+            }
         }
 
         win.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY);

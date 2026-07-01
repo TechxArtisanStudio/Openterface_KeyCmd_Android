@@ -439,7 +439,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         String earlyKbSub =
                 KeyboardMouseFragment.normalizeKmBasicSubmode(
                         launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
-        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
+        // Determine what submode will actually be used (default to touchpad if null)
+        String actualSubmode = earlyKbSub != null ? earlyKbSub : KeyboardMouseFragment.SUBMODE_TOUCHPAD;
+        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, actualSubmode)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
@@ -2097,7 +2099,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         updateNavSelection();
         switch (mode) {
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
-                showKeyboardMouseFragment(consumePendingKbMouseSubmode());
+                String submode = consumePendingKbMouseSubmode();
+                if (submode == null) {
+                    submode = KeyboardMouseFragment.SUBMODE_TOUCHPAD;
+                }
+                showKeyboardMouseFragment(submode);
                 break;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
                 consumePendingKbMouseSubmode();

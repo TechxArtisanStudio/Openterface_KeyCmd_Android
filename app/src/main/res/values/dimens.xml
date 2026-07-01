@@ -229,4 +229,12 @@
     <dimen name="card_corner_radius">12dp</dimen>
     <dimen name="card_elevation">3dp</dimen>
 
+    <!-- Welcome / LaunchPanel mode grid (base defaults; values-land overrides for landscape) -->
+    <dimen name="launch_panel_land_card_min_height">92dp</dimen>
+    <dimen name="launch_panel_land_card_icon">40dp</dimen>
+    <dimen name="launch_panel_land_card_margin">5dp</dimen>
+    <dimen name="launch_panel_land_grid_padding">6dp</dimen>
+    <dimen name="launch_panel_land_card_padding_v">8dp</dimen>
+    <dimen name="launch_panel_land_card_padding_h">8dp</dimen>
+
 </resources>
