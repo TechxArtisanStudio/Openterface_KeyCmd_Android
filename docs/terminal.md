@@ -86,6 +86,20 @@ TerminalFragment → SshClient (JSch 0.2.17) → TransportAdapter
 - `AnsiEscapeParserTest.java` — ANSI sequences
 - `TerminalSessionTest.java` — Session state
 
+## Marketing demo (Phase 1)
+
+For screenshots and product videos, Terminal includes a **Preview demo** that replays canned ANSI output without SSH or firmware. It uses the same `TerminalSession` / `TerminalView` path as live SSH.
+
+| Entry | How |
+|-------|-----|
+| In-app | Terminal overlay → **Preview demo (USB)** or **Preview demo (Bluetooth)** |
+| ADB | `am start -n com.openterface.keymod/.LaunchPanelActivity --es launch_mode terminal --es terminal_demo usb --ez auto_launch true` (or `ble`) |
+| Automation | `scripts/screenshot-capture/action_test_keymod.sh run scripts/screenshot-capture/actions/terminal_demo_capture.actions` |
+
+USB demo streams in 256-byte chunks (~6 ms); BLE demo uses 4-byte chunks (~85 ms) to illustrate bandwidth differences. Assets: `app/src/main/assets/terminal/demo_usb.ansi`, `demo_ble.ansi`. Controller: `TerminalDemoController.java`.
+
+Phase 2 replaces this with real transport auto-select; see `docs/terminal_firmware_contract.md`.
+
 ## Debugging
 
 ```bash

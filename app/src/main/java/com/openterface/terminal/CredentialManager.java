@@ -24,6 +24,7 @@ public class CredentialManager {
     private static final String PREFS_NAME = "credentials_prefs";
     private static final String KEY_PROFILES = "profiles";
     private static final String KEY_ACTIVE_ID = "active_profile_id";
+    public static final String DEFAULT_KEYCMD_HOST = "192.168.12.1";
 
     private SharedPreferences prefs;
     private final Gson gson;
@@ -132,6 +133,27 @@ public class CredentialManager {
     }
 
     /**
+     * Seed a default KeyCmd hardware SSH profile for first-run UX. The default IP is provisional
+     * until firmware/networking confirms the assigned address.
+     */
+    public void ensureDefaultKeyCmdProfile() {
+        if (!getAllProfiles().isEmpty()) {
+            return;
+        }
+        CredentialProfile profile = new CredentialProfile();
+        profile.setName("KeyCmd default");
+        profile.setHost(DEFAULT_KEYCMD_HOST);
+        profile.setPort(22);
+        profile.setUsername("root");
+        profile.setPassword("");
+        profile.setTargetOs("linux");
+        profile.setAuthMethod("password");
+        profile.setPrivateKey("");
+        profile.setNotes("Default KeyCmd hardware SSH endpoint. Confirm IP with firmware team.");
+        addProfile(profile);
+    }
+
+    /**
      * Get the active credential profile, or null if none is set.
      */
     @Nullable
@@ -179,7 +201,9 @@ public class CredentialManager {
         String pass = legacyPrefs.getLastPassword();
 
         // Only migrate if there's meaningful data
-        if ((host != null && !host.isEmpty() && !"192.168.11.1".equals(host))
+        if ((host != null && !host.isEmpty()
+                    && !"192.168.11.1".equals(host)
+                    && !DEFAULT_KEYCMD_HOST.equals(host))
                 || (pass != null && !pass.isEmpty())) {
             CredentialProfile migrated = new CredentialProfile();
             migrated.setName("Default (migrated)");

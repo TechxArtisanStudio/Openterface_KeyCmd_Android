@@ -17,6 +17,8 @@ public class CredentialProfile {
     private String username;
     private String password;
     private String authType;
+    private String targetOs;
+    private String authMethod;
     private String privateKey;
     private String keyPassphrase;
     private String notes;
@@ -44,6 +46,8 @@ public class CredentialProfile {
         this.username = username;
         this.password = password;
         this.authType = AUTH_TYPE_PASSWORD;
+        this.targetOs = "linux";
+        this.authMethod = "password";
         this.privateKey = "";
         this.keyPassphrase = "";
         this.notes = "";
@@ -80,6 +84,12 @@ public class CredentialProfile {
     public boolean isSshKeyAuth() {
         return AUTH_TYPE_SSH_KEY.equals(getAuthType());
     }
+
+    public String getTargetOs() { return targetOs != null ? targetOs : "linux"; }
+    public void setTargetOs(String targetOs) { this.targetOs = targetOs; }
+
+    public String getAuthMethod() { return authMethod != null ? authMethod : "password"; }
+    public void setAuthMethod(String authMethod) { this.authMethod = authMethod; }
 
     public String getPrivateKey() { return privateKey != null ? privateKey : ""; }
     public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }

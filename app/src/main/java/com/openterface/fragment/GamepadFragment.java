@@ -121,6 +121,7 @@ import com.openterface.keymod.gamepad.GamepadLayoutPresetSnapshotBuilder;
 import com.openterface.keymod.gamepad.GamepadModuleAccent;
 import com.openterface.keymod.gamepad.GamepadPreferenceKeys;
 import com.openterface.keymod.gamepad.GamepadPresetExportCreator;
+import com.openterface.keymod.gamepad.GamepadButtonKeyMapping;
 import com.openterface.keymod.gamepad.GamepadLayoutPreviewCache;
 import com.openterface.keymod.widget.MaxHeightNestedScrollView;
 import com.openterface.keymod.GamepadView.ComponentLongPressListener;
@@ -238,11 +239,6 @@ public class GamepadFragment extends Fragment {
     private int buttonAModifiers = 0;
     private int buttonBModifiers = 0;
     private float buttonSizeScale = 1.0f;
-
-    // Modifier key definitions for checkboxes (label -> HID keycode)
-    private static final String[][] MODIFIER_KEYS = {
-        {"Ctrl", "224"}, {"Shift", "225"}, {"Alt", "226"}, {"Fn", "227"},
-    };
 
     // Track currently pressed keys to avoid repeat events
     private boolean keyUpPressed = false;
@@ -2420,20 +2416,16 @@ public class GamepadFragment extends Fragment {
                         continue;
                     }
                     if (isModuleKeyboardActiveForReport(m.id)) {
-                        int mod = intOr(m.modifierMask, 0);
-                        int[] altH = gestureHoldAlternateHid.get(m.id);
-                        if (altH != null && altH.length > 1) {
-                            mod = intOr(altH[1], 0);
-                        }
+                        int mod = resolveButtonModuleModifierMask(m, gestureHoldAlternateHid.get(m.id));
                         modifiers |= mod;
                     }
                 }
             } else {
                 if (buttonAPressed) {
-                    modifiers |= buttonAModifiers;
+                    modifiers |= modifierMaskForHidKey(buttonAKey, buttonAModifiers);
                 }
                 if (buttonBPressed) {
-                    modifiers |= buttonBModifiers;
+                    modifiers |= modifierMaskForHidKey(buttonBKey, buttonBModifiers);
                 }
             }
 
@@ -2558,15 +2550,15 @@ public class GamepadFragment extends Fragment {
                     }
                     int[] altT = gestureTurboAlternateHid.get(tid);
                     if (altT != null && altT.length > 0) {
-                        if (altT.length > 1) {
-                            modifiers |= intOr(altT[1], 0);
-                        }
-                        addKeyOrMod(regularKeys, altT[0]);
+                        int altKey = altT[0];
+                        int altMod = altT.length > 1 ? intOr(altT[1], 0) : 0;
+                        modifiers |= modifierMaskForHidKey(altKey, altMod);
+                        addKeyOrMod(regularKeys, altKey);
                     } else if (m.hidKey != null
                             && (GamepadLayoutPresetConstants.MODULE_TYPE_BUTTON.equals(m.type)
                                     || GamepadLayoutPresetConstants.MODULE_TYPE_SHOULDER.equals(m.type)
                                     || GamepadLayoutPresetConstants.MODULE_TYPE_TRIGGER.equals(m.type))) {
-                        modifiers |= intOr(m.modifierMask, 0);
+                        modifiers |= resolveButtonModuleModifierMask(m, null);
                         addKeyOrMod(regularKeys, m.hidKey);
                     }
                 }
@@ -2600,28 +2592,33 @@ public class GamepadFragment extends Fragment {
         }
     }
 
-    /**
-     * Check if a HID keycode is a modifier key (Ctrl/Shift/Alt/GUI).
-     */
-    private boolean isModifierKey(int keyCode) {
-        return keyCode >= 224 && keyCode <= 231;
+    private static boolean isModifierKey(int keyCode) {
+        return GamepadButtonKeyMapping.isModifierKey(keyCode);
     }
 
-    /**
-     * Get the HID modifier bit for a modifier keycode.
-     */
-    private int modifierBit(int keyCode) {
-        switch (keyCode) {
-            case 224: return 0x01; // Left Ctrl
-            case 225: return 0x02; // Left Shift
-            case 226: return 0x04; // Left Alt
-            case 227: return 0x08; // Left GUI (Fn)
-            case 228: return 0x10; // Right Ctrl
-            case 229: return 0x20; // Right Shift
-            case 230: return 0x40; // Right Alt
-            case 231: return 0x80; // Right GUI
-            default: return 0;
+    private static int modifierBit(int keyCode) {
+        return GamepadButtonKeyMapping.modifierBit(keyCode);
+    }
+
+    private static int modifierMaskForHidKey(int hidKey, int modifierMask) {
+        return GamepadButtonKeyMapping.normalize(hidKey, modifierMask);
+    }
+
+    @NonNull
+    private static int resolveButtonModuleModifierMask(
+            @NonNull GamepadLayoutPresetDocument.GamepadModule m,
+            @Nullable int[] gestureHoldAlternateHid) {
+        int hidKey = m.hidKey != null ? m.hidKey : 0;
+        int mask = intOr(m.modifierMask, 0);
+        if (gestureHoldAlternateHid != null) {
+            if (gestureHoldAlternateHid.length > 0) {
+                hidKey = gestureHoldAlternateHid[0];
+            }
+            if (gestureHoldAlternateHid.length > 1) {
+                mask = intOr(gestureHoldAlternateHid[1], 0);
+            }
         }
+        return modifierMaskForHidKey(hidKey, mask);
     }
 
     // ── Config Dialogs ──────────────────────────────────────────────
@@ -4763,7 +4760,7 @@ public class GamepadFragment extends Fragment {
             return;
         }
         int currentKey = m.hidKey;
-        int currentModifiers = intOr(m.modifierMask, 0);
+        int currentModifiers = GamepadButtonKeyMapping.normalize(currentKey, intOr(m.modifierMask, 0));
         buttonSizeScale = m.scale;
         final float[] buttonCornerNorm = {
                 GamepadLayoutPresetConstants.clampButtonCornerRadiusNorm(m.buttonCornerRadiusNorm) };
@@ -5040,7 +5037,7 @@ public class GamepadFragment extends Fragment {
             btnDuplicate.setVisibility(canDupBtn ? View.VISIBLE : View.GONE);
             btnDuplicate.setOnClickListener(v -> {
                 m.hidKey = selectedKey[0];
-                m.modifierMask = selectedModifiers[0];
+                m.modifierMask = GamepadButtonKeyMapping.normalize(selectedKey[0], selectedModifiers[0]);
                 m.scale = buttonSizeScale;
                 if (keyboardHoldLockSwitch != null) {
                     m.keyboardHoldLock = keyboardHoldLockSwitch.isChecked() ? Boolean.TRUE : null;
@@ -5056,10 +5053,10 @@ public class GamepadFragment extends Fragment {
                 commitModuleDisplayLabelFromEdit(nameEdit, m);
                 if ("button_a".equals(moduleId)) {
                     buttonAKey = selectedKey[0];
-                    buttonAModifiers = selectedModifiers[0];
+                    buttonAModifiers = m.modifierMask;
                 } else if ("button_b".equals(moduleId)) {
                     buttonBKey = selectedKey[0];
-                    buttonBModifiers = selectedModifiers[0];
+                    buttonBModifiers = m.modifierMask;
                 }
                 applyGamepadModuleDuplicateResult(
                         GamepadLayoutDocEditor.duplicateModule(layoutDoc, moduleId), dialog);
@@ -5068,7 +5065,7 @@ public class GamepadFragment extends Fragment {
 
         dialogView.findViewById(R.id.btn_done).setOnClickListener(v -> {
             m.hidKey = selectedKey[0];
-            m.modifierMask = selectedModifiers[0];
+            m.modifierMask = GamepadButtonKeyMapping.normalize(selectedKey[0], selectedModifiers[0]);
             m.scale = buttonSizeScale;
             if (keyboardHoldLockSwitch != null) {
                 m.keyboardHoldLock = keyboardHoldLockSwitch.isChecked() ? Boolean.TRUE : null;
@@ -5084,11 +5081,12 @@ public class GamepadFragment extends Fragment {
             commitModuleDisplayLabelFromEdit(nameEdit, m);
             if ("button_a".equals(moduleId)) {
                 buttonAKey = selectedKey[0];
-                buttonAModifiers = selectedModifiers[0];
+                buttonAModifiers = GamepadButtonKeyMapping.normalize(selectedKey[0], selectedModifiers[0]);
             } else if ("button_b".equals(moduleId)) {
                 buttonBKey = selectedKey[0];
-                buttonBModifiers = selectedModifiers[0];
+                buttonBModifiers = GamepadButtonKeyMapping.normalize(selectedKey[0], selectedModifiers[0]);
             }
+            selectedModifiers[0] = m.modifierMask;
             applyLayoutDocFromMemory();
             dialog.dismiss();
         });
@@ -5135,8 +5133,9 @@ public class GamepadFragment extends Fragment {
         final int[] allKeyCodes = new int[KEY_OPTIONS.length];
         final View[] allKeyCells = new View[KEY_OPTIONS.length];
         final int[] selectedKeyCode = { initialKeyCode };
-        final int[] selectedModifiers = { initialModifiers };
+        final int[] selectedModifiers = { GamepadButtonKeyMapping.normalize(initialKeyCode, initialModifiers) };
         final String[] selectedLabel = { keyCodeToLabel(initialKeyCode) };
+        final boolean[] suppressModCheckListener = { false };
 
         int pad = dp(16);
         LinearLayout root = new LinearLayout(requireContext());
@@ -5159,33 +5158,154 @@ public class GamepadFragment extends Fragment {
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(0, 0, 0, 0);
 
-        // Modifier checkboxes at the top
-        LinearLayout modifierRow = new LinearLayout(requireContext());
-        modifierRow.setOrientation(LinearLayout.HORIZONTAL);
-        modifierRow.setGravity(android.view.Gravity.CENTER);
-        modifierRow.setPadding(0, 0, 0, dp(12));
-        final android.widget.CheckBox[] modChecks = new android.widget.CheckBox[MODIFIER_KEYS.length];
-        for (int i = 0; i < MODIFIER_KEYS.length; i++) {
-            android.widget.CheckBox cb = new android.widget.CheckBox(requireContext());
-            cb.setText(MODIFIER_KEYS[i][0]);
-            cb.setTextColor(colorTextSecondary);
-            cb.setButtonTintList(android.content.res.ColorStateList.valueOf(colorPrimary));
-            int bit = modifierBit(Integer.parseInt(MODIFIER_KEYS[i][1]));
-            cb.setChecked((initialModifiers & bit) != 0);
-            cb.setOnCheckedChangeListener((v, isChecked) -> {
-                if (isChecked) {
-                    selectedModifiers[0] |= bit;
-                } else {
-                    selectedModifiers[0] &= ~bit;
-                }
-            });
-            modChecks[i] = cb;
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+        TextView modKeysSection = new TextView(requireContext());
+        modKeysSection.setText(R.string.gamepad_key_picker_modifier_keys);
+        modKeysSection.setTextColor(colorTextSecondary);
+        modKeysSection.setTextSize(12);
+        LinearLayout.LayoutParams modKeysSectionLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(dp(6), 0, dp(6), 0);
-            modifierRow.addView(cb, lp);
+        modKeysSectionLp.setMargins(0, 0, 0, dp(4));
+        container.addView(modKeysSection, modKeysSectionLp);
+
+        final int modCount = GamepadButtonKeyMapping.MODIFIER_ENTRIES.length;
+        final int[] modifierHidCodes = new int[modCount];
+        final Button[] modifierCells = new Button[modCount];
+        final android.widget.CheckBox[] modChecks = new android.widget.CheckBox[modCount];
+        final Button[] normalNumBtns = new Button[9];
+        final Button[] numpadNumBtns = new Button[9];
+        for (int i = 0; i < modCount; i++) {
+            modifierHidCodes[i] = Integer.parseInt(GamepadButtonKeyMapping.MODIFIER_ENTRIES[i][1]);
         }
-        container.addView(modifierRow);
+
+        Runnable refreshModifierCellSelection = () -> {
+            boolean modPrimary = GamepadButtonKeyMapping.isModifierKey(selectedKeyCode[0]);
+            for (int i = 0; i < modCount; i++) {
+                if (modifierCells[i] == null) {
+                    continue;
+                }
+                boolean sel = modPrimary && modifierHidCodes[i] == selectedKeyCode[0];
+                applyKeyPickerCellStyle(modifierCells[i], sel, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
+            }
+        };
+
+        Runnable syncModChecksFromMask = () -> {
+            suppressModCheckListener[0] = true;
+            for (int i = 0; i < modChecks.length; i++) {
+                int bit = modifierBit(modifierHidCodes[i]);
+                modChecks[i].setChecked((selectedModifiers[0] & bit) != 0);
+            }
+            suppressModCheckListener[0] = false;
+        };
+
+        for (int rowStart = 0; rowStart < modCount; rowStart += 4) {
+            TextView rowLabel = new TextView(requireContext());
+            rowLabel.setText(rowStart == 0
+                    ? R.string.gamepad_key_picker_modifier_left
+                    : R.string.gamepad_key_picker_modifier_right);
+            rowLabel.setTextColor(colorTextSecondary);
+            rowLabel.setTextSize(11);
+            LinearLayout.LayoutParams rowLabelLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowLabelLp.setMargins(0, rowStart == 0 ? 0 : dp(6), 0, dp(2));
+            container.addView(rowLabel, rowLabelLp);
+
+            LinearLayout modCellRow = new LinearLayout(requireContext());
+            modCellRow.setOrientation(LinearLayout.HORIZONTAL);
+            modCellRow.setGravity(android.view.Gravity.CENTER);
+            modCellRow.setPadding(0, 0, 0, dp(4));
+            for (int i = rowStart; i < rowStart + 4 && i < modCount; i++) {
+                final int modHid = modifierHidCodes[i];
+                String[] entry = GamepadButtonKeyMapping.MODIFIER_ENTRIES[i];
+                android.graphics.drawable.GradientDrawable modBg = new android.graphics.drawable.GradientDrawable();
+                boolean modSel = GamepadButtonKeyMapping.isModifierKey(initialKeyCode)
+                        && modHid == initialKeyCode;
+                modBg.setColor(modSel ? colorPrimary : colorUnsel);
+                modBg.setCornerRadius(dp(6));
+                Button modBtn = new Button(requireContext());
+                modBtn.setText(entry[0]);
+                modBtn.setTextColor(modSel ? colorOnPrimary : colorOnSurface);
+                modBtn.setBackground(modBg);
+                modBtn.setTextSize(12);
+                modBtn.setAllCaps(false);
+                LinearLayout.LayoutParams modLp = new LinearLayout.LayoutParams(0, dp(40), 1);
+                modLp.setMargins(dp(4), 0, dp(4), 0);
+                modBtn.setLayoutParams(modLp);
+                modBtn.setPadding(0, 0, 0, 0);
+                modifierCells[i] = modBtn;
+                modBtn.setOnClickListener(v -> {
+                    selectedKeyCode[0] = modHid;
+                    selectedModifiers[0] = modifierBit(modHid);
+                    selectedLabel[0] = entry[0];
+                    syncModChecksFromMask.run();
+                    refreshModifierCellSelection.run();
+                    for (int k = 0; k < allKeyCells.length; k++) {
+                        if (allKeyCells[k] == null) {
+                            continue;
+                        }
+                        applyKeyPickerCellStyle(allKeyCells[k], false, colorPrimary, colorUnsel,
+                                colorOnPrimary, colorOnSurface);
+                    }
+                    updateNumButtons(normalNumBtns, numpadNumBtns, -1, true, colorPrimary, colorUnsel,
+                            colorStrokeAccent, colorOnPrimary, colorOnSurface);
+                });
+                modCellRow.addView(modBtn);
+            }
+            container.addView(modCellRow);
+        }
+
+        TextView chordLabel = new TextView(requireContext());
+        chordLabel.setText(R.string.gamepad_key_picker_modifier_chord);
+        chordLabel.setTextColor(colorTextSecondary);
+        chordLabel.setTextSize(12);
+        LinearLayout.LayoutParams chordLabelLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        chordLabelLp.setMargins(0, dp(8), 0, dp(4));
+        container.addView(chordLabel, chordLabelLp);
+
+        for (int rowStart = 0; rowStart < modCount; rowStart += 4) {
+            TextView checkRowLabel = new TextView(requireContext());
+            checkRowLabel.setText(rowStart == 0
+                    ? R.string.gamepad_key_picker_modifier_left
+                    : R.string.gamepad_key_picker_modifier_right);
+            checkRowLabel.setTextColor(colorTextSecondary);
+            checkRowLabel.setTextSize(11);
+            LinearLayout.LayoutParams checkRowLabelLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            checkRowLabelLp.setMargins(0, 0, 0, dp(2));
+            container.addView(checkRowLabel, checkRowLabelLp);
+
+            LinearLayout modCheckRow = new LinearLayout(requireContext());
+            modCheckRow.setOrientation(LinearLayout.HORIZONTAL);
+            modCheckRow.setGravity(android.view.Gravity.CENTER);
+            modCheckRow.setPadding(0, 0, 0, dp(6));
+            for (int i = rowStart; i < rowStart + 4 && i < modCount; i++) {
+                final int modHid = modifierHidCodes[i];
+                android.widget.CheckBox cb = new android.widget.CheckBox(requireContext());
+                cb.setText(GamepadButtonKeyMapping.MODIFIER_ENTRIES[i][0]);
+                cb.setTextColor(colorTextSecondary);
+                cb.setButtonTintList(android.content.res.ColorStateList.valueOf(colorPrimary));
+                int bit = modifierBit(modHid);
+                cb.setChecked((selectedModifiers[0] & bit) != 0);
+                cb.setOnCheckedChangeListener((v, isChecked) -> {
+                    if (suppressModCheckListener[0]) {
+                        return;
+                    }
+                    if (isChecked) {
+                        selectedModifiers[0] |= bit;
+                    } else {
+                        selectedModifiers[0] &= ~bit;
+                    }
+                });
+                modChecks[i] = cb;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                lp.setMargins(dp(4), 0, dp(4), 0);
+                modCheckRow.addView(cb, lp);
+            }
+            container.addView(modCheckRow);
+        }
+
+        refreshModifierCellSelection.run();
 
         // Number section: two rows (normal 1-9 and numpad Num1-Num9)
         TextView numLabel = new TextView(requireContext());
@@ -5210,9 +5330,6 @@ public class GamepadFragment extends Fragment {
         numpadRow.setOrientation(LinearLayout.HORIZONTAL);
         numpadRow.setGravity(android.view.Gravity.CENTER);
         numpadRow.setPadding(0, 0, 0, dp(12));
-
-        Button[] normalNumBtns = new Button[9];
-        Button[] numpadNumBtns = new Button[9];
 
         // Determine if initial key is a number
         int initialNumIdx = -1;
@@ -5272,6 +5389,7 @@ public class GamepadFragment extends Fragment {
                     if (allKeyCells[k] == null) continue;
                     applyKeyPickerCellStyle(allKeyCells[k], false, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
                 }
+                refreshModifierCellSelection.run();
             });
             numpadBtn.setOnClickListener(v -> {
                 selectedKeyCode[0] = numpadCode;
@@ -5283,6 +5401,7 @@ public class GamepadFragment extends Fragment {
                     if (allKeyCells[k] == null) continue;
                     applyKeyPickerCellStyle(allKeyCells[k], false, colorPrimary, colorUnsel, colorOnPrimary, colorOnSurface);
                 }
+                refreshModifierCellSelection.run();
             });
 
             normalRow.addView(normalBtn);
@@ -5305,7 +5424,8 @@ public class GamepadFragment extends Fragment {
                 final int idx = i + j;
                 final int keyCode = Integer.parseInt(opt[1]);
                 allKeyCodes[idx] = keyCode;
-                boolean isSelected = keyCode == initialKeyCode && selectedModifiers[0] == initialModifiers;
+                boolean isSelected = keyCode == initialKeyCode
+                        && !GamepadButtonKeyMapping.isModifierKey(initialKeyCode);
                 android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
                 bg.setColor(isSelected ? colorPrimary : colorUnsel);
                 bg.setCornerRadius(dp(6));
@@ -5364,6 +5484,7 @@ public class GamepadFragment extends Fragment {
                         nb.setStroke(0, 0x00000000);
                         numpadNumBtns[k].setTextColor(colorOnSurface);
                     }
+                    refreshModifierCellSelection.run();
                 });
                 row.addView(cell);
             }
@@ -5421,11 +5542,10 @@ public class GamepadFragment extends Fragment {
         final AlertDialog dialog = builder.create();
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
         saveBtn.setOnClickListener(v -> {
-            String displayLabel = selectedLabel[0];
-            if (selectedModifiers[0] != 0) {
-                displayLabel = keyCodeToLabel(selectedKeyCode[0]);
-            }
-            listener.onKeySelected(new KeyInfo(selectedKeyCode[0], displayLabel, selectedModifiers[0]));
+            int key = selectedKeyCode[0];
+            int mod = GamepadButtonKeyMapping.normalize(key, selectedModifiers[0]);
+            String displayLabel = formatKeyWithModifiers(key, mod);
+            listener.onKeySelected(new KeyInfo(key, displayLabel, mod));
             dialog.dismiss();
         });
 
@@ -6776,26 +6896,8 @@ public class GamepadFragment extends Fragment {
         for (String[] opt : KEY_OPTIONS) {
             if (Integer.parseInt(opt[1]) == keyCode) return opt[0];
         }
-        // HID keyboard modifier keys (usage page 0x07); left matches MODIFIER_KEYS, right disambiguated.
-        if (keyCode >= 224 && keyCode <= 231) {
-            switch (keyCode) {
-                case 224:
-                    return "Ctrl";
-                case 225:
-                    return "Shift";
-                case 226:
-                    return "Alt";
-                case 227:
-                    return "Fn";
-                case 228:
-                    return "RCtrl";
-                case 229:
-                    return "RShift";
-                case 230:
-                    return "RAlt";
-                case 231:
-                    return "RGui";
-            }
+        if (GamepadButtonKeyMapping.isModifierKey(keyCode)) {
+            return GamepadButtonKeyMapping.labelForModifierHid(keyCode);
         }
         // Normal digits 1-9 (HID 30-38)
         if (keyCode >= 30 && keyCode <= 38) return String.valueOf(keyCode - 29);

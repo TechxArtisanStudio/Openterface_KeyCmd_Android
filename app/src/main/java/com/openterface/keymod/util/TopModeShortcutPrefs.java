@@ -129,7 +129,7 @@ public final class TopModeShortcutPrefs {
             case LaunchPanelActivity.MODE_GAMEPAD:
                 return R.drawable.gamepad;
             case LaunchPanelActivity.MODE_SHORTCUTS:
-                return R.drawable.three_dots;
+                return R.drawable.shortcuts_hub;
             case LaunchPanelActivity.MODE_MACROS:
                 return R.drawable.macros;
             case LaunchPanelActivity.MODE_VOICE:

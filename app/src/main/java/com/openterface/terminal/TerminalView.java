@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -29,8 +30,9 @@ public class TerminalView extends View {
     private Paint textPaint;
     private Paint bgPaint;
     private Paint cursorPaint;
-    private float fontSize = 14f;
+    private float fontSizeSp = 16f;
     private float charWidth, charHeight, lineHeight;
+    private boolean autoFitFontSize = true;
     private boolean cursorVisible = true;
     private long cursorBlinkLast = 0;
     private static final long CURSOR_BLINK_INTERVAL = 500; // ms
@@ -38,8 +40,12 @@ public class TerminalView extends View {
     // Pinch-to-zoom
     private ScaleGestureDetector scaleDetector;
     private GestureDetector gestureDetector;
-    private static final float MIN_FONT_SIZE = 6f;
-    private static final float MAX_FONT_SIZE = 48f;
+    private static final float MIN_FONT_SIZE_SP = 12f;
+    private static final float MAX_FONT_SIZE_SP = 28f;
+    private static final float AUTO_FONT_MIN_SP = 16f;
+    private static final float AUTO_FONT_MAX_SP = 24f;
+    private static final float AUTO_FIT_WIDTH_FILL = 0.97f;
+    private static final float AUTO_FIT_HEIGHT_FILL = 0.94f;
 
     // Color scheme
     private static final int DEFAULT_BG = Color.BLACK;
@@ -67,7 +73,7 @@ public class TerminalView extends View {
             // Fallback to system monospace if bundled font fails to load
             textPaint.setTypeface(android.graphics.Typeface.MONOSPACE);
         }
-        textPaint.setTextSize(fontSize);
+        textPaint.setTextSize(spToPx(fontSizeSp));
         textPaint.setColor(DEFAULT_FG);
 
         bgPaint = new Paint();
@@ -83,15 +89,16 @@ public class TerminalView extends View {
         scaleDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                float newFontSize = fontSize * detector.getScaleFactor();
-                newFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, newFontSize));
+                float newFontSize = fontSizeSp * detector.getScaleFactor();
+                newFontSize = Math.max(MIN_FONT_SIZE_SP, Math.min(MAX_FONT_SIZE_SP, newFontSize));
+                autoFitFontSize = false;
                 setFontSize(newFontSize);
                 return true;
             }
 
             @Override
             public void onScaleEnd(ScaleGestureDetector detector) {
-                new TerminalPrefs(getContext()).setFontSize(fontSize);
+                new TerminalPrefs(getContext()).setFontSize(fontSizeSp);
             }
         });
 
@@ -115,15 +122,21 @@ public class TerminalView extends View {
 
     public void setTerminalSession(TerminalSession session) {
         this.session = session;
+        applyAutoFitFontSizeIfNeeded(getWidth(), getHeight());
         requestLayout();
         invalidate();
     }
 
-    public void setFontSize(float size) {
-        this.fontSize = size;
-        textPaint.setTextSize(fontSize);
+    public void setFontSize(float sizeSp) {
+        this.fontSizeSp = Math.max(MIN_FONT_SIZE_SP, Math.min(MAX_FONT_SIZE_SP, sizeSp));
+        textPaint.setTextSize(spToPx(fontSizeSp));
         measureCharSize();
         invalidate();
+    }
+
+    public void setAutoFitFontSize(boolean enabled) {
+        autoFitFontSize = enabled;
+        applyAutoFitFontSizeIfNeeded(getWidth(), getHeight());
     }
 
     private void measureCharSize() {
@@ -134,11 +147,48 @@ public class TerminalView extends View {
         charWidth = textPaint.measureText("M");
     }
 
+    private float spToPx(float sp) {
+        return TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                sp,
+                getResources().getDisplayMetrics()
+        );
+    }
+
+    private void applyAutoFitFontSizeIfNeeded(int width, int height) {
+        if (!autoFitFontSize || session == null || width <= 0 || height <= 0) {
+            return;
+        }
+
+        float currentSp = fontSizeSp;
+        float currentWidth = Math.max(1f, charWidth);
+        float currentHeight = Math.max(1f, charHeight);
+        float targetByCols = currentSp * width * AUTO_FIT_WIDTH_FILL
+                / (session.getColumns() * currentWidth);
+        float targetByRows = currentSp * height * AUTO_FIT_HEIGHT_FILL
+                / (session.getRows() * currentHeight);
+        float targetSp = Math.min(targetByCols, targetByRows);
+        targetSp = Math.max(AUTO_FONT_MIN_SP, Math.min(AUTO_FONT_MAX_SP, targetSp));
+
+        if (Math.abs(targetSp - fontSizeSp) >= 0.25f) {
+            fontSizeSp = targetSp;
+            textPaint.setTextSize(spToPx(fontSizeSp));
+            measureCharSize();
+            invalidate();
+        }
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int height = MeasureSpec.getSize(heightMeasureSpec);
         setMeasuredDimension(width, height);
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        applyAutoFitFontSizeIfNeeded(w, h);
     }
 
     @Override

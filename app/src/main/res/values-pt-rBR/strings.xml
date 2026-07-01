@@ -1066,6 +1066,10 @@ por TechxArtisan</string>
     <string name="gamepad_config_duplicate_failed">Não foi possível duplicar o módulo</string>
     <string name="gamepad_config_done">Concluído</string>
     <string name="gamepad_key_picker_title">Tecla de seleção</string>
+    <string name="gamepad_key_picker_modifier_keys">Teclas modificadoras</string>
+    <string name="gamepad_key_picker_modifier_chord">Combinar com tecla (opcional)</string>
+    <string name="gamepad_key_picker_modifier_left">Esquerda</string>
+    <string name="gamepad_key_picker_modifier_right">Direita</string>
     <string name="gamepad_key_picker_save">Salvar</string>
     <string name="gamepad_key_picker_cd_arrow_up">Tecla de seta para cima</string>
     <string name="gamepad_key_picker_cd_arrow_down">Tecla de seta para baixo</string>

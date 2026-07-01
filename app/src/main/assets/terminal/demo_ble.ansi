@@ -1,0 +1,12 @@
+[2J[H[1;32m  Openterface KeyCmd Terminal
+[0m[90m  ────────────────────────────────────────
+
+[0m[33m  Last login: Fri Jun 26 10:42:15 2026 from keymod.local
+
+[0m[1;37mroot@openterface[0m:[1;34m~[0m# uname -a
+Linux openterface 6.1.0-keymod #1 SMP aarch64 GNU/Linux
+
+[1;37mroot@openterface[0m:[1;34m~[0m# ls --color=auto
+[1;34mbin[0m  [1;34mdev[0m  [1;34metc[0m  [1;34mhome[0m  [1;34mlib[0m  [1;34mproc[0m  [1;34mroot[0m  [1;34msys[0m  [36mtmp[0m  [1;34musr[0m  [1;34mvar[0m
+
+[1;37mroot@openterface[0m:[1;34m~[0m# [?25h

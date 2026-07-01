@@ -137,8 +137,9 @@ public class BasicTouchpadFragment extends Fragment {
     }
 
     /**
-     * Horizontal insets match {@link BasicKeyboardFragment#installKeyboardContentInsets}. Bottom
-     * uses {@link R.dimen#basic_touchpad_content_inset_bottom} and {@link
+     * Horizontal padding uses the fixed {@code basic_keyboard_content_inset} dimens; landscape side
+     * system insets are applied on {@link KeyboardMouseFragment}'s root. Bottom uses {@link
+     * R.dimen#basic_touchpad_content_inset_bottom} and {@link
      * WindowInsetsCompat.Type#navigationBars()} bottom, combined as {@code max(base, bars.bottom)}
      * so we do not stack two full nav clearances when the window already fits above the bar but
      * insets are still reported. Top keeps the layout {@code 8dp} breathing room.
@@ -160,9 +161,9 @@ public class BasicTouchpadFragment extends Fragment {
                     int bottomPad = Math.max(baseBottom, bars.bottom);
                     ViewCompat.setPaddingRelative(
                             v,
-                            baseStart + bars.left,
+                            baseStart,
                             v.getPaddingTop(),
-                            baseEnd + bars.right,
+                            baseEnd,
                             bottomPad);
                     return windowInsets;
                 });

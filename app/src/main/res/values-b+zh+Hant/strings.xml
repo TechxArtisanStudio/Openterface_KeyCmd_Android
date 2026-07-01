@@ -887,6 +887,10 @@
     <string name="gamepad_edit_mode_off">編輯</string>
     <string name="gamepad_edit_mode_on">正在編輯版面，再點一下即可結束</string>
     <string name="gamepad_key_picker_title">選擇按鍵</string>
+    <string name="gamepad_key_picker_modifier_keys">修飾鍵</string>
+    <string name="gamepad_key_picker_modifier_chord">與按鍵組合（可選）</string>
+    <string name="gamepad_key_picker_modifier_left">左</string>
+    <string name="gamepad_key_picker_modifier_right">右</string>
     <string name="gamepad_menu_add_touchpad_mouse_l">重新添加左滑鼠鍵（L）</string>
     <string name="gamepad_menu_add_touchpad_mouse_m">重新添加中滑鼠鍵（M）</string>
     <string name="gamepad_menu_add_touchpad_mouse_r">重新添加右滑鼠鍵（R）</string>

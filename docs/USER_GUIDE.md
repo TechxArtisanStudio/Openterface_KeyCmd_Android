@@ -215,6 +215,14 @@ Useful terms:
 | Canvas background (portable JSON) | **`layout.backgroundImageEncoding`** (`base64`), **`layout.backgroundImageMediaType`** (`image/png` / `image/jpeg` / `image/webp`), and **`layout.backgroundImageData`** (raw base64, no `data:` URL). Used when **sharing** a preset so the image travels in one file; after **import**, bytes are saved under app files dir as **`layout.backgroundImageFile`** and embed fields are cleared. Max decoded size about **6 MiB** |
 | Hold-lock / turbo gesture tuning (optional) | **Resolution order everywhere:** optional fields on a **BUTTON / SHOULDER / TRIGGER / MOUSE_BUTTON** module, else **`layout`** globals, else app **preferences**, else built-in defaults. Field names (Gson): **`gestureLockMinPressMs`** (0–1000, ms dwell before a diagonal gesture can commit on lift; 0 = legacy), **`gestureLockDiagonalRadiusScale`** (0.5–3, diagonal stroke strictness), **`turboPulsePeriodMs`** (25–300, ms between turbo on/off half-steps per latched module). The same three names under **`layout`** apply preset-wide. The toolbar **tune** icon (next to the preset name) opens **Hold-lock / turbo gestures** and saves those three values on the **current preset’s `layout`**; module config can add optional **This control** sliders for per-module JSON overrides |
 
+### Button key mapping (modifiers)
+
+Long-press a **BUTTON**, **SHOULDER**, or **TRIGGER** module and open **Configure control** → tap the mapped key label to open the key picker.
+
+- **Modifier keys (top rows):** tap **Ctrl**, **Shift**, **Alt**, **Fn**, or their **right-hand** counterparts (**RCtrl**, **RShift**, **RAlt**, **RGui**) to send that modifier alone (tap or hold on the gamepad). Use **Keyboard hold lock** in the same dialog to keep the modifier down on the host until you tap the control again (e.g. sneak / sprint).
+- **Combine with key (optional):** check any left or right modifiers, then pick a letter, number, or arrow to send a chord (e.g. **LCtrl** + **RShift** + **W**). Left and right sides are independent.
+- Chords and modifier-only mappings are stored as **`hidKey`** plus **`modifierMask`** in the preset JSON (same fields used by bundled layouts such as Minecraft sneak on Shift).
+
 ### Hold-lock, turbo, and gesture sensitivity
 
 On **BUTTON**, **SHOULDER**, **TRIGGER**, and **MOUSE_BUTTON** modules you can enable **`keyboardHoldLock`** and/or a per-module **`gestureLock`** object with four diagonal slots (`upLeft`, `upRight`, `downLeft`, `downRight`). Each slot’s **`action`** is one of: `none`, `hold_lock` (keep the mapped key or mouse button down), `turbo` (repeat pulse), `key_hold`, or `key_turbo` (alternate HID key; not allowed on **MOUSE_BUTTON**). If **`keyboardHoldLock`** is true and slots are omitted, defaults are **up-right → hold_lock** and **up-left → turbo**.

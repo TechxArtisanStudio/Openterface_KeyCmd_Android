@@ -864,6 +864,10 @@ TechxArtisan により</string>
     ]]></string>
     <string name="gamepad_key_picker_title"><![CDATA[Select key
     ]]></string>
+    <string name="gamepad_key_picker_modifier_keys">修飾キー</string>
+    <string name="gamepad_key_picker_modifier_chord">キーと組み合わせ（任意）</string>
+    <string name="gamepad_key_picker_modifier_left">左</string>
+    <string name="gamepad_key_picker_modifier_right">右</string>
     <string name="gamepad_menu_add_touchpad_mouse_l"><![CDATA[Re-add left mouse button (L)
     ]]></string>
     <string name="gamepad_menu_add_touchpad_mouse_m"><![CDATA[Re-add middle mouse button (M)
