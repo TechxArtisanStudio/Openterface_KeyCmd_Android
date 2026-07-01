@@ -1,0 +1,42 @@
+# Mode page screenshot flow for Welcome + KM Basic.
+# Re-tune TAP_REL fallbacks used by LAUNCH_KM_BASIC (ACTION_TEST_KM_USE_TAPS=1)
+# with scripts/record_emulator_actions.py --emit-rel if your resolution differs.
+
+PREPARE_CAPTURE
+
+# 1 Welcome portrait
+ORIENTATION portrait
+LAUNCH_WELCOME
+WAIT 2
+SCREENSHOT 01-welcome-portrait
+
+# 2 Welcome landscape
+ORIENTATION landscape
+LAUNCH_WELCOME
+ORIENTATION landscape
+WAIT 3.5
+SCREENSHOT 02-welcome-landscape
+
+# 3 KM Basic Keyboard landscape (app may auto-rotate)
+ORIENTATION landscape
+LAUNCH_KM_BASIC keyboard
+WAIT 2.5
+SCREENSHOT 03-km-basic-keyboard-landscape
+
+# 4 KM Basic Touchpad portrait
+ORIENTATION portrait
+LAUNCH_KM_BASIC touchpad
+WAIT 2.5
+SCREENSHOT 04-km-basic-touchpad-portrait
+
+# 5 KM Basic NumPad portrait
+ORIENTATION portrait
+LAUNCH_KM_BASIC numpad
+WAIT 2.5
+SCREENSHOT 05-km-basic-numpad-portrait
+
+# 6 KM Basic NumPad landscape
+ORIENTATION landscape
+LAUNCH_KM_BASIC numpad
+WAIT 2.5
+SCREENSHOT 06-km-basic-numpad-landscape

@@ -1,0 +1,7 @@
+# Terminal demo screenshot capture (Bluetooth preview).
+
+PREPARE_CAPTURE
+
+LAUNCH_TERMINAL_DEMO ble
+WAIT 8
+SCREENSHOT terminal-demo-bluetooth

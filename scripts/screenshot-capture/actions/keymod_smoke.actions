@@ -1,0 +1,19 @@
+# Openterface KM action test example (phone coordinates must match your device UI).
+# Usage:
+#   ./scripts/action_test_keymod.sh run scripts/actions/keymod_smoke.actions [device_serial]
+
+WAIT 1
+SCREENSHOT 02_after_wait
+
+# Example taps near upper area; tune coordinates for your phone/layout.
+TAP 540 280
+WAIT 1
+SCREENSHOT 03_after_top_tap
+
+SWIPE 540 1700 540 700 350
+WAIT 1
+SCREENSHOT 04_after_swipe
+
+KEY KEYCODE_BACK
+WAIT 1
+SCREENSHOT 05_after_back

@@ -10,6 +10,10 @@
 <a href="README.fr.md"><img src="https://img.shields.io/badge/Français-README-656d76?style=for-the-badge" alt="README en français"/></a>
 <a href="README.de.md"><img src="https://img.shields.io/badge/Deutsch-README-656d76?style=for-the-badge" alt="README auf Deutsch"/></a>
 <a href="README.ja.md"><img src="https://img.shields.io/badge/日本語-current-2ea043?style=for-the-badge" alt="現在：日本語"/></a>
+<a href="README.ko.md"><img src="https://img.shields.io/badge/한국어-README-656d76?style=for-the-badge" alt="한국어 README"/></a>
+<a href="README.it.md"><img src="https://img.shields.io/badge/Italiano-README-656d76?style=for-the-badge" alt="README in italiano"/></a>
+<a href="README.ru.md"><img src="https://img.shields.io/badge/Русский-README-656d76?style=for-the-badge" alt="README на русском"/></a>
+<a href="README.pt-BR.md"><img src="https://img.shields.io/badge/Portugu%C3%AAs%20(Brasil)-README-656d76?style=for-the-badge" alt="README em português (Brasil)"/></a>
 </p>
 
 ---

@@ -21,3 +21,6 @@ Emulator_Downloads/
 kmpro-touch-debug.log
 
 __pycache__/
+
+# Screenshot / action-test automation output (scripts/capture_*.sh)
+/artifacts/

@@ -1,0 +1,75 @@
+# README screenshot flow (fractional coords = fraction of full screen width/height).
+# Re-tune TAP_REL / SWIPE_REL if your emulator resolution or theme differs.
+# Requires ACTION_TEST_SKIP_INITIAL_LAUNCH=1 and app already on LaunchPanelActivity.
+
+ORIENTATION portrait
+WAIT 2
+SCREENSHOT demo-welcome-mode-selection
+
+ORIENTATION landscape
+ORIENTATION landscape
+WAIT 3.5
+SCREENSHOT demo-welcome-mode-selection-landscape
+
+ORIENTATION portrait
+WAIT 1
+
+# Open navigation drawer (edge swipe).
+SWIPE_REL 0.03 0.45 0.42 0.45 450
+WAIT 1.2
+SCREENSHOT demo-navigation-drawer
+
+KEY KEYCODE_BACK
+WAIT 0.8
+
+# Start -> MainActivity keyboard/mouse
+TAP_REL 0.5 0.88
+WAIT 2.5
+SCREENSHOT demo-keyboard-mouse-portrait-touchpad-gestures
+
+ORIENTATION landscape
+WAIT 2
+SCREENSHOT demo-keyboard-mouse-landscape-split-keyboard-touchpad
+
+# Second landscape: macro strip / profile row (heuristic tap near top strip).
+TAP_REL 0.5 0.14
+WAIT 0.8
+SCREENSHOT demo-keyboard-mouse-landscape-macro-strip
+
+ORIENTATION portrait
+WAIT 2
+
+# Heuristic: top-right toolbar area for keypad-style layout (re-tune if needed).
+TAP_REL 0.88 0.10
+WAIT 1.2
+SCREENSHOT demo-keyboard-mouse-portrait-touchpad-numpad
+
+# Long-text compose: heuristic FAB / overflow (re-tune).
+TAP_REL 0.92 0.88
+WAIT 1
+SCREENSHOT demo-keyboard-mouse-portrait-long-text-compose
+
+# Drawer -> Presentation (second nav row under header).
+SWIPE_REL 0.03 0.45 0.42 0.45 450
+WAIT 1
+TAP_REL 0.18 0.24
+WAIT 2
+SCREENSHOT demo-presentation-google-slides
+KEY KEYCODE_BACK
+WAIT 0.8
+
+# Drawer -> Shortcut Hub (fourth primary row: keyboard, presentation, gamepad, shortcuts).
+SWIPE_REL 0.03 0.45 0.42 0.45 450
+WAIT 1
+TAP_REL 0.18 0.36
+WAIT 2
+SCREENSHOT demo-shortcut-hub
+KEY KEYCODE_BACK
+WAIT 0.8
+
+# Drawer -> Voice
+SWIPE_REL 0.03 0.45 0.42 0.45 450
+WAIT 1
+TAP_REL 0.18 0.52
+WAIT 2
+SCREENSHOT demo-voice-input

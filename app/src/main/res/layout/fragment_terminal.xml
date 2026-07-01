@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -9,29 +10,78 @@
     <LinearLayout
         android:id="@+id/terminal_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/terminal_toolbar_min_height"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@color/terminal_toolbar_background"
         android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
 
-        <TextView
-            android:id="@+id/terminal_status"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/terminal_disconnected"
-            android:textColor="@color/terminal_status_text"
-            android:textSize="14sp" />
+            android:orientation="vertical">
 
-        <Button
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/terminal_status"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/terminal_disconnected"
+                    android:textColor="@color/terminal_status_text"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/terminal_host_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/terminal_transport_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginStart="8dp"
+            android:gravity="center"
+            android:minWidth="96dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="12dp"
+            android:drawablePadding="6dp"
+            android:drawableTint="?attr/colorPrimary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:background="@drawable/bg_terminal_transport_badge"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/terminal_connect_btn"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:minWidth="0dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="@string/terminal_connect"
-            android:textSize="12sp"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:textSize="12sp" />
 
     </LinearLayout>
 
@@ -56,32 +106,72 @@
             android:orientation="vertical"
             android:gravity="center"
             android:background="@color/terminal_background"
-            android:visibility="visible">
+            android:visibility="visible"
+            android:paddingStart="@dimen/terminal_empty_padding_h"
+            android:paddingTop="@dimen/terminal_empty_padding_v"
+            android:paddingEnd="@dimen/terminal_empty_padding_h"
+            android:paddingBottom="@dimen/terminal_empty_padding_v">
 
             <ImageView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="@dimen/terminal_empty_icon_size"
+                android:layout_height="@dimen/terminal_empty_icon_size"
                 android:src="@drawable/ic_terminal"
                 android:tint="@color/text_secondary"
                 android:importantForAccessibility="no"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="@dimen/terminal_empty_icon_margin_bottom" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/top_mode_label_terminal"
-                android:textSize="24sp"
-                android:textColor="@color/text_primary"
-                android:layout_marginBottom="8dp" />
+                android:textSize="@dimen/terminal_empty_title_size"
+                android:textColor="@color/terminal_status_text"
+                android:layout_marginBottom="@dimen/terminal_empty_title_margin_bottom" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/terminal_disconnected_hint"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
+                android:maxWidth="@dimen/terminal_empty_content_max_width"
+                android:text="@string/top_mode_label_terminal_summary"
+                android:textSize="@dimen/terminal_empty_summary_size"
+                android:textColor="@color/terminal_status_text"
                 android:gravity="center"
-                android:padding="16dp" />
+                android:layout_marginBottom="@dimen/terminal_empty_summary_margin_bottom" />
+
+            <LinearLayout
+                android:id="@+id/terminal_empty_button_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:showDividers="none">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/terminal_demo_ble_btn"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="@dimen/terminal_empty_button_width"
+                    android:layout_height="@dimen/terminal_empty_button_height"
+                    android:text="@string/terminal_demo_ble"
+                    android:textSize="13sp"
+                    app:icon="@drawable/ic_bluetooth_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/terminal_demo_usb_btn"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="@dimen/terminal_empty_button_width"
+                    android:layout_height="@dimen/terminal_empty_button_height"
+                    android:layout_marginTop="@dimen/terminal_empty_button_gap"
+                    android:text="@string/terminal_demo_usb"
+                    android:textSize="13sp"
+                    android:textColor="@color/terminal_status_text"
+                    app:icon="@drawable/ic_usb_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="@color/terminal_status_text" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -91,7 +181,7 @@
     <LinearLayout
         android:id="@+id/terminal_bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="@dimen/terminal_bottom_bar_height"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@color/terminal_bottom_bar"
@@ -100,26 +190,38 @@
 
         <Button
             android:id="@+id/terminal_ctrl_btn"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="Ctrl"
-            android:textSize="12sp"
+            android:textSize="@dimen/terminal_bottom_bar_text_size"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
         <Button
             android:id="@+id/terminal_esc_btn"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="Esc"
-            android:textSize="12sp"
+            android:textSize="@dimen/terminal_bottom_bar_text_size"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
         <Button
             android:id="@+id/terminal_tab_btn"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="Tab"
-            android:textSize="12sp"
+            android:textSize="@dimen/terminal_bottom_bar_text_size"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
     </LinearLayout>
