@@ -1403,6 +1403,18 @@
     <string name="credential_import_key_file">导入密钥文件</string>
     <string name="credential_key_imported">密钥已导入 (%s)</string>
     <string name="credential_key_import_failed">密钥文件读取失败</string>
+    <string name="credential_tags_label">标签</string>
+    <string name="credential_tags_hint">输入标签名回车添加</string>
+    <string name="credential_tag_filter">按标签筛选</string>
+    <string name="select_tags_title">选择标签</string>
+    <string name="select_tags_add_hint">输入新标签名称</string>
+    <string name="select_tags_all_label">所有标签（点击选择）</string>
+    <string name="select_tags_selected_label">当前设备选中的标签</string>
+    <string name="select_tags_none">无</string>
+    <string name="select_tags_count">已选择 %d 个标签</string>
+    <string name="delete_tag_title">删除标签</string>
+    <string name="delete_tag_confirm">确定删除标签"%s"？该标签将从所有凭据中移除。</string>
+    <string name="delete_tag_deleted">标签"%s"已删除</string>
     <string name="terminal_auth_failed">认证失败，请在设置中检查凭证。</string>
 
     <!-- Terminal Error Messages -->

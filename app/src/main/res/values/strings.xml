@@ -1532,6 +1532,18 @@ by TechxArtisan</string>
     <string name="credential_key_imported">Key Imported</string>
     <string name="credential_key_import_failed">Failed to import key file</string>
     <string name="credential_auth_type">Authentication Type</string>
+    <string name="credential_tags_label">Tags</string>
+    <string name="credential_tags_hint">Enter tag name</string>
+    <string name="credential_tag_filter">Filter by tag</string>
+    <string name="select_tags_title">Select Tags</string>
+    <string name="select_tags_add_hint">Enter new tag name</string>
+    <string name="select_tags_all_label">All tags (tap to select)</string>
+    <string name="select_tags_selected_label">Selected tags for this profile</string>
+    <string name="select_tags_none">None</string>
+    <string name="select_tags_count">%d tag(s) selected</string>
+    <string name="delete_tag_title">Delete Tag</string>
+    <string name="delete_tag_confirm">Delete tag "%s"? It will be removed from all profiles.</string>
+    <string name="delete_tag_deleted">Tag "%s" deleted</string>
     <string name="terminal_auth_failed">Authentication failed. Please check your credentials in Settings.</string>
 
     <!-- Terminal Error Messages -->
@@ -1540,4 +1552,37 @@ by TechxArtisan</string>
     <string name="terminal_error_unknown_host">Unknown host. Please check hostname</string>
     <string name="terminal_error_no_route">Cannot reach remote host. Please check network</string>
     <string name="terminal_error_generic">An error occurred while connecting</string>
+
+    <!-- Remote-added strings -->
+    <string name="terminal_demo_usb">Preview demo (USB)</string>
+    <string name="terminal_demo_ble">Preview demo (Bluetooth)</string>
+    <string name="top_mode_label_terminal_summary">SSH over USB or Bluetooth</string>
+    <string name="top_mode_label_agent">Agent</string>
+    <string name="top_mode_label_agent_summary">Plan, approve, then act</string>
+    <string name="top_mode_label_macros_summary">Record and replay steps</string>
+    <string name="top_mode_label_shortcuts_summary">Keyboard shortcuts on tap</string>
+    <string name="agent_connection_ready">KeyMod · Ready</string>
+    <string name="agent_empty_hint">Pick a demo above to preview how Agent plans and acts on your target device.</string>
+    <string name="agent_gate_byok">Use my API key</string>
+    <string name="agent_gate_github">Sign in with GitHub (free tier)</string>
+    <string name="agent_gate_skip_demo">Skip — preview demo</string>
+    <string name="agent_gate_subtitle">Bring your own API key, or sign in with GitHub for limited free usage. You approve every action before KeyCmd touches the host.</string>
+    <string name="agent_gate_title">Connect AI</string>
+    <string name="agent_input_hint">Try a demo above — free chat coming soon</string>
+    <string name="agent_send_cd">Send message</string>
+    <string name="agent_subtitle">Approve before KeyCmd acts on your host.</string>
+    <string name="agent_act_approve">Approve &amp; Run</string>
+    <string name="agent_act_cancel">Cancel</string>
+    <string name="agent_act_edit_plan">Edit plan</string>
+    <string name="agent_act_prompt">Review the plan before KeyCmd acts on your host.</string>
+    <string name="agent_execution_terminal_label">TERMINAL · EXECUTING</string>
+    <string name="agent_execution_macro_label">MACRO · EXECUTING</string>
+    <string name="agent_plan_title">PLAN</string>
+    <string name="agent_edit_plan_coming_soon">Edit plan is coming soon.</string>
+    <string name="agent_input_demo_only">Agent chat is demo-only in this preview build.</string>
+    <string name="agent_gate_github_connected_toast">GitHub connected (demo). Limited free tier active.</string>
+    <string name="gamepad_key_picker_modifier_keys">Modifier keys</string>
+    <string name="gamepad_key_picker_modifier_left">Left</string>
+    <string name="gamepad_key_picker_modifier_right">Right</string>
+    <string name="gamepad_key_picker_modifier_chord">Combine with key (optional)</string>
 </resources>

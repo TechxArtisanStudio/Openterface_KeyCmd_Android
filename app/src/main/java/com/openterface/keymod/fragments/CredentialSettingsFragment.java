@@ -1,16 +1,20 @@
 package com.openterface.keymod.fragments;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.SearchView;
 import android.widget.Spinner;
@@ -24,6 +28,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
@@ -128,18 +135,18 @@ public class CredentialSettingsFragment extends Fragment {
     }
 
     private void filterProfiles(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            adapter.setProfiles(allProfiles);
-        } else {
-            String lowerQuery = query.trim().toLowerCase();
-            List<CredentialProfile> filtered = new ArrayList<>();
-            for (CredentialProfile profile : allProfiles) {
-                if (profile.getName().toLowerCase().contains(lowerQuery)) {
-                    filtered.add(profile);
-                }
-            }
-            adapter.setProfiles(filtered);
+        List<CredentialProfile> filtered = new ArrayList<>();
+        String lowerQuery = query != null ? query.trim().toLowerCase() : "";
+
+        for (CredentialProfile profile : allProfiles) {
+            boolean matchesText = lowerQuery.isEmpty()
+                    || profile.getName().toLowerCase().contains(lowerQuery)
+                    || profile.getShortDescription().toLowerCase().contains(lowerQuery);
+            if (!matchesText) continue;
+
+            filtered.add(profile);
         }
+        adapter.setProfiles(filtered);
         updateEmptyState();
     }
 
@@ -165,6 +172,13 @@ public class CredentialSettingsFragment extends Fragment {
         TextInputLayout passwordLayout = dialogView.findViewById(R.id.credential_password_layout);
         TextInputLayout privateKeyLayout = dialogView.findViewById(R.id.credential_private_key_layout);
         TextInputLayout keyPassphraseLayout = dialogView.findViewById(R.id.credential_key_passphrase_layout);
+        LinearLayout tagsContainer = dialogView.findViewById(R.id.credential_tags_container);
+        ImageView tagsIcon = dialogView.findViewById(R.id.credential_tags_icon);
+        ChipGroup tagsChipGroup = dialogView.findViewById(R.id.credential_tags_chip_group);
+        EditText tagsInput = dialogView.findViewById(R.id.credential_tags_input);
+
+        // Track tags selected for this profile
+        final List<String> currentTags = new ArrayList<>();
 
         // Setup auth type spinner
         String[] authTypeLabels = new String[]{
@@ -219,6 +233,8 @@ public class CredentialSettingsFragment extends Fragment {
             }
             keyPassphraseInput.setText(existingProfile.getKeyPassphrase());
             notesInput.setText(existingProfile.getNotes());
+            // Load existing tags into currentTags list
+            currentTags.addAll(existingProfile.getTags());
             // Set spinner to match existing auth type
             if (existingProfile.isSshKeyAuth()) {
                 authTypeSpinner.setSelection(1);
@@ -229,6 +245,30 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText("22");
             authTypeSpinner.setSelection(0);
         }
+
+        // Initial chip display for existing tags
+        refreshTagChips(tagsChipGroup, currentTags, () -> {});
+
+        // Enter key adds tag as chip
+        tagsInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
+                String tag = tagsInput.getText().toString().trim();
+                if (!tag.isEmpty() && !currentTags.stream().anyMatch(t -> t.equalsIgnoreCase(tag))) {
+                    currentTags.add(tag);
+                    refreshTagChips(tagsChipGroup, currentTags, () -> {});
+                }
+                tagsInput.setText("");
+                return true;
+            }
+            return false;
+        });
+
+        // Icon click opens select tags dialog
+        tagsIcon.setOnClickListener(v -> {
+            showSelectTagsDialog(currentTags, () -> {
+                refreshTagChips(tagsChipGroup, currentTags, () -> {});
+            });
+        });
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(existingProfile != null ? R.string.credential_edit : R.string.credential_add)
@@ -243,6 +283,9 @@ public class CredentialSettingsFragment extends Fragment {
                     String keyPassphrase = keyPassphraseInput.getText().toString();
                     String notes = notesInput.getText().toString().trim();
                     String authType = selectedAuthType[0];
+
+                    // Use currentTags directly (managed by select tags dialog)
+                    List<String> tags = new ArrayList<>(currentTags);
 
                     if (name.isEmpty()) {
                         Toast.makeText(getContext(), R.string.credential_profile_name_required, Toast.LENGTH_SHORT).show();
@@ -290,6 +333,7 @@ public class CredentialSettingsFragment extends Fragment {
                         }
                         existingProfile.setKeyPassphrase(keyPassphrase);
                         existingProfile.setNotes(notes);
+                        existingProfile.setTags(tags);
                         credentialManager.updateProfile(existingProfile);
                     } else {
                         CredentialProfile profile = new CredentialProfile();
@@ -302,6 +346,7 @@ public class CredentialSettingsFragment extends Fragment {
                         profile.setPrivateKey(privateKey);
                         profile.setKeyPassphrase(keyPassphrase);
                         profile.setNotes(notes);
+                        profile.setTags(tags);
                         credentialManager.addProfile(profile);
                     }
 
@@ -310,6 +355,231 @@ public class CredentialSettingsFragment extends Fragment {
                 })
                 .setNegativeButton(R.string.credential_cancel, null)
                 .show();
+    }
+
+    // ─── Tag Selection Dialog ────────────────────────────────────────────
+
+    /**
+     * Show the select tags dialog. Allows the user to see all existing tags,
+     * create new custom tags, and select which tags apply to the current profile.
+     *
+     * @param currentTags mutable list of tags for the current profile (modified in place)
+     * @param onUpdated   callback invoked when tags are changed, so the summary can refresh
+     */
+    private void showSelectTagsDialog(List<String> currentTags, Runnable onUpdated) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_select_tags, null);
+
+        EditText tagInput = dialogView.findViewById(R.id.select_tags_input);
+        ChipGroup allTagsGroup = dialogView.findViewById(R.id.select_tags_chip_group);
+        ChipGroup selectedGroup = dialogView.findViewById(R.id.select_tags_selected_group);
+
+        // Build the "all tags" chip list (checkable)
+        List<String> allTags = credentialManager.getAllTags();
+        // Merge currentTags that may not be in allTags yet (e.g. newly typed tags)
+        for (String t : currentTags) {
+            if (!allTags.contains(t)) {
+                allTags.add(t);
+            }
+        }
+        java.util.Collections.sort(allTags);
+
+        for (String tag : allTags) {
+            Chip chip = new Chip(requireContext());
+            chip.setText(tag);
+            chip.setCheckable(true);
+            chip.setChecked(currentTags.contains(tag));
+            applyChipCheckedTextColor(chip);
+            chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    if (!currentTags.contains(tag)) {
+                        currentTags.add(tag);
+                    }
+                } else {
+                    currentTags.remove(tag);
+                }
+                refreshSelectedChips(selectedGroup, currentTags);
+                onUpdated.run();
+            });
+            // Long press to delete tag from all profiles
+            chip.setOnLongClickListener(v -> {
+                showDeleteTagConfirmDialog(tag, allTagsGroup, selectedGroup, currentTags, onUpdated, chip);
+                return true;
+            });
+            allTagsGroup.addView(chip);
+        }
+
+        // Show initially selected tags
+        refreshSelectedChips(selectedGroup, currentTags);
+
+        // Add new tag on Enter
+        tagInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
+                addNewTag(tagInput, allTagsGroup, selectedGroup, currentTags, onUpdated);
+                return true;
+            }
+            return false;
+        });
+
+        // Add new tag on comma
+        tagInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                String text = s.toString();
+                if (text.contains(",") || text.contains("，")) {
+                    addNewTag(tagInput, allTagsGroup, selectedGroup, currentTags, onUpdated);
+                }
+            }
+        });
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.select_tags_title)
+                .setView(dialogView)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Add a new tag from the input field. Creates a checkable chip in the all-tags group,
+     * auto-checks it, and adds it to the current profile's tags.
+     */
+    private void addNewTag(EditText tagInput, ChipGroup allTagsGroup, ChipGroup selectedGroup,
+                            List<String> currentTags, Runnable onUpdated) {
+        String raw = tagInput.getText().toString();
+        String[] parts = raw.split("[,，]");
+        for (String part : parts) {
+            String tag = part.trim();
+            if (tag.isEmpty()) continue;
+            // Check if chip already exists
+            boolean exists = false;
+            for (int i = 0; i < allTagsGroup.getChildCount(); i++) {
+                View child = allTagsGroup.getChildAt(i);
+                if (child instanceof Chip && tag.equalsIgnoreCase(((Chip) child).getText().toString())) {
+                    Chip existingChip = (Chip) child;
+                    if (!existingChip.isChecked()) {
+                        existingChip.setChecked(true);
+                    }
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                // Add new checkable chip to all-tags group
+                Chip chip = new Chip(requireContext());
+                chip.setText(tag);
+                chip.setCheckable(true);
+                chip.setChecked(true);
+                applyChipCheckedTextColor(chip);
+                chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (isChecked) {
+                        if (!currentTags.contains(tag)) {
+                            currentTags.add(tag);
+                        }
+                    } else {
+                        currentTags.remove(tag);
+                    }
+                    refreshSelectedChips(selectedGroup, currentTags);
+                    onUpdated.run();
+                });
+                // Long press to delete tag
+                chip.setOnLongClickListener(v -> {
+                    showDeleteTagConfirmDialog(tag, allTagsGroup, selectedGroup, currentTags, onUpdated, chip);
+                    return true;
+                });
+                allTagsGroup.addView(chip);
+            }
+            if (!currentTags.contains(tag)) {
+                currentTags.add(tag);
+            }
+        }
+        tagInput.setText("");
+        refreshSelectedChips(selectedGroup, currentTags);
+        onUpdated.run();
+    }
+
+    /**
+     * Refresh the "selected tags" chip group to reflect currentTags.
+     */
+    private void refreshSelectedChips(ChipGroup selectedGroup, List<String> currentTags) {
+        selectedGroup.removeAllViews();
+        for (String tag : currentTags) {
+            Chip chip = new Chip(requireContext());
+            chip.setText(tag);
+            chip.setTextSize(12f);
+            chip.setClickable(false);
+            chip.setCheckable(false);
+            chip.setCloseIconVisible(false);
+            selectedGroup.addView(chip);
+        }
+    }
+
+    /**
+     * Show a confirmation dialog to delete a tag from all profiles.
+     */
+    private void showDeleteTagConfirmDialog(String tag, ChipGroup allTagsGroup,
+                                             ChipGroup selectedGroup, List<String> currentTags,
+                                             Runnable onUpdated, Chip chipToRemove) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.delete_tag_title)
+                .setMessage(getString(R.string.delete_tag_confirm, tag))
+                .setPositiveButton(R.string.credential_delete, (dialog, which) -> {
+                    // Remove tag from all profiles via CredentialManager
+                    credentialManager.removeTagFromAllProfiles(tag);
+                    // Remove from current profile's tags
+                    currentTags.remove(tag);
+                    // Remove the chip from the all-tags group
+                    allTagsGroup.removeView(chipToRemove);
+                    // Refresh selected chips display
+                    refreshSelectedChips(selectedGroup, currentTags);
+                    onUpdated.run();
+                    Toast.makeText(getContext(),
+                            getString(R.string.delete_tag_deleted, tag),
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.credential_cancel, null)
+                .show();
+    }
+
+    /**
+     * Set checked text color to follow the theme's colorPrimary.
+     */
+    private void applyChipCheckedTextColor(Chip chip) {
+        int primary = MaterialColors.getColor(chip, com.google.android.material.R.attr.colorPrimary);
+        int defaultColor = chip.getCurrentTextColor();
+        ColorStateList textColors = new ColorStateList(
+                new int[][]{
+                        new int[]{android.R.attr.state_checked},
+                        new int[]{-android.R.attr.state_checked}
+                },
+                new int[]{primary, defaultColor}
+        );
+        chip.setTextColor(textColors);
+    }
+
+    /**
+     * Refresh the tag chips displayed inside the tags input box.
+     * Each chip is clickable — tapping it removes the tag from currentTags.
+     */
+    private void refreshTagChips(ChipGroup chipGroup, List<String> currentTags, Runnable onUpdated) {
+        chipGroup.removeAllViews();
+        for (String tag : currentTags) {
+            Chip chip = new Chip(requireContext());
+            chip.setText(tag);
+            chip.setTextSize(12f);
+            chip.setClickable(true);
+            chip.setCheckable(false);
+            chip.setCloseIconVisible(false);
+            applyChipCheckedTextColor(chip);
+            chip.setOnClickListener(v -> {
+                currentTags.remove(tag);
+                refreshTagChips(chipGroup, currentTags, onUpdated);
+                onUpdated.run();
+            });
+            chipGroup.addView(chip);
+        }
     }
 
     // ─── RecyclerView Adapter ────────────────────────────────────────────
@@ -340,6 +610,24 @@ public class CredentialSettingsFragment extends Fragment {
             CredentialProfile profile = profiles.get(position);
             holder.nameText.setText(profile.getDisplayLabel());
             holder.detailsText.setText(profile.getShortDescription());
+
+            // Display tags as chips
+            holder.tagsGroup.removeAllViews();
+            List<String> tags = profile.getTags();
+            if (!tags.isEmpty()) {
+                holder.tagsGroup.setVisibility(View.VISIBLE);
+                for (String tag : tags) {
+                    Chip chip = new Chip(holder.itemView.getContext());
+                    chip.setText(tag);
+                    chip.setTextSize(11f);
+                    chip.setClickable(false);
+                    chip.setCheckable(false);
+                    chip.setCloseIconVisible(false);
+                    holder.tagsGroup.addView(chip);
+                }
+            } else {
+                holder.tagsGroup.setVisibility(View.GONE);
+            }
 
             // Auth type icon
             if (holder.authTypeIcon != null) {
@@ -390,6 +678,7 @@ public class CredentialSettingsFragment extends Fragment {
             RadioButton activeRadio;
             TextView nameText;
             TextView detailsText;
+            ChipGroup tagsGroup;
             ImageView authTypeIcon;
             ImageButton editButton;
             ImageButton deleteButton;
@@ -399,6 +688,7 @@ public class CredentialSettingsFragment extends Fragment {
                 activeRadio = itemView.findViewById(R.id.credential_active_radio);
                 nameText = itemView.findViewById(R.id.credential_name);
                 detailsText = itemView.findViewById(R.id.credential_details);
+                tagsGroup = itemView.findViewById(R.id.credential_tags_group);
                 authTypeIcon = itemView.findViewById(R.id.credential_auth_type_icon);
                 editButton = itemView.findViewById(R.id.credential_edit_button);
                 deleteButton = itemView.findViewById(R.id.credential_delete_button);

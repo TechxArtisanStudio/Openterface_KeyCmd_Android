@@ -13,8 +13,11 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages SSH credential profiles with encrypted storage via EncryptedSharedPreferences.
@@ -182,6 +185,35 @@ public class CredentialManager {
         }
         saveProfiles(profiles);
         prefs.edit().putString(KEY_ACTIVE_ID, id).apply();
+    }
+
+    /**
+     * Get all unique tags across all profiles, sorted alphabetically.
+     */
+    public List<String> getAllTags() {
+        Set<String> tagSet = new LinkedHashSet<>();
+        for (CredentialProfile p : getAllProfiles()) {
+            tagSet.addAll(p.getTags());
+        }
+        List<String> result = new ArrayList<>(tagSet);
+        Collections.sort(result);
+        return result;
+    }
+
+    /**
+     * Remove a tag from all profiles. Saves changes immediately.
+     */
+    public void removeTagFromAllProfiles(String tag) {
+        List<CredentialProfile> profiles = getAllProfiles();
+        boolean changed = false;
+        for (CredentialProfile p : profiles) {
+            if (p.getTags().remove(tag)) {
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveProfiles(profiles);
+        }
     }
 
     /**

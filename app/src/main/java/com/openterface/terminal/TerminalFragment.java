@@ -49,6 +49,17 @@ import com.openterface.keymod.SettingsActivity;
 public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
+    private static final String ARG_DEMO_TRANSPORT = "arg_demo_transport";
+
+    public static TerminalFragment newInstance(@Nullable String demoTransport) {
+        TerminalFragment fragment = new TerminalFragment();
+        if (demoTransport != null) {
+            Bundle args = new Bundle();
+            args.putString(ARG_DEMO_TRANSPORT, demoTransport);
+            fragment.setArguments(args);
+        }
+        return fragment;
+    }
 
     private View rootView;
     private TerminalView terminalView;
@@ -205,7 +216,6 @@ public class TerminalFragment extends Fragment {
         View titleContainer = dialogView.findViewById(R.id.title_container);
         ImageView searchButton = dialogView.findViewById(R.id.search_device_button);
         SearchView searchView = dialogView.findViewById(R.id.device_search_view);
-
         // Load all profiles
         final List<CredentialProfile> allProfiles = credentialManager.getAllProfiles();
         final int[] selectedProfileIndex = {-1};
@@ -331,16 +341,30 @@ public class TerminalFragment extends Fragment {
         deviceListContainer.removeAllViews();
         selectedProfileIndex[0] = -1;
 
-        // Filter profiles by name or description
+        // Filter profiles by name, description, or tags
         List<CredentialProfile> filtered = new ArrayList<>();
         List<Integer> originalIndices = new ArrayList<>();
         for (int i = 0; i < allProfiles.size(); i++) {
             CredentialProfile p = allProfiles.get(i);
-            if (searchQuery.isEmpty()
-                    || p.getDisplayLabel().toLowerCase().contains(searchQuery)
-                    || p.getShortDescription().toLowerCase().contains(searchQuery)) {
+            if (searchQuery.isEmpty()) {
                 filtered.add(p);
                 originalIndices.add(i);
+            } else {
+                boolean matches = p.getDisplayLabel().toLowerCase().contains(searchQuery)
+                        || p.getShortDescription().toLowerCase().contains(searchQuery);
+                if (!matches) {
+                    // Check if any tag matches
+                    for (String tag : p.getTags()) {
+                        if (tag.toLowerCase().contains(searchQuery)) {
+                            matches = true;
+                            break;
+                        }
+                    }
+                }
+                if (matches) {
+                    filtered.add(p);
+                    originalIndices.add(i);
+                }
             }
         }
 

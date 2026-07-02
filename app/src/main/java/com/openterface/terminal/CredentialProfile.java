@@ -1,5 +1,7 @@
 package com.openterface.terminal;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,6 +24,7 @@ public class CredentialProfile {
     private String privateKey;
     private String keyPassphrase;
     private String notes;
+    private List<String> tags;
     private boolean isActive;
     private long createdAt;
     private long updatedAt;
@@ -32,6 +35,7 @@ public class CredentialProfile {
         this.privateKey = "";
         this.keyPassphrase = "";
         this.notes = "";
+        this.tags = new ArrayList<>();
         this.createdAt = System.currentTimeMillis();
         this.updatedAt = this.createdAt;
     }
@@ -51,6 +55,7 @@ public class CredentialProfile {
         this.privateKey = "";
         this.keyPassphrase = "";
         this.notes = "";
+        this.tags = new ArrayList<>();
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -99,6 +104,9 @@ public class CredentialProfile {
 
     public String getNotes() { return notes != null ? notes : ""; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public List<String> getTags() { return tags != null ? tags : new ArrayList<>(); }
+    public void setTags(List<String> tags) { this.tags = tags; }
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
