@@ -366,15 +366,29 @@
                     android:contentDescription="@string/top_mode_label_macros"
                     android:tint="@color/card_icon_tint" />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/top_mode_label_macros"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/card_text_color"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/top_mode_label_macros"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/card_text_color" />
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="4dp"
+                        android:src="@drawable/ic_experiment_24px"
+                        android:tint="@color/text_secondary"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -425,15 +439,29 @@
                     android:contentDescription="@string/top_mode_label_terminal"
                     android:tint="@color/card_icon_tint" />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/top_mode_label_terminal"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/card_text_color"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/top_mode_label_terminal"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/card_text_color" />
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="4dp"
+                        android:src="@drawable/ic_experiment_24px"
+                        android:tint="@color/text_secondary"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -484,15 +512,29 @@
                     android:contentDescription="@string/top_mode_label_agent"
                     android:tint="@color/card_icon_tint" />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/top_mode_label_agent"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/card_text_color"
-                    android:gravity="center"
-                    android:layout_marginTop="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/top_mode_label_agent"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/card_text_color" />
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="4dp"
+                        android:src="@drawable/ic_experiment_24px"
+                        android:tint="@color/text_secondary"
+                        android:importantForAccessibility="no" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
