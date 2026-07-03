@@ -1525,7 +1525,7 @@ by TechxArtisan</string>
     <string name="terminal_select_device">Please select a device</string>
 
     <!-- Credential Auth Type -->
-    <string name="credential_auth_type_password">Password</string>
+    <string name="credential_auth_type_password">User Password</string>
     <string name="credential_auth_type_ssh_key">SSH Key</string>
     <string name="credential_password_required">Password is required</string>
     <string name="credential_private_key_required">Private key is required</string>
@@ -1585,4 +1585,42 @@ by TechxArtisan</string>
     <string name="gamepad_key_picker_modifier_left">Left</string>
     <string name="gamepad_key_picker_modifier_right">Right</string>
     <string name="gamepad_key_picker_modifier_chord">Combine with key (optional)</string>
+
+    <!-- SSH Key Generation -->
+    <string name="credential_generate_key">Generate Key</string>
+    <string name="credential_generate">Generate</string>
+    <string name="credential_key_algorithm">Algorithm</string>
+    <string name="credential_key_rsa_4096">RSA 4096</string>
+    <string name="credential_key_rsa_2048">RSA 2048</string>
+    <string name="credential_key_ed25519">ED25519</string>
+    <string name="credential_key_name">Name</string>
+    <string name="credential_key_rounds">Rounds</string>
+    <string name="credential_key_save_passphrase">Save passphrase</string>
+    <string name="credential_edit_key">Edit Key</string>
+    <string name="credential_key_passphrase_hint">Key Passphrase (optional)</string>
+    <string name="credential_key_generating">Generating key pair…</string>
+    <string name="credential_key_generated">Key pair generated</string>
+    <string name="credential_public_key_title">Public Key</string>
+    <string name="credential_public_key_copy">Copy</string>
+    <string name="credential_public_key_copied">Public key copied to clipboard</string>
+    <string name="credential_push_key">Push to Server</string>
+    <string name="credential_push_key_title">Push Public Key</string>
+    <string name="credential_push_key_desc">Push public key to server via password auth</string>
+    <string name="credential_push">Push</string>
+    <string name="credential_push_key_success">Public key pushed successfully</string>
+    <string name="credential_push_key_failed">Failed to push key: %s</string>
+    <string name="credential_push_key_connecting">Connecting to server…</string>
+    <string name="credential_push_key_writing">Writing authorized_keys…</string>
+    <string name="credential_host_hint">Host</string>
+    <string name="credential_port_hint">Port</string>
+    <string name="credential_username_hint">Username</string>
+    <string name="credential_password_hint">Password</string>
+    <string name="credential_key_label">Key</string>
+    <string name="credential_key_not_set">No key set</string>
+    <string name="credential_key_set">Key set</string>
+    <string name="credential_key_options">Key options</string>
+    <string name="credential_key_paste">Paste</string>
+    <string name="credential_key_import_file">Import from file</string>
+    <string name="credential_key_generate">Generate</string>
+    <string name="credential_private_key_hint">Private Key (PEM)</string>
 </resources>

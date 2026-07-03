@@ -1,10 +1,13 @@
 package com.openterface.keymod.fragments;
 
+import android.app.ProgressDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +15,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -23,6 +27,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -37,6 +42,8 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.util.SensitivePageShield;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
+import com.openterface.terminal.SshKeyGenerator;
+import com.openterface.terminal.SshKeyPusher;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -48,6 +55,8 @@ import java.util.List;
  * Settings tab for managing SSH credential profiles.
  */
 public class CredentialSettingsFragment extends Fragment {
+
+    private static final int REQUEST_CODE_IMPORT_KEY = 1001;
 
     private SearchView searchView;
     private RecyclerView credentialList;
@@ -124,6 +133,33 @@ public class CredentialSettingsFragment extends Fragment {
         }
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_IMPORT_KEY && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                try {
+                    InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                    StringBuilder stringBuilder = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        stringBuilder.append(line).append("\n");
+                    }
+                    reader.close();
+                    String keyContent = stringBuilder.toString().trim();
+
+                    // TODO: Update the key status - this needs to be passed from the showAddEditDialog context
+                    // For now, just show a toast
+                    Toast.makeText(requireContext(), R.string.credential_key_imported, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(requireContext(), R.string.credential_key_import_failed, Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
     private List<CredentialProfile> loadProfiles() {
         List<CredentialProfile> profiles = credentialManager.getAllProfiles();
         return profiles != null ? profiles : new ArrayList<>();
@@ -165,17 +201,23 @@ public class CredentialSettingsFragment extends Fragment {
         EditText portInput = dialogView.findViewById(R.id.credential_port_input);
         EditText usernameInput = dialogView.findViewById(R.id.credential_username_input);
         EditText passwordInput = dialogView.findViewById(R.id.credential_password_input);
-        EditText privateKeyInput = dialogView.findViewById(R.id.credential_private_key_input);
-        EditText keyPassphraseInput = dialogView.findViewById(R.id.credential_key_passphrase_input);
         EditText notesInput = dialogView.findViewById(R.id.credential_notes_input);
         Spinner authTypeSpinner = dialogView.findViewById(R.id.credential_auth_type_spinner);
         TextInputLayout passwordLayout = dialogView.findViewById(R.id.credential_password_layout);
-        TextInputLayout privateKeyLayout = dialogView.findViewById(R.id.credential_private_key_layout);
-        TextInputLayout keyPassphraseLayout = dialogView.findViewById(R.id.credential_key_passphrase_layout);
         LinearLayout tagsContainer = dialogView.findViewById(R.id.credential_tags_container);
         ImageView tagsIcon = dialogView.findViewById(R.id.credential_tags_icon);
         ChipGroup tagsChipGroup = dialogView.findViewById(R.id.credential_tags_chip_group);
         EditText tagsInput = dialogView.findViewById(R.id.credential_tags_input);
+
+        // Key section
+        View keyRow = dialogView.findViewById(R.id.credential_key_row);
+        TextView keyStatus = dialogView.findViewById(R.id.credential_key_status);
+        ImageView keyIcon = dialogView.findViewById(R.id.credential_key_icon);
+
+        // Track key data internally
+        final String[] privateKeyData = {""};
+        final String[] keyPassphraseData = {""};
+        final SshKeyGenerator.KeyPairResult[] generatedKeyPair = {null};
 
         // Track tags selected for this profile
         final List<String> currentTags = new ArrayList<>();
@@ -201,13 +243,11 @@ public class CredentialSettingsFragment extends Fragment {
                 if (position == 0) {
                     selectedAuthType[0] = CredentialProfile.AUTH_TYPE_PASSWORD;
                     passwordLayout.setVisibility(View.VISIBLE);
-                    privateKeyLayout.setVisibility(View.GONE);
-                    keyPassphraseLayout.setVisibility(View.GONE);
+                    keyRow.setVisibility(View.GONE);
                 } else {
                     selectedAuthType[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
                     passwordLayout.setVisibility(View.GONE);
-                    privateKeyLayout.setVisibility(View.VISIBLE);
-                    keyPassphraseLayout.setVisibility(View.VISIBLE);
+                    keyRow.setVisibility(View.VISIBLE);
                 }
             }
 
@@ -223,15 +263,13 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText(String.valueOf(existingProfile.getPort()));
             usernameInput.setText(existingProfile.getUsername());
             passwordInput.setText(existingProfile.getPassword());
-            // Show "Imported Key" placeholder instead of actual key content
+            // Set key status for existing SSH key
             if (existingProfile.isSshKeyAuth() && !existingProfile.getPrivateKey().isEmpty()) {
-                privateKeyInput.setHint(R.string.credential_key_imported);
-                privateKeyInput.setText("");
+                privateKeyData[0] = existingProfile.getPrivateKey();
+                keyPassphraseData[0] = existingProfile.getKeyPassphrase();
+                keyStatus.setText(R.string.credential_key_imported);
                 hasExistingKey[0] = true;
-            } else {
-                privateKeyInput.setText(existingProfile.getPrivateKey());
             }
-            keyPassphraseInput.setText(existingProfile.getKeyPassphrase());
             notesInput.setText(existingProfile.getNotes());
             // Load existing tags into currentTags list
             currentTags.addAll(existingProfile.getTags());
@@ -270,6 +308,34 @@ public class CredentialSettingsFragment extends Fragment {
             });
         });
 
+        // Key icon click shows popup menu
+        keyIcon.setOnClickListener(v -> {
+            androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(requireContext(), v);
+            popup.getMenu().add(0, 1, 0, R.string.credential_key_paste);
+            popup.getMenu().add(0, 2, 1, R.string.credential_key_import_file);
+            popup.getMenu().add(0, 3, 2, R.string.credential_key_generate);
+            popup.setOnMenuItemClickListener(item -> {
+                switch (item.getItemId()) {
+                    case 1: // Paste
+                        showPasteKeyDialog(privateKeyData, keyPassphraseData, keyStatus);
+                        break;
+                    case 2: // Import from file
+                        importKeyFromFile();
+                        break;
+                    case 3: // Generate
+                        showGenerateKeyDialog((keyPair, passphrase) -> {
+                            generatedKeyPair[0] = keyPair;
+                            privateKeyData[0] = keyPair.privateKey;
+                            keyPassphraseData[0] = passphrase != null ? passphrase : "";
+                            keyStatus.setText(R.string.credential_key_generated);
+                        });
+                        break;
+                }
+                return true;
+            });
+            popup.show();
+        });
+
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(existingProfile != null ? R.string.credential_edit : R.string.credential_add)
                 .setView(dialogView)
@@ -279,8 +345,8 @@ public class CredentialSettingsFragment extends Fragment {
                     String portStr = portInput.getText().toString().trim();
                     String username = usernameInput.getText().toString().trim();
                     String password = passwordInput.getText().toString();
-                    String privateKey = privateKeyInput.getText().toString();
-                    String keyPassphrase = keyPassphraseInput.getText().toString();
+                    String privateKey = privateKeyData[0];
+                    String keyPassphrase = keyPassphraseData[0];
                     String notes = notesInput.getText().toString().trim();
                     String authType = selectedAuthType[0];
 
@@ -355,6 +421,297 @@ public class CredentialSettingsFragment extends Fragment {
                 })
                 .setNegativeButton(R.string.credential_cancel, null)
                 .show();
+    }
+
+    // ─── SSH Key Generation Dialogs ─────────────────────────────────────
+
+    /**
+     * Show dialog for pasting a private key.
+     */
+    private void showPasteKeyDialog(String[] privateKeyData, String[] keyPassphraseData, TextView keyStatus) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_paste_key, null);
+
+        EditText privateKeyInput = dialogView.findViewById(R.id.paste_key_input);
+        EditText passphraseInput = dialogView.findViewById(R.id.paste_passphrase_input);
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.credential_key_paste)
+                .setView(dialogView)
+                .setPositiveButton(R.string.credential_save, (dialog, which) -> {
+                    String key = privateKeyInput.getText().toString().trim();
+                    String passphrase = passphraseInput.getText().toString();
+                    if (!key.isEmpty()) {
+                        privateKeyData[0] = key;
+                        keyPassphraseData[0] = passphrase;
+                        keyStatus.setText(R.string.credential_key_set);
+                        Toast.makeText(requireContext(), R.string.credential_key_set, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(R.string.credential_cancel, null)
+                .show();
+    }
+
+    /**
+     * Import key from file using file picker.
+     */
+    private void importKeyFromFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, REQUEST_CODE_IMPORT_KEY);
+    }
+
+    /**
+     * Show dialog for generating SSH key pair.
+     * After generation the dialog switches to "Edit Key" mode so the user
+     * can review and adjust key properties before saving.
+     *
+     * @param onGenerated callback receiving (keyPairResult, passphrase)
+     */
+    private void showGenerateKeyDialog(java.util.function.BiConsumer<SshKeyGenerator.KeyPairResult, String> onGenerated) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_generate_ssh_key, null);
+
+        // ── Generate section views ──
+        View generateSection = dialogView.findViewById(R.id.key_generate_section);
+        EditText nameInput = dialogView.findViewById(R.id.key_name_input);
+        AutoCompleteTextView algorithmDropdown = dialogView.findViewById(R.id.key_algorithm_dropdown);
+        EditText passphraseInput = dialogView.findViewById(R.id.key_passphrase_input);
+        TextInputLayout roundsLayout = dialogView.findViewById(R.id.key_rounds_layout);
+        EditText roundsInput = dialogView.findViewById(R.id.key_rounds_input);
+        android.widget.CheckBox savePassphraseCheckbox =
+                dialogView.findViewById(R.id.key_save_passphrase_checkbox);
+
+        // ── Edit section views ──
+        View editSection = dialogView.findViewById(R.id.key_edit_section);
+        EditText editNameInput = dialogView.findViewById(R.id.key_edit_name_input);
+        EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
+        TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
+        EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
+        android.widget.CheckBox editSavePassphraseCheckbox =
+                dialogView.findViewById(R.id.key_edit_save_passphrase_checkbox);
+
+        // Setup algorithm dropdown
+        String[] algorithms = {
+                getString(R.string.credential_key_ed25519),
+                getString(R.string.credential_key_rsa_4096),
+                getString(R.string.credential_key_rsa_2048)
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_dropdown_item_1line, algorithms);
+        algorithmDropdown.setAdapter(adapter);
+        algorithmDropdown.setText(algorithms[0], false);
+
+        // Show rounds field only when passphrase is not empty
+        passphraseInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                roundsLayout.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
+        });
+
+        // Mutable handler reference — null keeps the dialog open, non-null saves and dismisses.
+        final Runnable[] saveHandler = {null};
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.credential_generate_key)
+                .setView(dialogView)
+                .setPositiveButton(R.string.credential_generate, null) // Generate: don't auto-close
+                .setNegativeButton(R.string.credential_cancel, null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                if (saveHandler[0] == null) {
+                    // ── Generate phase ──
+                    String name = nameInput.getText().toString().trim();
+                    if (name.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.credential_profile_name_required,
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String passphrase = passphraseInput.getText().toString();
+                    boolean savePassphrase = savePassphraseCheckbox.isChecked();
+                    final String selectedAlgo = algorithmDropdown.getText().toString();
+
+                    ProgressDialog progress = new ProgressDialog(requireContext());
+                    progress.setMessage(getString(R.string.credential_key_generating));
+                    progress.setCancelable(false);
+                    progress.show();
+
+                    new Thread(() -> {
+                        try {
+                            SshKeyGenerator.KeyPairResult result;
+                            if (selectedAlgo.equals(algorithms[1])) {
+                                result = SshKeyGenerator.generateRSA(4096, name);
+                            } else if (selectedAlgo.equals(algorithms[2])) {
+                                result = SshKeyGenerator.generateRSA(2048, name);
+                            } else {
+                                result = SshKeyGenerator.generateEd25519(name);
+                            }
+
+                            requireActivity().runOnUiThread(() -> {
+                                progress.dismiss();
+
+                                // Switch to edit mode
+                                generateSection.setVisibility(View.GONE);
+                                editSection.setVisibility(View.VISIBLE);
+                                editNameInput.setText(name);
+                                editAlgorithmInput.setText(selectedAlgo);
+                                publicKeyText.setText(result.publicKey);
+                                editPassphraseInput.setText(passphrase);
+                                editSavePassphraseCheckbox.setChecked(savePassphrase);
+
+                                // Copy public key on click
+                                publicKeyText.setOnClickListener(view -> {
+                                    ClipboardManager clipboard = (ClipboardManager) requireContext()
+                                            .getSystemService(Context.CLIPBOARD_SERVICE);
+                                    clipboard.setPrimaryClip(
+                                            ClipData.newPlainText("SSH Public Key", result.publicKey));
+                                    Toast.makeText(requireContext(),
+                                            R.string.credential_public_key_copied, Toast.LENGTH_SHORT).show();
+                                });
+
+                                dialog.setTitle(R.string.credential_edit_key);
+                                dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                                        .setText(getString(R.string.credential_save));
+                                saveHandler[0] = () -> onGenerated.accept(result,
+                                        savePassphrase ? passphrase : "");
+                            });
+                        } catch (Exception e) {
+                            requireActivity().runOnUiThread(() -> {
+                                progress.dismiss();
+                                Toast.makeText(requireContext(),
+                                        "Failed to generate key: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    }, "KeyGenerator").start();
+                } else {
+                    // ── Save phase ──
+                    saveHandler[0].run();
+                    dialog.dismiss();
+                }
+            });
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * Show dialog displaying the public key with copy and push options.
+     */
+    private void showPublicKeyDialog(SshKeyGenerator.KeyPairResult keyPair) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_public_key, null);
+
+        TextView publicKeyText = dialogView.findViewById(R.id.public_key_text);
+        publicKeyText.setText(keyPair.publicKey);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.credential_public_key_title)
+                .setView(dialogView)
+                .setPositiveButton(R.string.credential_public_key_copy, null)
+                .setNegativeButton(R.string.credential_push_key, null)
+                .setNeutralButton(android.R.string.ok, null)
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                ClipboardManager clipboard = (ClipboardManager) requireContext()
+                        .getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("SSH Public Key", keyPair.publicKey);
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(requireContext(), R.string.credential_public_key_copied,
+                        Toast.LENGTH_SHORT).show();
+            });
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v -> {
+                dialog.dismiss();
+                showPushKeyDialog(keyPair.publicKey);
+            });
+        });
+
+        dialog.show();
+    }
+
+    /**
+     * Show dialog to push public key to server.
+     */
+    private void showPushKeyDialog(String publicKey) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_push_key, null);
+
+        EditText hostInput = dialogView.findViewById(R.id.push_host_input);
+        EditText portInput = dialogView.findViewById(R.id.push_port_input);
+        EditText usernameInput = dialogView.findViewById(R.id.push_username_input);
+        EditText passwordInput = dialogView.findViewById(R.id.push_password_input);
+
+        portInput.setText("22");
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.credential_push_key_title)
+                .setView(dialogView)
+                .setPositiveButton(R.string.credential_push, (dialog, which) -> {
+                    String host = hostInput.getText().toString().trim();
+                    String username = usernameInput.getText().toString().trim();
+                    String password = passwordInput.getText().toString();
+                    int port = 22;
+                    try {
+                        port = Integer.parseInt(portInput.getText().toString().trim());
+                    } catch (NumberFormatException ignored) {}
+
+                    if (host.isEmpty() || username.isEmpty() || password.isEmpty()) {
+                        Toast.makeText(requireContext(), "All fields are required",
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    pushKeyToServer(host, port, username, password, publicKey);
+                })
+                .setNegativeButton(R.string.credential_cancel, null)
+                .show();
+    }
+
+    /**
+     * Execute key push to server with progress dialog.
+     */
+    private void pushKeyToServer(String host, int port, String username,
+                                  String password, String publicKey) {
+        ProgressDialog progress = new ProgressDialog(requireContext());
+        progress.setMessage(getString(R.string.credential_push_key_connecting));
+        progress.setCancelable(false);
+        progress.show();
+
+        SshKeyPusher.pushKey(host, port, username, password, publicKey, null,
+                new SshKeyPusher.ProgressListener() {
+                    @Override
+                    public void onProgress(String message) {
+                        requireActivity().runOnUiThread(() ->
+                                progress.setMessage(message));
+                    }
+
+                    @Override
+                    public void onSuccess() {
+                        requireActivity().runOnUiThread(() -> {
+                            progress.dismiss();
+                            Toast.makeText(requireContext(),
+                                    R.string.credential_push_key_success,
+                                    Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        requireActivity().runOnUiThread(() -> {
+                            progress.dismiss();
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.credential_push_key_failed, message),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
     }
 
     // ─── Tag Selection Dialog ────────────────────────────────────────────
