@@ -4648,6 +4648,16 @@ public class CustomKeyboardView extends LinearLayout {
         return modifiers;
     }
 
+    /** FN strip icon resource: {@code ic_swap_horiz_24} normally; hidden (0) when Fn is latched so the key renders as text "Sw". */
+    private int fnStripIconRes() {
+        return fixedTopLocalFnLocked ? 0 : R.drawable.ic_swap_horiz_24;
+    }
+
+    /** FN strip label: "FN" normally; "Sw" when Fn is latched. */
+    private String fnStripLabel() {
+        return fixedTopLocalFnLocked ? "Sw" : "FN";
+    }
+
     private List<Key> buildFixedTopRowsPage0() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
         // Row 2: HID F7–F12, = (scan 0x40–0x45, 0x2E). Strip shows digit/symbol caps when local Fn latch is off; F caps when latch on (see resolveFixedTopLocalFnMapping).
@@ -4665,7 +4675,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("F4", "", 0x3D, "3D", 1f, 0, 0f, false, false, -1, true), 0, 3, 3));
         keys.add(fixedStripSlotKey(new Key("F5", "", 0x3E, "3E", 1f, 0, 0f, false, false, -1, true), 0, 3, 4));
         keys.add(fixedStripSlotKey(new Key("F6", "", 0x3F, "3F", 1f, 0, 0f, false, false, -1, true), 0, 3, 5));
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
@@ -4689,7 +4699,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("LEFT", "", 0x50, "50", 1f, R.drawable.keyboard_arrow_left_24, 0f, false, false, -1, true), 1, 3, 3));
         keys.add(fixedStripSlotKey(new Key("DOWN", "", 0x51, "51", 1f, R.drawable.keyboard_arrow_down_24, 0f, false, false, -1, true), 1, 3, 4));
         keys.add(fixedStripSlotKey(new Key("RIGHT", "", 0x4F, "4F", 1f, R.drawable.keyboard_arrow_right_24, 0f, false, false, -1, true), 1, 3, 5));
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
@@ -4753,7 +4763,7 @@ public class CustomKeyboardView extends LinearLayout {
             keys.add(fixedStripSlotKey(buildPage2PunctKey("-", 0x2D, false), 2, 3, 4));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("_", 0x2D, true), 2, 3, 5));
         }
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
