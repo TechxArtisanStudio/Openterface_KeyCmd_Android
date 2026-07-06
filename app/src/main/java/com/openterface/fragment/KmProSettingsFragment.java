@@ -56,8 +56,6 @@ public class KmProSettingsFragment extends Fragment {
     @Nullable
     private SwitchCompat scrollStripSwitch;
     @Nullable
-    private SwitchCompat gestureStatusSwitch;
-    @Nullable
     private SwitchCompat composeDraftRetentionSwitch;
     @Nullable
     private SeekBar scrollStripSensitivitySeekBar;
@@ -82,7 +80,6 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressChordSustainCallback;
     private boolean suppressTouchpadModeToggleCallback;
     private boolean suppressScrollStripPrefsCallback;
-    private boolean suppressGestureStatusPrefsCallback;
     private boolean suppressComposeDraftRetentionCallback;
     private boolean loadingModifierPrefs;
 
@@ -100,7 +97,6 @@ public class KmProSettingsFragment extends Fragment {
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
         touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
         scrollStripSwitch = view.findViewById(R.id.km_pro_touchpad_scroll_strip_switch);
-        gestureStatusSwitch = view.findViewById(R.id.km_pro_touchpad_gesture_status_switch);
         scrollStripSensitivitySeekBar = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_seekbar);
         scrollStripSensitivityValueText = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_value_text);
         modifierBehaviorGroup = view.findViewById(R.id.km_pro_modifier_behavior_group);
@@ -190,16 +186,6 @@ public class KmProSettingsFragment extends Fragment {
                         }
                         KmProTouchpadPrefs.writeScrollStripEnabled(requireContext(), isChecked);
                         updateScrollStripSensitivityControlsEnabled();
-                        notifyCompositeTouchpadChromeFromKmProSetup();
-                    });
-        }
-        if (gestureStatusSwitch != null) {
-            gestureStatusSwitch.setOnCheckedChangeListener(
-                    (buttonView, isChecked) -> {
-                        if (suppressGestureStatusPrefsCallback) {
-                            return;
-                        }
-                        KmProTouchpadPrefs.writeGestureStatusLineVisible(requireContext(), isChecked);
                         notifyCompositeTouchpadChromeFromKmProSetup();
                     });
         }
@@ -333,7 +319,6 @@ public class KmProSettingsFragment extends Fragment {
         syncKeyTapPreviewToggleFromPrefs();
         syncComposeDraftRetentionSwitchFromPrefs();
         syncTouchpadModeToggleFromPrefs();
-        syncGestureStatusSwitchFromPrefs();
         syncScrollStripControlsFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
@@ -536,15 +521,6 @@ public class KmProSettingsFragment extends Fragment {
         }
         suppressScrollStripPrefsCallback = false;
         updateScrollStripSensitivityControlsEnabled();
-    }
-
-    private void syncGestureStatusSwitchFromPrefs() {
-        if (gestureStatusSwitch == null) {
-            return;
-        }
-        suppressGestureStatusPrefsCallback = true;
-        gestureStatusSwitch.setChecked(KmProTouchpadPrefs.isGestureStatusLineVisible(requireContext()));
-        suppressGestureStatusPrefsCallback = false;
     }
 
     private void updateScrollStripSensitivityControlsEnabled() {
