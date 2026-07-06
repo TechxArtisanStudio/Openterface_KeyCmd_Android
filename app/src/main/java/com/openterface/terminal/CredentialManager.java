@@ -2,6 +2,7 @@ package com.openterface.terminal;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -24,6 +25,7 @@ import java.util.Set;
  */
 public class CredentialManager {
 
+    private static final String TAG = "CredentialManager";
     private static final String PREFS_NAME = "credentials_prefs";
     private static final String KEY_PROFILES = "profiles";
     private static final String KEY_ACTIVE_ID = "active_profile_id";
@@ -46,8 +48,10 @@ public class CredentialManager {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Fallback to plain SharedPreferences if encryption fails (should not happen on API 26+)
-            prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            // S3 Fix: Do NOT silently fall back to plaintext storage.
+            // Throw RuntimeException to make the failure explicit to the caller.
+            Log.e(TAG, "Failed to initialize encrypted storage", e);
+            throw new RuntimeException("Secure storage unavailable", e);
         }
     }
 

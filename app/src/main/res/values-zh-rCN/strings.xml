@@ -1428,6 +1428,7 @@
     <string name="credential_generate_key">生成密钥</string>
     <string name="credential_generate">生成</string>
     <string name="credential_key_algorithm">算法</string>
+    <string name="credential_key_info">密钥信息</string>
     <string name="credential_key_rsa_4096">RSA 4096</string>
     <string name="credential_key_rsa_2048">RSA 2048</string>
     <string name="credential_key_ed25519">ED25519</string>
@@ -1441,6 +1442,7 @@
     <string name="credential_public_key_title">公钥</string>
     <string name="credential_public_key_copy">复制</string>
     <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
+    <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
     <string name="credential_push_key">推送到服务器</string>
     <string name="credential_push_key_title">推送公钥</string>
     <string name="credential_push_key_desc">通过密码认证将公钥推送到服务器</string>
@@ -1460,5 +1462,10 @@
     <string name="credential_key_paste">粘贴</string>
     <string name="credential_key_import_file">从文件导入</string>
     <string name="credential_key_generate">生成</string>
+    <string name="credential_key_copy">复制</string>
+    <string name="credential_key_reveal">展开</string>
+    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 密码加密为实验性功能，可能存在兼容性问题</string>
+    <string name="credential_key_collapse">隐藏</string>
+    <string name="credential_key_hide">隐藏</string>
     <string name="credential_private_key_hint">私钥（PEM 格式）</string>
 </resources>

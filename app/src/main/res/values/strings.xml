@@ -1590,6 +1590,7 @@ by TechxArtisan</string>
     <string name="credential_generate_key">Generate Key</string>
     <string name="credential_generate">Generate</string>
     <string name="credential_key_algorithm">Algorithm</string>
+    <string name="credential_key_info">Key Info</string>
     <string name="credential_key_rsa_4096">RSA 4096</string>
     <string name="credential_key_rsa_2048">RSA 2048</string>
     <string name="credential_key_ed25519">ED25519</string>
@@ -1603,6 +1604,8 @@ by TechxArtisan</string>
     <string name="credential_public_key_title">Public Key</string>
     <string name="credential_public_key_copy">Copy</string>
     <string name="credential_public_key_copied">Public key copied to clipboard</string>
+    <string name="credential_private_key_copied">Private key copied to clipboard</string>
+    <string name="credential_export_public_key">Export or share a public key</string>
     <string name="credential_push_key">Push to Server</string>
     <string name="credential_push_key_title">Push Public Key</string>
     <string name="credential_push_key_desc">Push public key to server via password auth</string>
@@ -1622,5 +1625,10 @@ by TechxArtisan</string>
     <string name="credential_key_paste">Paste</string>
     <string name="credential_key_import_file">Import from file</string>
     <string name="credential_key_generate">Generate</string>
+    <string name="credential_key_copy">Copy</string>
+    <string name="credential_key_reveal">Reveal</string>
+    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 passphrase encryption is experimental and may have compatibility issues</string>
+    <string name="credential_key_collapse">Hide</string>
+    <string name="credential_key_hide">Hide</string>
     <string name="credential_private_key_hint">Private Key (PEM)</string>
 </resources>

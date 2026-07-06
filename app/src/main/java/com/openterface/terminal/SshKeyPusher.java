@@ -46,9 +46,9 @@ public class SshKeyPusher {
 
                 JSch jsch = new JSch();
 
-                // Disable host key checking
+                // Enable host key checking
                 Properties config = new Properties();
-                config.put("StrictHostKeyChecking", "no");
+                config.put("StrictHostKeyChecking", "ask");
                 config.put("PreferredAuthentications", "keyboard-interactive,password");
 
                 Session session = jsch.getSession(username, host, port);

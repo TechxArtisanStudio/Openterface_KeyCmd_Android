@@ -109,9 +109,9 @@ public class SshClient {
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 
-            // Disable host key checking for local forwarded sessions
+            // Enable host key checking — "ask" mode accepts first time, rejects mismatches
             Properties config = new Properties();
-            config.put("StrictHostKeyChecking", "no");
+            config.put("StrictHostKeyChecking", "ask");
             config.put("compression.s2c", "none");
             config.put("compression.c2s", "none");
 

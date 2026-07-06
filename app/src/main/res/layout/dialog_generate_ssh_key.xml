@@ -125,26 +125,58 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Algorithm (read-only) -->
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- Key Info (read-only, algorithm type) with three-dot menu -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/credential_key_algorithm"
-                android:layout_marginBottom="12dp"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/key_edit_algorithm_input"
-                    android:layout_width="match_parent"
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:inputType="none"
-                    android:focusable="false"
-                    android:cursorVisible="false"
-                    android:textSize="14sp" />
+                    android:layout_weight="1"
+                    android:hint="@string/credential_key_info"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-            </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/key_edit_algorithm_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:cursorVisible="false"
+                        android:textSize="14sp" />
 
-            <!-- Public Key (read-only display) -->
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Three-dot menu for Copy/Reveal private key -->
+                <ImageView
+                    android:id="@+id/key_edit_algorithm_menu"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_more_vert_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/credential_key_options" />
+
+            </LinearLayout>
+
+            <!-- Private Key (inline multi-line display, hidden by default) -->
+            <TextView
+                android:id="@+id/key_edit_private_key_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_tags_input_outline"
+                android:padding="12dp"
+                android:textSize="11sp"
+                android:textIsSelectable="false"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
+
+            <!-- Public Key (one-line by default, expandable via menu) -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -153,18 +185,37 @@
                 android:textColor="?android:attr/textColorSecondary"
                 android:layout_marginBottom="4dp" />
 
-            <TextView
-                android:id="@+id/key_edit_public_key_text"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_tags_input_outline"
-                android:padding="12dp"
-                android:textSize="12sp"
-                android:textIsSelectable="true"
-                android:fontFamily="monospace"
-                android:maxLines="4"
-                android:ellipsize="end"
-                android:layout_marginBottom="12dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/key_edit_public_key_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_tags_input_outline"
+                    android:padding="12dp"
+                    android:textSize="12sp"
+                    android:textIsSelectable="false"
+                    android:fontFamily="monospace"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <!-- Three-dot menu for Copy/Reveal public key -->
+                <ImageView
+                    android:id="@+id/key_edit_public_key_menu"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_more_vert_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/credential_key_options" />
+
+            </LinearLayout>
 
             <!-- Passphrase (editable) -->
             <com.google.android.material.textfield.TextInputLayout
@@ -184,13 +235,30 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Save passphrase checkbox -->
-            <CheckBox
-                android:id="@+id/key_edit_save_passphrase_checkbox"
+            <!-- Warning: Ed25519 passphrase compatibility -->
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/credential_key_save_passphrase"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/credential_ed25519_passphrase_warning"
+                android:textSize="12sp"
+                android:textColor="?attr/colorError"
+                android:layout_marginBottom="12dp"
+                android:visibility="visible" />
+
+            <!-- Export or share public key button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/key_edit_export_public_key_btn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/credential_export_public_key"
+                android:textAllCaps="false"
+                android:textSize="14sp"
+                app:icon="@drawable/share_24"
+                app:iconGravity="start"
+                app:iconPadding="8dp"
+                app:cornerRadius="12dp"
+                style="@style/Widget.MaterialComponents.Button" />
 
         </LinearLayout>
 
