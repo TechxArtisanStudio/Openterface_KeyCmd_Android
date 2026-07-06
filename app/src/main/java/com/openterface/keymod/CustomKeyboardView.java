@@ -260,6 +260,12 @@ public class CustomKeyboardView extends LinearLayout {
      * (built-in Pro layout: row below letters, left of Z) when main keyboard Fn is latched.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
+    /**
+     * Fixed-strip momentary press sync: when a direction/Enter/modifier key on the fixed strip is
+     * held down, its HID code is stored here so the matching main-keyboard key can mirror the
+     * pressed highlight during {@link #refreshBuiltInModifierKeyCapsFromTree()}. Cleared on release.
+     */
+    private int stripMomentarySyncKeyCode = -1;
     /** KM Pro setup: floating label above key while pressed (see {@link KmProKeyTapPreviewPrefs}). */
     private boolean kmProKeyTapPreviewEnabled;
     private final BasicKeyPreview kmProKeyPreview = new BasicKeyPreview();
@@ -2551,6 +2557,12 @@ public class CustomKeyboardView extends LinearLayout {
                 boolean on = isProModifierCapVisualOn(k);
                 applyTopPanelKeyCapBackground(v, k, on);
                 v.setSelected(on);
+            } else if (stripMomentarySyncKeyCode != -1
+                    && k.code == stripMomentarySyncKeyCode) {
+                // Momentary press sync: strip key held → mirror on main-keyboard counterpart
+                // (covers both modifier keys and direction/Enter keys).
+                v.setBackgroundResource(R.drawable.press_button_background);
+                v.setSelected(true);
             } else if (isProBuiltInModifierTouchKey(k)) {
                 applyLetterRowKeyFaceBackground(v, k, false);
             }
@@ -3087,6 +3099,7 @@ public class CustomKeyboardView extends LinearLayout {
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
         if (isProBuiltInModifierTouchKey(key)) {
+            btn.setTag(key);
             btn.setOnTouchListener(createProMainKeyboardModifierTouchListener(key));
             return;
         }
@@ -4658,6 +4671,15 @@ public class CustomKeyboardView extends LinearLayout {
         return fixedTopLocalFnLocked ? "Sw" : "FN";
     }
 
+    /**
+     * Non-modifier keys whose fixed-strip press should mirror a momentary highlight on the matching
+     * main-keyboard key. Main keyboard has no arrow cluster in any orientation; only {@code Enter}
+     * (0x28) is shared between fixed strip and main keyboard.
+     */
+    private static boolean isStripMomentarySyncKey(int keyCode) {
+        return keyCode == 0x28; // Enter
+    }
+
     private List<Key> buildFixedTopRowsPage0() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
         // Row 2: HID F7–F12, = (scan 0x40–0x45, 0x2E). Strip shows digit/symbol caps when local Fn latch is off; F caps when latch on (see resolveFixedTopLocalFnMapping).
@@ -5703,6 +5725,10 @@ public class CustomKeyboardView extends LinearLayout {
                                 proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
                     }
                     v.setPressed(true);
+                    if (key != null) {
+                        stripMomentarySyncKeyCode = key.code;
+                        refreshBuiltInModifierKeyCapsFromTree();
+                    }
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (isMacCapsMomentaryFromTopStripModifier(key)) {
@@ -5749,6 +5775,10 @@ public class CustomKeyboardView extends LinearLayout {
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_UP:
                     v.setPressed(false);
+                    if (stripMomentarySyncKeyCode != -1) {
+                        stripMomentarySyncKeyCode = -1;
+                        post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    }
                     longPressHandler.removeCallbacks(proChordLongPressRunnable);
                     longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
                     if (pendingMacCapsLongPress[0] != null) {
@@ -6214,6 +6244,10 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     if (key != null) {
                         v.setPressed(true);
+                        if (isStripMomentarySyncKey(key.code)) {
+                            stripMomentarySyncKeyCode = key.code;
+                            refreshBuiltInModifierKeyCapsFromTree();
+                        }
                     }
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -6226,6 +6260,10 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                         if (key != null) {
                             v.setPressed(false);
+                        }
+                        if (stripMomentarySyncKeyCode != -1) {
+                            stripMomentarySyncKeyCode = -1;
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
                         }
                         if (pendingFnStripEditLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
@@ -6240,6 +6278,10 @@ public class CustomKeyboardView extends LinearLayout {
                 case MotionEvent.ACTION_UP:
                     if (key != null) {
                         v.setPressed(false);
+                    }
+                    if (stripMomentarySyncKeyCode != -1) {
+                        stripMomentarySyncKeyCode = -1;
+                        post(this::refreshBuiltInModifierKeyCapsFromTree);
                     }
                     boolean stripSuppressTapUp = holdRepeatSuppressUpTap;
                     if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
