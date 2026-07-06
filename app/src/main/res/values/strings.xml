@@ -50,8 +50,11 @@
     <string name="km_pro_settings_section_touchpad">Touchpad</string>
     <string name="km_pro_settings_section_touchpad_summary">Pad + mouse keys: move the pointer and two-finger scroll on the pad; use L, M, and R for clicks and drag (same hold-swipe-to-lock as Keyboard &amp; Mouse Basic). Hybrid: full pad gestures plus the strip, with L/M/R flashing on pad taps and L held while you drag from the pad.</string>
     <string name="km_pro_touchpad_mode_gestures">Gestures only</string>
+    <string name="km_pro_touchpad_mode_gestures_desc">Touchpad gestures control the pointer only.</string>
     <string name="km_pro_touchpad_mode_strip">Pad + mouse keys</string>
+    <string name="km_pro_touchpad_mode_strip_desc">Left/middle/right strip for mouse clicks.</string>
     <string name="km_pro_touchpad_mode_hybrid">Hybrid</string>
+    <string name="km_pro_touchpad_mode_hybrid_desc">Full touchpad gestures plus L/M/R strip with visual sync.</string>
     <string name="km_pro_touchpad_scroll_strip_title">Vertical scroll strip</string>
     <string name="km_pro_touchpad_scroll_strip_summary">Show a drag strip beside the touchpad for mouse wheel up/down (same idea as Keyboard &amp; Mouse Basic). Works in all touchpad modes, including Gestures only.</string>
     <string name="km_pro_touchpad_scroll_strip_switch">Scroll strip</string>

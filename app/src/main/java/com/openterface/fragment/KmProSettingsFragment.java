@@ -51,7 +51,7 @@ public class KmProSettingsFragment extends Fragment {
     private MaterialButtonToggleGroup keyTapPreviewToggle;
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
-    private MaterialButtonToggleGroup touchpadModeToggle;
+    private RadioGroup touchpadModeGroup;
     @Nullable
     private SwitchCompat scrollStripSwitch;
     @Nullable
@@ -91,7 +91,7 @@ public class KmProSettingsFragment extends Fragment {
         keyTapPreviewToggle = view.findViewById(R.id.km_pro_key_tap_preview_toggle);
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
-        touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
+        touchpadModeGroup = view.findViewById(R.id.km_pro_touchpad_mode_group);
         scrollStripSwitch = view.findViewById(R.id.km_pro_touchpad_scroll_strip_switch);
         scrollStripSensitivitySeekBar = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_seekbar);
         scrollStripSensitivityValueText = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_value_text);
@@ -149,10 +149,10 @@ public class KmProSettingsFragment extends Fragment {
             });
         }
 
-        if (touchpadModeToggle != null) {
-            touchpadModeToggle.addOnButtonCheckedListener(
-                    (group, checkedId, isChecked) -> {
-                        if (!isChecked || suppressTouchpadModeToggleCallback) {
+        if (touchpadModeGroup != null) {
+            touchpadModeGroup.setOnCheckedChangeListener(
+                    (group, checkedId) -> {
+                        if (suppressTouchpadModeToggleCallback) {
                             return;
                         }
                         KmProTouchpadPrefs.writeMode(requireContext(), touchpadModeButtonIdToMode(checkedId));
@@ -299,7 +299,7 @@ public class KmProSettingsFragment extends Fragment {
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
         syncKeyTapPreviewToggleFromPrefs();
-        syncTouchpadModeToggleFromPrefs();
+        syncTouchpadModeGroupFromPrefs();
         syncScrollStripControlsFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
@@ -461,14 +461,14 @@ public class KmProSettingsFragment extends Fragment {
         }
     }
 
-    private void syncTouchpadModeToggleFromPrefs() {
-        if (touchpadModeToggle == null) {
+    private void syncTouchpadModeGroupFromPrefs() {
+        if (touchpadModeGroup == null) {
             return;
         }
         int mode = KmProTouchpadPrefs.readMode(requireContext());
         int buttonId = touchpadModeToButtonId(mode);
         suppressTouchpadModeToggleCallback = true;
-        touchpadModeToggle.check(buttonId);
+        touchpadModeGroup.check(buttonId);
         suppressTouchpadModeToggleCallback = false;
     }
 
