@@ -22,6 +22,7 @@ public class CredentialProfile {
     private String targetOs;
     private String authMethod;
     private String privateKey;
+    private String publicKey;
     private String keyPassphrase;
     private String notes;
     private List<String> tags;
@@ -33,6 +34,7 @@ public class CredentialProfile {
         this.id = UUID.randomUUID().toString();
         this.authType = AUTH_TYPE_PASSWORD;
         this.privateKey = "";
+        this.publicKey = "";
         this.keyPassphrase = "";
         this.notes = "";
         this.tags = new ArrayList<>();
@@ -53,6 +55,7 @@ public class CredentialProfile {
         this.targetOs = "linux";
         this.authMethod = "password";
         this.privateKey = "";
+        this.publicKey = "";
         this.keyPassphrase = "";
         this.notes = "";
         this.tags = new ArrayList<>();
@@ -98,6 +101,9 @@ public class CredentialProfile {
 
     public String getPrivateKey() { return privateKey != null ? privateKey : ""; }
     public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
+
+    public String getPublicKey() { return publicKey != null ? publicKey : ""; }
+    public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
 
     public String getKeyPassphrase() { return keyPassphrase != null ? keyPassphrase : ""; }
     public void setKeyPassphrase(String keyPassphrase) { this.keyPassphrase = keyPassphrase; }

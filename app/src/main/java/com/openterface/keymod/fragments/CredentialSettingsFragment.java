@@ -237,8 +237,8 @@ public class CredentialSettingsFragment extends Fragment {
 
         // Track key data internally
         final String[] privateKeyData = {""};
+        final String[] publicKeyData = {""};
         final String[] keyPassphraseData = {""};
-        final SshKeyGenerator.KeyPairResult[] generatedKeyPair = {null};
 
         // Track tags selected for this profile
         final List<String> currentTags = new ArrayList<>();
@@ -306,6 +306,7 @@ public class CredentialSettingsFragment extends Fragment {
             // and back still has the key available (preserved in preservedKeyData).
             if (!existingProfile.getPrivateKey().isEmpty()) {
                 privateKeyData[0] = existingProfile.getPrivateKey();
+                publicKeyData[0] = existingProfile.getPublicKey();
                 keyPassphraseData[0] = existingProfile.getKeyPassphrase();
                 keyStatus.setText(R.string.credential_key_imported);
                 hasExistingKey[0] = true;
@@ -372,14 +373,14 @@ public class CredentialSettingsFragment extends Fragment {
                         break;
                     case 3: // Generate
                         showGenerateKeyDialog((keyPair, passphrase) -> {
-                            generatedKeyPair[0] = keyPair;
                             privateKeyData[0] = keyPair.privateKey;
                             keyPassphraseData[0] = passphrase != null ? passphrase : "";
+                            publicKeyData[0] = keyPair.publicKey;
                             keyStatus.setText(R.string.credential_key_generated);
                         });
                         break;
                     case 4: // Edit existing key
-                        showEditKeyDialog(privateKeyData[0], keyPassphraseData[0],
+                        showEditKeyDialog(privateKeyData[0], publicKeyData[0], keyPassphraseData[0],
                                 (updatedKey, updatedPassphrase) -> {
                                     privateKeyData[0] = updatedKey;
                                     keyPassphraseData[0] = updatedPassphrase;
@@ -402,6 +403,7 @@ public class CredentialSettingsFragment extends Fragment {
                     String username = usernameInput.getText().toString().trim();
                     String password = passwordInput.getText().toString();
                     String privateKey = privateKeyData[0];
+                    String publicKey = publicKeyData[0];
                     String keyPassphrase = keyPassphraseData[0];
                     String notes = notesInput.getText().toString().trim();
                     String authType = selectedAuthType[0];
@@ -449,6 +451,7 @@ public class CredentialSettingsFragment extends Fragment {
                         // Key data is always loaded from profile (regardless of auth type)
                         // and preserved when toggling auth types, so always write it back.
                         existingProfile.setPrivateKey(privateKey);
+                        existingProfile.setPublicKey(publicKey);
                         existingProfile.setKeyPassphrase(keyPassphrase);
                         existingProfile.setAuthType(authType);
                         existingProfile.setNotes(notes);
@@ -463,6 +466,7 @@ public class CredentialSettingsFragment extends Fragment {
                         profile.setPassword(password);
                         profile.setAuthType(authType);
                         profile.setPrivateKey(privateKey);
+                        profile.setPublicKey(publicKey);
                         profile.setKeyPassphrase(keyPassphrase);
                         profile.setNotes(notes);
                         profile.setTags(tags);
@@ -533,8 +537,9 @@ public class CredentialSettingsFragment extends Fragment {
         EditText passphraseInput = dialogView.findViewById(R.id.key_passphrase_input);
         TextInputLayout roundsLayout = dialogView.findViewById(R.id.key_rounds_layout);
         EditText roundsInput = dialogView.findViewById(R.id.key_rounds_input);
-        android.widget.CheckBox savePassphraseCheckbox =
-                dialogView.findViewById(R.id.key_save_passphrase_checkbox);
+        // Save-passphrase checkbox has no effect yet (passphrase is always stored); hide it.
+        View savePassphraseCheckbox = dialogView.findViewById(R.id.key_save_passphrase_checkbox);
+        if (savePassphraseCheckbox != null) savePassphraseCheckbox.setVisibility(View.GONE);
 
         // ── Edit section views ──
         View editSection = dialogView.findViewById(R.id.key_edit_section);
@@ -545,8 +550,6 @@ public class CredentialSettingsFragment extends Fragment {
         TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
         ImageView publicKeyMenu = dialogView.findViewById(R.id.key_edit_public_key_menu);
         EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
-        com.google.android.material.button.MaterialButton exportPublicKeyBtn =
-                dialogView.findViewById(R.id.key_edit_export_public_key_btn);
 
         // Setup algorithm dropdown
         String[] algorithms = {
@@ -590,8 +593,14 @@ public class CredentialSettingsFragment extends Fragment {
                         return;
                     }
                     String passphrase = passphraseInput.getText().toString();
-                    boolean savePassphrase = savePassphraseCheckbox.isChecked();
                     final String selectedAlgo = algorithmDropdown.getText().toString();
+                    // Parse rounds (default 16 if empty or invalid)
+                    int parsedRounds = 16;
+                    String roundsStr = roundsInput.getText().toString().trim();
+                    if (!roundsStr.isEmpty()) {
+                        try { parsedRounds = Integer.parseInt(roundsStr); } catch (NumberFormatException ignored) {}
+                    }
+                    final int rounds = parsedRounds;
 
                     ProgressDialog progress = new ProgressDialog(requireContext());
                     progress.setMessage(getString(R.string.credential_key_generating));
@@ -607,7 +616,7 @@ public class CredentialSettingsFragment extends Fragment {
                             } else if (selectedAlgo.equals(algorithms[2])) {
                                 result = SshKeyGenerator.generateRSA(2048, name, passphrase);
                             } else {
-                                result = SshKeyGenerator.generateEd25519(name, passphrase);
+                                result = SshKeyGenerator.generateEd25519(name, passphrase, rounds);
                             }
 
                             requireActivity().runOnUiThread(() -> {
@@ -715,13 +724,14 @@ public class CredentialSettingsFragment extends Fragment {
 
     /**
      * Show the Edit Key dialog for an existing SSH key.
-     * Allows the user to view the private key and modify the passphrase.
+     * Allows the user to view the public key, view the private key, and modify the passphrase.
      *
      * @param privateKey  the existing private key PEM content
+     * @param publicKey   the stored public key (may be empty for keys created before this field was added)
      * @param passphrase  the existing passphrase (may be empty)
-     * @param onSaved     callback receiving (updatedPrivateKey, updatedPassphrase)
+     * @param onSaved     callback receiving (privateKey, updatedPassphrase)
      */
-    private void showEditKeyDialog(String privateKey, String passphrase,
+    private void showEditKeyDialog(String privateKey, String publicKey, String passphrase,
                                    java.util.function.BiConsumer<String, String> onSaved) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_generate_ssh_key, null);
@@ -732,29 +742,69 @@ public class CredentialSettingsFragment extends Fragment {
         EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
         ImageView editAlgorithmMenu = dialogView.findViewById(R.id.key_edit_algorithm_menu);
         TextView privateKeyText = dialogView.findViewById(R.id.key_edit_private_key_text);
+        TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
+        ImageView publicKeyMenu = dialogView.findViewById(R.id.key_edit_public_key_menu);
         EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
 
         // Jump straight to edit mode (skip generate phase)
         generateSection.setVisibility(View.GONE);
         editSection.setVisibility(View.VISIBLE);
         // Hide Name field in Edit phase
-        View nameRow = editAlgorithmInput.getParent() != null
-                ? (View) editAlgorithmInput.getParent().getParent() : null;
-        // Keep Name hidden - only relevant during generation
         View nameLayout = dialogView.findViewById(R.id.key_edit_name_input);
         if (nameLayout != null && nameLayout.getParent() != null) {
             ((View) nameLayout.getParent()).setVisibility(View.GONE);
         }
 
-        // Detect algorithm from PEM content
-        boolean isRsa = privateKey.contains("RSA PRIVATE KEY")
-                || (privateKey.contains("OPENSSH PRIVATE KEY")
-                    && !privateKey.contains("ssh-ed25519"));
-        editAlgorithmInput.setText(isRsa ? "RSA" : "ED25519");
+        // Detect algorithm from stored public key (most reliable) or private key binary content.
+        String algoLabel = detectKeyAlgorithm(publicKey, privateKey);
+        editAlgorithmInput.setText(algoLabel);
         editAlgorithmInput.setEnabled(false);
 
         // Set passphrase
         editPassphraseInput.setText(passphrase != null ? passphrase : "");
+
+        // ── Public key display ──
+        final String displayPublicKey = publicKey != null ? publicKey : "";
+        if (!displayPublicKey.isEmpty()) {
+            publicKeyText.setText(displayPublicKey);
+            publicKeyText.setMaxLines(1);
+            publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        } else {
+            publicKeyText.setText(R.string.credential_public_key_not_available);
+        }
+
+        // Public key three-dot menu: Copy / Reveal
+        final boolean[] publicKeyExpanded = {false};
+        publicKeyMenu.setOnClickListener(view -> {
+            androidx.appcompat.widget.PopupMenu pubKeyMenu =
+                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
+            pubKeyMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
+            pubKeyMenu.getMenu().add(0, 2, 1, publicKeyExpanded[0]
+                    ? R.string.credential_key_collapse : R.string.credential_key_reveal);
+            pubKeyMenu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    if (!displayPublicKey.isEmpty()) {
+                        ClipboardManager clipboard = (ClipboardManager) requireContext()
+                                .getSystemService(Context.CLIPBOARD_SERVICE);
+                        clipboard.setPrimaryClip(
+                                ClipData.newPlainText("SSH Public Key", displayPublicKey));
+                        Toast.makeText(requireContext(),
+                                R.string.credential_public_key_copied, Toast.LENGTH_SHORT).show();
+                    }
+                } else if (item.getItemId() == 2) {
+                    publicKeyExpanded[0] = !publicKeyExpanded[0];
+                    if (publicKeyExpanded[0]) {
+                        publicKeyText.setMaxLines(Integer.MAX_VALUE);
+                        publicKeyText.setEllipsize(null);
+                    } else {
+                        publicKeyText.setMaxLines(1);
+                        publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    }
+                }
+                return true;
+            });
+            pubKeyMenu.show();
+        });
 
         // ── Private key menu: Copy / Reveal ──
         final boolean[] privateKeyVisible = {false};
@@ -795,6 +845,70 @@ public class CredentialSettingsFragment extends Fragment {
                 })
                 .setNegativeButton(R.string.credential_cancel, null)
                 .show();
+    }
+
+    // ─── Key Algorithm Detection ─────────────────────────────────────────
+
+    /**
+     * Detect the key algorithm label ("ED25519" or "RSA").
+     * Uses the stored public key first (most reliable — plain text like "ssh-ed25519 ...").
+     * Falls back to parsing the OpenSSH binary format of the private key.
+     */
+    private static String detectKeyAlgorithm(String publicKey, String privateKey) {
+        // 1. Use public key if available (definitive — always a readable string)
+        if (publicKey != null && !publicKey.isEmpty()) {
+            if (publicKey.startsWith("ssh-ed25519")) return "ED25519";
+            if (publicKey.startsWith("ssh-rsa")) return "RSA";
+        }
+
+        // 2. Traditional RSA PEM header
+        if (privateKey != null && privateKey.contains("RSA PRIVATE KEY")) {
+            return "RSA";
+        }
+
+        // 3. OpenSSH format: decode base64 and read key type from binary content.
+        // The key type bytes are split across base64 encoding boundaries, so we
+        // must decode first — simple string contains() won't work.
+        if (privateKey != null && privateKey.contains("OPENSSH PRIVATE KEY")) {
+            try {
+                String b64 = privateKey
+                        .replace("-----BEGIN OPENSSH PRIVATE KEY-----", "")
+                        .replace("-----END OPENSSH PRIVATE KEY-----", "")
+                        .replaceAll("\\s", "");
+                byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                // OpenSSH binary layout:
+                //   0-14:  "openssh-key-v1\0" (15 bytes)
+                //   15-18: cipher name length (uint32)
+                //   19..:  cipher name ("none" = 4 bytes)
+                //   next:  kdf name length (uint32) + kdf name
+                //   next:  key type length (uint32) + key type string
+                int off = 15;
+                if (decoded.length < off + 4) return "RSA";
+                int cipherLen = readUint32(decoded, off);
+                off += 4 + cipherLen;
+                if (decoded.length < off + 4) return "RSA";
+                int kdfLen = readUint32(decoded, off);
+                off += 4 + kdfLen;
+                if (decoded.length < off + 4) return "RSA";
+                int typeLen = readUint32(decoded, off);
+                off += 4;
+                if (off + typeLen > decoded.length) return "RSA";
+                String keyType = new String(decoded, off, typeLen, "UTF-8");
+                if ("ssh-ed25519".equals(keyType)) return "ED25519";
+                if ("ssh-rsa".equals(keyType)) return "RSA";
+            } catch (Exception e) {
+                // Fall through
+            }
+        }
+
+        return "RSA";
+    }
+
+    private static int readUint32(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 24)
+                | ((data[offset + 1] & 0xFF) << 16)
+                | ((data[offset + 2] & 0xFF) << 8)
+                | (data[offset + 3] & 0xFF);
     }
 
     // ─── Tag Selection Dialog ────────────────────────────────────────────

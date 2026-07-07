@@ -60,7 +60,7 @@ public class SshKeyGenerator {
 
         ByteArrayOutputStream privateKeyStream = new ByteArrayOutputStream();
         if (passphrase != null && !passphrase.isEmpty()) {
-            keyPair.writePrivateKey(privateKeyStream, passphrase.getBytes());
+            keyPair.writePrivateKey(privateKeyStream, passphrase.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } else {
             keyPair.writePrivateKey(privateKeyStream);
         }
@@ -83,12 +83,24 @@ public class SshKeyGenerator {
         return generateEd25519(comment, null);
     }
 
+    public static KeyPairResult generateEd25519(String comment, String passphrase) throws Exception {
+        return generateEd25519(comment, passphrase, 16);
+    }
+
     /**
      * Generate Ed25519 key pair with optional passphrase encryption.
      * Uses BouncyCastle for key generation and encryption.
+     *
+     * @param comment    key comment (e.g. user@host)
+     * @param passphrase optional passphrase for encryption (null or empty = no encryption)
+     * @param rounds     bcrypt-pbkdf iteration count (only used when passphrase is set; default 16)
      */
-    public static KeyPairResult generateEd25519(String comment, String passphrase) throws Exception {
+    public static KeyPairResult generateEd25519(String comment, String passphrase, int rounds) throws Exception {
         Log.d(TAG, "Generating Ed25519 key pair using BouncyCastle...");
+
+        // Clamp rounds to safe range [1, 1024] to prevent DoS from extreme values
+        if (rounds < 1) rounds = 16;
+        if (rounds > 1024) rounds = 1024;
 
         // Step 1: Generate Ed25519 key pair with BouncyCastle
         Ed25519KeyPairGenerator keyGen = new Ed25519KeyPairGenerator();
@@ -110,8 +122,8 @@ public class SshKeyGenerator {
         // Step 3: Generate private key PEM (encrypted or unencrypted)
         String privateKeyPem;
         if (passphrase != null && !passphrase.isEmpty()) {
-            Log.d(TAG, "Encrypting Ed25519 private key with passphrase...");
-            privateKeyPem = generateEd25519PrivateKeyPemEncrypted(privateKeyBytes, publicKeyBytes, passphrase, 16);
+            Log.d(TAG, "Encrypting Ed25519 private key with passphrase (rounds=" + rounds + ")...");
+            privateKeyPem = generateEd25519PrivateKeyPemEncrypted(privateKeyBytes, publicKeyBytes, passphrase, rounds);
             Log.d(TAG, "Generated encrypted Ed25519 key pair successfully");
         } else {
             privateKeyPem = generateEd25519PrivateKeyPemUnencrypted(privateKeyBytes, publicKeyBytes);
@@ -193,7 +205,8 @@ public class SshKeyGenerator {
 
             // Derive key material using OpenSSH-compatible bcrypt_pbkdf
             // Need 48 bytes: 32 for AES key + 16 for IV (AES block size)
-            byte[] keyMaterial = OpenSSHBcryptPbkdf.bcrypt_pbkdf(passphrase.getBytes(), salt, rounds, 48);
+            byte[] keyMaterial = OpenSSHBcryptPbkdf.bcrypt_pbkdf(
+                    passphrase.getBytes(java.nio.charset.StandardCharsets.UTF_8), salt, rounds, 48);
             byte[] aesKey = Arrays.copyOfRange(keyMaterial, 0, 32);
             byte[] iv = Arrays.copyOfRange(keyMaterial, 32, 48);
 
@@ -202,6 +215,12 @@ public class SshKeyGenerator {
 
             // Encrypt with AES-256-CTR
             byte[] encryptedSection = aes256CtrEncrypt(unencryptedSection, aesKey, iv);
+
+            // Zero out sensitive key material from memory
+            Arrays.fill(keyMaterial, (byte) 0);
+            Arrays.fill(aesKey, (byte) 0);
+            Arrays.fill(iv, (byte) 0);
+            Arrays.fill(unencryptedSection, (byte) 0);
 
             // Number of keys
             writeLength(out, 1);

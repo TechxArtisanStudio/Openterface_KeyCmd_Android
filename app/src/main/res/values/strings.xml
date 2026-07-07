@@ -1621,6 +1621,7 @@ by TechxArtisan</string>
     <string name="credential_public_key_title">Public Key</string>
     <string name="credential_public_key_copy">Copy</string>
     <string name="credential_public_key_copied">Public key copied to clipboard</string>
+    <string name="credential_public_key_not_available">Not available (re-import or re-generate key to view)</string>
     <string name="credential_private_key_copied">Private key copied to clipboard</string>
     <string name="credential_export_public_key">Export or share a public key</string>
     <string name="credential_push_key">Push to Server</string>

@@ -1460,6 +1460,7 @@
     <string name="credential_public_key_title">公钥</string>
     <string name="credential_public_key_copy">复制</string>
     <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
+    <string name="credential_public_key_not_available">不可用（请重新导入或重新生成密钥以查看）</string>
     <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
     <string name="credential_push_key">推送到服务器</string>
     <string name="credential_push_key_title">推送公钥</string>
