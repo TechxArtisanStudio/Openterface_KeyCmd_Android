@@ -1394,6 +1394,24 @@
     <string name="terminal_select_device">请选择设备</string>
     <string name="terminal_transport_label">传输方式</string>
     <string name="terminal_host_username_required">主机地址和用户名不能为空</string>
+    <string name="terminal_device_info">设备信息</string>
+    <string name="terminal_device_info_name">名称</string>
+    <string name="terminal_device_info_host">主机</string>
+    <string name="terminal_device_info_port">端口</string>
+    <string name="terminal_device_info_username">用户名</string>
+    <string name="terminal_device_info_auth_type">认证类型</string>
+    <string name="terminal_device_info_tags">标签</string>
+    <string name="terminal_device_info_notes">备注</string>
+    <string name="terminal_device_info_created">创建时间</string>
+    <string name="terminal_device_info_updated">更新时间</string>
+    <string name="terminal_device_info_no_tags">无标签</string>
+    <string name="terminal_device_info_no_notes">无备注</string>
+    <string name="terminal_device_info_close">关闭</string>
+    <string name="terminal_device_info_edit">编辑</string>
+    <string name="credential_add">+ 添加凭据</string>
+    <string name="credential_edit">编辑</string>
+    <string name="credential_save">保存</string>
+    <string name="credential_cancel">取消</string>
 
     <!-- Credential Auth Type -->
     <string name="credential_auth_type_password">用户密码</string>
@@ -1401,7 +1419,7 @@
     <string name="credential_password_required">密码为必填项</string>
     <string name="credential_private_key_required">私钥为必填项</string>
     <string name="credential_import_key_file">导入密钥文件</string>
-    <string name="credential_key_imported">密钥已导入 (%s)</string>
+    <string name="credential_key_imported">密钥已导入</string>
     <string name="credential_key_import_failed">密钥文件读取失败</string>
     <string name="credential_tags_label">标签</string>
     <string name="credential_tags_hint">输入标签名回车添加</string>

@@ -56,6 +56,7 @@ import java.util.List;
 public class CredentialSettingsFragment extends Fragment {
 
     private static final int REQUEST_CODE_IMPORT_KEY = 1001;
+    public static final String ARG_EDIT_PROFILE_ID = "arg_edit_profile_id";
 
     private SearchView searchView;
     private RecyclerView credentialList;
@@ -65,6 +66,7 @@ public class CredentialSettingsFragment extends Fragment {
     private CredentialAdapter adapter;
     private SensitivePageShield shield;
     private List<CredentialProfile> allProfiles = new ArrayList<>();
+    private boolean autoEditConsumed = false;
 
     // Bridging fields for import key data loss fix
     private String[] importKeyDataRef;
@@ -112,6 +114,18 @@ public class CredentialSettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         refreshList();
+        // Auto-open edit dialog if launched with a profile ID (e.g., from terminal device info)
+        if (!autoEditConsumed && getArguments() != null) {
+            String editId = getArguments().getString(ARG_EDIT_PROFILE_ID);
+            if (editId != null) {
+                autoEditConsumed = true;
+                CredentialProfile target = credentialManager.getProfile(editId);
+                if (target != null) {
+                    // Post to ensure list is rendered before showing dialog
+                    credentialList.post(() -> showAddEditDialog(target));
+                }
+            }
+        }
         // Enable sensitive page shielding (prevent screenshots/screen recording)
         if (shield == null) {
             shield = new SensitivePageShield(requireActivity());
@@ -243,11 +257,23 @@ public class CredentialSettingsFragment extends Fragment {
         final String[] selectedAuthType = {CredentialProfile.AUTH_TYPE_PASSWORD};
         // Track if editing an existing SSH key
         final boolean[] hasExistingKey = {false};
+        // Preserve key data when toggling between auth types so switching
+        // SSH Key → Password → SSH Key restores the original key.
+        final String[] preservedKeyData = {""};
+        final String[] preservedPassphraseData = {""};
+        final String[] preservedKeyStatusText = {""};
 
         authTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) {
+                    // Leaving SSH Key → save key data before hiding
+                    if (CredentialProfile.AUTH_TYPE_SSH_KEY.equals(selectedAuthType[0])
+                            && !privateKeyData[0].isEmpty()) {
+                        preservedKeyData[0] = privateKeyData[0];
+                        preservedPassphraseData[0] = keyPassphraseData[0];
+                        preservedKeyStatusText[0] = keyStatus.getText().toString();
+                    }
                     selectedAuthType[0] = CredentialProfile.AUTH_TYPE_PASSWORD;
                     passwordLayout.setVisibility(View.VISIBLE);
                     keyRow.setVisibility(View.GONE);
@@ -255,6 +281,12 @@ public class CredentialSettingsFragment extends Fragment {
                     selectedAuthType[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
                     passwordLayout.setVisibility(View.GONE);
                     keyRow.setVisibility(View.VISIBLE);
+                    // Restore preserved key data when switching back to SSH Key
+                    if (!preservedKeyData[0].isEmpty()) {
+                        privateKeyData[0] = preservedKeyData[0];
+                        keyPassphraseData[0] = preservedPassphraseData[0];
+                        keyStatus.setText(preservedKeyStatusText[0]);
+                    }
                 }
             }
 
@@ -270,8 +302,9 @@ public class CredentialSettingsFragment extends Fragment {
             portInput.setText(String.valueOf(existingProfile.getPort()));
             usernameInput.setText(existingProfile.getUsername());
             passwordInput.setText(existingProfile.getPassword());
-            // Set key status for existing SSH key
-            if (existingProfile.isSshKeyAuth() && !existingProfile.getPrivateKey().isEmpty()) {
+            // Always load key data from profile so that switching auth type
+            // and back still has the key available (preserved in preservedKeyData).
+            if (!existingProfile.getPrivateKey().isEmpty()) {
                 privateKeyData[0] = existingProfile.getPrivateKey();
                 keyPassphraseData[0] = existingProfile.getKeyPassphrase();
                 keyStatus.setText(R.string.credential_key_imported);
@@ -321,6 +354,10 @@ public class CredentialSettingsFragment extends Fragment {
             popup.getMenu().add(0, 1, 0, R.string.credential_key_paste);
             popup.getMenu().add(0, 2, 1, R.string.credential_key_import_file);
             popup.getMenu().add(0, 3, 2, R.string.credential_key_generate);
+            // Show Edit option only when key data is already set
+            if (!privateKeyData[0].isEmpty()) {
+                popup.getMenu().add(0, 4, 3, R.string.credential_edit_key);
+            }
             popup.setOnMenuItemClickListener(item -> {
                 switch (item.getItemId()) {
                     case 1: // Paste
@@ -340,6 +377,14 @@ public class CredentialSettingsFragment extends Fragment {
                             keyPassphraseData[0] = passphrase != null ? passphrase : "";
                             keyStatus.setText(R.string.credential_key_generated);
                         });
+                        break;
+                    case 4: // Edit existing key
+                        showEditKeyDialog(privateKeyData[0], keyPassphraseData[0],
+                                (updatedKey, updatedPassphrase) -> {
+                                    privateKeyData[0] = updatedKey;
+                                    keyPassphraseData[0] = updatedPassphrase;
+                                    keyStatus.setText(R.string.credential_key_imported);
+                                });
                         break;
                 }
                 return true;
@@ -401,14 +446,11 @@ public class CredentialSettingsFragment extends Fragment {
                         existingProfile.setPort(port);
                         existingProfile.setUsername(username);
                         existingProfile.setPassword(password);
-                        existingProfile.setAuthType(authType);
-                        // Keep existing key when editing and privateKey field is empty
-                        if (privateKey.isEmpty() && hasExistingKey[0] && existingProfile.isSshKeyAuth()) {
-                            // Don't update privateKey, keep original
-                        } else {
-                            existingProfile.setPrivateKey(privateKey);
-                        }
+                        // Key data is always loaded from profile (regardless of auth type)
+                        // and preserved when toggling auth types, so always write it back.
+                        existingProfile.setPrivateKey(privateKey);
                         existingProfile.setKeyPassphrase(keyPassphrase);
+                        existingProfile.setAuthType(authType);
                         existingProfile.setNotes(notes);
                         existingProfile.setTags(tags);
                         credentialManager.updateProfile(existingProfile);
@@ -669,6 +711,90 @@ public class CredentialSettingsFragment extends Fragment {
         });
 
         dialog.show();
+    }
+
+    /**
+     * Show the Edit Key dialog for an existing SSH key.
+     * Allows the user to view the private key and modify the passphrase.
+     *
+     * @param privateKey  the existing private key PEM content
+     * @param passphrase  the existing passphrase (may be empty)
+     * @param onSaved     callback receiving (updatedPrivateKey, updatedPassphrase)
+     */
+    private void showEditKeyDialog(String privateKey, String passphrase,
+                                   java.util.function.BiConsumer<String, String> onSaved) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_generate_ssh_key, null);
+
+        // ── Edit section views ──
+        View editSection = dialogView.findViewById(R.id.key_edit_section);
+        View generateSection = dialogView.findViewById(R.id.key_generate_section);
+        EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
+        ImageView editAlgorithmMenu = dialogView.findViewById(R.id.key_edit_algorithm_menu);
+        TextView privateKeyText = dialogView.findViewById(R.id.key_edit_private_key_text);
+        EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
+
+        // Jump straight to edit mode (skip generate phase)
+        generateSection.setVisibility(View.GONE);
+        editSection.setVisibility(View.VISIBLE);
+        // Hide Name field in Edit phase
+        View nameRow = editAlgorithmInput.getParent() != null
+                ? (View) editAlgorithmInput.getParent().getParent() : null;
+        // Keep Name hidden - only relevant during generation
+        View nameLayout = dialogView.findViewById(R.id.key_edit_name_input);
+        if (nameLayout != null && nameLayout.getParent() != null) {
+            ((View) nameLayout.getParent()).setVisibility(View.GONE);
+        }
+
+        // Detect algorithm from PEM content
+        boolean isRsa = privateKey.contains("RSA PRIVATE KEY")
+                || (privateKey.contains("OPENSSH PRIVATE KEY")
+                    && !privateKey.contains("ssh-ed25519"));
+        editAlgorithmInput.setText(isRsa ? "RSA" : "ED25519");
+        editAlgorithmInput.setEnabled(false);
+
+        // Set passphrase
+        editPassphraseInput.setText(passphrase != null ? passphrase : "");
+
+        // ── Private key menu: Copy / Reveal ──
+        final boolean[] privateKeyVisible = {false};
+        editAlgorithmMenu.setOnClickListener(view -> {
+            androidx.appcompat.widget.PopupMenu algoMenu =
+                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
+            algoMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
+            algoMenu.getMenu().add(0, 2, 1, privateKeyVisible[0]
+                    ? R.string.credential_key_hide : R.string.credential_key_reveal);
+            algoMenu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    ClipboardManager clipboard = (ClipboardManager) requireContext()
+                            .getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(
+                            ClipData.newPlainText("SSH Private Key", privateKey));
+                    Toast.makeText(requireContext(),
+                            R.string.credential_private_key_copied, Toast.LENGTH_SHORT).show();
+                } else if (item.getItemId() == 2) {
+                    privateKeyVisible[0] = !privateKeyVisible[0];
+                    if (privateKeyVisible[0]) {
+                        privateKeyText.setText(privateKey);
+                        privateKeyText.setVisibility(View.VISIBLE);
+                    } else {
+                        privateKeyText.setVisibility(View.GONE);
+                    }
+                }
+                return true;
+            });
+            algoMenu.show();
+        });
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.credential_edit_key)
+                .setView(dialogView)
+                .setPositiveButton(R.string.credential_save, (dialog, which) -> {
+                    String updatedPassphrase = editPassphraseInput.getText().toString();
+                    onSaved.accept(privateKey, updatedPassphrase);
+                })
+                .setNegativeButton(R.string.credential_cancel, null)
+                .show();
     }
 
     // ─── Tag Selection Dialog ────────────────────────────────────────────

@@ -1523,6 +1523,19 @@ by TechxArtisan</string>
     <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
     <string name="terminal_add_profile">Add Profile</string>
     <string name="terminal_select_device">Please select a device</string>
+    <string name="terminal_device_info">Device Info</string>
+    <string name="terminal_device_info_name">Name</string>
+    <string name="terminal_device_info_host">Host</string>
+    <string name="terminal_device_info_port">Port</string>
+    <string name="terminal_device_info_username">Username</string>
+    <string name="terminal_device_info_auth_type">Auth Type</string>
+    <string name="terminal_device_info_tags">Tags</string>
+    <string name="terminal_device_info_notes">Notes</string>
+    <string name="terminal_device_info_created">Created</string>
+    <string name="terminal_device_info_updated">Updated</string>
+    <string name="terminal_device_info_no_tags">No tags</string>
+    <string name="terminal_device_info_no_notes">No notes</string>
+    <string name="terminal_device_info_close">Close</string>
 
     <!-- Credential Auth Type -->
     <string name="credential_auth_type_password">User Password</string>

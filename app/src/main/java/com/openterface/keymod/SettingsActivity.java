@@ -9,6 +9,7 @@ import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -36,6 +37,7 @@ import com.openterface.keymod.fragments.VoiceSettingsFragment;
 public class SettingsActivity extends AppCompatActivity {
 
     public static final String EXTRA_TAB_INDEX = "extra_tab_index";
+    public static final String EXTRA_EDIT_PROFILE_ID = "extra_edit_profile_id";
     public static final int TAB_CREDENTIALS = 4;
 
     @Override
@@ -74,7 +76,8 @@ public class SettingsActivity extends AppCompatActivity {
         ViewPager2 viewPager = findViewById(R.id.viewPager);
         TabLayout tabLayout = findViewById(R.id.tabLayout);
 
-        viewPager.setAdapter(new SettingsPagerAdapter(this));
+        viewPager.setAdapter(new SettingsPagerAdapter(this,
+                getIntent().getStringExtra(EXTRA_EDIT_PROFILE_ID)));
 
         int initialTab = getIntent().getIntExtra("settings_tab_index", 0);
         if (initialTab > 0 && initialTab < 5) {
@@ -143,8 +146,12 @@ public class SettingsActivity extends AppCompatActivity {
 
     private static class SettingsPagerAdapter extends FragmentStateAdapter {
 
-        public SettingsPagerAdapter(@NonNull SettingsActivity activity) {
+        private final String editProfileId;
+
+        public SettingsPagerAdapter(@NonNull SettingsActivity activity,
+                                    @Nullable String editProfileId) {
             super(activity);
+            this.editProfileId = editProfileId;
         }
 
         @NonNull
@@ -160,7 +167,13 @@ public class SettingsActivity extends AppCompatActivity {
                 case 3:
                     return new HistoryFragment();
                 case 4:
-                    return new CredentialSettingsFragment();
+                    CredentialSettingsFragment frag = new CredentialSettingsFragment();
+                    if (editProfileId != null) {
+                        Bundle args = new Bundle();
+                        args.putString(CredentialSettingsFragment.ARG_EDIT_PROFILE_ID, editProfileId);
+                        frag.setArguments(args);
+                    }
+                    return frag;
                 default:
                     throw new IllegalArgumentException("Invalid settings page: " + position);
             }

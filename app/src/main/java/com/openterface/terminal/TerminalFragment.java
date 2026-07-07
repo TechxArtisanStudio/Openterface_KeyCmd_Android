@@ -23,7 +23,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -426,6 +430,11 @@ public class TerminalFragment extends Fragment {
                 applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
             });
 
+            card.setOnLongClickListener(v -> {
+                showDeviceInfoDialog(profile);
+                return true;
+            });
+
             deviceListContainer.addView(cardView);
         }
     }
@@ -491,6 +500,73 @@ public class TerminalFragment extends Fragment {
 
         nameText.setTextColor(getResources().getColor(R.color.text_primary));
         descText.setTextColor(getResources().getColor(R.color.text_secondary));
+    }
+
+    /**
+     * Show a device info dialog with full profile details when the user
+     * long-presses a device card in the connection dialog.
+     */
+    private void showDeviceInfoDialog(CredentialProfile profile) {
+        if (getContext() == null) return;
+
+        View dialogView = LayoutInflater.from(getContext())
+                .inflate(R.layout.dialog_device_info, null);
+
+        TextView nameText = dialogView.findViewById(R.id.info_device_name);
+        TextView hostText = dialogView.findViewById(R.id.info_host);
+        TextView portText = dialogView.findViewById(R.id.info_port);
+        TextView usernameText = dialogView.findViewById(R.id.info_username);
+        TextView authTypeText = dialogView.findViewById(R.id.info_auth_type);
+        TextView tagsText = dialogView.findViewById(R.id.info_tags);
+        TextView notesText = dialogView.findViewById(R.id.info_notes);
+        TextView createdText = dialogView.findViewById(R.id.info_created);
+        TextView updatedText = dialogView.findViewById(R.id.info_updated);
+
+        nameText.setText(profile.getDisplayLabel());
+        hostText.setText(profile.getHost() != null ? profile.getHost() : "");
+        portText.setText(String.valueOf(profile.getPort()));
+        usernameText.setText(profile.getUsername() != null ? profile.getUsername() : "");
+
+        String authType = profile.isSshKeyAuth()
+                ? getString(R.string.credential_auth_type_ssh_key)
+                : getString(R.string.credential_auth_type_password);
+        authTypeText.setText(authType);
+
+        List<String> tags = profile.getTags();
+        if (tags != null && !tags.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < tags.size(); i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(tags.get(i));
+            }
+            tagsText.setText(sb.toString());
+        } else {
+            tagsText.setText(R.string.terminal_device_info_no_tags);
+            tagsText.setTextColor(getResources().getColor(R.color.text_secondary));
+        }
+
+        String notes = profile.getNotes();
+        if (notes != null && !notes.isEmpty()) {
+            notesText.setText(notes);
+        } else {
+            notesText.setText(R.string.terminal_device_info_no_notes);
+            notesText.setTextColor(getResources().getColor(R.color.text_secondary));
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        createdText.setText(dateFormat.format(new Date(profile.getCreatedAt())));
+        updatedText.setText(dateFormat.format(new Date(profile.getUpdatedAt())));
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .setNegativeButton(R.string.credential_edit, (dialog, which) -> {
+                    Intent intent = new Intent(requireContext(), SettingsActivity.class);
+                    intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
+                    intent.putExtra(SettingsActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
+                    requireContext().startActivity(intent);
+                })
+                .setPositiveButton(R.string.terminal_device_info_close, null)
+                .show();
     }
 
     /**
