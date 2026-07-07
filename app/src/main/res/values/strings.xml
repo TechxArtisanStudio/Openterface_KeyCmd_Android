@@ -1539,6 +1539,7 @@ by TechxArtisan</string>
     <string name="terminal_device_info_no_tags">No tags</string>
     <string name="terminal_device_info_no_notes">No notes</string>
     <string name="terminal_device_info_close">Close</string>
+    <string name="terminal_device_info_edit">Edit</string>
 
     <!-- Credential Auth Type -->
     <string name="credential_auth_type_password">User Password</string>
