@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.SensitivePageShield;
 
 /**
  * AI Settings Fragment — mirrors iOS AISettingsView.swift.
@@ -273,6 +274,7 @@ public class AISettingsFragment extends Fragment {
 
     private SharedPreferences prefs;
     private boolean isLoadingSettings = false;
+    private SensitivePageShield shield;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -579,7 +581,7 @@ public class AISettingsFragment extends Fragment {
                     .putString(PREF_AI_API_KEY + "_" + currentProvider, s.toString())
                     .apply();
                 Log.d("AISettings", "Saved API key for provider " + currentProvider
-                        + ": " + (s.length() > 0 ? s.subSequence(0, Math.min(8, s.length())) + "..." : "(cleared)"));
+                        + " (length=" + s.length() + ")");
             }
             @Override public void afterTextChanged(android.text.Editable s) {}
         });
@@ -615,5 +617,35 @@ public class AISettingsFragment extends Fragment {
                     Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show(),
                     1500);
         });
+    }
+
+    // ── Sensitive page shielding ──────────────────────────────────────────
+    // AI settings contain API keys; degrade by hiding content on screenshot/recording.
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (shield == null) {
+            shield = new SensitivePageShield(requireActivity());
+            shield.registerSensitiveView(apiKeyEditText);
+        }
+        shield.enable();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (shield != null) {
+            shield.disable();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (shield != null) {
+            shield.release();
+            shield = null;
+        }
     }
 }

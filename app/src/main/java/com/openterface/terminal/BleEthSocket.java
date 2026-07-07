@@ -71,7 +71,7 @@ public class BleEthSocket extends Socket {
     public void connectTunnel(String host, int port, long timeoutMs) throws IOException {
         try {
             // Establish BLE-Eth tunnel (this sets up the piped streams internally)
-            Log.d(TAG, "Connecting BLE-Eth tunnel to " + host + ":" + port);
+            Log.d(TAG, "Connecting BLE-Eth tunnel");
             transport.connect(host, port, timeoutMs);
 
             if (!transport.isConnected()) {

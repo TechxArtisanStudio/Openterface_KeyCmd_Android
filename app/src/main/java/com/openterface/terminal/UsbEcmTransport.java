@@ -29,10 +29,10 @@ public class UsbEcmTransport implements TransportAdapter {
 
     @Override
     public void connect(String host, int port, long timeoutMs) {
-        Log.d(TAG, "connect() called: host=" + host + " port=" + port + " timeoutMs=" + timeoutMs);
+        Log.d(TAG, "connect() called: timeoutMs=" + timeoutMs);
         try {
             socket = new Socket();
-            Log.d(TAG, "Socket created, attempting connect to " + host + ":" + port);
+            Log.d(TAG, "Socket created, attempting connect");
             socket.connect(new InetSocketAddress(host, port), (int) timeoutMs);
             Log.d(TAG, "Socket connected successfully");
             socket.setSoTimeout(0); // blocking read

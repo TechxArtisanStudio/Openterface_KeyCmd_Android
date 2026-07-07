@@ -1384,4 +1384,9 @@
     <string name="header_km_pro_input_compose_disabled_landscape_cd">鍵盤與滑鼠專業版中，撰寫模式僅在直向可用。</string>
     <string name="shortcut_hub_cd_create_profile">建立設定檔</string>
     <string name="shortcut_hub_cd_import_profile">匯入設定檔</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">連線 SSH</string>
+    <string name="terminal_transport_label">傳輸方式</string>
+    <string name="terminal_host_username_required">主機位址和使用者名稱不可為空</string>
 </resources>

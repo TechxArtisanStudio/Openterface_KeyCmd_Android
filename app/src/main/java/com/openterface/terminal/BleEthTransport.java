@@ -2,6 +2,8 @@ package com.openterface.terminal;
 
 import android.util.Log;
 
+import com.openterface.keymod.BuildConfig;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -79,7 +81,7 @@ public class BleEthTransport implements TransportAdapter {
     @Override
     public void connect(String host, int port, long timeoutMs) {
         try {
-            Log.i(TAG, "BLE-Eth connect start: " + host + ":" + port + " timeout=" + timeoutMs + "ms");
+            Log.i(TAG, "BLE-Eth connect start: timeout=" + timeoutMs + "ms");
             synchronized (stateLock) {
                 closePipesLocked();
                 inputPipeClosed = false;
@@ -117,7 +119,7 @@ public class BleEthTransport implements TransportAdapter {
                     }
                 } catch (IOException e) {
                     if (running) {
-                        Log.e(TAG, "JSch output reader thread ended with IOException: " + e.getMessage(), e);
+                        Log.e(TAG, "JSch output reader thread ended with IOException: " + e.getMessage());
                     } else {
                         Log.d(TAG, "JSch output reader thread exiting after disconnect: " + e.getMessage());
                     }
@@ -130,7 +132,7 @@ public class BleEthTransport implements TransportAdapter {
 
             // Build CONNECT frame
             byte[] frame = buildConnect(host, port);
-            Log.d(TAG, "BLE-Eth sending CONNECT frame: " + bytesToHex(frame));
+            Log.d(TAG, "BLE-Eth sending CONNECT frame");
 
             // Set up response listener
             connectLatch = new java.util.concurrent.CountDownLatch(1);
@@ -164,7 +166,7 @@ public class BleEthTransport implements TransportAdapter {
             Log.d(TAG, "BLE-Eth connect success: connId=" + connId);
 
         } catch (Exception e) {
-            Log.e(TAG, "BLE-Eth connect exception: " + e.getMessage(), e);
+            Log.e(TAG, "BLE-Eth connect exception: " + e.getMessage());
             if (listener != null) {
                 listener.onError("BLE-Eth connect failed: " + e.getMessage());
             }
@@ -183,8 +185,12 @@ public class BleEthTransport implements TransportAdapter {
 
         if (len <= MAX_FRAG_DATA) {
             byte[] frame = buildDataSingle(connId, payload);
-            Log.d(TAG, "send: single frame connId=" + connId
-                    + " len=" + len + " frame=" + bytesToHex(frame));
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "send: single frame connId=" + connId
+                        + " len=" + len + " frame=" + bytesToHex(frame));
+            } else {
+                Log.d(TAG, "send: single frame connId=" + connId + " len=" + len);
+            }
             if (writeCallback != null) {
                 writeCallback.write(frame);
             }
@@ -192,10 +198,15 @@ public class BleEthTransport implements TransportAdapter {
             byte[][] frames = buildDataFragmented(connId, payload);
             Log.d(TAG, "send: fragmented into " + frames.length + " frames for " + len + " bytes");
             for (int i = 0; i < frames.length; i++) {
-                Log.d(TAG, "send: fragment[" + i + "/" + frames.length + "]"
-                        + " connId=" + connId
-                        + " frameLen=" + frames[i].length
-                        + " payload=" + bytesToHex(frames[i]));
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "send: fragment[" + i + "/" + frames.length + "]"
+                            + " connId=" + connId
+                            + " frameLen=" + frames[i].length
+                            + " payload=" + bytesToHex(frames[i]));
+                } else {
+                    Log.d(TAG, "send: fragment[" + i + "/" + frames.length + "]"
+                            + " connId=" + connId + " frameLen=" + frames[i].length);
+                }
                 if (writeCallback != null) {
                     writeCallback.write(frames[i]);
                 }
@@ -265,7 +276,10 @@ public class BleEthTransport implements TransportAdapter {
      * This feeds the frame parser and dispatches parsed frames.
      */
     public void handleIncomingData(byte[] data) {
-        Log.i(TAG, "BLE-Eth RX " + data.length + " bytes: " + bytesToHex(data));
+        Log.i(TAG, "BLE-Eth RX " + data.length + " bytes");
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "BLE-Eth RX hex: " + bytesToHex(data));
+        }
         frameParser.feed(data);
         int frameCount = frameParser.pendingCount();
         if (frameCount > 0) {
@@ -275,8 +289,14 @@ public class BleEthTransport implements TransportAdapter {
         }
         while (!frameParser.isEmpty()) {
             FrameParser.ParsedFrame frame = frameParser.pop();
-            Log.i(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
-                    + " payloadLen=" + frame.payload.length + " payload=" + bytesToHex(frame.payload));
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
+                        + " payloadLen=" + frame.payload.length
+                        + " payload=" + bytesToHex(frame.payload));
+            } else {
+                Log.d(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
+                        + " payloadLen=" + frame.payload.length);
+            }
             handleFrame(frame);
         }
     }
@@ -312,7 +332,7 @@ public class BleEthTransport implements TransportAdapter {
                     DataReassembler.ReassembledData reassembled = dataReassembler.feed(frame.payload);
                     if (reassembled != null) {
                         Log.i(TAG, "BLE-Eth reassembled: connId=" + reassembled.connId
-                                + " bytes=" + reassembled.data.length + " data=" + bytesToHex(reassembled.data));
+                                + " bytes=" + reassembled.data.length);
                         QueuePipe inbound;
                         synchronized (stateLock) {
                             inbound = inboundPipe;

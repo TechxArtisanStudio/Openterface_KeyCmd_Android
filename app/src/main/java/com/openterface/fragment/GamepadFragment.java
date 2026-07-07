@@ -253,7 +253,7 @@ public class GamepadFragment extends Fragment {
     private final Map<String, Boolean> faceButtonPressed = new HashMap<>();
     /** Latched keyboard keys from hold-lock gesture (module id). */
     private final Set<String> keyboardHoldLockedModuleIds = new HashSet<>();
-    /** Latched turbo (连发) for module native output or key_turbo override (module id). */
+    /** Latched turbo (continuous fire) for module native output or key_turbo override (module id). */
     private final Set<String> turboLockedModuleIds = new HashSet<>();
     /** When latched via key_hold / diagonal: use HID key [0] and modifier mask [1] instead of module mapping. */
     private final java.util.Map<String, int[]> gestureHoldAlternateHid = new java.util.HashMap<>();

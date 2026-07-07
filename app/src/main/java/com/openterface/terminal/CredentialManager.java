@@ -2,6 +2,7 @@ package com.openterface.terminal;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -13,14 +14,18 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages SSH credential profiles with encrypted storage via EncryptedSharedPreferences.
  */
 public class CredentialManager {
 
+    private static final String TAG = "CredentialManager";
     private static final String PREFS_NAME = "credentials_prefs";
     private static final String KEY_PROFILES = "profiles";
     private static final String KEY_ACTIVE_ID = "active_profile_id";
@@ -43,8 +48,10 @@ public class CredentialManager {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Fallback to plain SharedPreferences if encryption fails (should not happen on API 26+)
-            prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            // S3 Fix: Do NOT silently fall back to plaintext storage.
+            // Throw RuntimeException to make the failure explicit to the caller.
+            Log.e(TAG, "Failed to initialize encrypted storage", e);
+            throw new RuntimeException("Secure storage unavailable", e);
         }
     }
 
@@ -182,6 +189,35 @@ public class CredentialManager {
         }
         saveProfiles(profiles);
         prefs.edit().putString(KEY_ACTIVE_ID, id).apply();
+    }
+
+    /**
+     * Get all unique tags across all profiles, sorted alphabetically.
+     */
+    public List<String> getAllTags() {
+        Set<String> tagSet = new LinkedHashSet<>();
+        for (CredentialProfile p : getAllProfiles()) {
+            tagSet.addAll(p.getTags());
+        }
+        List<String> result = new ArrayList<>(tagSet);
+        Collections.sort(result);
+        return result;
+    }
+
+    /**
+     * Remove a tag from all profiles. Saves changes immediately.
+     */
+    public void removeTagFromAllProfiles(String tag) {
+        List<CredentialProfile> profiles = getAllProfiles();
+        boolean changed = false;
+        for (CredentialProfile p : profiles) {
+            if (p.getTags().remove(tag)) {
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveProfiles(profiles);
+        }
     }
 
     /**

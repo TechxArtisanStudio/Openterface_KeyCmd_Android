@@ -13,8 +13,6 @@ public final class KmProTouchpadPrefs {
     private static final String KEY_MODE = "km_pro_touchpad_mode";
     private static final String KEY_SCROLL_STRIP_ENABLED = "km_pro_touchpad_scroll_strip_enabled";
     private static final String KEY_STRIP_SCROLL_SENSITIVITY = "km_pro_touchpad_strip_scroll_sensitivity";
-    private static final String KEY_GESTURE_STATUS_VISIBLE = "km_pro_touchpad_gesture_status_visible";
-
     /** Same percent range as KM Basic strip scroll sensitivity. */
     public static final int STRIP_SCROLL_SENSITIVITY_MIN_PERCENT = 20;
     public static final int STRIP_SCROLL_SENSITIVITY_MAX_PERCENT = 200;
@@ -110,19 +108,8 @@ public final class KmProTouchpadPrefs {
                 .apply();
     }
 
-    /** When {@code false}, the composite touchpad hides the compact gesture / button status line. */
+    /** Gesture status line is always visible. */
     public static boolean isGestureStatusLineVisible(Context context) {
-        SharedPreferences sp =
-                context.getApplicationContext()
-                        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return sp.getBoolean(KEY_GESTURE_STATUS_VISIBLE, true);
-    }
-
-    public static void writeGestureStatusLineVisible(Context context, boolean visible) {
-        context.getApplicationContext()
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(KEY_GESTURE_STATUS_VISIBLE, visible)
-                .apply();
+        return true;
     }
 }

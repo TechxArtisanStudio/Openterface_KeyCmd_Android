@@ -6,6 +6,7 @@
     <string name="settings_tab_voice">语音</string>
     <string name="settings_tab_ai">人工智能</string>
     <string name="settings_tab_history">AI 记录</string>
+    <string name="settings_tab_credentials">凭据</string>
     <string name="settings_language_section_title">语言</string>
     <string name="settings_app_language_label">应用语言</string>
     <string name="app_language_follow_system">遵循系统语言</string>
@@ -1384,4 +1385,105 @@
     <string name="header_km_pro_input_compose_disabled_landscape_cd">键盘与鼠标专业版中，撰写模式仅在竖屏可用。</string>
     <string name="shortcut_hub_cd_create_profile">创建配置文件</string>
     <string name="shortcut_hub_cd_import_profile">导入配置文件</string>
+
+    <!-- Terminal SSH Connection Dialog -->
+    <string name="terminal_connect_title">连接 SSH</string>
+    <string name="terminal_devices_label">已配置设备</string>
+    <string name="terminal_no_devices">暂无已配置设备。请在 设置 → 凭据 中添加。</string>
+    <string name="terminal_add_profile">添加凭据</string>
+    <string name="terminal_select_device">请选择设备</string>
+    <string name="terminal_transport_label">传输方式</string>
+    <string name="terminal_host_username_required">主机地址和用户名不能为空</string>
+    <string name="terminal_device_info">设备信息</string>
+    <string name="terminal_device_info_name">名称</string>
+    <string name="terminal_device_info_host">主机</string>
+    <string name="terminal_device_info_port">端口</string>
+    <string name="terminal_device_info_username">用户名</string>
+    <string name="terminal_device_info_auth_type">认证类型</string>
+    <string name="terminal_device_info_tags">标签</string>
+    <string name="terminal_device_info_notes">备注</string>
+    <string name="terminal_device_info_created">创建时间</string>
+    <string name="terminal_device_info_updated">更新时间</string>
+    <string name="terminal_device_info_no_tags">无标签</string>
+    <string name="terminal_device_info_no_notes">无备注</string>
+    <string name="terminal_device_info_close">关闭</string>
+    <string name="terminal_device_info_edit">编辑</string>
+    <string name="credential_add">+ 添加凭据</string>
+    <string name="credential_edit">编辑</string>
+    <string name="credential_save">保存</string>
+    <string name="credential_cancel">取消</string>
+
+    <!-- Credential Auth Type -->
+    <string name="credential_auth_type_password">用户密码</string>
+    <string name="credential_auth_type_ssh_key">SSH 密钥</string>
+    <string name="credential_password_required">密码为必填项</string>
+    <string name="credential_private_key_required">私钥为必填项</string>
+    <string name="credential_import_key_file">导入密钥文件</string>
+    <string name="credential_key_imported">密钥已导入</string>
+    <string name="credential_key_import_failed">密钥文件读取失败</string>
+    <string name="credential_tags_label">标签</string>
+    <string name="credential_tags_hint">输入标签名回车添加</string>
+    <string name="credential_tag_filter">按标签筛选</string>
+    <string name="select_tags_title">选择标签</string>
+    <string name="select_tags_add_hint">输入新标签名称</string>
+    <string name="select_tags_all_label">所有标签（点击选择）</string>
+    <string name="select_tags_selected_label">当前设备选中的标签</string>
+    <string name="select_tags_none">无</string>
+    <string name="select_tags_count">已选择 %d 个标签</string>
+    <string name="delete_tag_title">删除标签</string>
+    <string name="delete_tag_confirm">确定删除标签"%s"？该标签将从所有凭据中移除。</string>
+    <string name="delete_tag_deleted">标签"%s"已删除</string>
+    <string name="terminal_auth_failed">认证失败，请在设置中检查凭证。</string>
+
+    <!-- Terminal Error Messages -->
+    <string name="terminal_error_connection_refused">远程主机拒绝连接</string>
+    <string name="terminal_error_connection_timeout">连接超时，请检查网络</string>
+    <string name="terminal_error_unknown_host">未知主机，请检查主机名</string>
+    <string name="terminal_error_no_route">无法到达远程主机，请检查网络</string>
+    <string name="terminal_error_generic">连接时发生错误</string>
+
+    <!-- SSH Key Generation -->
+    <string name="credential_generate_key">生成密钥</string>
+    <string name="credential_generate">生成</string>
+    <string name="credential_key_algorithm">算法</string>
+    <string name="credential_key_info">密钥信息</string>
+    <string name="credential_key_rsa_4096">RSA 4096</string>
+    <string name="credential_key_rsa_2048">RSA 2048</string>
+    <string name="credential_key_ed25519">ED25519</string>
+    <string name="credential_key_name">名称</string>
+    <string name="credential_key_rounds">轮数</string>
+    <string name="credential_key_save_passphrase">保存密码</string>
+    <string name="credential_edit_key">编辑密钥</string>
+    <string name="credential_key_passphrase_hint">密钥密码（可选）</string>
+    <string name="credential_key_generating">正在生成密钥对…</string>
+    <string name="credential_key_generated">密钥对已生成</string>
+    <string name="credential_public_key_title">公钥</string>
+    <string name="credential_public_key_copy">复制</string>
+    <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
+    <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
+    <string name="credential_push_key">推送到服务器</string>
+    <string name="credential_push_key_title">推送公钥</string>
+    <string name="credential_push_key_desc">通过密码认证将公钥推送到服务器</string>
+    <string name="credential_push">推送</string>
+    <string name="credential_push_key_success">公钥推送成功</string>
+    <string name="credential_push_key_failed">推送密钥失败：%s</string>
+    <string name="credential_push_key_connecting">正在连接服务器…</string>
+    <string name="credential_push_key_writing">正在写入 authorized_keys…</string>
+    <string name="credential_host_hint">主机</string>
+    <string name="credential_port_hint">端口</string>
+    <string name="credential_username_hint">用户名</string>
+    <string name="credential_password_hint">密码</string>
+    <string name="credential_key_label">密钥</string>
+    <string name="credential_key_not_set">未设置密钥</string>
+    <string name="credential_key_set">密钥已设置</string>
+    <string name="credential_key_options">密钥选项</string>
+    <string name="credential_key_paste">粘贴</string>
+    <string name="credential_key_import_file">从文件导入</string>
+    <string name="credential_key_generate">生成</string>
+    <string name="credential_key_copy">复制</string>
+    <string name="credential_key_reveal">展开</string>
+    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 密码加密为实验性功能，可能存在兼容性问题</string>
+    <string name="credential_key_collapse">隐藏</string>
+    <string name="credential_key_hide">隐藏</string>
+    <string name="credential_private_key_hint">私钥（PEM 格式）</string>
 </resources>
