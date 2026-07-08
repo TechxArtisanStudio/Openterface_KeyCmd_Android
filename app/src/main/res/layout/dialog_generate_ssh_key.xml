@@ -53,6 +53,25 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Key Size (visible only when RSA is selected) -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/key_rsa_size_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/credential_key_size"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+
+                <AutoCompleteTextView
+                    android:id="@+id/key_rsa_size_dropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:textSize="14sp" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
             <!-- Passphrase (optional) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
@@ -234,16 +253,6 @@
                     android:textSize="14sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
-
-            <!-- Warning: Ed25519 passphrase compatibility -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/credential_ed25519_passphrase_warning"
-                android:textSize="12sp"
-                android:textColor="?attr/colorError"
-                android:layout_marginBottom="12dp"
-                android:visibility="visible" />
 
             <!-- Export or share public key button -->
             <com.google.android.material.button.MaterialButton

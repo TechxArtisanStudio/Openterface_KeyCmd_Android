@@ -1408,6 +1408,7 @@
     <string name="terminal_device_info_no_notes">无备注</string>
     <string name="terminal_device_info_close">关闭</string>
     <string name="terminal_device_info_edit">编辑</string>
+    <string name="terminal_long_press_hint">提示：长按设备可打开设备信息卡片。</string>
     <string name="credential_add">+ 添加凭据</string>
     <string name="credential_edit">编辑</string>
     <string name="credential_save">保存</string>
@@ -1425,7 +1426,7 @@
     <string name="credential_tags_hint">输入标签名回车添加</string>
     <string name="credential_tag_filter">按标签筛选</string>
     <string name="select_tags_title">选择标签</string>
-    <string name="select_tags_add_hint">输入新标签名称</string>
+    <string name="select_tags_add_hint">输入标签名称回车添加</string>
     <string name="select_tags_all_label">所有标签（点击选择）</string>
     <string name="select_tags_selected_label">当前设备选中的标签</string>
     <string name="select_tags_none">无</string>
@@ -1447,6 +1448,7 @@
     <string name="credential_generate">生成</string>
     <string name="credential_key_algorithm">算法</string>
     <string name="credential_key_info">密钥信息</string>
+    <string name="credential_key_size">密钥大小</string>
     <string name="credential_key_ed25519">ED25519</string>
     <string name="credential_key_ed25519_desc">OpenSSH 6.5+</string>
     <string name="credential_key_ecdsa">ECDSA</string>
@@ -1484,9 +1486,10 @@
     <string name="credential_key_paste">粘贴</string>
     <string name="credential_key_import_file">从文件导入</string>
     <string name="credential_key_generate">生成</string>
+    <string name="credential_key_delete">删除</string>
+    <string name="credential_key_delete_confirm">确定删除存储的 SSH 密钥？</string>
     <string name="credential_key_copy">复制</string>
     <string name="credential_key_reveal">展开</string>
-    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 密码加密为实验性功能，可能存在兼容性问题</string>
     <string name="credential_key_collapse">隐藏</string>
     <string name="credential_key_hide">隐藏</string>
     <string name="credential_private_key_hint">私钥（PEM 格式）</string>

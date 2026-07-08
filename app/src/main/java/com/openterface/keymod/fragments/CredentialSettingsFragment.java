@@ -24,6 +24,7 @@ import android.widget.SearchView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.HorizontalScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -355,9 +356,10 @@ public class CredentialSettingsFragment extends Fragment {
             popup.getMenu().add(0, 1, 0, R.string.credential_key_paste);
             popup.getMenu().add(0, 2, 1, R.string.credential_key_import_file);
             popup.getMenu().add(0, 3, 2, R.string.credential_key_generate);
-            // Show Edit option only when key data is already set
+            // Show Edit and Delete options only when key data is already set
             if (!privateKeyData[0].isEmpty()) {
                 popup.getMenu().add(0, 4, 3, R.string.credential_edit_key);
+                popup.getMenu().add(0, 5, 4, R.string.credential_key_delete);
             }
             popup.setOnMenuItemClickListener(item -> {
                 switch (item.getItemId()) {
@@ -386,6 +388,19 @@ public class CredentialSettingsFragment extends Fragment {
                                     keyPassphraseData[0] = updatedPassphrase;
                                     keyStatus.setText(R.string.credential_key_imported);
                                 });
+                        break;
+                    case 5: // Delete key
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(R.string.credential_key_delete)
+                                .setMessage(R.string.credential_key_delete_confirm)
+                                .setPositiveButton(R.string.credential_delete, (dialog, which) -> {
+                                    privateKeyData[0] = "";
+                                    publicKeyData[0] = "";
+                                    keyPassphraseData[0] = "";
+                                    keyStatus.setText(R.string.credential_key_not_set);
+                                })
+                                .setNegativeButton(R.string.credential_cancel, null)
+                                .show();
                         break;
                 }
                 return true;
@@ -534,6 +549,8 @@ public class CredentialSettingsFragment extends Fragment {
         View generateSection = dialogView.findViewById(R.id.key_generate_section);
         EditText nameInput = dialogView.findViewById(R.id.key_name_input);
         AutoCompleteTextView algorithmDropdown = dialogView.findViewById(R.id.key_algorithm_dropdown);
+        TextInputLayout rsaSizeLayout = dialogView.findViewById(R.id.key_rsa_size_layout);
+        AutoCompleteTextView rsaSizeDropdown = dialogView.findViewById(R.id.key_rsa_size_dropdown);
         EditText passphraseInput = dialogView.findViewById(R.id.key_passphrase_input);
         TextInputLayout roundsLayout = dialogView.findViewById(R.id.key_rounds_layout);
         EditText roundsInput = dialogView.findViewById(R.id.key_rounds_input);
@@ -589,6 +606,23 @@ public class CredentialSettingsFragment extends Fragment {
         algorithmDropdown.setAdapter(adapter);
         algorithmDropdown.setText(algorithms[0], false);
 
+        // Setup RSA Key Size dropdown
+        String[] rsaSizes = {"4096", "2048", "1024"};
+        ArrayAdapter<String> rsaSizeAdapter = new ArrayAdapter<String>(requireContext(),
+                android.R.layout.simple_dropdown_item_1line, rsaSizes);
+        rsaSizeDropdown.setAdapter(rsaSizeAdapter);
+        rsaSizeDropdown.setText(rsaSizes[0], false);
+
+        // Show Key Size only when RSA is selected
+        algorithmDropdown.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedAlgo = algorithms[position];
+            if (selectedAlgo.equals(getString(R.string.credential_key_rsa))) {
+                rsaSizeLayout.setVisibility(View.VISIBLE);
+            } else {
+                rsaSizeLayout.setVisibility(View.GONE);
+            }
+        });
+
         // Show rounds field only when passphrase is not empty
         passphraseInput.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -621,6 +655,13 @@ public class CredentialSettingsFragment extends Fragment {
                     }
                     String passphrase = passphraseInput.getText().toString();
                     final String selectedAlgo = algorithmDropdown.getText().toString();
+                    // Parse RSA key size (default 4096)
+                    int rsaKeySizeTemp = 4096;
+                    String rsaSizeStr = rsaSizeDropdown.getText().toString();
+                    if (!rsaSizeStr.isEmpty()) {
+                        try { rsaKeySizeTemp = Integer.parseInt(rsaSizeStr); } catch (NumberFormatException ignored) {}
+                    }
+                    final int rsaKeySize = rsaKeySizeTemp;
                     // Parse rounds (default 16 if empty or invalid)
                     int parsedRounds = 16;
                     String roundsStr = roundsInput.getText().toString().trim();
@@ -640,7 +681,7 @@ public class CredentialSettingsFragment extends Fragment {
                             // Pass passphrase to generator for encryption
                             if (selectedAlgo.equals(algorithms[2])) {
                                 // RSA
-                                result = SshKeyGenerator.generateRSA(4096, name, passphrase);
+                                result = SshKeyGenerator.generateRSA(rsaKeySize, name, passphrase);
                             } else {
                                 // ED25519 (default) or ECDSA (not yet implemented, falls back to Ed25519)
                                 result = SshKeyGenerator.generateEd25519(name, passphrase, rounds);
@@ -1196,7 +1237,7 @@ public class CredentialSettingsFragment extends Fragment {
             holder.tagsGroup.removeAllViews();
             List<String> tags = profile.getTags();
             if (!tags.isEmpty()) {
-                holder.tagsGroup.setVisibility(View.VISIBLE);
+                holder.tagsScroll.setVisibility(View.VISIBLE);
                 for (String tag : tags) {
                     Chip chip = new Chip(holder.itemView.getContext());
                     chip.setText(tag);
@@ -1207,7 +1248,7 @@ public class CredentialSettingsFragment extends Fragment {
                     holder.tagsGroup.addView(chip);
                 }
             } else {
-                holder.tagsGroup.setVisibility(View.GONE);
+                holder.tagsScroll.setVisibility(View.GONE);
             }
 
             // Auth type icon
@@ -1259,6 +1300,7 @@ public class CredentialSettingsFragment extends Fragment {
             RadioButton activeRadio;
             TextView nameText;
             TextView detailsText;
+            HorizontalScrollView tagsScroll;
             ChipGroup tagsGroup;
             ImageView authTypeIcon;
             ImageButton editButton;
@@ -1269,6 +1311,7 @@ public class CredentialSettingsFragment extends Fragment {
                 activeRadio = itemView.findViewById(R.id.credential_active_radio);
                 nameText = itemView.findViewById(R.id.credential_name);
                 detailsText = itemView.findViewById(R.id.credential_details);
+                tagsScroll = itemView.findViewById(R.id.credential_tags_scroll);
                 tagsGroup = itemView.findViewById(R.id.credential_tags_group);
                 authTypeIcon = itemView.findViewById(R.id.credential_auth_type_icon);
                 editButton = itemView.findViewById(R.id.credential_edit_button);

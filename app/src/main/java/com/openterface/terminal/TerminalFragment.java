@@ -216,6 +216,7 @@ public class TerminalFragment extends Fragment {
         RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
         LinearLayout deviceListContainer = dialogView.findViewById(R.id.device_list_container);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
+        TextView longPressHint = dialogView.findViewById(R.id.long_press_hint);
         MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
         View titleContainer = dialogView.findViewById(R.id.title_container);
         ImageView searchButton = dialogView.findViewById(R.id.search_device_button);
@@ -233,6 +234,7 @@ public class TerminalFragment extends Fragment {
         if (allProfiles.isEmpty()) {
             deviceListContainer.setVisibility(View.GONE);
             titleContainer.setVisibility(View.GONE);
+            longPressHint.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {

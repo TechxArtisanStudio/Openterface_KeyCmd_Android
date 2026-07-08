@@ -1540,6 +1540,7 @@ by TechxArtisan</string>
     <string name="terminal_device_info_no_notes">No notes</string>
     <string name="terminal_device_info_close">Close</string>
     <string name="terminal_device_info_edit">Edit</string>
+    <string name="terminal_long_press_hint">Tip: Long-press a device to view its info card.</string>
 
     <!-- Credential Auth Type -->
     <string name="credential_auth_type_password">User Password</string>
@@ -1608,6 +1609,7 @@ by TechxArtisan</string>
     <string name="credential_generate">Generate</string>
     <string name="credential_key_algorithm">Algorithm</string>
     <string name="credential_key_info">Key Info</string>
+    <string name="credential_key_size">Key Size</string>
     <string name="credential_key_ed25519">ED25519</string>
     <string name="credential_key_ed25519_desc">OpenSSH 6.5+</string>
     <string name="credential_key_ecdsa">ECDSA</string>
@@ -1646,9 +1648,10 @@ by TechxArtisan</string>
     <string name="credential_key_paste">Paste</string>
     <string name="credential_key_import_file">Import from file</string>
     <string name="credential_key_generate">Generate</string>
+    <string name="credential_key_delete">Delete</string>
+    <string name="credential_key_delete_confirm">Delete the stored SSH key?</string>
     <string name="credential_key_copy">Copy</string>
     <string name="credential_key_reveal">Reveal</string>
-    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 passphrase encryption is experimental and may have compatibility issues</string>
     <string name="credential_key_collapse">Hide</string>
     <string name="credential_key_hide">Hide</string>
     <string name="credential_private_key_hint">Private Key (PEM)</string>
