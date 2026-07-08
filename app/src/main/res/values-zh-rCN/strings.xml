@@ -1447,9 +1447,12 @@
     <string name="credential_generate">生成</string>
     <string name="credential_key_algorithm">算法</string>
     <string name="credential_key_info">密钥信息</string>
-    <string name="credential_key_rsa_4096">RSA 4096</string>
-    <string name="credential_key_rsa_2048">RSA 2048</string>
     <string name="credential_key_ed25519">ED25519</string>
+    <string name="credential_key_ed25519_desc">OpenSSH 6.5+</string>
+    <string name="credential_key_ecdsa">ECDSA</string>
+    <string name="credential_key_ecdsa_desc">暂不支持</string>
+    <string name="credential_key_rsa">RSA</string>
+    <string name="credential_key_rsa_desc">兼容旧设备</string>
     <string name="credential_key_name">名称</string>
     <string name="credential_key_rounds">轮数</string>
     <string name="credential_key_save_passphrase">保存密码</string>

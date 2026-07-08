@@ -554,11 +554,38 @@ public class CredentialSettingsFragment extends Fragment {
         // Setup algorithm dropdown
         String[] algorithms = {
                 getString(R.string.credential_key_ed25519),
-                getString(R.string.credential_key_rsa_4096),
-                getString(R.string.credential_key_rsa_2048)
+                getString(R.string.credential_key_ecdsa),
+                getString(R.string.credential_key_rsa)
         };
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_dropdown_item_1line, algorithms);
+        String[] algorithmDescs = {
+                getString(R.string.credential_key_ed25519_desc),
+                getString(R.string.credential_key_ecdsa_desc),
+                getString(R.string.credential_key_rsa_desc)
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(),
+                R.layout.item_dropdown_algorithm, algorithms) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                return getCustomView(position, convertView, parent);
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return getCustomView(position, convertView, parent);
+            }
+
+            private View getCustomView(int position, View convertView, ViewGroup parent) {
+                if (convertView == null) {
+                    convertView = LayoutInflater.from(requireContext())
+                            .inflate(R.layout.item_dropdown_algorithm, parent, false);
+                }
+                TextView title = convertView.findViewById(R.id.dropdown_item_title);
+                TextView subtitle = convertView.findViewById(R.id.dropdown_item_subtitle);
+                title.setText(algorithms[position]);
+                subtitle.setText(algorithmDescs[position]);
+                return convertView;
+            }
+        };
         algorithmDropdown.setAdapter(adapter);
         algorithmDropdown.setText(algorithms[0], false);
 
@@ -611,11 +638,11 @@ public class CredentialSettingsFragment extends Fragment {
                         try {
                             SshKeyGenerator.KeyPairResult result;
                             // Pass passphrase to generator for encryption
-                            if (selectedAlgo.equals(algorithms[1])) {
+                            if (selectedAlgo.equals(algorithms[2])) {
+                                // RSA
                                 result = SshKeyGenerator.generateRSA(4096, name, passphrase);
-                            } else if (selectedAlgo.equals(algorithms[2])) {
-                                result = SshKeyGenerator.generateRSA(2048, name, passphrase);
                             } else {
+                                // ED25519 (default) or ECDSA (not yet implemented, falls back to Ed25519)
                                 result = SshKeyGenerator.generateEd25519(name, passphrase, rounds);
                             }
 
