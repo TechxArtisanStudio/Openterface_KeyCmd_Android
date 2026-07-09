@@ -217,7 +217,8 @@ public class TerminalView extends View {
             if (line == null) continue;
             CellAttribute[] lineAttrs = session.getLineAttrs(row);
 
-            for (int col = 0; col < drawCols; col++) {
+            int col = 0;
+            while (col < drawCols) {
                 char ch = line[col];
                 CellAttribute attr = (lineAttrs != null && col < lineAttrs.length)
                     ? lineAttrs[col] : CellAttribute.DEFAULT;
@@ -241,18 +242,27 @@ public class TerminalView extends View {
                 }
 
                 // Skip blank cells (no glyph to draw)
-                if (ch == 0 || ch == ' ') continue;
+                if (ch != 0 && ch != ' ') {
+                    // Map characters missing from font to visual equivalents
+                    ch = mapMissingGlyph(ch);
 
-                // Map characters missing from DroidSansMono to visual equivalents
-                ch = mapMissingGlyph(ch);
+                    // Configure paint for this cell
+                    textPaint.setColor(fg);
+                    textPaint.setFakeBoldText(attr.bold);
+                    textPaint.setTextSkewX(attr.italic ? -0.25f : 0);
+                    textPaint.setUnderlineText(attr.underline);
 
-                // Configure paint for this cell
-                textPaint.setColor(fg);
-                textPaint.setFakeBoldText(attr.bold);
-                textPaint.setTextSkewX(attr.italic ? -0.25f : 0);
-                textPaint.setUnderlineText(attr.underline);
+                    // Handle wide (CJK) characters: draw at current position, skip next cell
+                    if (isWideChar(ch)) {
+                        // Draw wide character spanning 2 cells
+                        canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                        col++; // Skip next cell
+                    } else {
+                        canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                    }
+                }
 
-                canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                col++;
             }
         }
 
@@ -267,6 +277,26 @@ public class TerminalView extends View {
                 canvas.drawRect(x, y, x + charWidth, y + charHeight, cursorPaint);
             }
         }
+    }
+
+    /**
+     * Check if a character is a wide (double-width) character.
+     * CJK characters and other fullwidth characters occupy 2 terminal columns.
+     */
+    private boolean isWideChar(char ch) {
+        // Common CJK and fullwidth ranges
+        if (ch >= 0x1100 && ch <= 0x115F) return true; // Hangul Jamo
+        if (ch >= 0x2E80 && ch <= 0x303E) return true; // CJK Radicals Supplement, etc.
+        if (ch >= 0x3040 && ch <= 0x33BF) return true; // Japanese, Korean, CJK Compatibility
+        if (ch >= 0x3400 && ch <= 0x4DBF) return true; // CJK Unified Ideographs Extension A
+        if (ch >= 0x4E00 && ch <= 0x9FFF) return true; // CJK Unified Ideographs
+        if (ch >= 0xA000 && ch <= 0xA4CF) return true; // Yi Syllables
+        if (ch >= 0xAC00 && ch <= 0xD7AF) return true; // Hangul Syllables
+        if (ch >= 0xF900 && ch <= 0xFAFF) return true; // CJK Compatibility Ideographs
+        if (ch >= 0xFE30 && ch <= 0xFE6F) return true; // CJK Compatibility Forms
+        if (ch >= 0xFF01 && ch <= 0xFF60) return true; // Fullwidth Forms
+        if (ch >= 0xFFE0 && ch <= 0xFFE6) return true; // Fullwidth Signs
+        return false;
     }
 
     /**

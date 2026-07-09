@@ -509,12 +509,45 @@ public class TerminalSession {
         if (cursorX >= 0 && cursorX < cols && cursorY >= 0 && cursorY < rows) {
             screen[cursorY][cursorX] = ch;
             attrs[cursorY][cursorX] = currentAttr.copy();
-            cursorX++;
+
+            // Handle wide (CJK) characters that occupy 2 columns
+            int charWidth = getCharDisplayWidth(ch);
+            if (charWidth == 2) {
+                // Clear the next cell to avoid overlap
+                if (cursorX + 1 < cols) {
+                    screen[cursorY][cursorX + 1] = ' ';
+                    attrs[cursorY][cursorX + 1] = currentAttr.copy();
+                }
+                cursorX += 2;
+            } else {
+                cursorX++;
+            }
+
             if (cursorX >= cols) {
                 // Don't wrap yet — defer to next character
                 pendingWrap = true;
             }
         }
+    }
+
+    /**
+     * Determine the display width of a character.
+     * CJK characters and other wide characters occupy 2 columns in terminal.
+     */
+    private int getCharDisplayWidth(char ch) {
+        // Common CJK ranges that are double-width in terminals
+        if (ch >= 0x1100 && ch <= 0x115F) return 2; // Hangul Jamo
+        if (ch >= 0x2E80 && ch <= 0x303E) return 2; // CJK Radicals Supplement, etc.
+        if (ch >= 0x3040 && ch <= 0x33BF) return 2; // Japanese, Korean, CJK Compatibility
+        if (ch >= 0x3400 && ch <= 0x4DBF) return 2; // CJK Unified Ideographs Extension A
+        if (ch >= 0x4E00 && ch <= 0x9FFF) return 2; // CJK Unified Ideographs
+        if (ch >= 0xA000 && ch <= 0xA4CF) return 2; // Yi Syllables
+        if (ch >= 0xAC00 && ch <= 0xD7AF) return 2; // Hangul Syllables
+        if (ch >= 0xF900 && ch <= 0xFAFF) return 2; // CJK Compatibility Ideographs
+        if (ch >= 0xFE30 && ch <= 0xFE6F) return 2; // CJK Compatibility Forms
+        if (ch >= 0xFF01 && ch <= 0xFF60) return 2; // Fullwidth Forms
+        if (ch >= 0xFFE0 && ch <= 0xFFE6) return 2; // Fullwidth Signs
+        return 1; // Default: single width
     }
 
     private void scrollUp() {

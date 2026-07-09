@@ -77,7 +77,7 @@ public class TerminalFragment extends Fragment {
     private Button escBtn;
     private Button tabBtn;
     private TextView statusText;
-    private TextView transportBadge;
+    private MaterialButton transportBtn;
     private TextView hostLabel;
     private LinearLayout connectionOverlay;
     private LinearLayout bottomBar;
@@ -163,11 +163,12 @@ public class TerminalFragment extends Fragment {
         rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
+        // Optional views that may not exist in simplified layout
         ctrlBtn = view.findViewById(R.id.terminal_ctrl_btn);
         escBtn = view.findViewById(R.id.terminal_esc_btn);
         tabBtn = view.findViewById(R.id.terminal_tab_btn);
         statusText = view.findViewById(R.id.terminal_status);
-        transportBadge = view.findViewById(R.id.terminal_transport_badge);
+        transportBtn = view.findViewById(R.id.terminal_transport_btn);
         hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
         bottomBar = view.findViewById(R.id.terminal_bottom_bar);
@@ -175,7 +176,9 @@ public class TerminalFragment extends Fragment {
         demoUsbBtn = view.findViewById(R.id.terminal_demo_usb_btn);
         demoBleBtn = view.findViewById(R.id.terminal_demo_ble_btn);
         demoController = new TerminalDemoController();
-        applyEmptyStateButtonLayout();
+        if (demoButtonRow != null) {
+            applyEmptyStateButtonLayout();
+        }
     }
 
     private void applyEmptyStateButtonLayout() {
@@ -276,46 +279,72 @@ public class TerminalFragment extends Fragment {
     }
 
     private void updateConnectionState() {
-        if (transportBadge != null) {
-            if (isDemoActive && activeDemoTransport != null) {
-                transportBadge.setVisibility(View.VISIBLE);
-                if (activeDemoTransport == TerminalDemoController.DemoTransport.USB) {
-                    transportBadge.setText(R.string.terminal_badge_usb);
-                    transportBadge.setCompoundDrawablesWithIntrinsicBounds(
-                            R.drawable.ic_usb_24, 0, 0, 0);
+        // Update transport button visibility and icon
+        if (transportBtn != null) {
+            if (isSshConnected || isDemoActive) {
+                transportBtn.setVisibility(View.VISIBLE);
+                if (isDemoActive && activeDemoTransport == TerminalDemoController.DemoTransport.USB) {
+                    transportBtn.setText(R.string.terminal_transport_usb);
+                    transportBtn.setIconResource(R.drawable.ic_usb_24);
                 } else {
-                    transportBadge.setText(R.string.terminal_badge_ble);
-                    transportBadge.setCompoundDrawablesWithIntrinsicBounds(
-                            R.drawable.ic_bluetooth_24, 0, 0, 0);
+                    transportBtn.setText(R.string.terminal_transport_ble);
+                    transportBtn.setIconResource(R.drawable.ic_bluetooth_24);
                 }
-            } else if (isSshConnected) {
-                transportBadge.setVisibility(View.GONE);
-                transportBadge.setCompoundDrawables(null, null, null, null);
             } else {
-                transportBadge.setVisibility(View.GONE);
-                transportBadge.setCompoundDrawables(null, null, null, null);
+                transportBtn.setVisibility(View.GONE);
             }
         }
 
+        // Update status text
+        if (statusText != null) {
+            if (isSshConnected || isDemoActive) {
+                statusText.setText(R.string.terminal_connected);
+            } else {
+                statusText.setText(R.string.terminal_disconnected);
+            }
+        }
+
+        // Update host label
         if (hostLabel != null) {
             if (isSessionActive()) {
                 hostLabel.setVisibility(View.VISIBLE);
-                hostLabel.setText(activeSessionHost != null
+                String hostText = activeSessionHost != null
                         ? activeSessionHost
-                        : TerminalDemoController.DEMO_HOST);
+                        : TerminalDemoController.DEMO_HOST;
+                hostLabel.setText(hostText);
+                Log.v(TAG, "Host label set to VISIBLE, text=" + hostText
+                        + ", isSshConnected=" + isSshConnected
+                        + ", isDemoActive=" + isDemoActive);
             } else {
                 hostLabel.setVisibility(View.GONE);
+                Log.v(TAG, "Host label set to GONE, isSshConnected=" + isSshConnected
+                        + ", isDemoActive=" + isDemoActive);
             }
+        } else {
+            Log.v(TAG, "hostLabel is null, cannot update visibility");
         }
 
-        if (isSessionActive()) {
-            statusText.setText(R.string.terminal_connected);
-            connectBtn.setText(R.string.terminal_disconnect);
-            connectionOverlay.setVisibility(View.GONE);
-        } else {
-            statusText.setText(R.string.terminal_disconnected);
-            connectBtn.setText(R.string.terminal_connect);
-            connectionOverlay.setVisibility(View.VISIBLE);
+        // Update connect/disconnect button - always visible
+        if (connectBtn != null) {
+            connectBtn.setVisibility(View.VISIBLE);
+            if (isSessionActive()) {
+                connectBtn.setText(R.string.terminal_disconnect);
+                connectionOverlay.setVisibility(View.GONE);
+                // Hide demo buttons when connected
+                if (demoButtonRow != null) {
+                    demoButtonRow.setVisibility(View.GONE);
+                }
+            } else {
+                connectBtn.setText(R.string.terminal_connect);
+                // Show connection overlay with demo buttons when disconnected
+                if (connectionOverlay != null) {
+                    connectionOverlay.setVisibility(View.VISIBLE);
+                }
+                // Show demo buttons row
+                if (demoButtonRow != null) {
+                    demoButtonRow.setVisibility(View.VISIBLE);
+                }
+            }
         }
     }
 
@@ -909,8 +938,11 @@ public class TerminalFragment extends Fragment {
             bluetoothService.writeBleEthData(cleanupFrame);
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
-        Log.v(TAG, "connectBleEth: waiting 5000ms for full cleanup");
-        try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+        // Wait for firmware to process DISCONNECT frames.
+        // Firmware typically completes within 500ms; 3000ms provides safe margin
+        // for BLE latency and edge cases without excessive user wait time.
+        Log.v(TAG, "connectBleEth: waiting 3000ms for firmware cleanup");
+        try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
         Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
 
         bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
@@ -950,9 +982,7 @@ public class TerminalFragment extends Fragment {
             public void onConnected() {
                 mainHandler.post(() -> {
                     isSshConnected = true;
-                    statusText.setText(R.string.terminal_connected);
-                    connectBtn.setText(R.string.terminal_disconnect);
-                    connectionOverlay.setVisibility(View.GONE);
+                    updateConnectionState();
                     terminalView.postDelayed(() -> {
                         if (isSshConnected && terminalView != null) {
                             terminalView.showKeyboard();
@@ -967,9 +997,7 @@ public class TerminalFragment extends Fragment {
             public void onDisconnected() {
                 mainHandler.post(() -> {
                     isSshConnected = false;
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
+                    updateConnectionState();
                     terminalView.postInvalidate();
                 });
             }
@@ -1011,9 +1039,7 @@ public class TerminalFragment extends Fragment {
             public void onConnected() {
                 mainHandler.post(() -> {
                     isSshConnected = true;
-                    statusText.setText(R.string.terminal_connected);
-                    connectBtn.setText(R.string.terminal_disconnect);
-                    connectionOverlay.setVisibility(View.GONE);
+                    updateConnectionState();
                     terminalView.postDelayed(() -> {
                         if (isSshConnected && terminalView != null) {
                             terminalView.showKeyboard();
@@ -1028,9 +1054,7 @@ public class TerminalFragment extends Fragment {
             public void onDisconnected() {
                 mainHandler.post(() -> {
                     isSshConnected = false;
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
+                    updateConnectionState();
                     terminalView.postInvalidate();
                 });
             }
