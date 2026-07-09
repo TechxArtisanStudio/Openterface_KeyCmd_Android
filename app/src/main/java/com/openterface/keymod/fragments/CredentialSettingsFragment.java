@@ -525,6 +525,128 @@ public class CredentialSettingsFragment extends Fragment {
     }
 
     /**
+     * Shared setup for the Edit Key section used by both {@link #showGenerateKeyDialog}
+     * (after generation completes) and {@link #showEditKeyDialog} (directly).
+     * <p>
+     * Hides the generate section, shows the edit section, populates the key
+     * fields, wires up the public-key / private-key popup menus (Copy, Reveal,
+     * Hide/Collapse), and changes the dialog title and positive button text
+     * to "Edit Key" / "Save".
+     *
+     * @param dialogView            the inflated dialog root view
+     * @param dialog                the AlertDialog instance (title &amp; button are updated)
+     * @param publicKey             public key string (may be empty)
+     * @param privateKey            private key PEM content
+     * @param passphrase            passphrase to pre-fill (may be empty)
+     * @param algorithmLabel        algorithm label to display (e.g. "ED25519", "RSA")
+     * @param disableAlgorithmField whether the algorithm field should be read-only
+     */
+    private void setupEditKeySection(View dialogView, AlertDialog dialog,
+                                     String publicKey, String privateKey, String passphrase,
+                                     String algorithmLabel, boolean disableAlgorithmField) {
+        // ── Switch to edit mode ──
+        View generateSection = dialogView.findViewById(R.id.key_generate_section);
+        View editSection = dialogView.findViewById(R.id.key_edit_section);
+        EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
+        ImageView editAlgorithmMenu = dialogView.findViewById(R.id.key_edit_algorithm_menu);
+        TextView privateKeyText = dialogView.findViewById(R.id.key_edit_private_key_text);
+        TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
+        ImageView publicKeyMenu = dialogView.findViewById(R.id.key_edit_public_key_menu);
+        EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
+
+        generateSection.setVisibility(View.GONE);
+        editSection.setVisibility(View.VISIBLE);
+        // Hide Name field in Edit phase — name is only a comment during generation
+        View nameLayout = dialogView.findViewById(R.id.key_edit_name_input);
+        if (nameLayout != null && nameLayout.getParent() != null) {
+            ((View) nameLayout.getParent()).setVisibility(View.GONE);
+        }
+
+        editAlgorithmInput.setText(algorithmLabel);
+        if (disableAlgorithmField) {
+            editAlgorithmInput.setEnabled(false);
+        }
+        privateKeyText.setText(privateKey);
+        final String displayPublicKey = publicKey != null ? publicKey : "";
+        if (!displayPublicKey.isEmpty()) {
+            publicKeyText.setText(displayPublicKey);
+            publicKeyText.setMaxLines(1);
+            publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        } else {
+            publicKeyText.setText(R.string.credential_public_key_not_available);
+        }
+        editPassphraseInput.setText(passphrase != null ? passphrase : "");
+
+        // ── Public key three-dot menu: Copy / Reveal / Collapse ──
+        final boolean[] publicKeyExpanded = {false};
+        publicKeyMenu.setOnClickListener(view -> {
+            androidx.appcompat.widget.PopupMenu pubKeyMenu =
+                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
+            pubKeyMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
+            pubKeyMenu.getMenu().add(0, 2, 1, publicKeyExpanded[0]
+                    ? R.string.credential_key_collapse : R.string.credential_key_reveal);
+            pubKeyMenu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    if (!displayPublicKey.isEmpty()) {
+                        ClipboardManager clipboard = (ClipboardManager) requireContext()
+                                .getSystemService(Context.CLIPBOARD_SERVICE);
+                        clipboard.setPrimaryClip(
+                                ClipData.newPlainText("SSH Public Key", displayPublicKey));
+                        Toast.makeText(requireContext(),
+                                R.string.credential_public_key_copied, Toast.LENGTH_SHORT).show();
+                    }
+                } else if (item.getItemId() == 2) {
+                    publicKeyExpanded[0] = !publicKeyExpanded[0];
+                    if (publicKeyExpanded[0]) {
+                        publicKeyText.setMaxLines(Integer.MAX_VALUE);
+                        publicKeyText.setEllipsize(null);
+                    } else {
+                        publicKeyText.setMaxLines(1);
+                        publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    }
+                }
+                return true;
+            });
+            pubKeyMenu.show();
+        });
+
+        // ── Private key three-dot menu: Copy / Reveal / Hide ──
+        final boolean[] privateKeyVisible = {false};
+        editAlgorithmMenu.setOnClickListener(view -> {
+            androidx.appcompat.widget.PopupMenu algoMenu =
+                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
+            algoMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
+            algoMenu.getMenu().add(0, 2, 1, privateKeyVisible[0]
+                    ? R.string.credential_key_hide : R.string.credential_key_reveal);
+            algoMenu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    ClipboardManager clipboard = (ClipboardManager) requireContext()
+                            .getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(
+                            ClipData.newPlainText("SSH Private Key", privateKey));
+                    Toast.makeText(requireContext(), R.string.credential_private_key_copied,
+                            Toast.LENGTH_SHORT).show();
+                } else if (item.getItemId() == 2) {
+                    privateKeyVisible[0] = !privateKeyVisible[0];
+                    if (privateKeyVisible[0]) {
+                        privateKeyText.setText(privateKey);
+                        privateKeyText.setVisibility(View.VISIBLE);
+                    } else {
+                        privateKeyText.setVisibility(View.GONE);
+                    }
+                }
+                return true;
+            });
+            algoMenu.show();
+        });
+
+        // ── Update dialog chrome ──
+        dialog.setTitle(R.string.credential_edit_key);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setText(getString(R.string.credential_save));
+    }
+
+    /**
      * Import key from file using file picker.
      */
     private void importKeyFromFile() {
@@ -546,7 +668,6 @@ public class CredentialSettingsFragment extends Fragment {
                 .inflate(R.layout.dialog_generate_ssh_key, null);
 
         // ── Generate section views ──
-        View generateSection = dialogView.findViewById(R.id.key_generate_section);
         EditText nameInput = dialogView.findViewById(R.id.key_name_input);
         AutoCompleteTextView algorithmDropdown = dialogView.findViewById(R.id.key_algorithm_dropdown);
         TextInputLayout rsaSizeLayout = dialogView.findViewById(R.id.key_rsa_size_layout);
@@ -557,16 +678,6 @@ public class CredentialSettingsFragment extends Fragment {
         // Save-passphrase checkbox has no effect yet (passphrase is always stored); hide it.
         View savePassphraseCheckbox = dialogView.findViewById(R.id.key_save_passphrase_checkbox);
         if (savePassphraseCheckbox != null) savePassphraseCheckbox.setVisibility(View.GONE);
-
-        // ── Edit section views ──
-        View editSection = dialogView.findViewById(R.id.key_edit_section);
-        EditText editNameInput = dialogView.findViewById(R.id.key_edit_name_input);
-        EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
-        ImageView editAlgorithmMenu = dialogView.findViewById(R.id.key_edit_algorithm_menu);
-        TextView privateKeyText = dialogView.findViewById(R.id.key_edit_private_key_text);
-        TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
-        ImageView publicKeyMenu = dialogView.findViewById(R.id.key_edit_public_key_menu);
-        EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
 
         // Setup algorithm dropdown
         String[] algorithms = {
@@ -690,84 +801,15 @@ public class CredentialSettingsFragment extends Fragment {
                             requireActivity().runOnUiThread(() -> {
                                 progress.dismiss();
 
-                                // Switch to edit mode
-                                generateSection.setVisibility(View.GONE);
-                                editSection.setVisibility(View.VISIBLE);
-                                // Hide Name field in Edit phase — name is only a comment during generation
-                                ((View) editNameInput.getParent()).setVisibility(View.GONE);
-                                editAlgorithmInput.setText(selectedAlgo);
-                                publicKeyText.setText(result.publicKey);
-                                editPassphraseInput.setText(passphrase);
-
-                                // Public key three-dot menu: Copy / Reveal
-                                final boolean[] publicKeyExpanded = {false};
-                                publicKeyMenu.setOnClickListener(view -> {
-                                    androidx.appcompat.widget.PopupMenu pubKeyMenu = new androidx.appcompat.widget.PopupMenu(requireContext(), view);
-                                    pubKeyMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
-                                    pubKeyMenu.getMenu().add(0, 2, 1, publicKeyExpanded[0]
-                                            ? R.string.credential_key_collapse : R.string.credential_key_reveal);
-                                    pubKeyMenu.setOnMenuItemClickListener(item -> {
-                                        if (item.getItemId() == 1) {
-                                            // Copy public key to clipboard
-                                            ClipboardManager clipboard = (ClipboardManager) requireContext()
-                                                    .getSystemService(Context.CLIPBOARD_SERVICE);
-                                            clipboard.setPrimaryClip(
-                                                    ClipData.newPlainText("SSH Public Key", result.publicKey));
-                                            Toast.makeText(requireContext(),
-                                                    R.string.credential_public_key_copied, Toast.LENGTH_SHORT).show();
-                                        } else if (item.getItemId() == 2) {
-                                            // Toggle public key expanded state
-                                            publicKeyExpanded[0] = !publicKeyExpanded[0];
-                                            if (publicKeyExpanded[0]) {
-                                                publicKeyText.setMaxLines(Integer.MAX_VALUE);
-                                                publicKeyText.setEllipsize(null);
-                                            } else {
-                                                publicKeyText.setMaxLines(1);
-                                                publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                                            }
-                                        }
-                                        return true;
-                                    });
-                                    pubKeyMenu.show();
-                                });
-
-                                // Key Info three-dot menu: Copy / Reveal private key (inline multi-line)
-                                final boolean[] privateKeyVisible = {false};
-                                editAlgorithmMenu.setOnClickListener(view -> {
-                                    androidx.appcompat.widget.PopupMenu algoMenu = new androidx.appcompat.widget.PopupMenu(requireContext(), view);
-                                    algoMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
-                                    algoMenu.getMenu().add(0, 2, 1, privateKeyVisible[0]
-                                            ? R.string.credential_key_hide : R.string.credential_key_reveal);
-                                    algoMenu.setOnMenuItemClickListener(item -> {
-                                        if (item.getItemId() == 1) {
-                                            // Copy encrypted private key to clipboard
-                                            ClipboardManager clipboard = (ClipboardManager) requireContext()
-                                                    .getSystemService(Context.CLIPBOARD_SERVICE);
-                                            clipboard.setPrimaryClip(
-                                                    ClipData.newPlainText("SSH Private Key", result.privateKey));
-                                            Toast.makeText(requireContext(), R.string.credential_private_key_copied,
-                                                    Toast.LENGTH_SHORT).show();
-                                        } else if (item.getItemId() == 2) {
-                                            // Toggle private key inline multi-line display
-                                            privateKeyVisible[0] = !privateKeyVisible[0];
-                                            if (privateKeyVisible[0]) {
-                                                privateKeyText.setText(result.privateKey);
-                                                privateKeyText.setVisibility(View.VISIBLE);
-                                            } else {
-                                                privateKeyText.setVisibility(View.GONE);
-                                            }
-                                        }
-                                        return true;
-                                    });
-                                    algoMenu.show();
-                                });
-
-                                dialog.setTitle(R.string.credential_edit_key);
-                                dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                                        .setText(getString(R.string.credential_save));
+                                // Use shared helper to populate edit section
+                                setupEditKeySection(dialogView, dialog,
+                                        result.publicKey, result.privateKey,
+                                        passphrase, selectedAlgo, false);
                                 // Read passphrase from Edit input at save time
                                 saveHandler[0] = () -> {
-                                    String editedPassphrase = editPassphraseInput.getText().toString();
+                                    EditText editPassphrase = dialogView.findViewById(
+                                            R.id.key_edit_passphrase_input);
+                                    String editedPassphrase = editPassphrase.getText().toString();
                                     onGenerated.accept(result, editedPassphrase);
                                 };
                             });
@@ -804,115 +846,31 @@ public class CredentialSettingsFragment extends Fragment {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_generate_ssh_key, null);
 
-        // ── Edit section views ──
-        View editSection = dialogView.findViewById(R.id.key_edit_section);
-        View generateSection = dialogView.findViewById(R.id.key_generate_section);
-        EditText editAlgorithmInput = dialogView.findViewById(R.id.key_edit_algorithm_input);
-        ImageView editAlgorithmMenu = dialogView.findViewById(R.id.key_edit_algorithm_menu);
-        TextView privateKeyText = dialogView.findViewById(R.id.key_edit_private_key_text);
-        TextView publicKeyText = dialogView.findViewById(R.id.key_edit_public_key_text);
-        ImageView publicKeyMenu = dialogView.findViewById(R.id.key_edit_public_key_menu);
-        EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
-
-        // Jump straight to edit mode (skip generate phase)
-        generateSection.setVisibility(View.GONE);
-        editSection.setVisibility(View.VISIBLE);
-        // Hide Name field in Edit phase
-        View nameLayout = dialogView.findViewById(R.id.key_edit_name_input);
-        if (nameLayout != null && nameLayout.getParent() != null) {
-            ((View) nameLayout.getParent()).setVisibility(View.GONE);
-        }
-
         // Detect algorithm from stored public key (most reliable) or private key binary content.
         String algoLabel = detectKeyAlgorithm(publicKey, privateKey);
-        editAlgorithmInput.setText(algoLabel);
-        editAlgorithmInput.setEnabled(false);
 
-        // Set passphrase
-        editPassphraseInput.setText(passphrase != null ? passphrase : "");
-
-        // ── Public key display ──
-        final String displayPublicKey = publicKey != null ? publicKey : "";
-        if (!displayPublicKey.isEmpty()) {
-            publicKeyText.setText(displayPublicKey);
-            publicKeyText.setMaxLines(1);
-            publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        } else {
-            publicKeyText.setText(R.string.credential_public_key_not_available);
-        }
-
-        // Public key three-dot menu: Copy / Reveal
-        final boolean[] publicKeyExpanded = {false};
-        publicKeyMenu.setOnClickListener(view -> {
-            androidx.appcompat.widget.PopupMenu pubKeyMenu =
-                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
-            pubKeyMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
-            pubKeyMenu.getMenu().add(0, 2, 1, publicKeyExpanded[0]
-                    ? R.string.credential_key_collapse : R.string.credential_key_reveal);
-            pubKeyMenu.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == 1) {
-                    if (!displayPublicKey.isEmpty()) {
-                        ClipboardManager clipboard = (ClipboardManager) requireContext()
-                                .getSystemService(Context.CLIPBOARD_SERVICE);
-                        clipboard.setPrimaryClip(
-                                ClipData.newPlainText("SSH Public Key", displayPublicKey));
-                        Toast.makeText(requireContext(),
-                                R.string.credential_public_key_copied, Toast.LENGTH_SHORT).show();
-                    }
-                } else if (item.getItemId() == 2) {
-                    publicKeyExpanded[0] = !publicKeyExpanded[0];
-                    if (publicKeyExpanded[0]) {
-                        publicKeyText.setMaxLines(Integer.MAX_VALUE);
-                        publicKeyText.setEllipsize(null);
-                    } else {
-                        publicKeyText.setMaxLines(1);
-                        publicKeyText.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                    }
-                }
-                return true;
-            });
-            pubKeyMenu.show();
-        });
-
-        // ── Private key menu: Copy / Reveal ──
-        final boolean[] privateKeyVisible = {false};
-        editAlgorithmMenu.setOnClickListener(view -> {
-            androidx.appcompat.widget.PopupMenu algoMenu =
-                    new androidx.appcompat.widget.PopupMenu(requireContext(), view);
-            algoMenu.getMenu().add(0, 1, 0, R.string.credential_key_copy);
-            algoMenu.getMenu().add(0, 2, 1, privateKeyVisible[0]
-                    ? R.string.credential_key_hide : R.string.credential_key_reveal);
-            algoMenu.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == 1) {
-                    ClipboardManager clipboard = (ClipboardManager) requireContext()
-                            .getSystemService(Context.CLIPBOARD_SERVICE);
-                    clipboard.setPrimaryClip(
-                            ClipData.newPlainText("SSH Private Key", privateKey));
-                    Toast.makeText(requireContext(),
-                            R.string.credential_private_key_copied, Toast.LENGTH_SHORT).show();
-                } else if (item.getItemId() == 2) {
-                    privateKeyVisible[0] = !privateKeyVisible[0];
-                    if (privateKeyVisible[0]) {
-                        privateKeyText.setText(privateKey);
-                        privateKeyText.setVisibility(View.VISIBLE);
-                    } else {
-                        privateKeyText.setVisibility(View.GONE);
-                    }
-                }
-                return true;
-            });
-            algoMenu.show();
-        });
-
-        new MaterialAlertDialogBuilder(requireContext())
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.credential_edit_key)
                 .setView(dialogView)
-                .setPositiveButton(R.string.credential_save, (dialog, which) -> {
-                    String updatedPassphrase = editPassphraseInput.getText().toString();
-                    onSaved.accept(privateKey, updatedPassphrase);
-                })
+                .setPositiveButton(R.string.credential_save, null)
                 .setNegativeButton(R.string.credential_cancel, null)
-                .show();
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            // Use shared helper to populate edit section
+            setupEditKeySection(dialogView, dialog,
+                    publicKey, privateKey, passphrase, algoLabel, true);
+
+            // Override positive button to read passphrase from the edit input at save time
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                EditText editPassphraseInput = dialogView.findViewById(R.id.key_edit_passphrase_input);
+                String updatedPassphrase = editPassphraseInput.getText().toString();
+                onSaved.accept(privateKey, updatedPassphrase);
+                dialog.dismiss();
+            });
+        });
+
+        dialog.show();
     }
 
     // ─── Key Algorithm Detection ─────────────────────────────────────────
