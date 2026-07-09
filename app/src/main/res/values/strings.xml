@@ -1568,6 +1568,7 @@ by TechxArtisan</string>
     <string name="terminal_error_connection_refused">Connection refused by remote host</string>
     <string name="terminal_error_connection_timeout">Connection timeout. Please check network</string>
     <string name="terminal_error_unknown_host">Unknown host. Please check hostname</string>
+    <string name="terminal_error_host_key_unknown">Host key verification failed. Please check the host key and try again</string>
     <string name="terminal_error_no_route">Cannot reach remote host. Please check network</string>
     <string name="terminal_error_generic">An error occurred while connecting</string>
 

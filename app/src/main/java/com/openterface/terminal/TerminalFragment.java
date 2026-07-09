@@ -1150,7 +1150,15 @@ public class TerminalFragment extends Fragment {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_connection_timeout);
         }
 
-        // Unknown host - DNS resolution failed
+        // Unknown host - DNS resolution failed.
+        // NOTE: Distinguishes from "UnknownHostKey" (JSch host-key verification failure)
+        // which contains "UnknownHostKey" but the user only sees "unknownhost" when
+        // mapped to the i18n "Unknown host" message above. We check the more specific
+        // JSch message "UnknownHostKey" first so it has its own mapping.
+        if (lowerError.contains("unknownhostkey") || lowerError.contains("unknown host key")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_host_key_unknown);
+        }
+
         if (lowerError.contains("unknownhost") || lowerError.contains("unknown host") || lowerError.contains("resolve")) {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_unknown_host);
         }

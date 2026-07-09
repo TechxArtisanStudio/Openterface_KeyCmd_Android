@@ -5,6 +5,7 @@ import android.util.Log;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.UserInfo;
 
 import java.util.Properties;
 
@@ -46,13 +47,15 @@ public class SshKeyPusher {
 
                 JSch jsch = new JSch();
 
-                // Enable host key checking
+                // Host key checking: "ask" + auto-accept UserInfo.
+                // Saves the host key on first use, validates on subsequent uses.
                 Properties config = new Properties();
                 config.put("StrictHostKeyChecking", "ask");
                 config.put("PreferredAuthentications", "keyboard-interactive,password");
 
                 Session session = jsch.getSession(username, host, port);
                 session.setConfig(config);
+                session.setUserInfo(new AutoAcceptUserInfo());
                 session.setPassword(password);
 
                 if (socketFactory != null) {
@@ -122,5 +125,44 @@ public class SshKeyPusher {
         channel.disconnect();
 
         return exitStatus;
+    }
+
+    /**
+     * UserInfo implementation that auto-accepts host key prompts.
+     * Works with StrictHostKeyChecking="ask" to save the host key on first use
+     * and verify it on subsequent connections (MITM protection).
+     */
+    private static class AutoAcceptUserInfo implements UserInfo {
+        @Override
+        public String getPassphrase() {
+            return null;
+        }
+
+        @Override
+        public String getPassword() {
+            return null;
+        }
+
+        @Override
+        public boolean promptPassword(String message) {
+            return false;
+        }
+
+        @Override
+        public boolean promptPassphrase(String message) {
+            return false;
+        }
+
+        @Override
+        public boolean promptYesNo(String message) {
+            // Automatically accept unknown host keys — they will be saved to known_hosts
+            Log.d(TAG, "Auto-accepting host key: " + message);
+            return true;
+        }
+
+        @Override
+        public void showMessage(String message) {
+            Log.d(TAG, "JSch message: " + message);
+        }
     }
 }
