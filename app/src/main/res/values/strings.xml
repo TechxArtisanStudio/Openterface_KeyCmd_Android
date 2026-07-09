@@ -1574,6 +1574,12 @@ by TechxArtisan</string>
     <!-- Remote-added strings -->
     <string name="terminal_demo_usb">Preview demo (USB)</string>
     <string name="terminal_demo_ble">Preview demo (Bluetooth)</string>
+    <string name="terminal_start_demo">Start demo</string>
+    <string name="terminal_badge_usb">USB</string>
+    <string name="terminal_badge_ble">Bluetooth</string>
+    <string name="terminal_connect_choice_title">Connect to host</string>
+    <string name="terminal_connect_choice_message">Choose a preview demo or set up a real SSH connection.</string>
+    <string name="terminal_connect_choice_ssh">SSH connection…</string>
     <string name="top_mode_label_terminal_summary">SSH over USB or Bluetooth</string>
     <string name="top_mode_label_agent">Agent</string>
     <string name="top_mode_label_agent_summary">Plan, approve, then act</string>
