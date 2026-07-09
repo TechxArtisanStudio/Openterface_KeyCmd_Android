@@ -90,7 +90,7 @@ public class BleEthTransport implements TransportAdapter {
                 inboundPipe = new QueuePipe(256);   // BLE-Eth -> JSch
                 outboundPipe = new QueuePipe(256);   // JSch -> BLE-Eth
             }
-            Log.d(TAG, "BLE-Eth piped streams created");
+            Log.v(TAG, "BLE-Eth piped streams created");
 
             // Start thread to read JSch output and send via BLE
             jschOutputReaderThread = new Thread(() -> {
@@ -101,13 +101,13 @@ public class BleEthTransport implements TransportAdapter {
                     return;
                 }
                 try {
-                    Log.d(TAG, "JSch→BLE output reader thread started, waiting for tunnel connection...");
+                    Log.v(TAG, "JSch→BLE output reader thread started, waiting for tunnel connection...");
                     while (!Thread.currentThread().isInterrupted()) {
                         // Wait for tunnel to be connected
                         while (!running || connId < 0) {
                             Thread.sleep(50);
                         }
-                        Log.d(TAG, "JSch→BLE: tunnel is connected (connId=" + connId + "), reading from pipe...");
+                        Log.v(TAG, "JSch→BLE: tunnel is connected (connId=" + connId + "), reading from pipe...");
                         int len = outReader.read(buffer);
                         if (len > 0) {
                             Log.i(TAG, "JSch→BLE: sending " + len + " bytes");
@@ -121,18 +121,18 @@ public class BleEthTransport implements TransportAdapter {
                     if (running) {
                         Log.e(TAG, "JSch output reader thread ended with IOException: " + e.getMessage());
                     } else {
-                        Log.d(TAG, "JSch output reader thread exiting after disconnect: " + e.getMessage());
+                        Log.v(TAG, "JSch output reader thread exiting after disconnect: " + e.getMessage());
                     }
                 } catch (InterruptedException e) {
                     Log.w(TAG, "JSch output reader thread interrupted");
                 }
             }, "BleEth-JSchOutputReader");
             jschOutputReaderThread.start();
-            Log.d(TAG, "JSch→BLE output reader thread launched");
+            Log.v(TAG, "JSch→BLE output reader thread launched");
 
             // Build CONNECT frame
             byte[] frame = buildConnect(host, port);
-            Log.d(TAG, "BLE-Eth sending CONNECT frame");
+            Log.v(TAG, "BLE-Eth sending CONNECT frame");
 
             // Set up response listener
             connectLatch = new java.util.concurrent.CountDownLatch(1);
@@ -144,7 +144,7 @@ public class BleEthTransport implements TransportAdapter {
 
             // Wait for response
             boolean success = connectLatch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-            Log.d(TAG, "BLE-Eth connect latch result: success=" + success
+            Log.v(TAG, "BLE-Eth connect latch result: success=" + success
                     + " pendingConnId=" + pendingConnId
                     + " pendingConnStatus=0x" + Integer.toHexString(pendingConnStatus));
             if (!success) {
@@ -163,7 +163,7 @@ public class BleEthTransport implements TransportAdapter {
 
             connId = pendingConnId;
             running = true;
-            Log.d(TAG, "BLE-Eth connect success: connId=" + connId);
+            Log.v(TAG, "BLE-Eth connect success: connId=" + connId);
 
         } catch (Exception e) {
             Log.e(TAG, "BLE-Eth connect exception: " + e.getMessage());
@@ -186,25 +186,25 @@ public class BleEthTransport implements TransportAdapter {
         if (len <= MAX_FRAG_DATA) {
             byte[] frame = buildDataSingle(connId, payload);
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "send: single frame connId=" + connId
+                Log.v(TAG, "send: single frame connId=" + connId
                         + " len=" + len + " frame=" + bytesToHex(frame));
             } else {
-                Log.d(TAG, "send: single frame connId=" + connId + " len=" + len);
+                Log.v(TAG, "send: single frame connId=" + connId + " len=" + len);
             }
             if (writeCallback != null) {
                 writeCallback.write(frame);
             }
         } else {
             byte[][] frames = buildDataFragmented(connId, payload);
-            Log.d(TAG, "send: fragmented into " + frames.length + " frames for " + len + " bytes");
+            Log.v(TAG, "send: fragmented into " + frames.length + " frames for " + len + " bytes");
             for (int i = 0; i < frames.length; i++) {
                 if (BuildConfig.DEBUG) {
-                    Log.d(TAG, "send: fragment[" + i + "/" + frames.length + "]"
+                    Log.v(TAG, "send: fragment[" + i + "/" + frames.length + "]"
                             + " connId=" + connId
                             + " frameLen=" + frames[i].length
                             + " payload=" + bytesToHex(frames[i]));
                 } else {
-                    Log.d(TAG, "send: fragment[" + i + "/" + frames.length + "]"
+                    Log.v(TAG, "send: fragment[" + i + "/" + frames.length + "]"
                             + " connId=" + connId + " frameLen=" + frames[i].length);
                 }
                 if (writeCallback != null) {
@@ -278,23 +278,23 @@ public class BleEthTransport implements TransportAdapter {
     public void handleIncomingData(byte[] data) {
         Log.i(TAG, "BLE-Eth RX " + data.length + " bytes");
         if (BuildConfig.DEBUG) {
-            Log.d(TAG, "BLE-Eth RX hex: " + bytesToHex(data));
+            Log.v(TAG, "BLE-Eth RX hex: " + bytesToHex(data));
         }
         frameParser.feed(data);
         int frameCount = frameParser.pendingCount();
         if (frameCount > 0) {
-            Log.d(TAG, "BLE-Eth parsed " + frameCount + " frame(s), dispatching...");
+            Log.v(TAG, "BLE-Eth parsed " + frameCount + " frame(s), dispatching...");
         } else {
-            Log.d(TAG, "BLE-Eth RX did not produce any complete frames (parser buffering)");
+            Log.v(TAG, "BLE-Eth RX did not produce any complete frames (parser buffering)");
         }
         while (!frameParser.isEmpty()) {
             FrameParser.ParsedFrame frame = frameParser.pop();
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
+                Log.v(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
                         + " payloadLen=" + frame.payload.length
                         + " payload=" + bytesToHex(frame.payload));
             } else {
-                Log.d(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
+                Log.v(TAG, "BLE-Eth parsed frame: cmd=0x" + Integer.toHexString(frame.cmd)
                         + " payloadLen=" + frame.payload.length);
             }
             handleFrame(frame);
@@ -302,7 +302,7 @@ public class BleEthTransport implements TransportAdapter {
     }
 
     private void handleFrame(FrameParser.ParsedFrame frame) {
-        Log.d(TAG, "BLE-Eth handleFrame: cmd=0x" + Integer.toHexString(frame.cmd));
+        Log.v(TAG, "BLE-Eth handleFrame: cmd=0x" + Integer.toHexString(frame.cmd));
         switch (frame.cmd) {
             case CMD_CONNECT_RESP:
                 if (frame.payload.length >= 2) {
@@ -311,7 +311,7 @@ public class BleEthTransport implements TransportAdapter {
                     Log.i(TAG, "BLE-Eth CONNECT_RESP: connId=" + pendingConnId
                             + " status=0x" + Integer.toHexString(pendingConnStatus));
                     if (connectLatch != null) {
-                        Log.d(TAG, "BLE-Eth CONNECT_RESP: counting down latch");
+                        Log.v(TAG, "BLE-Eth CONNECT_RESP: counting down latch");
                         connectLatch.countDown();
                     } else {
                         Log.w(TAG, "BLE-Eth CONNECT_RESP: connectLatch is null!");
@@ -322,10 +322,10 @@ public class BleEthTransport implements TransportAdapter {
                 break;
 
             case CMD_DATA_RESP: // 0x91 — shared with DATA_PUSH
-                Log.d(TAG, "BLE-Eth DATA_RESP/PUSH: payloadLen=" + frame.payload.length);
+                Log.v(TAG, "BLE-Eth DATA_RESP/PUSH: payloadLen=" + frame.payload.length);
                 if (looksLikeDataAck(frame.payload)) {
                     // ACK from firmware — can be ignored for basic operation
-                    Log.d(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF));
+                    Log.v(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF));
                 } else {
                     // Incoming data push
                     Log.i(TAG, "BLE-Eth DATA push: payloadLen=" + frame.payload.length);
@@ -346,7 +346,7 @@ public class BleEthTransport implements TransportAdapter {
                             OutputStream out = inbound.getOutputStream();
                             if (out != null) {
                                 out.write(reassembled.data);
-                                Log.d(TAG, "BLE-Eth: wrote " + reassembled.data.length + " bytes to JSch input pipe");
+                                Log.v(TAG, "BLE-Eth: wrote " + reassembled.data.length + " bytes to JSch input pipe");
                             }
                         } catch (IOException e) {
                             synchronized (stateLock) {
@@ -355,13 +355,13 @@ public class BleEthTransport implements TransportAdapter {
                             Log.w(TAG, "BLE-Eth: JSch input pipe closed, dropping incoming data: " + e.getMessage());
                         }
                         if (listener != null) {
-                            Log.d(TAG, "BLE-Eth: notifying listener of " + reassembled.data.length + " bytes");
+                            Log.v(TAG, "BLE-Eth: notifying listener of " + reassembled.data.length + " bytes");
                             listener.onDataReceived(reassembled.data, reassembled.data.length);
                         } else {
                             Log.w(TAG, "BLE-Eth: listener is null");
                         }
                     } else {
-                        Log.d(TAG, "BLE-Eth: data fragment buffered, waiting for more fragments");
+                        Log.v(TAG, "BLE-Eth: data fragment buffered, waiting for more fragments");
                     }
                 }
                 break;
@@ -386,7 +386,7 @@ public class BleEthTransport implements TransportAdapter {
                 break;
 
             default:
-                Log.d(TAG, "BLE-Eth unknown cmd: 0x" + Integer.toHexString(frame.cmd));
+                Log.v(TAG, "BLE-Eth unknown cmd: 0x" + Integer.toHexString(frame.cmd));
                 break;
         }
     }

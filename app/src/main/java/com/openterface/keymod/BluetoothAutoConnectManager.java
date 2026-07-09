@@ -79,11 +79,11 @@ public class BluetoothAutoConnectManager {
 
     public void startAutoConnect() {
         if (isConnecting) {
-            Log.d(TAG, "Auto-connect already in progress");
+            Log.v(TAG, "Auto-connect already in progress");
             return;
         }
         if (connectionManager != null && !connectionManager.isAutoConnectEnabled()) {
-            Log.d(TAG, "Auto-connect disabled in settings");
+            Log.v(TAG, "Auto-connect disabled in settings");
             return;
         }
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -103,7 +103,7 @@ public class BluetoothAutoConnectManager {
             return;
         }
         if (bluetoothService != null && bluetoothService.isConnected()) {
-            Log.d(TAG, "Already connected to a Bluetooth device");
+            Log.v(TAG, "Already connected to a Bluetooth device");
             RxBleDevice connectedDevice = bluetoothService.getConnectedDevice();
             if (connectedDevice != null) {
                 notifySuccess(connectedDevice);
@@ -215,7 +215,7 @@ public class BluetoothAutoConnectManager {
                 };
         bluetoothService.addConnectionStateListener(attemptListener);
         bluetoothService.setReconnectSuppressed(true);
-        Log.d(TAG, "Auto-connect attempt to " + expectedMac);
+        Log.v(TAG, "Auto-connect attempt to " + expectedMac);
         bluetoothService.connectToDevice(device);
         attemptTimeoutRunnable =
                 () -> {
@@ -324,7 +324,7 @@ public class BluetoothAutoConnectManager {
     private void handleRoundFailure(String reason) {
         currentRound++;
         if (currentRound < MAX_ROUNDS) {
-            Log.d(TAG, "Round failed: " + reason + ", retry " + currentRound + "/" + MAX_ROUNDS);
+            Log.v(TAG, "Round failed: " + reason + ", retry " + currentRound + "/" + MAX_ROUNDS);
             if (listener != null) {
                 listener.onAutoConnectRetrying(currentRound);
             }
@@ -351,7 +351,7 @@ public class BluetoothAutoConnectManager {
             scanDisposable.dispose();
         }
         cleanupSession();
-        Log.d(TAG, "Successfully connected to " + sanitizeDeviceName(device.getName()));
+        Log.v(TAG, "Successfully connected to " + sanitizeDeviceName(device.getName()));
         notifySuccess(device);
     }
 
@@ -373,7 +373,7 @@ public class BluetoothAutoConnectManager {
         if (bluetoothService != null) {
             bluetoothService.setReconnectSuppressed(false);
         }
-        Log.d(TAG, "Auto-connect stopped");
+        Log.v(TAG, "Auto-connect stopped");
     }
 
     private void unregisterAttemptListener() {

@@ -70,6 +70,7 @@ public class SshKeyGenerator {
      * @param passphrase optional passphrase for encryption (null or empty = no encryption)
      */
     public static KeyPairResult generateEd25519(String comment, String passphrase) throws Exception {
+        Log.v(TAG, "Generating Ed25519 key pair using Apache MINA SSHD...");
         return generateEd25519(comment, passphrase, 16);
     }
 
@@ -86,7 +87,7 @@ public class SshKeyGenerator {
      * @throws Exception if key generation fails
      */
     public static KeyPairResult generateEd25519(String comment, String passphrase, int rounds) throws Exception {
-        Log.d(TAG, "Generating Ed25519 key pair using Apache MINA SSHD...");
+        Log.v(TAG, "Generating Ed25519 key pair using Apache MINA SSHD...");
 
         // Clamp rounds to safe range [16, 1024] — MINA SSHD enforces minimum 16
         if (rounds < 16) rounds = 16;
@@ -104,7 +105,7 @@ public class SshKeyGenerator {
         ByteArrayOutputStream privateKeyStream = new ByteArrayOutputStream();
 
         if (passphrase != null && !passphrase.isEmpty()) {
-            Log.d(TAG, "Encrypting Ed25519 private key (rounds=" + rounds + ")...");
+            Log.v(TAG, "Encrypting Ed25519 private key (rounds=" + rounds + ")...");
             OpenSSHKeyEncryptionContext encCtx = new OpenSSHKeyEncryptionContext();
             encCtx.setPassword(passphrase);
             encCtx.setKdfRounds(rounds);
@@ -121,7 +122,7 @@ public class SshKeyGenerator {
         writer.writePublicKey(keyPair.getPublic(), pubKeyComment, publicKeyStream);
         String publicKey = publicKeyStream.toString("UTF-8").trim();
 
-        Log.d(TAG, "Generated Ed25519 key pair successfully");
+        Log.v(TAG, "Generated Ed25519 key pair successfully");
         return new KeyPairResult(privateKey, publicKey);
     }
 
@@ -155,7 +156,7 @@ public class SshKeyGenerator {
      * @throws Exception if key generation fails
      */
     public static KeyPairResult generateRSA(int bits, String comment, String passphrase) throws Exception {
-        Log.d(TAG, "Generating RSA-" + bits + " key pair using Apache MINA SSHD...");
+        Log.v(TAG, "Generating RSA-" + bits + " key pair using Apache MINA SSHD...");
 
         // Step 1: Generate RSA key pair
         java.security.KeyPairGenerator keyGen = SecurityUtils.getKeyPairGenerator("RSA");
@@ -170,7 +171,7 @@ public class SshKeyGenerator {
         // Write private key
         ByteArrayOutputStream privateKeyStream = new ByteArrayOutputStream();
         if (passphrase != null && !passphrase.isEmpty()) {
-            Log.d(TAG, "Encrypting RSA private key...");
+            Log.v(TAG, "Encrypting RSA private key...");
             OpenSSHKeyEncryptionContext encCtx = new OpenSSHKeyEncryptionContext();
             encCtx.setPassword(passphrase);
             encCtx.setKdfRounds(16);
@@ -186,7 +187,7 @@ public class SshKeyGenerator {
         writer.writePublicKey(keyPair.getPublic(), pubKeyComment, publicKeyStream);
         String publicKey = publicKeyStream.toString("UTF-8").trim();
 
-        Log.d(TAG, "Generated RSA-" + bits + " key pair successfully");
+        Log.v(TAG, "Generated RSA-" + bits + " key pair successfully");
         return new KeyPairResult(privateKey, publicKey);
     }
 }

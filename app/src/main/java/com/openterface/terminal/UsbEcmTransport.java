@@ -29,19 +29,19 @@ public class UsbEcmTransport implements TransportAdapter {
 
     @Override
     public void connect(String host, int port, long timeoutMs) {
-        Log.d(TAG, "connect() called: timeoutMs=" + timeoutMs);
+        Log.v(TAG, "connect() called: timeoutMs=" + timeoutMs);
         try {
             socket = new Socket();
-            Log.d(TAG, "Socket created, attempting connect");
+            Log.v(TAG, "Socket created, attempting connect");
             socket.connect(new InetSocketAddress(host, port), (int) timeoutMs);
-            Log.d(TAG, "Socket connected successfully");
+            Log.v(TAG, "Socket connected successfully");
             socket.setSoTimeout(0); // blocking read
             socket.setTcpNoDelay(true); // SSH needs low latency
 
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
             running = true;
-            Log.d(TAG, "Transport ready, starting read thread");
+            Log.v(TAG, "Transport ready, starting read thread");
 
             // Start read thread
             new Thread(this::readLoop, "UsbEcm-Read").start();

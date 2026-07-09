@@ -580,7 +580,7 @@ public class AISettingsFragment extends Fragment {
                 prefs.edit()
                     .putString(PREF_AI_API_KEY + "_" + currentProvider, s.toString())
                     .apply();
-                Log.d("AISettings", "Saved API key for provider " + currentProvider
+                Log.v("AISettings", "Saved API key for provider " + currentProvider
                         + " (length=" + s.length() + ")");
             }
             @Override public void afterTextChanged(android.text.Editable s) {}

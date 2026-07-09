@@ -77,14 +77,14 @@ public class MouseFragment extends Fragment {
             BluetoothService.BluetoothBinder binder = (BluetoothService.BluetoothBinder) service;
             bluetoothService = binder.getService();
             isServiceBound = true;
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     };
 
@@ -113,7 +113,7 @@ public class MouseFragment extends Fragment {
                 check_send_data.append(sendKBData.substring(i)).append(" ");
             }
         }
-        Log.d(TAG, "sendKBData: " + check_send_data.toString().trim());
+        Log.v(TAG, "sendKBData: " + check_send_data.toString().trim());
     }
 
     public static byte[] hexStringToByteArray(String ByteData) {
@@ -136,7 +136,7 @@ public class MouseFragment extends Fragment {
                 byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
                 Thread.sleep(10);
                 bluetoothService.sendData(releaseSendKBDataBytes);
-                Log.d(TAG, "Sent Bluetooth release data");
+                Log.v(TAG, "Sent Bluetooth release data");
             } catch (InterruptedException e) {
                 Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
             }
@@ -145,7 +145,7 @@ public class MouseFragment extends Fragment {
                 byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
                 Thread.sleep(10);
                 port.write(releaseSendKBDataBytes, 20);
-                Log.d(TAG, "Sent USB release data");
+                Log.v(TAG, "Sent USB release data");
             } catch (IOException | InterruptedException e) {
                 Log.e(TAG, "Error sending USB release data: " + e.getMessage());
             }
@@ -164,7 +164,7 @@ public class MouseFragment extends Fragment {
             animateBottomWashIntensityTo(0f, TOUCHPAD_WASH_DRAG_OFF_FADE_OUT_MS, new DecelerateInterpolator());
         }
         updateTouchPadTips();
-        Log.d(TAG, "Drag mode " + (enabled ? "ON" : "OFF"));
+        Log.v(TAG, "Drag mode " + (enabled ? "ON" : "OFF"));
     }
 
     private void initTouchPadWashStyle() {
@@ -439,14 +439,14 @@ public class MouseFragment extends Fragment {
                 if (isServiceBound && bluetoothService != null && bluetoothService.isConnected()) {
                     try {
                         bluetoothService.sendData(sendKBDataBytes);
-                        Log.d(TAG, "Sent Bluetooth relative mouse data: " + sendMSData);
+                        Log.v(TAG, "Sent Bluetooth relative mouse data: " + sendMSData);
                     } catch (Exception e) {
                         Log.e(TAG, "Error sending Bluetooth relative mouse data: " + e.getMessage());
                     }
                 } else if (port != null) {
                     try {
                         port.write(sendKBDataBytes, 20);
-                        Log.d(TAG, "Sent USB relative mouse data: " + sendMSData);
+                        Log.v(TAG, "Sent USB relative mouse data: " + sendMSData);
                     } catch (IOException e) {
                         Log.e(TAG, "Error sending USB relative mouse data: " + e.getMessage());
                     }
@@ -501,7 +501,7 @@ public class MouseFragment extends Fragment {
                     }
                     pulseTouchPadButtonVisual();
                     TouchPadHaptics.onLeftClick(touchPad.getContext());
-                    Log.d(TAG, "TouchPad single tap -> left click");
+                    Log.v(TAG, "TouchPad single tap -> left click");
                     new Thread(() -> {
                         try {
                             String data = "57AB0005050101000000";
@@ -528,7 +528,7 @@ public class MouseFragment extends Fragment {
                     }
                     pulseTouchPadButtonVisual();
                     TouchPadHaptics.onDoubleClick(touchPad.getContext());
-                    Log.d(TAG, "TouchPad double tap -> double click");
+                    Log.v(TAG, "TouchPad double tap -> double click");
                     new Thread(() -> {
                         try {
                             String data = "57AB0005050101000000";
@@ -555,7 +555,7 @@ public class MouseFragment extends Fragment {
                 public void onTouchRightClick() {
                     pulseTouchPadButtonVisual();
                     TouchPadHaptics.onRightClick(touchPad.getContext());
-                    Log.d(TAG, "TouchPad 2-finger tap -> right click");
+                    Log.v(TAG, "TouchPad 2-finger tap -> right click");
                     new Thread(() -> {
                         try {
                             String data = "57AB0005050102000000";
@@ -617,7 +617,7 @@ public class MouseFragment extends Fragment {
         if (isServiceBound) {
             requireContext().unbindService(serviceConnection);
             isServiceBound = false;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     }
 }

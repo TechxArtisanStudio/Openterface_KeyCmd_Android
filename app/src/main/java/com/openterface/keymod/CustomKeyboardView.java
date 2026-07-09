@@ -433,14 +433,14 @@ public class CustomKeyboardView extends LinearLayout {
             BluetoothService.BluetoothBinder binder = (BluetoothService.BluetoothBinder) service;
             bluetoothService = binder.getService();
             isServiceBound = true;
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     };
 
@@ -664,7 +664,7 @@ public class CustomKeyboardView extends LinearLayout {
 
         // Reload keyboard layout when orientation changes
         boolean isLandscape = newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        Log.d(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
+        Log.v(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
         kmProKeyPreview.dismiss();
         loadKeyboardForCurrentState(getContext());
         removeAllViews();
@@ -690,7 +690,7 @@ public class CustomKeyboardView extends LinearLayout {
         // Load keyboard layout based on orientation (matching iOS behavior)
         reloadForCurrentOrientation();
         
-        Log.d(TAG, "Parsed keyboard (landscape=" + isLandscape(context) + "): lowerKeys=" + lowerKeys.size());
+        Log.v(TAG, "Parsed keyboard (landscape=" + isLandscape(context) + "): lowerKeys=" + lowerKeys.size());
         bindService(context);
         updateKeyboard();
     }
@@ -2412,7 +2412,7 @@ public class CustomKeyboardView extends LinearLayout {
                             System.out.println("Hardcoded icon for Enter: " + iconResId);
                         }
 
-//                        Log.d(TAG,"Parsed Key: label=" + label + ", symbolLabel=" + symbolLabel + ", code=0x" + Integer.toHexString(code).toUpperCase() + ", codeStr=" + codeStr + ", width=" + widthPercent + ", icon=" + iconResId + ", gap=" + horizontalGap + ", repeatable=" + isRepeatable);
+//                        Log.v(TAG,"Parsed Key: label=" + label + ", symbolLabel=" + symbolLabel + ", code=0x" + Integer.toHexString(code).toUpperCase() + ", codeStr=" + codeStr + ", width=" + widthPercent + ", icon=" + iconResId + ", gap=" + horizontalGap + ", repeatable=" + isRepeatable);
                         currentRow.add(new Key(label, symbolLabel, alternates, cornerHint, code, codeStr, widthPercent, iconResId, horizontalGap, isRepeatable, requiresShift, -1, false));
                     }
                 } else if (eventType == XmlPullParser.END_TAG) {
@@ -2701,7 +2701,7 @@ public class CustomKeyboardView extends LinearLayout {
                 for (String functionCode : functionalKeyCodes) {
                     if (key.codeStr.equals(functionCode)) {
                         isFunctionalKey = true;
-                        Log.d(TAG, "Matched functional key: label=" + key.label + ", code=0x" + Integer.toHexString(key.code));
+                        Log.v(TAG, "Matched functional key: label=" + key.label + ", code=0x" + Integer.toHexString(key.code));
                         break;
                     }
                 }
@@ -2900,7 +2900,7 @@ public class CustomKeyboardView extends LinearLayout {
                             SpannableString spannable = new SpannableString(combinedText);
                             textButton.setText(spannable);
                             textButton.setTextColor(resolveThemeTextColor());
-                            Log.d(TAG, "Applied Spannable: combinedText=" + combinedText + ", symbolLabel=" + symbolLabel + ", displayLabel=" + displayLabel);
+                            Log.v(TAG, "Applied Spannable: combinedText=" + combinedText + ", symbolLabel=" + symbolLabel + ", displayLabel=" + displayLabel);
                         } else {
                             textButton.setText(showAlternateLabel && !symbolLabel.isEmpty() ? symbolLabel : displayLabel);
                             textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
@@ -3093,7 +3093,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (!BuildConfig.DEBUG && !Log.isLoggable(TAG_KMPRO_TOUCH, Log.DEBUG)) {
             return;
         }
-        Log.d(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
+        Log.v(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
     }
 
     /** Attaches click + touch + long-click listeners to a key view. */
@@ -7835,7 +7835,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (port == null) {
             clearProChordAndHoldLockPopupUiState();
         }
-        Log.d(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
+        Log.v(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
     }
 
     public static String makeChecksum(String data) {
@@ -7853,7 +7853,7 @@ public class CustomKeyboardView extends LinearLayout {
                         + " btConn="
                         + (bluetoothService != null && bluetoothService.isConnected()));
         KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
-        Log.d(TAG, "Sent keyboard release (all keys)");
+        Log.v(TAG, "Sent keyboard release (all keys)");
         post(this::reassertKeyboardAfterHidRelease);
     }
 
@@ -7888,7 +7888,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void handleKeyPress(Key key) {
-        Log.d(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
+        Log.v(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
         logKmProTouch(
                 "handleKeyPress enter label="
                         + (key != null ? key.label : "null")
@@ -8379,7 +8379,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (isServiceBound) {
             getContext().unbindService(serviceConnection);
             isServiceBound = false;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     }
 }

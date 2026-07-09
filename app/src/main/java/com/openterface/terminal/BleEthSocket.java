@@ -71,7 +71,7 @@ public class BleEthSocket extends Socket {
     public void connectTunnel(String host, int port, long timeoutMs) throws IOException {
         try {
             // Establish BLE-Eth tunnel (this sets up the piped streams internally)
-            Log.d(TAG, "Connecting BLE-Eth tunnel");
+            Log.v(TAG, "Connecting BLE-Eth tunnel");
             transport.connect(host, port, timeoutMs);
 
             if (!transport.isConnected()) {
@@ -83,7 +83,7 @@ public class BleEthSocket extends Socket {
             jsToBleOutput = transport.getOutputStream();
 
             connected = true;
-            Log.d(TAG, "BLE-Eth tunnel connected");
+            Log.v(TAG, "BLE-Eth tunnel connected");
 
         } catch (Exception e) {
             if (e instanceof IOException) throw (IOException) e;
@@ -106,7 +106,7 @@ public class BleEthSocket extends Socket {
     public synchronized void close() throws IOException {
         connected = false;
         transport.disconnect();
-        Log.d(TAG, "BLE-Eth socket closed");
+        Log.v(TAG, "BLE-Eth socket closed");
     }
 
     @Override

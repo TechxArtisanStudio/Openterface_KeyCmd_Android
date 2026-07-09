@@ -124,7 +124,7 @@ public class TerminalSession {
                 else if (b >= 0x20 && b < 0x7F) rawHex.append((char)b);
                 else rawHex.append(String.format("\\x%02X", b));
             }
-            Log.d("TerminalSession", "RAW[" + len + "]: " + rawHex.toString());
+            Log.v("TerminalSession", "RAW[" + len + "]: " + rawHex.toString());
         }
 
         ansiParser.parse(data, len, new AnsiEscapeParser.Callback() {

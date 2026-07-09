@@ -190,12 +190,12 @@ public class ConnectionManager {
      */
     public void autoConnect() {
         if (!isAutoConnectEnabled()) {
-            Log.d(TAG, "Auto-connect is disabled");
+            Log.v(TAG, "Auto-connect is disabled");
             return;
         }
 
         String lastType = prefs.getString(KEY_LAST_CONNECTION_TYPE, "");
-        Log.d(TAG, "Attempting auto-connect, last type: " + lastType);
+        Log.v(TAG, "Attempting auto-connect, last type: " + lastType);
 
         if ("USB".equals(lastType)) {
             connectUsb();
@@ -222,7 +222,7 @@ public class ConnectionManager {
      * Connect to USB device
      */
     public boolean connectUsb() {
-        Log.d(TAG, "Attempting USB connection");
+        Log.v(TAG, "Attempting USB connection");
         updateConnectionState(ConnectionType.USB, ConnectionState.CONNECTING);
 
         UsbManager manager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
@@ -240,7 +240,7 @@ public class ConnectionManager {
 
         // Check USB permission
         if (!manager.hasPermission(device)) {
-            Log.d(TAG, "Requesting USB permission");
+            Log.v(TAG, "Requesting USB permission");
             Intent permissionIntent = new Intent(ACTION_USB_PERMISSION);
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context, 
@@ -267,7 +267,7 @@ public class ConnectionManager {
 
             // HID helpers used to prefer BLE when still connected; tear down BLE once USB is live.
             if (bluetoothService != null && bluetoothService.isConnected()) {
-                Log.d(TAG, "Disconnecting Bluetooth after USB serial is ready");
+                Log.v(TAG, "Disconnecting Bluetooth after USB serial is ready");
                 bluetoothService.disconnect();
             }
 
@@ -275,7 +275,7 @@ public class ConnectionManager {
             saveLastConnection(ConnectionType.USB, null, null);
 
             updateConnectionState(ConnectionType.USB, ConnectionState.CONNECTED);
-            Log.d(TAG, "USB connected successfully");
+            Log.v(TAG, "USB connected successfully");
             return true;
             
         } catch (IOException e) {
@@ -290,12 +290,12 @@ public class ConnectionManager {
      * Connect to BLE device
      */
     public void connectBluetooth(RxBleDevice device) {
-        Log.d(TAG, "Connecting to BLE device: " + device.getMacAddress()
+        Log.v(TAG, "Connecting to BLE device: " + device.getMacAddress()
                 + ", bluetoothService=" + (bluetoothService != null ? "ready" : "NOT_READY"));
         this.bleDevice = device;
         if (bluetoothService != null && bluetoothService.isConnected()) {
             updateConnectionState(ConnectionType.BLUETOOTH, ConnectionState.CONNECTED);
-            Log.d(TAG, "Bluetooth service ready, marked as CONNECTED");
+            Log.v(TAG, "Bluetooth service ready, marked as CONNECTED");
         } else {
             updateConnectionState(ConnectionType.BLUETOOTH, ConnectionState.CONNECTING);
             Log.w(TAG, "Bluetooth service not ready yet, service=" + (bluetoothService != null ? "exists" : "NULL"));
@@ -307,13 +307,13 @@ public class ConnectionManager {
      * Disconnect current connection
      */
     public void disconnect() {
-        Log.d(TAG, "Disconnecting, type: " + currentConnectionType);
+        Log.v(TAG, "Disconnecting, type: " + currentConnectionType);
         
         if (currentConnectionType == ConnectionType.USB && usbPort != null) {
             try {
                 usbPort.close();
                 usbPort = null;
-                Log.d(TAG, "USB port closed");
+                Log.v(TAG, "USB port closed");
             } catch (IOException e) {
                 Log.e(TAG, "Error closing USB port: " + e.getMessage());
             }
@@ -380,7 +380,7 @@ public class ConnectionManager {
         }
         
         editor.apply();
-        Log.d(TAG, "Saved last connection: " + type.name());
+        Log.v(TAG, "Saved last connection: " + type.name());
     }
 
     /**
@@ -531,7 +531,7 @@ public class ConnectionManager {
         }
         legEd.apply();
         prefs.edit().putBoolean(KEY_PAIRED_BLE_LEGACY_MIGRATED, true).apply();
-        Log.d(TAG, "Migrated legacy BluetoothPrefs paired devices into ConnectionPrefs");
+        Log.v(TAG, "Migrated legacy BluetoothPrefs paired devices into ConnectionPrefs");
     }
 
     private List<PairedBleDevice> readPairedBleDevicesFromPrefs() {
@@ -610,7 +610,7 @@ public class ConnectionManager {
      */
     public void setMainActivity(MainActivity activity) {
         this.mainActivity = activity;
-        Log.d(TAG, "MainActivity reference set");
+        Log.v(TAG, "MainActivity reference set");
     }
 
     /**
@@ -663,7 +663,7 @@ public class ConnectionManager {
         } else {
             bluetoothServiceStateListener = null;
         }
-        Log.d(TAG, "BluetoothService set for HID sending: " + (service != null ? "valid" : "NULL"));
+        Log.v(TAG, "BluetoothService set for HID sending: " + (service != null ? "valid" : "NULL"));
     }
 
     /**
@@ -676,11 +676,11 @@ public class ConnectionManager {
         
         // Try to get from MainActivity context if available
         if (mainActivity != null) {
-            Log.d(TAG, "BluetoothService reference is NULL, attempting recovery from MainActivity...");
+            Log.v(TAG, "BluetoothService reference is NULL, attempting recovery from MainActivity...");
             BluetoothService service = mainActivity.getBluetoothService();
             if (service != null) {
                 this.bluetoothService = service;
-                Log.d(TAG, "Successfully recovered BluetoothService from MainActivity");
+                Log.v(TAG, "Successfully recovered BluetoothService from MainActivity");
                 return service;
             }
         }

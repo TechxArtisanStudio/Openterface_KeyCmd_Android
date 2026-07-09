@@ -113,7 +113,7 @@ public class HIDSender {
     public static void sendGamepadEvent(UsbSerialPort usbPort, BluetoothService bluetoothService,
                                         int buttons, int leftX, int leftY, int rightX, int rightY) {
         // For now, send as keyboard events - full gamepad protocol TBD
-        Log.d(TAG, "Gamepad event: buttons=" + buttons + ", sticks=(" + leftX + "," + leftY + "),(" + rightX + "," + rightY + ")");
+        Log.v(TAG, "Gamepad event: buttons=" + buttons + ", sticks=(" + leftX + "," + leftY + "),(" + rightX + "," + rightY + ")");
     }
 
     /**
@@ -135,7 +135,7 @@ public class HIDSender {
                     Thread.sleep(10);
                     offset += chunkSize;
                 }
-                Log.d(TAG, "Sent " + type + " via USB: " + byteArrayToHexString(data));
+                Log.v(TAG, "Sent " + type + " via USB: " + byteArrayToHexString(data));
             } catch (IOException | InterruptedException e) {
                 Log.e(TAG, "Error sending USB data: " + e.getMessage());
             }

@@ -109,7 +109,7 @@ public class ConnectionDialogFragment extends DialogFragment {
             bluetoothService = binder.getService();
             isServiceBound = true;
             bluetoothService.setRxBleClient(rxBleClient);
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
             updateBluetoothStatus();
         }
 
@@ -117,7 +117,7 @@ public class ConnectionDialogFragment extends DialogFragment {
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     };
 
@@ -196,12 +196,12 @@ public class ConnectionDialogFragment extends DialogFragment {
 
     private void setupListeners() {
         usbCard.setOnClickListener(v -> {
-            Log.d(TAG, "USB card clicked");
+            Log.v(TAG, "USB card clicked");
             handleUsbConnection();
         });
 
         bluetoothCard.setOnClickListener(v -> {
-            Log.d(TAG, "Bluetooth card clicked");
+            Log.v(TAG, "Bluetooth card clicked");
             handleBluetoothConnection();
         });
 
@@ -248,20 +248,20 @@ public class ConnectionDialogFragment extends DialogFragment {
     private void handleBluetoothConnection() {
         if (connectionManager == null) return;
 
-        Log.d(TAG, "handleBluetoothConnection called");
+        Log.v(TAG, "handleBluetoothConnection called");
         ConnectionManager.ConnectionType currentType = connectionManager.getCurrentConnectionType();
 
         // Always open Bluetooth Settings from this card (disconnect only from that screen).
         if (currentType == ConnectionManager.ConnectionType.USB) {
-            Log.d(TAG, "Disconnecting USB first before Bluetooth settings");
+            Log.v(TAG, "Disconnecting USB first before Bluetooth settings");
             connectionManager.disconnect();
         }
 
         if (checkBluetoothPermissions()) {
-            Log.d(TAG, "Permissions granted, showing Bluetooth dialog");
+            Log.v(TAG, "Permissions granted, showing Bluetooth dialog");
             showBluetoothDeviceDialog();
         } else {
-            Log.d(TAG, "Requesting Bluetooth permissions");
+            Log.v(TAG, "Requesting Bluetooth permissions");
             requestBluetoothPermissions();
         }
 
@@ -269,9 +269,9 @@ public class ConnectionDialogFragment extends DialogFragment {
     }
 
     private void showBluetoothDeviceDialog() {
-        Log.d(TAG, "showBluetoothDeviceDialog called");
+        Log.v(TAG, "showBluetoothDeviceDialog called");
         if (getParentFragmentManager().findFragmentByTag("BluetoothDialog") != null) {
-            Log.d(TAG, "Bluetooth dialog already shown; skipping duplicate show");
+            Log.v(TAG, "Bluetooth dialog already shown; skipping duplicate show");
             return;
         }
         // Show the existing BluetoothDialogFragment
@@ -281,14 +281,14 @@ public class ConnectionDialogFragment extends DialogFragment {
             dialog.setConnectionManager(connectionManager);
         }
         dialog.setConnectionListener(isConnected -> {
-            Log.d(TAG, "Bluetooth connection state changed: " + isConnected);
+            Log.v(TAG, "Bluetooth connection state changed: " + isConnected);
             if (isConnected) {
                 // Wait a bit for the service to update
                 new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                     if (isServiceBound && bluetoothService != null && connectionManager != null) {
                         com.polidea.rxandroidble2.RxBleDevice connectedDevice = bluetoothService.getConnectedDevice();
                         if (connectedDevice != null) {
-                            Log.d(TAG, "Updating ConnectionManager with BLE device: " + connectedDevice.getMacAddress());
+                            Log.v(TAG, "Updating ConnectionManager with BLE device: " + connectedDevice.getMacAddress());
                             connectionManager.connectBluetooth(connectedDevice);
                         } else {
                             Log.w(TAG, "Connected device is null");
@@ -308,7 +308,7 @@ public class ConnectionDialogFragment extends DialogFragment {
         });
         
         try {
-            Log.d(TAG, "Showing BluetoothDialogFragment");
+            Log.v(TAG, "Showing BluetoothDialogFragment");
             dialog.show(getParentFragmentManager(), "BluetoothDialog");
         } catch (Exception e) {
             Log.e(TAG, "Error showing BluetoothDialogFragment: " + e.getMessage(), e);
@@ -329,7 +329,7 @@ public class ConnectionDialogFragment extends DialogFragment {
     }
 
     private void requestBluetoothPermissions() {
-        Log.d(TAG, "Requesting permissions from Fragment");
+        Log.v(TAG, "Requesting permissions from Fragment");
         UiToastLimiter.show(requireContext(), "bt_permission_request",
                 getString(R.string.connection_toast_requesting_bt_permissions), android.widget.Toast.LENGTH_SHORT, 2000);
         
@@ -506,9 +506,9 @@ public class ConnectionDialogFragment extends DialogFragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        Log.d(TAG, "onRequestPermissionsResult called with requestCode: " + requestCode);
+        Log.v(TAG, "onRequestPermissionsResult called with requestCode: " + requestCode);
         if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
-            Log.d(TAG, "Permission result - length: " + grantResults.length + ", result: " + (grantResults.length > 0 ? grantResults[0] : "none"));
+            Log.v(TAG, "Permission result - length: " + grantResults.length + ", result: " + (grantResults.length > 0 ? grantResults[0] : "none"));
             
             boolean allGranted = true;
             if (grantResults.length > 0) {
@@ -523,12 +523,12 @@ public class ConnectionDialogFragment extends DialogFragment {
             }
             
             if (allGranted) {
-                Log.d(TAG, "Bluetooth permissions GRANTED, showing device dialog");
+                Log.v(TAG, "Bluetooth permissions GRANTED, showing device dialog");
                 UiToastLimiter.show(requireContext(), "bt_permission_granted",
                         getString(R.string.connection_toast_bt_permission_granted), android.widget.Toast.LENGTH_SHORT, 2000);
                 showBluetoothDeviceDialog();
             } else {
-                Log.d(TAG, "Bluetooth permissions DENIED");
+                Log.v(TAG, "Bluetooth permissions DENIED");
                 UiToastLimiter.show(requireContext(),
                     "bt_permission_denied",
                     getString(R.string.connection_toast_bt_permission_denied),

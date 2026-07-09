@@ -278,7 +278,7 @@ public class UsbModeManager {
                     Thread.sleep(10);
                     offset += chunkSize;
                 }
-                Log.d(TAG, "Sent " + description + " via USB: " + toHexString(data));
+                Log.v(TAG, "Sent " + description + " via USB: " + toHexString(data));
             } catch (Exception e) {
                 Log.e(TAG, "Error sending USB command: " + e.getMessage());
             }
@@ -286,7 +286,7 @@ public class UsbModeManager {
         // BLE path
         else if (bluetoothService != null && bluetoothService.isConnected()) {
             bluetoothService.sendData(data);
-            Log.d(TAG, "Sent " + description + " via BLE: " + toHexString(data));
+            Log.v(TAG, "Sent " + description + " via BLE: " + toHexString(data));
         } else {
             Log.w(TAG, "No connection available for sending " + description);
         }
