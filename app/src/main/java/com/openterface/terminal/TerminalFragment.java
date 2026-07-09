@@ -1203,6 +1203,15 @@ public class TerminalFragment extends Fragment {
     }
 
     @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Re-apply demo button layout after rotation.
+        // MainActivity uses configChanges="orientation" so the Activity
+        // is not recreated; only onConfigurationChanged is called.
+        applyEmptyStateButtonLayout();
+    }
+
+    @Override
     public void onDestroyView() {
         stopDemo();
         disconnect();
