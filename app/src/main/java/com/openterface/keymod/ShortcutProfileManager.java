@@ -125,7 +125,7 @@ public class ShortcutProfileManager {
     private void saveProfiles() {
         String json = gson.toJson(profiles);
         prefs.edit().putString(KEY_PROFILES, json).apply();
-        Log.d(TAG, "Saved " + profiles.size() + " profiles");
+        Log.v(TAG, "Saved " + profiles.size() + " profiles");
     }
 
     /**
@@ -140,7 +140,7 @@ public class ShortcutProfileManager {
         profiles.add(createPhotoshopProfile());
         profiles.add(createVSCodeProfile());
         saveProfiles();
-        Log.d(TAG, "Created " + profiles.size() + " default profiles");
+        Log.v(TAG, "Created " + profiles.size() + " default profiles");
     }
 
     private ShortcutProfile createDefaultProfile() {
@@ -1126,7 +1126,7 @@ public class ShortcutProfileManager {
         p.categories.add(new ShortcutCategory("general", "General"));
         profiles.add(p);
         saveProfiles();
-        Log.d(TAG, "Seeded reserved keyboard strip profile");
+        Log.v(TAG, "Seeded reserved keyboard strip profile");
     }
 
     /** Merge or append shortcut definitions into the strip profile General category (portable preset import). */
@@ -1213,7 +1213,7 @@ public class ShortcutProfileManager {
         if (getProfileById(profileId) != null) {
             activeProfileId = profileId;
             prefs.edit().putString(KEY_ACTIVE_PROFILE, profileId).apply();
-            Log.d(TAG, "Active profile set to: " + profileId);
+            Log.v(TAG, "Active profile set to: " + profileId);
             
             if (listener != null) {
                 listener.onProfileChanged(profileId);
@@ -1578,7 +1578,7 @@ public class ShortcutProfileManager {
                 renumberDisplayOrder(cat.shortcuts);
                 String json = gson.toJson(profiles);
                 prefs.edit().putString(KEY_PROFILES, json).apply();
-                Log.d(TAG, "Saved category order for " + profileId + " / " + categoryId);
+                Log.v(TAG, "Saved category order for " + profileId + " / " + categoryId);
                 if (notifyListener && listener != null) {
                     listener.onProfileUpdated(p);
                 }

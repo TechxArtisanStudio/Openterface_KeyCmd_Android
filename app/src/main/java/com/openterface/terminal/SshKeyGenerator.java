@@ -54,7 +54,7 @@ public class SshKeyGenerator {
      * Generate RSA key pair with optional passphrase encryption via JSch.
      */
     public static KeyPairResult generateRSA(int bits, String comment, String passphrase) throws Exception {
-        Log.d(TAG, "Generating RSA-" + bits + " key pair...");
+        Log.v(TAG, "Generating RSA-" + bits + " key pair...");
         JSch jsch = new JSch();
         KeyPair keyPair = KeyPair.genKeyPair(jsch, KeyPair.RSA, bits);
 
@@ -73,7 +73,7 @@ public class SshKeyGenerator {
 
         keyPair.dispose();
 
-        Log.d(TAG, "Generated RSA " + bits + " key pair successfully");
+        Log.v(TAG, "Generated RSA " + bits + " key pair successfully");
         return new KeyPairResult(privateKey, publicKey);
     }
 
@@ -88,7 +88,7 @@ public class SshKeyGenerator {
      * Uses BouncyCastle for key generation and encryption.
      */
     public static KeyPairResult generateEd25519(String comment, String passphrase) throws Exception {
-        Log.d(TAG, "Generating Ed25519 key pair using BouncyCastle...");
+        Log.v(TAG, "Generating Ed25519 key pair using BouncyCastle...");
 
         // Step 1: Generate Ed25519 key pair with BouncyCastle
         Ed25519KeyPairGenerator keyGen = new Ed25519KeyPairGenerator();
@@ -110,12 +110,12 @@ public class SshKeyGenerator {
         // Step 3: Generate private key PEM (encrypted or unencrypted)
         String privateKeyPem;
         if (passphrase != null && !passphrase.isEmpty()) {
-            Log.d(TAG, "Encrypting Ed25519 private key with passphrase...");
+            Log.v(TAG, "Encrypting Ed25519 private key with passphrase...");
             privateKeyPem = generateEd25519PrivateKeyPemEncrypted(privateKeyBytes, publicKeyBytes, passphrase, 16);
-            Log.d(TAG, "Generated encrypted Ed25519 key pair successfully");
+            Log.v(TAG, "Generated encrypted Ed25519 key pair successfully");
         } else {
             privateKeyPem = generateEd25519PrivateKeyPemUnencrypted(privateKeyBytes, publicKeyBytes);
-            Log.d(TAG, "Generated Ed25519 key pair successfully");
+            Log.v(TAG, "Generated Ed25519 key pair successfully");
         }
 
         return new KeyPairResult(privateKeyPem, publicKey);

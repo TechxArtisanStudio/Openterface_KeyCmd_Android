@@ -69,7 +69,7 @@ public class UsbDeviceManager {
 
     private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "onReceive data successful");
+            Log.v(TAG, "onReceive data successful");
             init();
 //            handleUsbDevice(intent);
         }
@@ -77,7 +77,7 @@ public class UsbDeviceManager {
 
     public void handleUsbDevice(Intent intent) {
         if ("android.hardware.usb.action.USB_DEVICE_ATTACHED".equals(intent.getAction())) {
-            Log.d(TAG, "handleUsbDevice data successful");
+            Log.v(TAG, "handleUsbDevice data successful");
             init();
         }
     }
@@ -100,7 +100,7 @@ public class UsbDeviceManager {
                 return;
             }
             driver = availableDrivers.get(0);
-            Log.d("serial", "find available drivers:" + driver.getDevice());
+            Log.v("serial", "find available drivers:" + driver.getDevice());
             requestUsbPermission(driver.getDevice());
         });
 
@@ -117,9 +117,9 @@ public class UsbDeviceManager {
     private void closeDevice() {
         try {
             port.close();
-            Log.d(TAG, "port close: ");
+            Log.v(TAG, "port close: ");
         } catch (IOException e) {
-            Log.d(TAG, "port close failed ");
+            Log.v(TAG, "port close failed ");
         }
     }
 
@@ -127,7 +127,7 @@ public class UsbDeviceManager {
         context.unregisterReceiver(usbReceiver);
         closeDevice();
         mSerialThread.quitSafely();
-        Log.d(TAG, "serial is close");
+        Log.v(TAG, "serial is close");
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -143,16 +143,16 @@ public class UsbDeviceManager {
         Log.e(TAG, "requestUsbPermission serialDevice");
 
         UsbDeviceConnection connection = usbManager.openDevice(serialDevice);
-        Log.d("serial", "open port successful11 ");
+        Log.v("serial", "open port successful11 ");
         if (connection != null) {
-            Log.d("serial", "open port successful22 ");
+            Log.v("serial", "open port successful22 ");
             // Proceed with serialDevice communication
             // ...
             port = driver.getPorts().get(0); // Most serialDevices have just one port (port 0)
             try {
                 port.open(connection);
                 port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-                Log.d("serial", "open port successful33 ");
+                Log.v("serial", "open port successful33 ");
                 startReading();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -174,7 +174,7 @@ public class UsbDeviceManager {
                         for (int i = 0; i < numBytesRead; i++) {
                             allReadData.append(String.format("%02X ", buffer[i]));
                         }
-                        Log.d(TAG, "Read data: " + allReadData.toString().trim());
+                        Log.v(TAG, "Read data: " + allReadData.toString().trim());
 
                         if (onDataReadListener != null) {
                             onDataReadListener.onDataRead();

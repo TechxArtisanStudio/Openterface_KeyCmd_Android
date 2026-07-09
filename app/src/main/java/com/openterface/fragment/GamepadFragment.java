@@ -495,7 +495,7 @@ public class GamepadFragment extends Fragment {
             }
             setEditModeToolbarExtrasVisible(isChecked);
             applyEditModeToggleContentDescription();
-            Log.d(TAG, "Edit mode: " + (isChecked ? "enabled" : "disabled"));
+            Log.v(TAG, "Edit mode: " + (isChecked ? "enabled" : "disabled"));
         });
         // Listener does not run for initial unchecked state; align view with play mode.
         if (gamepadView != null) {
@@ -879,7 +879,7 @@ public class GamepadFragment extends Fragment {
 
         // Button press listener (face buttons only, D-pad handled by dpadStateListener)
         gamepadView.setButtonPressListener((buttonId, keyCode) -> {
-            Log.d(TAG, "Button pressed: " + buttonId + " -> keyCode: " + keyCode);
+            Log.v(TAG, "Button pressed: " + buttonId + " -> keyCode: " + keyCode);
 
             if (keyboardHoldLockedModuleIds.contains(buttonId)
                     || turboLockedModuleIds.contains(buttonId)) {
@@ -914,7 +914,7 @@ public class GamepadFragment extends Fragment {
         // Button release listener (face buttons, D-pad handled by dpadStateListener)
         gamepadView.setButtonReleaseListener((buttonId, keyCode) -> {
             if (keyCode == 1001 || keyCode == 1002) return;
-            Log.d(TAG, "Button released: " + buttonId);
+            Log.v(TAG, "Button released: " + buttonId);
             if (pendingKeyboardHoldUnlockTap.remove(buttonId)) {
                 keyboardHoldLockedModuleIds.remove(buttonId);
                 turboLockedModuleIds.remove(buttonId);
@@ -982,18 +982,18 @@ public class GamepadFragment extends Fragment {
 
         // Analog stick listener
         gamepadView.setAnalogStickListener((stickId, x, y) -> {
-            Log.d(TAG, "Analog stick: " + stickId + " -> x: " + x + ", y: " + y);
+            Log.v(TAG, "Analog stick: " + stickId + " -> x: " + x + ", y: " + y);
             sendAnalogInput(stickId.toString(), x, y);
         });
 
         // Long press listener for config (legacy non-dynamic SIMPLE layouts only)
         gamepadView.setComponentLongPressListener(componentId -> {
-            Log.d(TAG, "Long press on: " + componentId);
+            Log.v(TAG, "Long press on: " + componentId);
             showLongPressMenu(componentId);
         });
 
         gamepadView.setModuleConfigEditTapListener(moduleId -> {
-            Log.d(TAG, "Module config chip: " + moduleId);
+            Log.v(TAG, "Module config chip: " + moduleId);
             gamepadView.announceForAccessibility(getString(R.string.gamepad_edit_module_config_chip_cd));
             showLongPressMenu(moduleId);
         });
@@ -1012,7 +1012,7 @@ public class GamepadFragment extends Fragment {
                 syncGamepadViewFromDoc();
             }
             persistActivePresetSnapshot();
-            Log.d(TAG, "Saved component positions");
+            Log.v(TAG, "Saved component positions");
         });
     }
 
@@ -2573,7 +2573,7 @@ public class GamepadFragment extends Fragment {
                 }
                 cm.sendKeyboardReport(modifiers, keyCodeArray);
             }
-            Log.d(TAG, "Combined report: modifiers=0x" + Integer.toHexString(modifiers) +
+            Log.v(TAG, "Combined report: modifiers=0x" + Integer.toHexString(modifiers) +
                 " keys=" + regularKeys +
                 " (U=" + keyUpPressed + " L=" + keyLeftPressed +
                 " D=" + keyDownPressed + " R=" + keyRightPressed +
@@ -6087,7 +6087,7 @@ public class GamepadFragment extends Fragment {
                 ((MainActivity) getActivity()).getConnectionManager();
             if (connectionManager != null && connectionManager.isConnected()) {
                 connectionManager.sendKeyEvent(0, keyCode);
-                Log.d(TAG, "Sent key event: " + keyCode);
+                Log.v(TAG, "Sent key event: " + keyCode);
             } else {
                 Log.w(TAG, "Not connected - cannot send key event");
             }
@@ -6100,7 +6100,7 @@ public class GamepadFragment extends Fragment {
                 ((MainActivity) getActivity()).getConnectionManager();
             if (connectionManager != null && connectionManager.isConnected()) {
                 connectionManager.sendKeyRelease();
-                Log.d(TAG, "Sent key release");
+                Log.v(TAG, "Sent key release");
             }
         }
     }
@@ -6580,7 +6580,7 @@ public class GamepadFragment extends Fragment {
         }
 
         if (xAdj != 0 || yAdj != 0) {
-            Log.d(TAG, "Stick keys pressed: " +
+            Log.v(TAG, "Stick keys pressed: " +
                     (wantUp ? "U " : ". ") + (wantDown ? "D " : ". ") +
                     (wantLeft ? "L " : ". ") + (wantRight ? "R" : "."));
         }

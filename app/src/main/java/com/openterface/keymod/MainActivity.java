@@ -350,7 +350,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             isServiceBound = true;
             bluetoothService.setRxBleClient(rxBleClient);
             bluetoothService.setHostLockInboundParser(hostLockInboundParser);
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
 
             // Keep ConnectionManager in sync with the newly bound service.
             if (connectionManager != null) {
@@ -365,7 +365,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
 
             if (connectionManager != null) {
                 connectionManager.setBluetoothService(null);
@@ -1350,7 +1350,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             return;
         }
         if (!connectionManager.isAutoConnectEnabled()) {
-            Log.d(TAG, "Bluetooth auto-connect disabled; skipping BluetoothAutoConnectManager");
+            Log.v(TAG, "Bluetooth auto-connect disabled; skipping BluetoothAutoConnectManager");
             return;
         }
 
@@ -1359,7 +1359,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         autoConnectManager.setAutoConnectListener(new BluetoothAutoConnectManager.AutoConnectListener() {
             @Override
             public void onAutoConnectStarted() {
-                Log.d(TAG, "Auto-connect started");
+                Log.v(TAG, "Auto-connect started");
                 runOnUiThread(() -> {
                     UiToastLimiter.show(
                             MainActivity.this,
@@ -1372,7 +1372,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
             @Override
             public void onAutoConnectSuccess(RxBleDevice device) {
-                Log.d(TAG, "Auto-connect successful: " + device.getName());
+                Log.v(TAG, "Auto-connect successful: " + device.getName());
                 runOnUiThread(() -> {
                     isBluetoothConnected = true;
                     if (connectionManager != null) {
@@ -1406,7 +1406,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
             @Override
             public void onAutoConnectRetrying(int retryCount) {
-                Log.d(TAG, "Auto-connect retrying: attempt " + retryCount);
+                Log.v(TAG, "Auto-connect retrying: attempt " + retryCount);
                 if (retryCount == 1) {
                     runOnUiThread(() -> UiToastLimiter.show(
                             MainActivity.this,
@@ -1550,7 +1550,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 .subscribe(
                         (scanResult) -> {
                             String deviceName = scanResult.getBleDevice().getName();
-                            Log.d("ScanResult", "find device: " + (deviceName != null ? deviceName : "unknown device"));
+                            Log.v("ScanResult", "find device: " + (deviceName != null ? deviceName : "unknown device"));
                         },
                         (Throwable throwable) -> {
                             Log.e("ScanError", "scan error", throwable);
@@ -1793,14 +1793,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             Fragment bluetoothDialog = fragmentManager.findFragmentByTag("BluetoothDialog");
             if (bluetoothDialog instanceof BluetoothDialogFragment) {
                 ((BluetoothDialogFragment) bluetoothDialog).dismiss();
-                Log.d(TAG, "Dismissed BluetoothDialogFragment");
+                Log.v(TAG, "Dismissed BluetoothDialogFragment");
             }
             
             // Dismiss ConnectionDialogFragment if open
             Fragment connectionDialog = fragmentManager.findFragmentByTag("ConnectionDialog");
             if (connectionDialog instanceof ConnectionDialogFragment) {
                 ((ConnectionDialogFragment) connectionDialog).dismiss();
-                Log.d(TAG, "Dismissed ConnectionDialogFragment");
+                Log.v(TAG, "Dismissed ConnectionDialogFragment");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error dismissing dialogs: " + e.getMessage());
@@ -2177,7 +2177,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                         for (int i = 0; i < numBytesRead; i++) {
                             allReadData.append(String.format("%02X ", buffer[i]));
                         }
-                        Log.d(TAG, "Read data: " + allReadData.toString().trim());
+                        Log.v(TAG, "Read data: " + allReadData.toString().trim());
 
                         if (onDataReadListener != null) {
                             onDataReadListener.onDataRead();
@@ -2261,7 +2261,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     public void onBluetoothConnectionChanged(boolean isConnected) {
         isBluetoothConnected = isConnected;
-        Log.d(TAG, "Bluetooth connection state updated: " + isConnected);
+        Log.v(TAG, "Bluetooth connection state updated: " + isConnected);
 
         if (connectionManager != null) {
             connectionManager.setBluetoothService(bluetoothService);
@@ -2273,15 +2273,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             com.polidea.rxandroidble2.RxBleDevice connectedDevice = bluetoothService.getConnectedDevice();
             if (connectedDevice != null) {
                 connectionManager.connectBluetooth(connectedDevice);
-                Log.d(TAG, "Updated ConnectionManager with BLE device");
+                Log.v(TAG, "Updated ConnectionManager with BLE device");
             } else {
-                Log.d(TAG, "Bluetooth connected but connectedDevice is null; state synced from callback");
+                Log.v(TAG, "Bluetooth connected but connectedDevice is null; state synced from callback");
             }
             startHostLockPolling();
         } else if (!isConnected && connectionManager != null && 
                    connectionManager.getCurrentConnectionType() == ConnectionManager.ConnectionType.BLUETOOTH) {
             connectionManager.disconnect();
-            Log.d(TAG, "Disconnected Bluetooth in ConnectionManager");
+            Log.v(TAG, "Disconnected Bluetooth in ConnectionManager");
         }
         
         if (isConnected) {

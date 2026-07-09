@@ -69,7 +69,7 @@ public class MacrosManager {
     private void saveMacros() {
         String json = gson.toJson(macros);
         prefs.edit().putString(KEY_MACROS_LIST, json).apply();
-        Log.d(TAG, "Saved " + macros.size() + " macros");
+        Log.v(TAG, "Saved " + macros.size() + " macros");
     }
 
     /**
@@ -89,7 +89,7 @@ public class MacrosManager {
         isRecording = true;
         
         prefs.edit().putBoolean(KEY_RECORDING, true).apply();
-        Log.d(TAG, "Started recording macro: " + name);
+        Log.v(TAG, "Started recording macro: " + name);
         
         if (listener != null) {
             listener.onRecordingStarted(currentRecordingMacro);
@@ -114,7 +114,7 @@ public class MacrosManager {
             
             macros.add(currentRecordingMacro);
             saveMacros();
-            Log.d(TAG, "Saved macro: " + currentRecordingMacro.name + " with " + 
+            Log.v(TAG, "Saved macro: " + currentRecordingMacro.name + " with " + 
                   currentRecordingMacro.keyEvents.size() + " events");
             
             if (listener != null) {
@@ -139,7 +139,7 @@ public class MacrosManager {
         KeyEvent event = new KeyEvent(keyCode, modifiers, timestamp);
         currentRecordingMacro.keyEvents.add(event);
         
-        Log.d(TAG, "Recorded key event: keyCode=" + keyCode + ", timestamp=" + timestamp);
+        Log.v(TAG, "Recorded key event: keyCode=" + keyCode + ", timestamp=" + timestamp);
         
         if (listener != null) {
             listener.onKeyEventRecorded(event);
@@ -164,7 +164,7 @@ public class MacrosManager {
 
         isPlaying = true;
         prefs.edit().putBoolean(KEY_PLAYING, true).apply();
-        Log.d(TAG, "Playing macro: " + macro.name);
+        Log.v(TAG, "Playing macro: " + macro.name);
         
         if (listener != null) {
             listener.onPlaybackStarted(macro);
@@ -180,7 +180,7 @@ public class MacrosManager {
             // Playback complete
             isPlaying = false;
             prefs.edit().putBoolean(KEY_PLAYING, false).apply();
-            Log.d(TAG, "Macro playback complete: " + macro.name);
+            Log.v(TAG, "Macro playback complete: " + macro.name);
             
             if (listener != null) {
                 listener.onPlaybackComplete(macro);
@@ -206,14 +206,14 @@ public class MacrosManager {
         final long finalDelay = delay;
         if (connectionManager != null && connectionManager.isConnected()) {
             connectionManager.sendKeyEvent(event.modifiers, event.keyCode);
-            Log.d(TAG, "Macro send key: keyCode=" + event.keyCode + ", modifiers=" + event.modifiers);
+            Log.v(TAG, "Macro send key: keyCode=" + event.keyCode + ", modifiers=" + event.modifiers);
             
             // Hold key a little longer to improve combo reliability (e.g., Ctrl+A).
             final long releaseDelay = finalDelay;
             new android.os.Handler().postDelayed(() -> {
                 if (isPlaying && connectionManager.isConnected()) {
                     connectionManager.sendKeyRelease();
-                    Log.d(TAG, "Macro sent key release");
+                    Log.v(TAG, "Macro sent key release");
                     
                     // Schedule next event
                     new android.os.Handler().postDelayed(() -> {
@@ -241,7 +241,7 @@ public class MacrosManager {
     public void stopPlayback() {
         isPlaying = false;
         prefs.edit().putBoolean(KEY_PLAYING, false).apply();
-        Log.d(TAG, "Stopped macro playback");
+        Log.v(TAG, "Stopped macro playback");
         
         if (listener != null) {
             listener.onPlaybackStopped();
@@ -254,7 +254,7 @@ public class MacrosManager {
     public void deleteMacro(Macro macro) {
         macros.remove(macro);
         saveMacros();
-        Log.d(TAG, "Deleted macro: " + macro.name);
+        Log.v(TAG, "Deleted macro: " + macro.name);
         
         if (listener != null) {
             listener.onMacroDeleted(macro);
@@ -445,7 +445,7 @@ public class MacrosManager {
         if (importedMacros != null) {
             macros.addAll(importedMacros);
             saveMacros();
-            Log.d(TAG, "Imported " + importedMacros.size() + " macros");
+            Log.v(TAG, "Imported " + importedMacros.size() + " macros");
             
             if (listener != null) {
                 listener.onMacrosImported(importedMacros);
@@ -459,7 +459,7 @@ public class MacrosManager {
     public void clearAllMacros() {
         macros.clear();
         saveMacros();
-        Log.d(TAG, "Cleared all macros");
+        Log.v(TAG, "Cleared all macros");
         
         if (listener != null) {
             listener.onMacrosCleared();

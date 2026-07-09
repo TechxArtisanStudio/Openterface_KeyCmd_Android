@@ -500,7 +500,7 @@ public class PresentationFragment extends Fragment {
                         }
                     }
                 }, 100);
-                Log.d(TAG, "Sent right arrow key");
+                Log.v(TAG, "Sent right arrow key");
             } else {
                 Log.w(TAG, "Not connected - cannot send right arrow key");
             }
@@ -520,7 +520,7 @@ public class PresentationFragment extends Fragment {
                         }
                     }
                 }, 100);
-                Log.d(TAG, "Sent left arrow key");
+                Log.v(TAG, "Sent left arrow key");
             } else {
                 Log.w(TAG, "Not connected - cannot send left arrow key");
             }
@@ -561,12 +561,12 @@ public class PresentationFragment extends Fragment {
             }, 100);
             appSwitcherActive = true;
             btnLaser.setTextColor(ContextCompat.getColor(requireContext(), R.color.presentation_green));
-            Log.d(TAG, "App switcher opened (modifier=" + mod + " held)");
+            Log.v(TAG, "App switcher opened (modifier=" + mod + " held)");
             // Safety timeout: auto-release after 10s of inactivity
             timerHandler.postDelayed(() -> {
                 if (appSwitcherActive) {
                     closeAppSwitcher();
-                    Log.d(TAG, "App switcher auto-released (timeout)");
+                    Log.v(TAG, "App switcher auto-released (timeout)");
                 }
             }, 3000);
         }
@@ -586,7 +586,7 @@ public class PresentationFragment extends Fragment {
                     c.sendRawHIDReport(mod, 0);
                 }
             }, 100);
-            Log.d(TAG, "App switcher cycled");
+            Log.v(TAG, "App switcher cycled");
         }
     }
 
@@ -597,7 +597,7 @@ public class PresentationFragment extends Fragment {
             cm.sendKeyRelease();
             appSwitcherActive = false;
             btnLaser.setTextColor(ContextCompat.getColor(requireContext(), R.color.presentation_button_content)); // theme default = inactive
-            Log.d(TAG, "App switcher closed (all released)");
+            Log.v(TAG, "App switcher closed (all released)");
         }
     }
 
@@ -634,14 +634,14 @@ public class PresentationFragment extends Fragment {
                             if (c != null && c.isConnected()) c.sendKeyRelease();
                         }, 100);
                     }
-                    Log.d(TAG, "Play: " + currentTool.name() + " keys sent");
+                    Log.v(TAG, "Play: " + currentTool.name() + " keys sent");
                 } else {
                     cm.sendKeyEvent(0, currentTool.stopKey);
                     timerHandler.postDelayed(() -> {
                         ConnectionManager c = getConnectionManager();
                         if (c != null && c.isConnected()) c.sendKeyRelease();
                     }, 100);
-                    Log.d(TAG, "Stop: " + currentTool.stopKey + " sent");
+                    Log.v(TAG, "Stop: " + currentTool.stopKey + " sent");
                 }
             }
         }
@@ -816,7 +816,7 @@ public class PresentationFragment extends Fragment {
             }
         }
 
-        Log.d(TAG, "Black screen: " + blackScreenActive);
+        Log.v(TAG, "Black screen: " + blackScreenActive);
     }
 
     private void updateBlackScreenButton() {

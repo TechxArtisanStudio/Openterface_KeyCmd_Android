@@ -101,7 +101,7 @@ public final class HelpImageDownloader {
 
         // Already cached — return immediately
         if (localFile.exists()) {
-            Log.d(TAG, "Cache hit: " + url);
+            Log.v(TAG, "Cache hit: " + url);
             if (callback != null) {
                 mainHandler.post(() -> callback.onSuccess(localFile));
             }
@@ -111,7 +111,7 @@ public final class HelpImageDownloader {
         // Already in flight — just add callback to existing task
         synchronized (downloading) {
             if (downloading.contains(url)) {
-                Log.d(TAG, "Already downloading, queuing callback: " + url);
+                Log.v(TAG, "Already downloading, queuing callback: " + url);
                 enqueueCallback(url, callback);
                 return;
             }
@@ -241,7 +241,7 @@ public final class HelpImageDownloader {
 
                 // Atomic rename
                 if (tempFile.renameTo(destFile)) {
-                    Log.d(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
+                    Log.v(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
                     notifySuccess(destFile);
                 } else {
                     notifyError(new IOException("Failed to rename temp file: " + tempFile));

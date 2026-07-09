@@ -1082,7 +1082,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
         }
 
-        Log.d(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
+        Log.v(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
                 + " modifiers=" + shortcut.modifiers + " key=" + shortcut.keyCode);
     }
 
@@ -1116,7 +1116,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
         }
 
-        Log.d(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"
+        Log.v(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"
                 + Integer.toHexString(codePoint).toUpperCase() + " (" + ch + ")");
     }
 
@@ -1311,7 +1311,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
             writer.close();
             
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_saved_to_path, outputFile.getAbsolutePath()), Toast.LENGTH_LONG).show();
-            Log.d(TAG, "Exported profile to: " + outputFile.getAbsolutePath());
+            Log.v(TAG, "Exported profile to: " + outputFile.getAbsolutePath());
         } catch (Exception e) {
             Log.e(TAG, "Export failed: " + e.getMessage());
             Toast.makeText(getContext(), getString(R.string.shortcut_hub_toast_export_failed_detail, e.getMessage()), Toast.LENGTH_LONG).show();

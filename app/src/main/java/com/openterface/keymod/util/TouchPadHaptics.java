@@ -58,7 +58,7 @@ public final class TouchPadHaptics {
         try {
             v.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
         } catch (Exception e) {
-            Log.d(TAG, "Vibration skipped: " + e.getMessage());
+            Log.v(TAG, "Vibration skipped: " + e.getMessage());
         }
     }
 
@@ -70,7 +70,7 @@ public final class TouchPadHaptics {
         try {
             v.vibrate(VibrationEffect.createWaveform(timingsMs, amplitudes, -1));
         } catch (Exception e) {
-            Log.d(TAG, "Vibration skipped: " + e.getMessage());
+            Log.v(TAG, "Vibration skipped: " + e.getMessage());
         }
     }
 }

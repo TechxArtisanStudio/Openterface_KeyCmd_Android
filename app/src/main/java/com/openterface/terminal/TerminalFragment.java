@@ -141,7 +141,7 @@ public class TerminalFragment extends Fragment {
 
     private void setupListeners() {
         connectBtn.setOnClickListener(v -> {
-            Log.d(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
+            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
             if (isSshConnected) {
                 disconnect();
             } else {
@@ -327,7 +327,7 @@ public class TerminalFragment extends Fragment {
                     // Save selected profile as active
                     credentialManager.setActiveProfileId(profile.getId());
 
-                    Log.d(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                    Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
                     connect(profile, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
@@ -573,7 +573,7 @@ public class TerminalFragment extends Fragment {
      * Connect to SSH via the selected transport.
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
-        Log.d(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+        Log.v(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
         statusText.setText(R.string.terminal_connecting);
 
         if (useUsb) {
@@ -655,13 +655,13 @@ public class TerminalFragment extends Fragment {
     private void connectBleEth(CredentialProfile profile) {
         final String host = profile.getHost();
         final int port = profile.getPort();
-        Log.d(TAG, "connectBleEth called");
+        Log.v(TAG, "connectBleEth called");
         if (mainActivity == null) {
             Log.e(TAG, "connectBleEth: mainActivity is null");
             return;
         }
         BluetoothService bluetoothService = mainActivity.getBluetoothService();
-        Log.d(TAG, "connectBleEth: bluetoothService=" + (bluetoothService != null)
+        Log.v(TAG, "connectBleEth: bluetoothService=" + (bluetoothService != null)
                 + " isConnected=" + (bluetoothService != null && bluetoothService.isConnected()));
         if (bluetoothService == null || !bluetoothService.isConnected()) {
             mainHandler.post(() -> {
@@ -689,36 +689,36 @@ public class TerminalFragment extends Fragment {
         // from a previous stalled session, causing new CONNECT to fail.
         for (int cid = 0; cid <= 5; cid++) {
             byte[] cleanupFrame = buildDisconnectFrame(cid);
-            Log.d(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
+            Log.v(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
             bluetoothService.writeBleEthData(cleanupFrame);
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
-        Log.d(TAG, "connectBleEth: waiting 5000ms for full cleanup");
+        Log.v(TAG, "connectBleEth: waiting 5000ms for full cleanup");
         try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
-        Log.d(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
+        Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
 
         bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
-        Log.d(TAG, "connectBleEth: BleEthTransport created");
+        Log.v(TAG, "connectBleEth: BleEthTransport created");
 
         // Register for incoming BLE-Eth data
         bleEthCallback = data -> {
-            Log.d(TAG, "BLE-Eth callback: received " + data.length + " bytes");
+            Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
             bleEthTransport.handleIncomingData(data);
         };
-        Log.d(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
+        Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
         bluetoothService.addBleEthCallback(bleEthCallback);
-        Log.d(TAG, "connectBleEth: callback registered, starting connect thread");
+        Log.v(TAG, "connectBleEth: callback registered, starting connect thread");
 
         // Create SocketFactory that bridges JSch to BleEthTransport.
         // Pass the real target host/port so connectTunnel() sends the correct CONNECT frame.
         bleEthSocketFactory = new BleEthSocketFactory(bleEthTransport, host, port);
-        Log.d(TAG, "connectBleEth: SocketFactory created, starting connect thread");
+        Log.v(TAG, "connectBleEth: SocketFactory created, starting connect thread");
 
         // Start SSH session on background thread (SocketFactory handles BLE-Eth connect)
         new Thread(() -> {
-            Log.d(TAG, "BLE-Eth SSH connect thread started");
+            Log.v(TAG, "BLE-Eth SSH connect thread started");
             runSshSessionWithSocketFactory(profile, bleEthTransport, bleEthSocketFactory);
-            Log.d(TAG, "BLE-Eth SSH connect thread finished");
+            Log.v(TAG, "BLE-Eth SSH connect thread finished");
         }).start();
     }
 

@@ -50,7 +50,7 @@ public class FrameParser {
             process(b & 0xFF);
         }
         if (!receivedFrames.isEmpty()) {
-            android.util.Log.d("FrameParser", "feed: " + receivedFrames.size() + " frames ready");
+            android.util.Log.v("FrameParser", "feed: " + receivedFrames.size() + " frames ready");
         }
     }
 
@@ -63,7 +63,7 @@ public class FrameParser {
         switch (state) {
             case STATE_WAIT_HEAD1:
                 if (b == FRAME_HEAD1) {
-                    android.util.Log.d("FrameParser", "Found HEAD1 (0x57), waiting for HEAD2");
+                    android.util.Log.v("FrameParser", "Found HEAD1 (0x57), waiting for HEAD2");
                     bufLen = 0;
                     buf[bufLen++] = (byte) b;
                     checksum = b;
@@ -128,7 +128,7 @@ public class FrameParser {
                     byte[] payload = new byte[payloadLen];
                     System.arraycopy(buf, 5, payload, 0, payloadLen);
                     if (BuildConfig.DEBUG) {
-                        Log.d("FrameParser", "Checksum OK! Frame: addr=0x" + Integer.toHexString(addr)
+                        Log.v("FrameParser", "Checksum OK! Frame: addr=0x" + Integer.toHexString(addr)
                                 + " cmd=0x" + Integer.toHexString(cmd) + " payloadLen=" + payloadLen);
                     }
                     receivedFrames.add(new ParsedFrame(addr, cmd, payload));

@@ -96,7 +96,7 @@ public class BluetoothService extends Service {
             // to FFF1 and dispatches to BLE-Eth callbacks. Creating a second subscription
             // would cause duplicate delivery and corrupt frame parsing for split frames.
             if (hostLockNotifyDisposable != null) {
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth callbacks will receive data via shared host lock subscription");
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth callbacks will receive data via shared host lock subscription");
             } else {
                 Log.w(TAG, LOG_PREFIX + "No active BLE notification subscription yet - callbacks will not receive data until connected");
             }
@@ -107,7 +107,7 @@ public class BluetoothService extends Service {
     public void removeBleEthCallback(BleEthDataCallback callback) {
         if (callback != null) {
             bleEthCallbacks.remove(callback);
-            Log.d(TAG, LOG_PREFIX + "BLE-Eth callback unregistered. Remaining callbacks: " + bleEthCallbacks.size());
+            Log.v(TAG, LOG_PREFIX + "BLE-Eth callback unregistered. Remaining callbacks: " + bleEthCallbacks.size());
         }
         if (bleEthCallbacks.isEmpty() && bleEthNotifyDisposable != null) {
             Log.i(TAG, LOG_PREFIX + "No more BLE-Eth callbacks, stopping notifications");
@@ -125,14 +125,14 @@ public class BluetoothService extends Service {
 
         bleEthNotifyDisposable = connection.setupNotification(NOTIFY_CHARACTERISTIC_UUID)
             .flatMap(notificationObservable -> {
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth notification setup successful, subscribing to observable");
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth notification setup successful, subscribing to observable");
                 return notificationObservable;
             })
             .subscribe(
                 bytes -> {
-                    Log.d(TAG, LOG_PREFIX + "BLE-Eth notification received: " + bytes.length + " bytes: " + bytesToHex(bytes));
+                    Log.v(TAG, LOG_PREFIX + "BLE-Eth notification received: " + bytes.length + " bytes: " + bytesToHex(bytes));
                     int callbackCount = bleEthCallbacks.size();
-                    Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + callbackCount + " callbacks");
+                    Log.v(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + callbackCount + " callbacks");
                     for (BleEthDataCallback callback : bleEthCallbacks) {
                         try {
                             callback.onBleEthData(bytes);
@@ -157,13 +157,13 @@ public class BluetoothService extends Service {
 
     private void stopBleEthNotifications() {
         if (bleEthNotifyDisposable != null) {
-            Log.d(TAG, LOG_PREFIX + "Stopping BLE-Eth notifications");
+            Log.v(TAG, LOG_PREFIX + "Stopping BLE-Eth notifications");
             bleEthNotifyDisposable.dispose();
             connectionDisposables.remove(bleEthNotifyDisposable);
             bleEthNotifyDisposable = null;
             Log.i(TAG, LOG_PREFIX + "BLE-Eth notifications stopped");
         } else {
-            Log.d(TAG, LOG_PREFIX + "stopBleEthNotifications called but no active subscription");
+            Log.v(TAG, LOG_PREFIX + "stopBleEthNotifications called but no active subscription");
         }
     }
 
@@ -173,7 +173,7 @@ public class BluetoothService extends Service {
             Log.w(TAG, LOG_PREFIX + "Cannot write BLE-Eth data: no active connection");
             return;
         }
-        Log.d(TAG, LOG_PREFIX + "BLE-Eth TX " + data.length + " bytes: " + bytesToHex(data));
+        Log.v(TAG, LOG_PREFIX + "BLE-Eth TX " + data.length + " bytes: " + bytesToHex(data));
 
         byte[] frame = Arrays.copyOf(data, data.length);
         bleEthWriteExecutor.execute(() -> writeBleEthInternal(frame));
@@ -212,7 +212,7 @@ public class BluetoothService extends Service {
                 System.arraycopy(data, offset, chunk, 0, chunkLen);
                 offset += chunkLen;
                 boolean lastChunk = offset >= data.length;
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth TX chunk: " + chunk.length + " bytes"
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth TX chunk: " + chunk.length + " bytes"
                         + (lastChunk ? " (last)" : ""));
 
                 if (!writeBleEthChunk(connection, characteristic, chunk, false)) {
@@ -379,7 +379,7 @@ public class BluetoothService extends Service {
                         .subscribe(
                                 bytes -> {
                                     if (bytes == null || bytes.length == 0) return;
-                                    Log.d(TAG, LOG_PREFIX + "BLE RX " + bytes.length + " bytes: " + bytesToHex(bytes));
+                                    Log.v(TAG, LOG_PREFIX + "BLE RX " + bytes.length + " bytes: " + bytesToHex(bytes));
                                     // 1) Dispatch to host lock inbound parser (existing use)
                                     if (hostLockInboundParser != null) {
                                         hostLockInboundParser.append(bytes, bytes.length);
@@ -391,7 +391,7 @@ public class BluetoothService extends Service {
                                     //    Filtering here would drop continuation bytes and break
                                     //    multi-notification frames.
                                     if (!bleEthCallbacks.isEmpty()) {
-                                        Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + bleEthCallbacks.size() + " callbacks");
+                                        Log.v(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + bleEthCallbacks.size() + " callbacks");
                                         for (BleEthDataCallback cb : bleEthCallbacks) {
                                             cb.onBleEthData(bytes);
                                         }
@@ -505,7 +505,7 @@ public class BluetoothService extends Service {
         // Check if already connected to this device
         if (isConnected() && connectedDevice != null &&
                 connectedDevice.getMacAddress().equals(deviceAddress)) {
-            Log.d(TAG, LOG_PREFIX + "Already connected to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+            Log.v(TAG, LOG_PREFIX + "Already connected to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
             return;
         }
 
@@ -516,7 +516,7 @@ public class BluetoothService extends Service {
         // on the new attempt.
         if (connectedDevice != null
                 && !connectedDevice.getMacAddress().equals(deviceAddress)) {
-            Log.d(TAG, LOG_PREFIX + "Switching device from "
+            Log.v(TAG, LOG_PREFIX + "Switching device from "
                     + sanitizeDeviceName(connectedDevice.getName())
                     + " (" + connectedDevice.getMacAddress() + ") to "
                     + sanitizeDeviceName(device.getName())
@@ -526,7 +526,7 @@ public class BluetoothService extends Service {
 
         synchronized (connectingDevices) {
             if (connectingDevices.contains(deviceAddress)) {
-                Log.d(TAG, LOG_PREFIX + "Already connecting to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+                Log.v(TAG, LOG_PREFIX + "Already connecting to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                 return;
             }
             connectingDevices.add(deviceAddress);
@@ -541,7 +541,7 @@ public class BluetoothService extends Service {
                     synchronized (connectingDevices) {
                         connectingDevices.remove(deviceAddress);
                     }
-                    Log.d(TAG, LOG_PREFIX + "Connection disposed for device: " + sanitizeDeviceName(device.getName()));
+                    Log.v(TAG, LOG_PREFIX + "Connection disposed for device: " + sanitizeDeviceName(device.getName()));
                 })
                 .subscribe(
                         connection -> {
@@ -552,7 +552,7 @@ public class BluetoothService extends Service {
                             // this connection was being established, ignore the result.
                             if (connectedDevice == null
                                     || !connectedDevice.getMacAddress().equals(deviceAddress)) {
-                                Log.d(TAG, LOG_PREFIX + "Stale connection callback for "
+                                Log.v(TAG, LOG_PREFIX + "Stale connection callback for "
                                         + deviceAddress + ", current device is "
                                         + (connectedDevice != null ? connectedDevice.getMacAddress() : "null"));
                                 return;
@@ -560,7 +560,7 @@ public class BluetoothService extends Service {
                             activeConnection = connection;
                             bleEthWriteCharacteristic = null;
                             alreadyConnectedRetryCount = 0;
-                            Log.d(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+                            Log.v(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                             notifyBluetoothConnected(device);
                             startRssiPolling();
                             connection.requestMtu(BLE_ETH_TARGET_MTU)
@@ -583,7 +583,7 @@ public class BluetoothService extends Service {
                             // update state or schedule reconnect for the old device.
                             if (connectedDevice != null
                                     && !connectedDevice.getMacAddress().equals(deviceAddress)) {
-                                Log.d(TAG, LOG_PREFIX + "Stale error callback for "
+                                Log.v(TAG, LOG_PREFIX + "Stale error callback for "
                                         + deviceAddress + ", current device is "
                                         + connectedDevice.getMacAddress() + " - ignoring");
                                 return;
@@ -656,7 +656,7 @@ public class BluetoothService extends Service {
                 .subscribe(
                         aLong -> {
                             if (connectedDevice != null && connectedDevice.getMacAddress().equals(device.getMacAddress())) {
-                                Log.d(TAG, LOG_PREFIX + "Attempting to reconnect to " + sanitizeDeviceName(device.getName()));
+                                Log.v(TAG, LOG_PREFIX + "Attempting to reconnect to " + sanitizeDeviceName(device.getName()));
                                 connectToDevice(device);
                             }
                         },
@@ -678,7 +678,7 @@ public class BluetoothService extends Service {
         if (activeConnection == null) {
             Log.w(TAG, LOG_PREFIX + "Cannot send data: No active connection, packet=" + packetHex);
             if (connectedDevice != null) {
-                Log.d(TAG, LOG_PREFIX + "Attempting to reconnect before sending data");
+                Log.v(TAG, LOG_PREFIX + "Attempting to reconnect before sending data");
                 connectToDevice(connectedDevice);
             }
             return;
@@ -741,7 +741,7 @@ public class BluetoothService extends Service {
         bleEthWriteCharacteristic = null;
         connectedDevice = null;
         stopReconnect();
-        Log.d(TAG, LOG_PREFIX + "BluetoothService destroyed");
+        Log.v(TAG, LOG_PREFIX + "BluetoothService destroyed");
     }
 
     public void disconnect() {
@@ -756,7 +756,7 @@ public class BluetoothService extends Service {
             if (previousDevice != null) {
                 notifyBluetoothDisconnected(previousDevice);
             }
-            Log.d(TAG, LOG_PREFIX + "Bluetooth disconnected");
+            Log.v(TAG, LOG_PREFIX + "Bluetooth disconnected");
         }
     }
 
