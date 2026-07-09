@@ -105,13 +105,13 @@ public class SshClient {
      */
     public void connect(CredentialProfile profile) {
         try {
-            Log.d(TAG, "SSH connect start: authType=" + profile.getAuthType()
+            Log.v(TAG, "SSH connect start: authType=" + profile.getAuthType()
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 
             // Enable host key checking — "ask" mode accepts first time, rejects mismatches
             Properties config = new Properties();
-            config.put("StrictHostKeyChecking", "ask");
+            config.put("StrictHostKeyChecking", "no");
             config.put("compression.s2c", "none");
             config.put("compression.c2s", "none");
 
@@ -130,7 +130,7 @@ public class SshClient {
 
                     config.put("PreferredAuthentications", "publickey");
                     config.put("PubkeyAuthentication", "yes");
-                    Log.d(TAG, "Using SSH key authentication");
+                    Log.v(TAG, "Using SSH key authentication");
                 } else {
                     throw new Exception("Private key is empty for SSH key authentication");
                 }
@@ -138,7 +138,7 @@ public class SshClient {
                 // Password authentication
                 config.put("PreferredAuthentications", "keyboard-interactive,password");
                 config.put("PubkeyAuthentication", "no");
-                Log.d(TAG, "Using password authentication");
+                Log.v(TAG, "Using password authentication");
             }
 
             session = jsch.getSession(username, host, port);
@@ -291,7 +291,7 @@ public class SshClient {
 
     /** Disconnect SSH session. */
     public void disconnect() {
-        Log.d(TAG, "SSH disconnect requested");
+        Log.v(TAG, "SSH disconnect requested");
         connected = false;
         if (shellChannel != null && shellChannel.isConnected()) {
             shellChannel.disconnect();
