@@ -1,4 +1,4 @@
-package com.openterface.keymod.fragments;
+package com.openterface.terminal;
 
 import android.app.ProgressDialog;
 import android.content.ClipData;
@@ -41,9 +41,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
 import com.openterface.keymod.util.SensitivePageShield;
-import com.openterface.terminal.CredentialManager;
-import com.openterface.terminal.CredentialProfile;
-import com.openterface.terminal.SshKeyGenerator;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -52,7 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Settings tab for managing SSH credential profiles.
+ * Fragment for managing SSH credential profiles.
  */
 public class CredentialSettingsFragment extends Fragment {
 

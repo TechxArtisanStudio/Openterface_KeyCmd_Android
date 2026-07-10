@@ -45,7 +45,6 @@ import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
-import com.openterface.keymod.SettingsActivity;
 
 /**
  * Main fragment hosting the terminal UI.
@@ -395,8 +394,7 @@ public class TerminalFragment extends Fragment {
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {
-                Intent intent = new Intent(requireContext(), SettingsActivity.class);
-                intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
+                Intent intent = new Intent(requireContext(), CredentialActivity.class);
                 requireContext().startActivity(intent);
             });
         } else {
@@ -738,9 +736,8 @@ public class TerminalFragment extends Fragment {
         new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
                 .setNegativeButton(R.string.credential_edit, (dialog, which) -> {
-                    Intent intent = new Intent(requireContext(), SettingsActivity.class);
-                    intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
-                    intent.putExtra(SettingsActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
+                    Intent intent = new Intent(requireContext(), CredentialActivity.class);
+                    intent.putExtra(CredentialActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
                     requireContext().startActivity(intent);
                 })
                 .setPositiveButton(R.string.terminal_device_info_close, null)

@@ -195,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navTerminal;
     private LinearLayout navAgent;
     private ImageButton targetOsHeaderButton;
+    private ImageButton credentialHeaderButton;
     @Nullable
     private View headerRightCluster;
     @Nullable
@@ -633,11 +634,18 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         setupDrawerImeBehavior();
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
+        credentialHeaderButton = findViewById(R.id.credential_header_button);
         headerRightCluster = findViewById(R.id.header_right_cluster);
         headerEndPullSpacer = findViewById(R.id.header_end_pull_spacer);
         if (targetOsHeaderButton != null) {
             targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
             updateTargetOsHeaderIcon();
+        }
+        if (credentialHeaderButton != null) {
+            credentialHeaderButton.setOnClickListener(v -> {
+                Intent intent = new Intent(this, com.openterface.terminal.CredentialActivity.class);
+                startActivity(intent);
+            });
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);

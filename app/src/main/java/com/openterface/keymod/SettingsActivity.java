@@ -9,7 +9,6 @@ import android.view.View;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -25,7 +24,6 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.openterface.keymod.fragments.AISettingsFragment;
-import com.openterface.keymod.fragments.CredentialSettingsFragment;
 import com.openterface.keymod.fragments.GeneralSettingsFragment;
 import com.openterface.keymod.fragments.HistoryFragment;
 import com.openterface.keymod.fragments.VoiceSettingsFragment;
@@ -37,8 +35,6 @@ import com.openterface.keymod.fragments.VoiceSettingsFragment;
 public class SettingsActivity extends AppCompatActivity {
 
     public static final String EXTRA_TAB_INDEX = "extra_tab_index";
-    public static final String EXTRA_EDIT_PROFILE_ID = "extra_edit_profile_id";
-    public static final int TAB_CREDENTIALS = 4;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,9 +45,6 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         setupWindowInsets();
         applyNonImmersiveSystemBars();
-        // NOTE: FLAG_SECURE is now applied selectively by sensitive sub-fragments
-        // (CredentialSettingsFragment, AISettingsFragment) so non-sensitive tabs
-        // (General, Voice, History) remain screenshot-friendly.
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -76,11 +69,10 @@ public class SettingsActivity extends AppCompatActivity {
         ViewPager2 viewPager = findViewById(R.id.viewPager);
         TabLayout tabLayout = findViewById(R.id.tabLayout);
 
-        viewPager.setAdapter(new SettingsPagerAdapter(this,
-                getIntent().getStringExtra(EXTRA_EDIT_PROFILE_ID)));
+        viewPager.setAdapter(new SettingsPagerAdapter(this));
 
         int initialTab = getIntent().getIntExtra("settings_tab_index", 0);
-        if (initialTab > 0 && initialTab < 5) {
+        if (initialTab > 0 && initialTab < 4) {
             viewPager.setCurrentItem(initialTab, false);
         }
 
@@ -88,13 +80,12 @@ public class SettingsActivity extends AppCompatActivity {
                 getString(R.string.settings_tab_general),
                 getString(R.string.settings_tab_voice),
                 getString(R.string.settings_tab_ai),
-                getString(R.string.settings_tab_history),
-                getString(R.string.settings_tab_credentials)
+                getString(R.string.settings_tab_history)
         };
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> tab.setText(tabTitles[position])).attach();
 
-        // Pre-select tab if launched from an external shortcut (e.g., terminal "Add Profile")
+        // Pre-select tab if launched from an external shortcut
         int tabIndex = getIntent().getIntExtra(EXTRA_TAB_INDEX, 0);
         if (tabIndex > 0 && tabIndex < tabTitles.length) {
             viewPager.setCurrentItem(tabIndex, false);
@@ -146,12 +137,8 @@ public class SettingsActivity extends AppCompatActivity {
 
     private static class SettingsPagerAdapter extends FragmentStateAdapter {
 
-        private final String editProfileId;
-
-        public SettingsPagerAdapter(@NonNull SettingsActivity activity,
-                                    @Nullable String editProfileId) {
+        public SettingsPagerAdapter(@NonNull SettingsActivity activity) {
             super(activity);
-            this.editProfileId = editProfileId;
         }
 
         @NonNull
@@ -166,14 +153,6 @@ public class SettingsActivity extends AppCompatActivity {
                     return new AISettingsFragment();
                 case 3:
                     return new HistoryFragment();
-                case 4:
-                    CredentialSettingsFragment frag = new CredentialSettingsFragment();
-                    if (editProfileId != null) {
-                        Bundle args = new Bundle();
-                        args.putString(CredentialSettingsFragment.ARG_EDIT_PROFILE_ID, editProfileId);
-                        frag.setArguments(args);
-                    }
-                    return frag;
                 default:
                     throw new IllegalArgumentException("Invalid settings page: " + position);
             }
@@ -181,7 +160,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         @Override
         public int getItemCount() {
-            return 5;
+            return 4;
         }
     }
 }

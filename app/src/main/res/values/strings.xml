@@ -1512,7 +1512,6 @@ by TechxArtisan</string>
     <string name="credential_set_active">Set as active</string>
     <string name="credential_new_connection">New connection…</string>
     <string name="credential_save_changes_prompt">Save changes to profile "%s"?</string>
-    <string name="settings_tab_credentials">Credentials</string>
     <string name="credential_import_key_file">Import Key File</string>
 
     <!-- Terminal SSH Connection Dialog -->
