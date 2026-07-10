@@ -72,7 +72,9 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329PacketUtil;
+import com.openterface.keymod.hid.HidKeyboardTransport;
 import com.openterface.keymod.hid.KeyboardHidTransport;
+import com.openterface.keymod.hid.KeyboardTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
@@ -327,6 +329,7 @@ public class CustomKeyboardView extends LinearLayout {
 
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
+    private KeyboardTransport transport;
     private Handler repeatHandler = new Handler();
     /** Hold-to-repeat for Space / Bksp / DEL / arrows: tap-like HID pairs after {@link ViewConfiguration} delays. */
     private Runnable holdKeyRepeatRunnable;
@@ -434,6 +437,7 @@ public class CustomKeyboardView extends LinearLayout {
             bluetoothService = binder.getService();
             isServiceBound = true;
             Log.v(TAG, "Bound to BluetoothService");
+            updateTransport();
         }
 
         @Override
@@ -441,6 +445,7 @@ public class CustomKeyboardView extends LinearLayout {
             isServiceBound = false;
             bluetoothService = null;
             Log.v(TAG, "Unbound from BluetoothService");
+            updateTransport();
         }
     };
 
@@ -7835,7 +7840,14 @@ public class CustomKeyboardView extends LinearLayout {
         if (port == null) {
             clearProChordAndHoldLockPopupUiState();
         }
+        updateTransport();
         Log.v(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
+    }
+
+    /** Rebuild transport from current port / BT state. Called when hardware state changes. */
+    private void updateTransport() {
+        this.transport = new HidKeyboardTransport(
+                getContext(), port, bluetoothService, isServiceBound);
     }
 
     public static String makeChecksum(String data) {
