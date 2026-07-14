@@ -6,6 +6,7 @@ import com.openterface.keymod.hid.KeyboardTransport;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -84,10 +85,43 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
         KEY_MAP.put(0x29, new byte[]{0x1B});                            // Esc   → ESC
         KEY_MAP.put(0x2A, new byte[]{0x7F});                            // Backspace → DEL
         KEY_MAP.put(0x2B, new byte[]{0x09});                            // Tab   → HT
+        KEY_MAP.put(0x2C, new byte[]{0x20});                            // Space → SP
+
+        // ── Symbol keys (HID 0x2D–0x38, excluding 0x32) ─────────────
+        KEY_MAP.put(0x2D, new byte[]{(byte) '-'});                      // - / _
+        KEY_MAP.put(0x2E, new byte[]{(byte) '='});                      // = / +
+        KEY_MAP.put(0x2F, new byte[]{(byte) '['});                      // [ / {
+        KEY_MAP.put(0x30, new byte[]{(byte) ']'});                      // ] / }
+        KEY_MAP.put(0x31, new byte[]{(byte) '\\'});                     // \ / |
+        KEY_MAP.put(0x33, new byte[]{(byte) ';'});                      // ; / :
+        KEY_MAP.put(0x34, new byte[]{(byte) '\''});                     // ' / "
+        KEY_MAP.put(0x35, new byte[]{(byte) '`'});                      // ` / ~
+        KEY_MAP.put(0x36, new byte[]{(byte) ','});                      // , / <
+        KEY_MAP.put(0x37, new byte[]{(byte) '.'});                      // . / >
+        KEY_MAP.put(0x38, new byte[]{(byte) '/'});                      // / / ?
     }
 
-    /** The terminal's writable output (SSH channel stdin, PTY fd, etc.). */
-    private final OutputStream output;
+    /**
+     * Shifted variants for symbol keys.
+     * Used in {@link #sendKey} when Shift is held on a symbol key (HID 0x2D–0x38).
+     */
+    private static final Map<Integer, byte[]> SHIFTED_SYMBOLS = new HashMap<>();
+    static {
+        SHIFTED_SYMBOLS.put(0x2D, new byte[]{(byte) '_'});              // Shift+- → _
+        SHIFTED_SYMBOLS.put(0x2E, new byte[]{(byte) '+'});              // Shift+= → +
+        SHIFTED_SYMBOLS.put(0x2F, new byte[]{(byte) '{'});              // Shift+[ → {
+        SHIFTED_SYMBOLS.put(0x30, new byte[]{(byte) '}'});              // Shift+] → }
+        SHIFTED_SYMBOLS.put(0x31, new byte[]{(byte) '|'});              // Shift+\ → |
+        SHIFTED_SYMBOLS.put(0x33, new byte[]{(byte) ':'});              // Shift+; → :
+        SHIFTED_SYMBOLS.put(0x34, new byte[]{(byte) '"'});              // Shift+' → "
+        SHIFTED_SYMBOLS.put(0x35, new byte[]{(byte) '~'});              // Shift+` → ~
+        SHIFTED_SYMBOLS.put(0x36, new byte[]{(byte) '<'});              // Shift+, → <
+        SHIFTED_SYMBOLS.put(0x37, new byte[]{(byte) '>'});              // Shift+. → >
+        SHIFTED_SYMBOLS.put(0x38, new byte[]{(byte) '?'});              // Shift+/ → ?
+    }
+
+    /** The terminal's writable output (SSH channel stdin, PTY fd, etc.). Non-final so {@link #disconnect()} can clear it. */
+    private OutputStream output;
 
     /**
      * Construct a terminal transport.
@@ -104,10 +138,11 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
      *
      * <p>Processing order:
      * <ol>
+     *   <li>Ctrl+Shift + letter → xterm modified key sequence (\e[&lt;code&gt;;6~)</li>
      *   <li>Ctrl + letter (HID 0x04–0x1D) → control character (0x01–0x1A)</li>
      *   <li>Shift + letter → uppercase ASCII (0x41–0x5A)</li>
+     *   <li>Special keys + Ctrl/Shift → xterm modifier-encoded (\e[1;5A etc.)</li>
      *   <li>Alt + anything → ESC prefix + the key's normal output (Meta key)</li>
-     *   <li>Special keys (F-keys, arrows, etc.) → ANSI lookup</li>
      *   <li>Plain letters/digits → raw ASCII</li>
      * </ol>
      *
@@ -124,7 +159,12 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
 
         // ── 1. Letters (HID 0x04–0x1D) ────────────────────────────────
         if (keyCode >= HID_KEY_A && keyCode <= HID_KEY_Z) {
-            if (ctrl) {
+            if (ctrl && shift) {
+                // xterm modified key: ESC[<code>;<mod>~  mod=6 (ctrl+shift)
+                int param = keyCode - HID_KEY_A + 65;   // A=65, B=66, ...
+                String seq = "[" + param + ";6~";
+                payload = seq.getBytes(StandardCharsets.US_ASCII);
+            } else if (ctrl) {
                 // Ctrl+A(a)=0x01, Ctrl+B(b)=0x02, ... Ctrl+Z(z)=0x1A
                 payload = new byte[]{(byte) (keyCode - HID_KEY_A + 0x01)};
             } else if (shift) {
@@ -154,6 +194,14 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
                         + " mod=0x" + Integer.toHexString(modifierMask));
                 return;
             }
+            // Shift + symbol key → shifted ASCII (e.g. Shift+- → _)
+            if (shift && SHIFTED_SYMBOLS.containsKey(keyCode)) {
+                payload = SHIFTED_SYMBOLS.get(keyCode);
+            }
+            // Apply xterm modifier encoding for Ctrl/Shift on special keys
+            else if (ctrl || shift) {
+                payload = applyXtermModifier(payload, ctrl, shift);
+            }
         }
 
         // ── 4. Alt prefix: ESC + the payload (Meta key) ───────────────
@@ -178,11 +226,68 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
     }
 
     /**
+     * Disconnect the output stream. After this call, {@link #isConnected()} returns false
+     * and all subsequent writes are silently discarded.
+     *
+     * <p>Called by {@code TerminalFragment.teardownTerminalKeyboard()} to ensure the transport
+     * stops accepting writes after the SSH session is torn down.
+     */
+    public void disconnect() {
+        output = null;
+    }
+
+    /**
+     * Convert a special-key ANSI sequence to xterm modifier-encoded form.
+     *
+     * <p>xterm encodes modifiers as {@code ESC[<params>;<mod><final>} where
+     * mod = 1 + 2*(shift) + 4*(ctrl) + 8*(alt).
+     *
+     * <p>Handles two sequence shapes:
+     * <ul>
+     *   <li>CSI letter:    ESC[X → ESC[1;{mod}X    (arrows, Home=ESC[H, End=ESC[F)</li>
+     *   <li>CSI params ~:  ESC[X~ → ESC[X;{mod}~   (F5-F12, PgUp, PgDn, Del)</li>
+     * </ul>
+     *
+     * <p>SS3 sequences (ESC O x, used by F1-F4) are not modified — xterm does not
+     * parameterize SS3 sequences.
+     */
+    private byte[] applyXtermModifier(byte[] seq, boolean ctrl, boolean shift) {
+        if (seq.length < 3 || seq[0] != 0x1B || seq[1] != '[') {
+            return seq;  // Not a CSI sequence (e.g. SS3 for F1-F4) — return unchanged
+        }
+
+        int mod = 1;
+        if (shift) mod += 2;
+        if (ctrl)  mod += 4;
+        if (mod == 1) return seq;  // No modifiers — unchanged
+
+        byte last = seq[seq.length - 1];
+
+        if (last == '~') {
+            // CSI <params> ~  →  CSI <params> ; <mod> ~
+            // e.g. \e[5~ → \e[5;5~
+            String inner = new String(seq, 2, seq.length - 3, StandardCharsets.US_ASCII);
+            String result = "[" + inner + ";" + mod + "~";
+            return result.getBytes(StandardCharsets.US_ASCII);
+        } else {
+            // CSI <letter>  →  CSI 1 ; <mod> <letter>
+            // e.g. \e[A → \e[1;5A
+            char letter = (char) last;
+            String result = "[1;" + mod + letter;
+            return result.getBytes(StandardCharsets.US_ASCII);
+        }
+    }
+
+    /**
      * Write bytes to the terminal output stream.
      *
      * <p>Failures are logged but not thrown — keyboard input is best-effort.
      * The terminal session will surface connection problems through its own
      * error reporting rather than via keyboard callbacks.
+     *
+     * <p>Note: flush() is intentionally NOT called here. The actual flush happens
+     * in the {@code KeySender} lambda inside {@code SshClient.startShell()}, which
+     * writes directly to JSch's ChannelOutputStream and flushes it.
      */
     private void write(byte[] bytes) {
         if (output == null) {
@@ -190,7 +295,6 @@ public class TerminalKeyboardTransport implements KeyboardTransport {
         }
         try {
             output.write(bytes);
-            output.flush();
         } catch (IOException e) {
             Log.e(TAG, "Write failed: " + e.getMessage());
         }

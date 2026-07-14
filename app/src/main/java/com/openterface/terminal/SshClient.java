@@ -36,10 +36,11 @@ public class SshClient {
     private final String password;
     private final TransportAdapter transport;
     private final com.jcraft.jsch.SocketFactory socketFactory;
-    private Listener listener;
+    private volatile Listener listener;
 
     private Session session;
     private Channel shellChannel;
+    private TerminalSession terminalSession;
     private volatile boolean connected = false;
 
     public SshClient(String host, int port, String username,
@@ -221,6 +222,7 @@ public class SshClient {
      * Data from the shell is delivered to the TerminalSession via the listener.
      */
     public void startShell(TerminalSession terminalSession) {
+        this.terminalSession = terminalSession;
         try {
             shellChannel = session.openChannel("shell");
 
@@ -246,7 +248,7 @@ public class SshClient {
                         }
                     }
                 } catch (IOException e) {
-                    // Connection lost
+                    Log.v(TAG, "Shell read interrupted: " + e.getMessage());
                 } finally {
                     connected = false;
                     if (listener != null) {
@@ -342,6 +344,14 @@ public class SshClient {
     public void disconnect() {
         Log.v(TAG, "SSH disconnect requested");
         connected = false;
+
+        // Clear send callbacks first — prevents writes to a closing channel
+        // if a key press races with disconnect (Day 5 §3.2).
+        if (terminalSession != null) {
+            terminalSession.setKeySender(null);
+            terminalSession.setResponseSender(null);
+        }
+
         if (shellChannel != null && shellChannel.isConnected()) {
             shellChannel.disconnect();
         }

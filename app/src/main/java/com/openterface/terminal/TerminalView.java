@@ -17,6 +17,8 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Terminal display surface. Renders characters using the TerminalSession
  * screen buffer and handles touch/keyboard input.
@@ -394,51 +396,51 @@ public class TerminalView extends View {
             case KeyEvent.KEYCODE_ESCAPE:
                 return new byte[]{0x1B};
             case KeyEvent.KEYCODE_DPAD_UP:
-                return appMode ? "\033OA".getBytes() : "\033[A".getBytes();
+                return appMode ? "\033OA".getBytes(StandardCharsets.US_ASCII) : "\033[A".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                return appMode ? "\033OB".getBytes() : "\033[B".getBytes();
+                return appMode ? "\033OB".getBytes(StandardCharsets.US_ASCII) : "\033[B".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                return appMode ? "\033OD".getBytes() : "\033[D".getBytes();
+                return appMode ? "\033OD".getBytes(StandardCharsets.US_ASCII) : "\033[D".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                return appMode ? "\033OC".getBytes() : "\033[C".getBytes();
+                return appMode ? "\033OC".getBytes(StandardCharsets.US_ASCII) : "\033[C".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_DEL:
                 return new byte[]{0x7F}; // Backspace
             case KeyEvent.KEYCODE_FORWARD_DEL:
-                return "\033[3~".getBytes();
+                return "\033[3~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_MOVE_HOME:
-                return "\033[H".getBytes();
+                return "\033[H".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_MOVE_END:
-                return "\033[F".getBytes();
+                return "\033[F".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_INSERT:
-                return "\033[2~".getBytes();
+                return "\033[2~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_PAGE_UP:
-                return "\033[5~".getBytes();
+                return "\033[5~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_PAGE_DOWN:
-                return "\033[6~".getBytes();
+                return "\033[6~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F1:
-                return "\033OP".getBytes();
+                return "\033OP".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F2:
-                return "\033OQ".getBytes();
+                return "\033OQ".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F3:
-                return "\033OR".getBytes();
+                return "\033OR".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F4:
-                return "\033OS".getBytes();
+                return "\033OS".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F5:
-                return "\033[15~".getBytes();
+                return "\033[15~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F6:
-                return "\033[17~".getBytes();
+                return "\033[17~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F7:
-                return "\033[18~".getBytes();
+                return "\033[18~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F8:
-                return "\033[19~".getBytes();
+                return "\033[19~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F9:
-                return "\033[20~".getBytes();
+                return "\033[20~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F10:
-                return "\033[21~".getBytes();
+                return "\033[21~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F11:
-                return "\033[23~".getBytes();
+                return "\033[23~".getBytes(StandardCharsets.US_ASCII);
             case KeyEvent.KEYCODE_F12:
-                return "\033[24~".getBytes();
+                return "\033[24~".getBytes(StandardCharsets.US_ASCII);
             default:
                 if (event.isCtrlPressed()) {
                     int ascii = event.getUnicodeChar();
@@ -474,7 +476,7 @@ public class TerminalView extends View {
         @Override
         public boolean commitText(CharSequence text, int newCursorPosition) {
             if (view.session != null) {
-                view.session.onKeyInput(text.toString().getBytes());
+                view.session.onKeyInput(text.toString().getBytes(StandardCharsets.UTF_8));
                 view.invalidate();
             }
             return true;

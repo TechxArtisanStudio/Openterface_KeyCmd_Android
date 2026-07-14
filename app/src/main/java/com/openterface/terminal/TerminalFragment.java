@@ -78,6 +78,7 @@ public class TerminalFragment extends Fragment {
     // Custom keyboard (TerminalKeyboardTransport)
     private FrameLayout terminalKeyboardSlot;
     @Nullable private CustomKeyboardView terminalKeyboardView;
+    @Nullable private TerminalKeyboardTransport terminalKeyboardTransport;
     private boolean customKeyboardVisible = false;
 
     private Button connectBtn;
@@ -270,8 +271,8 @@ public class TerminalFragment extends Fragment {
                 }
             };
 
-            terminalKeyboardView.setTransport(
-                    new TerminalKeyboardTransport(sessionOutput));
+            terminalKeyboardTransport = new TerminalKeyboardTransport(sessionOutput);
+            terminalKeyboardView.setTransport(terminalKeyboardTransport);
         }
     }
 
@@ -363,6 +364,12 @@ public class TerminalFragment extends Fragment {
     /** Remove keyboard view and reset state. Called on SSH disconnect. */
     private void teardownTerminalKeyboard() {
         if (rootView == null) return;
+        // Disconnect transport first — makes isConnected() return false,
+        // preventing writes during teardown (Day 5 fix #3).
+        if (terminalKeyboardTransport != null) {
+            terminalKeyboardTransport.disconnect();
+            terminalKeyboardTransport = null;
+        }
         // Explicitly clear custom transport to break reference chain:
         // CustomKeyboardView → TerminalKeyboardTransport → OutputStream → TerminalFragment
         if (terminalKeyboardView != null) {
@@ -1141,13 +1148,12 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Run the SSH session with a custom SocketFactory (for BLE-Eth).
+     * Create the shared SSH client listener.
+     * Handles connect/disconnect lifecycle, data routing, and error display.
+     * Used by both {@link #runSshSession} and {@link #runSshSessionWithSocketFactory}.
      */
-    private void runSshSessionWithSocketFactory(CredentialProfile profile,
-                                                 TransportAdapter transport,
-                                                 com.jcraft.jsch.SocketFactory socketFactory) {
-        sshClient = new SshClient(profile, transport, socketFactory);
-        sshClient.setListener(new SshClient.Listener() {
+    private SshClient.Listener createSshListener() {
+        return new SshClient.Listener() {
             @Override
             public void onConnected() {
                 mainHandler.post(() -> {
@@ -1159,7 +1165,7 @@ public class TerminalFragment extends Fragment {
                         }
                     }, 150);
                 });
-                // Start the shell channel
+                // Start the shell channel (runs on background thread)
                 sshClient.startShell(terminalSession);
             }
 
@@ -1184,7 +1190,7 @@ public class TerminalFragment extends Fragment {
                 Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
                     String displayMessage;
-                    if (message.contains("AUTH_FAILED")) {
+                    if (message != null && message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
@@ -1196,8 +1202,17 @@ public class TerminalFragment extends Fragment {
                     updateConnectionState();
                 });
             }
-        });
+        };
+    }
 
+    /**
+     * Run the SSH session with a custom SocketFactory (for BLE-Eth).
+     */
+    private void runSshSessionWithSocketFactory(CredentialProfile profile,
+                                                 TransportAdapter transport,
+                                                 com.jcraft.jsch.SocketFactory socketFactory) {
+        sshClient = new SshClient(profile, transport, socketFactory);
+        sshClient.setListener(createSshListener());
         sshClient.connect();
     }
 
@@ -1206,57 +1221,7 @@ public class TerminalFragment extends Fragment {
      */
     private void runSshSession(CredentialProfile profile, TransportAdapter transport) {
         sshClient = new SshClient(profile, transport);
-        sshClient.setListener(new SshClient.Listener() {
-            @Override
-            public void onConnected() {
-                mainHandler.post(() -> {
-                    isSshConnected = true;
-                    updateConnectionState();
-                    terminalView.postDelayed(() -> {
-                        if (isSshConnected && terminalView != null) {
-                            showCustomKeyboard();
-                        }
-                    }, 150);
-                });
-                // Start the shell channel
-                sshClient.startShell(terminalSession);
-            }
-
-            @Override
-            public void onDisconnected() {
-                mainHandler.post(() -> {
-                    isSshConnected = false;
-                    updateConnectionState();
-                    teardownTerminalKeyboard();
-                    terminalView.postInvalidate();
-                });
-            }
-
-            @Override
-            public void onDataReceived(byte[] data, int len) {
-                terminalSession.append(data, len);
-                mainHandler.post(() -> terminalView.invalidate());
-            }
-
-            @Override
-            public void onError(String message) {
-                Log.e(TAG, "SSH error: " + message);
-                mainHandler.post(() -> {
-                    String displayMessage;
-                    if (message.contains("AUTH_FAILED")) {
-                        displayMessage = getString(R.string.terminal_auth_failed);
-                    } else {
-                        displayMessage = getFriendlyErrorMessage(message);
-                    }
-                    statusText.setText(displayMessage);
-                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
-                    isSshConnected = false;
-                    teardownTerminalKeyboard();
-                    updateConnectionState();
-                });
-            }
-        });
-
+        sshClient.setListener(createSshListener());
         sshClient.connect();
     }
 
