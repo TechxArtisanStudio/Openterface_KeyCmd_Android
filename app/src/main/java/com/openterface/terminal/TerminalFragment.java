@@ -293,6 +293,7 @@ public class TerminalFragment extends Fragment {
             }
             // Adjust weights: terminal gets normal proportion
             applyKeyboardWeights(false);
+            updateCtrlButtonState();
             Log.v(TAG, "Custom keyboard shown successfully");
         } catch (Exception e) {
             Log.e(TAG, "Failed to show custom keyboard, falling back to system IME", e);
@@ -361,6 +362,13 @@ public class TerminalFragment extends Fragment {
         }
     }
 
+    /** Sync bottom bar Ctrl button visual state with keyboard's Ctrl lock state. */
+    private void updateCtrlButtonState() {
+        if (ctrlBtn != null && terminalKeyboardView != null) {
+            ctrlBtn.setActivated(terminalKeyboardView.isCtrlLocked());
+        }
+    }
+
     /** Remove keyboard view and reset state. Called on SSH disconnect. */
     private void teardownTerminalKeyboard() {
         if (rootView == null) return;
@@ -411,6 +419,10 @@ public class TerminalFragment extends Fragment {
             ctrlBtn.setOnClickListener(v -> {
                 if (terminalView != null) {
                     showCustomKeyboard();
+                    if (terminalKeyboardView != null) {
+                        terminalKeyboardView.toggleCtrlLock();
+                        updateCtrlButtonState();
+                    }
                 }
             });
         }

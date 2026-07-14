@@ -7870,6 +7870,26 @@ public class CustomKeyboardView extends LinearLayout {
         updateTransport();
     }
 
+    /**
+     * Toggle Ctrl lock state programmatically.
+     * Updates internal state, refreshes key visuals, and syncs to split partner.
+     * Used by TerminalFragment's bottom bar Ctrl button.
+     */
+    public void toggleCtrlLock() {
+        isCtrlLeftLocked = !isCtrlLeftLocked;
+        syncModifierStates();
+        updateKeyboard();
+        refreshVisibleTopPanelButtonStates();
+    }
+
+    /**
+     * Query current Ctrl lock state.
+     * Used by TerminalFragment to sync the bottom bar Ctrl button visual.
+     */
+    public boolean isCtrlLocked() {
+        return isCtrlLeftLocked;
+    }
+
     public static String makeChecksum(String data) {
         return Ch9329PacketUtil.makeChecksum(data);
     }
