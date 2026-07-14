@@ -1845,6 +1845,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (navAgent != null) {
             navAgent.setSelected(LaunchPanelActivity.MODE_AGENT.equals(currentNavMode));
         }
+        // Credential button is only relevant for Terminal mode (SSH connections)
+        if (credentialHeaderButton != null) {
+            boolean showCredential = LaunchPanelActivity.MODE_TERMINAL.equals(currentNavMode);
+            credentialHeaderButton.setVisibility(showCredential ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void updateTargetOsHeaderIcon() {
