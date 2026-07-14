@@ -273,6 +273,14 @@ public class TerminalFragment extends Fragment {
 
             terminalKeyboardTransport = new TerminalKeyboardTransport(sessionOutput);
             terminalKeyboardView.setTransport(terminalKeyboardTransport);
+
+            // Set IME toggle listener: hide custom keyboard and show system IME.
+            terminalKeyboardView.setOnKmProSecondaryLayoutToggleListener(source -> {
+                hideCustomKeyboard();
+                if (terminalView != null) {
+                    terminalView.showKeyboard();
+                }
+            });
         }
     }
 
