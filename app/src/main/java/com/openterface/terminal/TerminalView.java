@@ -105,7 +105,8 @@ public class TerminalView extends View {
         gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                showKeyboard();
+                // Manually trigger OnClickListener since onTouchEvent() returns true
+                performClick();
                 return true;
             }
         });
@@ -189,6 +190,12 @@ public class TerminalView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         applyAutoFitFontSizeIfNeeded(w, h);
+        // Dynamically grow terminal buffer to match view size
+        if (session != null && charHeight > 0 && charWidth > 0) {
+            int viewRows = Math.max(1, (int) (h / charHeight));
+            int viewCols = Math.max(1, (int) (w / charWidth));
+            session.growIfNeeded(viewRows, viewCols);
+        }
     }
 
     @Override
@@ -200,83 +207,117 @@ public class TerminalView extends View {
         // Draw background
         canvas.drawColor(DEFAULT_BG);
 
-        // Draw text from screen buffer
-        int cols = session.getColumns();
-        int rows = session.getRows();
+        // Hold session lock for the entire draw to get an atomic snapshot.
+        // This prevents the VT parser thread from modifying screen data
+        // mid-render (which would cause cursor tearing and character corruption).
+        synchronized (session) {
+            // Draw text from screen buffer
+            int cols = session.getColumns();
+            int rows = session.getRows();
 
-        // Calculate offset to fit within view bounds
-        int viewRows = (int) (getHeight() / charHeight);
-        int viewCols = (int) (getWidth() / charWidth);
-        int drawRows = Math.min(rows, viewRows);
-        int drawCols = Math.min(cols, viewCols);
+            // Calculate offset to fit within view bounds
+            int viewRows = (int) (getHeight() / charHeight);
+            int viewCols = (int) (getWidth() / charWidth);
+            int drawRows = Math.min(rows, viewRows);
+            int drawCols = Math.min(cols, viewCols);
 
-        float textOffsetY = -textPaint.getFontMetrics().top; // baseline offset
+            // Show content around cursor, but skip empty rows above
+            int cursorY = session.getCursorY();
+            int startRow = Math.max(0, cursorY - drawRows + 1);
 
-        for (int row = 0; row < drawRows; row++) {
-            char[] line = session.getLineChars(row);
-            if (line == null) continue;
-            CellAttribute[] lineAttrs = session.getLineAttrs(row);
-
-            int col = 0;
-            while (col < drawCols) {
-                char ch = line[col];
-                CellAttribute attr = (lineAttrs != null && col < lineAttrs.length)
-                    ? lineAttrs[col] : CellAttribute.DEFAULT;
-
-                float x = col * charWidth;
-                float y = row * charHeight + textOffsetY;
-
-                // Resolve inverse: swap fg/bg
-                int fg = attr.fgColor;
-                int bg = attr.bgColor;
-                if (attr.inverse) {
-                    int tmp = fg;
-                    fg = bg;
-                    bg = tmp;
+            // Find first non-empty row from startRow downward
+            // If all rows are empty, keep the original startRow (cursor at bottom)
+            for (int r = startRow; r <= cursorY; r++) {
+                char[] line = session.getLineChars(r);
+                if (line != null && !isLineEmpty(line, drawCols)) {
+                    startRow = r;
+                    break;
                 }
+            }
 
-                // Draw background cell if non-default
-                if (bg != CellAttribute.DEFAULT_BG) {
-                    bgPaint.setColor(bg);
-                    canvas.drawRect(x, row * charHeight, x + charWidth, (row + 1) * charHeight, bgPaint);
-                }
+            float textOffsetY = -textPaint.getFontMetrics().top; // baseline offset
 
-                // Skip blank cells (no glyph to draw)
-                if (ch != 0 && ch != ' ') {
-                    // Map characters missing from font to visual equivalents
-                    ch = mapMissingGlyph(ch);
+            for (int row = 0; row < drawRows; row++) {
+                char[] line = session.getLineChars(startRow + row);
+                if (line == null) continue;
+                CellAttribute[] lineAttrs = session.getLineAttrs(startRow + row);
 
-                    // Configure paint for this cell
-                    textPaint.setColor(fg);
-                    textPaint.setFakeBoldText(attr.bold);
-                    textPaint.setTextSkewX(attr.italic ? -0.25f : 0);
-                    textPaint.setUnderlineText(attr.underline);
+                int col = 0;
+                while (col < drawCols) {
+                    char ch = line[col];
+                    CellAttribute attr = (lineAttrs != null && col < lineAttrs.length)
+                        ? lineAttrs[col] : CellAttribute.DEFAULT;
 
-                    // Handle wide (CJK) characters: draw at current position, skip next cell
-                    if (isWideChar(ch)) {
-                        // Draw wide character spanning 2 cells
-                        canvas.drawText(String.valueOf(ch), x, y, textPaint);
-                        col++; // Skip next cell
-                    } else {
-                        canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                    float x = col * charWidth;
+                    float y = row * charHeight + textOffsetY;
+
+                    // Resolve inverse: swap fg/bg
+                    int fg = attr.fgColor;
+                    int bg = attr.bgColor;
+                    if (attr.inverse) {
+                        int tmp = fg;
+                        fg = bg;
+                        bg = tmp;
                     }
+
+                    // Draw background cell if non-default
+                    if (bg != CellAttribute.DEFAULT_BG) {
+                        bgPaint.setColor(bg);
+                        canvas.drawRect(x, row * charHeight, x + charWidth, (row + 1) * charHeight, bgPaint);
+                    }
+
+                    // Skip blank cells (no glyph to draw)
+                    if (ch != 0 && ch != ' ') {
+                        // Map characters missing from font to visual equivalents
+                        ch = mapMissingGlyph(ch);
+
+                        // Configure paint for this cell
+                        textPaint.setColor(fg);
+                        textPaint.setFakeBoldText(attr.bold);
+                        textPaint.setTextSkewX(attr.italic ? -0.25f : 0);
+                        textPaint.setUnderlineText(attr.underline);
+
+                        // Handle wide (CJK) characters: draw at current position, skip next cell
+                        if (isWideChar(ch)) {
+                            // Draw wide character spanning 2 cells
+                            canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                            col++; // Skip next cell
+                        } else {
+                            canvas.drawText(String.valueOf(ch), x, y, textPaint);
+                        }
+                    }
+
+                    col++;
                 }
+            }
 
-                col++;
+            // Draw cursor (respect DEC private mode 25)
+            updateCursorBlink();
+            if (cursorVisible && session.isCursorVisible()) {
+                int cx = session.getCursorX();
+                int cy = session.getCursorY();
+                // Adjust cursor Y for the scroll offset (we display from startRow)
+                int displayCy = cy - startRow;
+                if (cx < drawCols && displayCy >= 0 && displayCy < drawRows) {
+                    float x = cx * charWidth;
+                    float y = displayCy * charHeight;
+                    canvas.drawRect(x, y, x + charWidth, y + charHeight, cursorPaint);
+                }
             }
         }
+    }
 
-        // Draw cursor (respect DEC private mode 25)
-        updateCursorBlink();
-        if (cursorVisible && session.isCursorVisible()) {
-            int cx = session.getCursorX();
-            int cy = session.getCursorY();
-            if (cx < drawCols && cy < drawRows) {
-                float x = cx * charWidth;
-                float y = cy * charHeight;
-                canvas.drawRect(x, y, x + charWidth, y + charHeight, cursorPaint);
+    /** Check if a line is empty (only spaces or null chars) */
+    private boolean isLineEmpty(char[] line, int maxCols) {
+        if (line == null || maxCols <= 0) return true;
+        int limit = Math.min(line.length, maxCols);
+        for (int i = 0; i < limit; i++) {
+            char ch = line[i];
+            if (ch != ' ' && ch != 0 && ch != '\t' && ch != '\r' && ch != '\n') {
+                return false;
             }
         }
+        return true;
     }
 
     /**

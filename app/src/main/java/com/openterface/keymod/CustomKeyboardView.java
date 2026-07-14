@@ -329,7 +329,8 @@ public class CustomKeyboardView extends LinearLayout {
 
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
-    private KeyboardTransport transport;
+    private volatile KeyboardTransport transport;
+    private volatile boolean useCustomTransport = false;
     private Handler repeatHandler = new Handler();
     /** Hold-to-repeat for Space / Bksp / DEL / arrows: tap-like HID pairs after {@link ViewConfiguration} delays. */
     private Runnable holdKeyRepeatRunnable;
@@ -7838,8 +7839,35 @@ public class CustomKeyboardView extends LinearLayout {
 
     /** Rebuild transport from current port / BT state. Called when hardware state changes. */
     private void updateTransport() {
+        // If a custom transport was set (e.g., TerminalKeyboardTransport for terminal mode),
+        // don't override it with the default HID transport.
+        if (useCustomTransport) {
+            return;
+        }
         this.transport = new HidKeyboardTransport(
                 getContext(), port, bluetoothService, isServiceBound);
+    }
+
+    /**
+     * Set a custom transport (e.g. TerminalKeyboardTransport for terminal mode).
+     * Overrides the auto-created HidKeyboardTransport.
+     */
+    public void setTransport(KeyboardTransport t) {
+        this.transport = t;
+        this.useCustomTransport = true;
+    }
+
+    /**
+     * Clear the custom transport and revert to the default HID transport.
+     * Called when exiting terminal mode to restore normal keyboard behavior.
+     * After this call, updateTransport() will rebuild HidKeyboardTransport
+     * from current port / BT state on next hardware state change.
+     */
+    public void clearCustomTransport() {
+        this.useCustomTransport = false;
+        this.transport = null;
+        // Rebuild the default HID transport from current hardware state
+        updateTransport();
     }
 
     public static String makeChecksum(String data) {

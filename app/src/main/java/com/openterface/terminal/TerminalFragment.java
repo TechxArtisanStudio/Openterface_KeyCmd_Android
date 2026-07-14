@@ -15,6 +15,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -23,6 +25,7 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -43,6 +46,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.CustomKeyboardView;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 
@@ -67,9 +71,14 @@ public class TerminalFragment extends Fragment {
         return fragment;
     }
 
-    private View rootView;
+    @Nullable private View rootView;
     private TerminalView terminalView;
     private TerminalSession terminalSession;
+
+    // Custom keyboard (TerminalKeyboardTransport)
+    private FrameLayout terminalKeyboardSlot;
+    @Nullable private CustomKeyboardView terminalKeyboardView;
+    private boolean customKeyboardVisible = false;
 
     private Button connectBtn;
     private Button ctrlBtn;
@@ -178,6 +187,9 @@ public class TerminalFragment extends Fragment {
         if (demoButtonRow != null) {
             applyEmptyStateButtonLayout();
         }
+
+        // Custom keyboard
+        terminalKeyboardSlot = view.findViewById(R.id.terminal_keyboard_slot);
     }
 
     private void applyEmptyStateButtonLayout() {
@@ -213,6 +225,157 @@ public class TerminalFragment extends Fragment {
         terminalView.setFontSize(prefs.getFontSize());
     }
 
+    /**
+     * Dynamically create CustomKeyboardView and inject TerminalKeyboardTransport.
+     * Called when user taps terminal to show the custom keyboard.
+     * Key presses are sent to terminalSession (which exists even when SSH is not connected).
+     */
+    private void attachKeyboardTransport() {
+        if (terminalKeyboardSlot == null || terminalSession == null) return;
+
+        if (terminalKeyboardView == null) {
+            // Inflate from XML to get keyBackground, theme, padding attributes
+            View inflated = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.fragment_keyboard, terminalKeyboardSlot, false);
+            terminalKeyboardView = inflated.findViewById(R.id.keyboard_view);
+            terminalKeyboardSlot.addView(inflated, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+
+            // Create OutputStream + transport only once (when view is first created).
+            // The OutputStream accesses terminalSession by field reference (this.terminalSession),
+            // so it automatically uses the current session even after resetTerminalSession().
+            OutputStream sessionOutput = new OutputStream() {
+                @Override
+                public void write(int b) {
+                    if (terminalSession != null) {
+                        terminalSession.onKeyInput(new byte[]{(byte) b});
+                    }
+                }
+
+                @Override
+                public void write(byte[] b) {
+                    if (terminalSession != null) {
+                        terminalSession.onKeyInput(b);
+                    }
+                }
+
+                @Override
+                public void write(byte[] b, int off, int len) {
+                    if (terminalSession != null) {
+                        byte[] sub = new byte[len];
+                        System.arraycopy(b, off, sub, 0, len);
+                        terminalSession.onKeyInput(sub);
+                    }
+                }
+            };
+
+            terminalKeyboardView.setTransport(
+                    new TerminalKeyboardTransport(sessionOutput));
+        }
+    }
+
+    /** Show CustomKeyboardView and hide system IME. Called when user taps terminal. */
+    private void showCustomKeyboard() {
+        if (terminalKeyboardSlot == null) {
+            Log.w(TAG, "showCustomKeyboard: terminalKeyboardSlot is null");
+            return;
+        }
+        if (customKeyboardVisible) return; // already showing
+
+        try {
+            attachKeyboardTransport();
+            terminalKeyboardSlot.setVisibility(View.VISIBLE);
+            customKeyboardVisible = true;
+            if (terminalView != null) {
+                terminalView.hideKeyboard(); // hide system IME
+            }
+            // Adjust weights: terminal gets normal proportion
+            applyKeyboardWeights(false);
+            Log.v(TAG, "Custom keyboard shown successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to show custom keyboard, falling back to system IME", e);
+            // Fallback: show system IME if custom keyboard fails
+            if (terminalView != null) {
+                terminalView.showKeyboard();
+            }
+        }
+    }
+
+    /** Hide CustomKeyboardView. Does not remove the view, just hides it. */
+    private void hideCustomKeyboard() {
+        if (terminalKeyboardSlot == null) return;
+        if (!customKeyboardVisible) return;
+
+        terminalKeyboardSlot.setVisibility(View.GONE);
+        customKeyboardVisible = false;
+        // Adjust weights: terminal takes full screen
+        applyKeyboardWeights(true);
+        Log.v(TAG, "Custom keyboard hidden");
+    }
+
+    /**
+     * Adjust layout weights for terminal display and keyboard slot.
+     * @param keyboardHidden if true, terminal takes full screen; if false, use normal proportions
+     */
+    private void applyKeyboardWeights(boolean keyboardHidden) {
+        if (rootView == null) return;
+
+        // Use cached terminalKeyboardSlot instead of re-finding
+        if (terminalKeyboardSlot == null) return;
+        View displayArea = rootView.findViewById(R.id.terminal_display_area);
+        if (displayArea == null) return;
+
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+
+        float displayWeight, keyboardWeight;
+        if (keyboardHidden) {
+            // Terminal takes full screen
+            displayWeight = 1f;
+            keyboardWeight = 0f;
+        } else {
+            // Normal proportions
+            displayWeight = isLandscape ? 2f : 1f;
+            keyboardWeight = isLandscape ? 8f : 1.5f;
+        }
+
+        LinearLayout.LayoutParams displayParams =
+                (LinearLayout.LayoutParams) displayArea.getLayoutParams();
+        displayParams.weight = displayWeight;
+        displayArea.setLayoutParams(displayParams);
+
+        LinearLayout.LayoutParams keyboardParams =
+                (LinearLayout.LayoutParams) terminalKeyboardSlot.getLayoutParams();
+        keyboardParams.weight = keyboardWeight;
+        terminalKeyboardSlot.setLayoutParams(keyboardParams);
+    }
+
+    /** Toggle custom keyboard visibility. */
+    private void toggleCustomKeyboard() {
+        if (customKeyboardVisible) {
+            hideCustomKeyboard();
+        } else {
+            showCustomKeyboard();
+        }
+    }
+
+    /** Remove keyboard view and reset state. Called on SSH disconnect. */
+    private void teardownTerminalKeyboard() {
+        if (rootView == null) return;
+        // Explicitly clear custom transport to break reference chain:
+        // CustomKeyboardView → TerminalKeyboardTransport → OutputStream → TerminalFragment
+        if (terminalKeyboardView != null) {
+            terminalKeyboardView.clearCustomTransport();
+        }
+        if (terminalKeyboardSlot != null) {
+            terminalKeyboardSlot.removeAllViews();
+            terminalKeyboardSlot.setVisibility(View.GONE);
+        }
+        terminalKeyboardView = null;
+        customKeyboardVisible = false;
+    }
+
     private void setupListeners() {
         connectBtn.setOnClickListener(v -> {
             Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected
@@ -237,29 +400,36 @@ public class TerminalFragment extends Fragment {
                     showConnectionDialog(TerminalDemoController.DemoTransport.BLE));
         }
 
-        ctrlBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.showKeyboard();
-            }
-        });
+        if (ctrlBtn != null) {
+            ctrlBtn.setOnClickListener(v -> {
+                if (terminalView != null) {
+                    showCustomKeyboard();
+                }
+            });
+        }
 
-        escBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.sendSpecialKey("Esc");
-                terminalView.showKeyboard();
-            }
-        });
+        if (escBtn != null) {
+            escBtn.setOnClickListener(v -> {
+                if (terminalView != null) {
+                    terminalView.sendSpecialKey("Esc");
+                    showCustomKeyboard();
+                }
+            });
+        }
 
-        tabBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.sendSpecialKey("Tab");
-                terminalView.showKeyboard();
-            }
-        });
+        if (tabBtn != null) {
+            tabBtn.setOnClickListener(v -> {
+                if (terminalView != null) {
+                    terminalView.sendSpecialKey("Tab");
+                    showCustomKeyboard();
+                }
+            });
+        }
 
         terminalView.setOnClickListener(v -> {
-            if (isSessionActive() && terminalView != null) {
-                terminalView.showKeyboard();
+            // Toggle custom keyboard visibility regardless of SSH connection state
+            if (terminalView != null) {
+                toggleCustomKeyboard();
             }
         });
 
@@ -805,6 +975,7 @@ public class TerminalFragment extends Fragment {
         isDemoActive = false;
         activeDemoTransport = null;
         activeSessionHost = null;
+        teardownTerminalKeyboard();
         resetTerminalSession();
         updateConnectionState();
     }
@@ -848,6 +1019,7 @@ public class TerminalFragment extends Fragment {
             public void onDisconnected() {
                 mainHandler.post(() -> {
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     statusText.setText(R.string.terminal_disconnected);
                     connectBtn.setText(R.string.terminal_connect);
                     connectionOverlay.setVisibility(View.VISIBLE);
@@ -868,6 +1040,7 @@ public class TerminalFragment extends Fragment {
                     statusText.setText(displayMessage);
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     updateConnectionState();
                 });
             }
@@ -982,7 +1155,7 @@ public class TerminalFragment extends Fragment {
                     updateConnectionState();
                     terminalView.postDelayed(() -> {
                         if (isSshConnected && terminalView != null) {
-                            terminalView.showKeyboard();
+                            showCustomKeyboard();
                         }
                     }, 150);
                 });
@@ -995,6 +1168,7 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     isSshConnected = false;
                     updateConnectionState();
+                    teardownTerminalKeyboard();
                     terminalView.postInvalidate();
                 });
             }
@@ -1018,6 +1192,7 @@ public class TerminalFragment extends Fragment {
                     statusText.setText(displayMessage);
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     updateConnectionState();
                 });
             }
@@ -1039,7 +1214,7 @@ public class TerminalFragment extends Fragment {
                     updateConnectionState();
                     terminalView.postDelayed(() -> {
                         if (isSshConnected && terminalView != null) {
-                            terminalView.showKeyboard();
+                            showCustomKeyboard();
                         }
                     }, 150);
                 });
@@ -1052,6 +1227,7 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     isSshConnected = false;
                     updateConnectionState();
+                    teardownTerminalKeyboard();
                     terminalView.postInvalidate();
                 });
             }
@@ -1075,6 +1251,7 @@ public class TerminalFragment extends Fragment {
                     statusText.setText(displayMessage);
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     updateConnectionState();
                 });
             }
@@ -1103,6 +1280,7 @@ public class TerminalFragment extends Fragment {
         bleEthSocketFactory = null;
         usbEcmTransport = null;
         isSshConnected = false;
+        teardownTerminalKeyboard();
         updateConnectionState();
     }
 
@@ -1206,12 +1384,15 @@ public class TerminalFragment extends Fragment {
         // MainActivity uses configChanges="orientation" so the Activity
         // is not recreated; only onConfigurationChanged is called.
         applyEmptyStateButtonLayout();
+        applyKeyboardWeights(!customKeyboardVisible);
     }
 
     @Override
     public void onDestroyView() {
         stopDemo();
         disconnect();
+        teardownTerminalKeyboard();
+        rootView = null;
         super.onDestroyView();
     }
 }

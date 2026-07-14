@@ -11,13 +11,16 @@ import com.openterface.keymod.BuildConfig;
  */
 public class TerminalSession {
 
-    private final int rows, cols, scrollbackSize;
+    private final int scrollbackSize;
     private char[][] screen;       // visible screen (or alt screen)
     private CellAttribute[][] attrs; // per-cell attributes
     private CellAttribute currentAttr; // current attribute for new chars
     private int cursorX, cursorY;
     private java.util.List<char[]> scrollback;
     private java.util.List<CellAttribute[]> scrollbackAttrs;
+
+    // Mutable dimensions for dynamic growth
+    private int currentRows, currentCols;
 
     // Alternate screen buffer
     private char[][] altScreen;
@@ -37,7 +40,7 @@ public class TerminalSession {
 
     // Scroll region
     private int scrollTop = 0;
-    private int scrollBottom = -1; // -1 means rows-1
+    private int scrollBottom = -1; // -1 means currentRows-1
 
     // DEC private modes
     private boolean cursorVisible = true;
@@ -59,9 +62,9 @@ public class TerminalSession {
     private ResponseSender responseSender;
 
     public TerminalSession(int rows, int cols, int scrollbackSize) {
-        this.rows = rows;
-        this.cols = cols;
         this.scrollbackSize = scrollbackSize;
+        this.currentRows = rows;
+        this.currentCols = cols;
         this.scrollback = new java.util.ArrayList<>();
         this.scrollbackAttrs = new java.util.ArrayList<>();
         this.currentAttr = new CellAttribute();
@@ -98,14 +101,14 @@ public class TerminalSession {
     }
 
     private void clearScreen() {
-        screen = new char[rows][cols];
-        attrs = new CellAttribute[rows][cols];
+        screen = new char[currentRows][currentCols];
+        attrs = new CellAttribute[currentRows][currentCols];
         cursorX = 0;
         cursorY = 0;
         CellAttribute defaultAttr = new CellAttribute();
-        for (int r = 0; r < rows; r++) {
+        for (int r = 0; r < currentRows; r++) {
             java.util.Arrays.fill(screen[r], ' ');
-            for (int c = 0; c < cols; c++) {
+            for (int c = 0; c < currentCols; c++) {
                 attrs[r][c] = defaultAttr.copy();
             }
         }
@@ -115,7 +118,7 @@ public class TerminalSession {
      * Process incoming data from the remote side.
      * Parses ANSI escape sequences and updates screen state.
      */
-    public void append(byte[] data, int len) {
+    public synchronized void append(byte[] data, int len) {
         if (BuildConfig.DEBUG && len > 0) {
             StringBuilder rawHex = new StringBuilder();
             for (int i = 0; i < Math.min(len, 200); i++) {
@@ -138,7 +141,7 @@ public class TerminalSession {
                 cursorX = 0;
                 cursorY++;
                 pendingWrap = false;
-                int bottomLimit = (scrollBottom == -1) ? rows : scrollBottom + 1;
+                int bottomLimit = (scrollBottom == -1) ? currentRows : scrollBottom + 1;
                 if (cursorY >= bottomLimit) {
                     scrollUp();
                     cursorY = bottomLimit - 1;
@@ -155,8 +158,8 @@ public class TerminalSession {
             public void onTab() {
                 // Advance to next 8-column tab stop
                 cursorX = ((cursorX / 8) + 1) * 8;
-                if (cursorX >= cols) {
-                    cursorX = cols - 1;
+                if (cursorX >= currentCols) {
+                    cursorX = currentCols - 1;
                 }
                 pendingWrap = false;
             }
@@ -170,17 +173,17 @@ public class TerminalSession {
             @Override
             public void onCursorMove(int deltaRow, int deltaCol) {
                 // Relative cursor movement (CSI A/B/C/D)
-                int bottomLimit = (scrollBottom == -1) ? rows - 1 : scrollBottom;
+                int bottomLimit = (scrollBottom == -1) ? currentRows - 1 : scrollBottom;
                 cursorY = Math.max(scrollTop, Math.min(bottomLimit, cursorY + deltaRow));
-                cursorX = Math.max(0, Math.min(cols - 1, cursorX + deltaCol));
+                cursorX = Math.max(0, Math.min(currentCols - 1, cursorX + deltaCol));
                 pendingWrap = false;
             }
 
             @Override
             public void onCursorSet(int row, int col) {
                 // Absolute cursor position (CSI H/f)
-                cursorY = Math.max(0, Math.min(rows - 1, row));
-                cursorX = Math.max(0, Math.min(cols - 1, col));
+                cursorY = Math.max(0, Math.min(currentRows - 1, row));
+                cursorX = Math.max(0, Math.min(currentCols - 1, col));
                 pendingWrap = false;
             }
 
@@ -189,8 +192,8 @@ public class TerminalSession {
                 CellAttribute eraseAttr = currentAttr.copy();
                 switch (mode) {
                     case 0: // cursor to end
-                        java.util.Arrays.fill(screen[cursorY], cursorX, cols, ' ');
-                        for (int c = cursorX; c < cols; c++) {
+                        java.util.Arrays.fill(screen[cursorY], cursorX, currentCols, ' ');
+                        for (int c = cursorX; c < currentCols; c++) {
                             attrs[cursorY][c] = eraseAttr.copy();
                         }
                         break;
@@ -202,7 +205,7 @@ public class TerminalSession {
                         break;
                     case 2: // entire line
                         java.util.Arrays.fill(screen[cursorY], ' ');
-                        for (int c = 0; c < cols; c++) {
+                        for (int c = 0; c < currentCols; c++) {
                             attrs[cursorY][c] = eraseAttr.copy();
                         }
                         break;
@@ -214,13 +217,13 @@ public class TerminalSession {
                 CellAttribute eraseAttr = currentAttr.copy();
                 switch (mode) {
                     case 0: // cursor to end
-                        java.util.Arrays.fill(screen[cursorY], cursorX, cols, ' ');
-                        for (int c = cursorX; c < cols; c++) {
+                        java.util.Arrays.fill(screen[cursorY], cursorX, currentCols, ' ');
+                        for (int c = cursorX; c < currentCols; c++) {
                             attrs[cursorY][c] = eraseAttr.copy();
                         }
-                        for (int r = cursorY + 1; r < rows; r++) {
+                        for (int r = cursorY + 1; r < currentRows; r++) {
                             java.util.Arrays.fill(screen[r], ' ');
-                            for (int c = 0; c < cols; c++) {
+                            for (int c = 0; c < currentCols; c++) {
                                 attrs[r][c] = eraseAttr.copy();
                             }
                         }
@@ -232,15 +235,15 @@ public class TerminalSession {
                         }
                         for (int r = 0; r < cursorY; r++) {
                             java.util.Arrays.fill(screen[r], ' ');
-                            for (int c = 0; c < cols; c++) {
+                            for (int c = 0; c < currentCols; c++) {
                                 attrs[r][c] = eraseAttr.copy();
                             }
                         }
                         break;
                     case 2: // entire screen
-                        for (int r = 0; r < rows; r++) {
+                        for (int r = 0; r < currentRows; r++) {
                             java.util.Arrays.fill(screen[r], ' ');
-                            for (int c = 0; c < cols; c++) {
+                            for (int c = 0; c < currentCols; c++) {
                                 attrs[r][c] = eraseAttr.copy();
                             }
                         }
@@ -303,7 +306,7 @@ public class TerminalSession {
             public void onDeviceStatusReport(int code) {
                 if (code == 6 && responseSender != null) {
                     // Cursor Position Report (CPR): ESC [ row ; col R
-                    int reportX = pendingWrap ? cols - 1 : cursorX;
+                    int reportX = pendingWrap ? currentCols - 1 : cursorX;
                     String response = "\033[" + (cursorY + 1) + ";" + (reportX + 1) + "R";
                     responseSender.send(response.getBytes());
                 }
@@ -336,12 +339,12 @@ public class TerminalSession {
 
             @Override
             public void onSetScrollRegion(int top, int bottom) {
-                scrollTop = Math.max(0, Math.min(rows - 1, top));
-                scrollBottom = (bottom == -1) ? rows - 1 : Math.max(0, Math.min(rows - 1, bottom));
+                scrollTop = Math.max(0, Math.min(currentRows - 1, top));
+                scrollBottom = (bottom == -1) ? currentRows - 1 : Math.max(0, Math.min(currentRows - 1, bottom));
                 if (scrollTop > scrollBottom) {
                     // Invalid region, reset to full screen
                     scrollTop = 0;
-                    scrollBottom = rows - 1;
+                    scrollBottom = currentRows - 1;
                 }
                 // Cursor to home position after setting scroll region
                 cursorX = 0;
@@ -375,14 +378,14 @@ public class TerminalSession {
                     mainScreen = screen;
                     mainAttrs = attrs;
                     if (altScreen == null) {
-                        altScreen = new char[rows][cols];
-                        altAttrs = new CellAttribute[rows][cols];
+                        altScreen = new char[currentRows][currentCols];
+                        altAttrs = new CellAttribute[currentRows][currentCols];
                     }
                     // Always clear alt screen before use
                     CellAttribute defaultAttr = new CellAttribute();
-                    for (int r = 0; r < rows; r++) {
+                    for (int r = 0; r < currentRows; r++) {
                         java.util.Arrays.fill(altScreen[r], ' ');
-                        for (int c = 0; c < cols; c++) {
+                        for (int c = 0; c < currentCols; c++) {
                             altAttrs[r][c] = defaultAttr.copy();
                         }
                     }
@@ -414,14 +417,14 @@ public class TerminalSession {
                     mainScreen = screen;
                     mainAttrs = attrs;
                     if (altScreen == null) {
-                        altScreen = new char[rows][cols];
-                        altAttrs = new CellAttribute[rows][cols];
+                        altScreen = new char[currentRows][currentCols];
+                        altAttrs = new CellAttribute[currentRows][currentCols];
                     }
                     // Always clear alt screen before use
                     CellAttribute defaultAttr = new CellAttribute();
-                    for (int r = 0; r < rows; r++) {
+                    for (int r = 0; r < currentRows; r++) {
                         java.util.Arrays.fill(altScreen[r], ' ');
-                        for (int c = 0; c < cols; c++) {
+                        for (int c = 0; c < currentCols; c++) {
                             altAttrs[r][c] = defaultAttr.copy();
                         }
                     }
@@ -499,14 +502,14 @@ public class TerminalSession {
             // Perform deferred line wrap
             cursorX = 0;
             cursorY++;
-            int bottomLimit = (scrollBottom == -1) ? rows : scrollBottom + 1;
+            int bottomLimit = (scrollBottom == -1) ? currentRows : scrollBottom + 1;
             if (cursorY >= bottomLimit) {
                 scrollUp();
                 cursorY = bottomLimit - 1;
             }
             pendingWrap = false;
         }
-        if (cursorX >= 0 && cursorX < cols && cursorY >= 0 && cursorY < rows) {
+        if (cursorX >= 0 && cursorX < currentCols && cursorY >= 0 && cursorY < currentRows) {
             screen[cursorY][cursorX] = ch;
             attrs[cursorY][cursorX] = currentAttr.copy();
 
@@ -514,7 +517,7 @@ public class TerminalSession {
             int charWidth = getCharDisplayWidth(ch);
             if (charWidth == 2) {
                 // Clear the next cell to avoid overlap
-                if (cursorX + 1 < cols) {
+                if (cursorX + 1 < currentCols) {
                     screen[cursorY][cursorX + 1] = ' ';
                     attrs[cursorY][cursorX + 1] = currentAttr.copy();
                 }
@@ -523,7 +526,7 @@ public class TerminalSession {
                 cursorX++;
             }
 
-            if (cursorX >= cols) {
+            if (cursorX >= currentCols) {
                 // Don't wrap yet — defer to next character
                 pendingWrap = true;
             }
@@ -560,73 +563,143 @@ public class TerminalSession {
                 scrollbackAttrs.remove(0);
             }
         }
-        int bottomLimit = (scrollBottom == -1) ? rows - 1 : scrollBottom;
+        int bottomLimit = (scrollBottom == -1) ? currentRows - 1 : scrollBottom;
         // Shift lines up within scroll region
         for (int r = scrollTop; r < bottomLimit; r++) {
-            System.arraycopy(screen[r + 1], 0, screen[r], 0, cols);
-            System.arraycopy(attrs[r + 1], 0, attrs[r], 0, cols);
+            System.arraycopy(screen[r + 1], 0, screen[r], 0, currentCols);
+            System.arraycopy(attrs[r + 1], 0, attrs[r], 0, currentCols);
         }
         // Clear bottom line of scroll region
         CellAttribute clearAttr = new CellAttribute();
         java.util.Arrays.fill(screen[bottomLimit], ' ');
-        for (int c = 0; c < cols; c++) {
+        for (int c = 0; c < currentCols; c++) {
             attrs[bottomLimit][c] = clearAttr.copy();
         }
     }
 
     private void scrollDown() {
-        int bottomLimit = (scrollBottom == -1) ? rows - 1 : scrollBottom;
+        int bottomLimit = (scrollBottom == -1) ? currentRows - 1 : scrollBottom;
         // Shift lines down within scroll region
         for (int r = bottomLimit; r > scrollTop; r--) {
-            System.arraycopy(screen[r - 1], 0, screen[r], 0, cols);
-            System.arraycopy(attrs[r - 1], 0, attrs[r], 0, cols);
+            System.arraycopy(screen[r - 1], 0, screen[r], 0, currentCols);
+            System.arraycopy(attrs[r - 1], 0, attrs[r], 0, currentCols);
         }
         // Clear top line of scroll region
         CellAttribute clearAttr = new CellAttribute();
         java.util.Arrays.fill(screen[scrollTop], ' ');
-        for (int c = 0; c < cols; c++) {
+        for (int c = 0; c < currentCols; c++) {
             attrs[scrollTop][c] = clearAttr.copy();
         }
     }
 
-    public void onKeyInput(byte[] data) {
+    public synchronized void onKeyInput(byte[] data) {
         if (keySender != null) {
             keySender.send(data);
         }
     }
 
-    public void setKeySender(KeySender sender) { this.keySender = sender; }
+    public synchronized void setKeySender(KeySender sender) { this.keySender = sender; }
 
-    public void setResponseSender(ResponseSender sender) { this.responseSender = sender; }
+    public synchronized void setResponseSender(ResponseSender sender) { this.responseSender = sender; }
 
-    public char[] getLineChars(int row) {
-        if (row < 0 || row >= rows) return null;
+    /**
+     * Returns the character array for the given row.
+     * WARNING: Returns a direct reference to the internal screen buffer.
+     * Callers must NOT modify the returned array. The reference is only safe
+     * while holding the session lock (e.g., inside a synchronized(session) block).
+     */
+    public synchronized char[] getLineChars(int row) {
+        if (row < 0 || row >= currentRows) return null;
         return screen[row];
     }
 
-    public CellAttribute[] getLineAttrs(int row) {
-        if (row < 0 || row >= rows) return null;
+    /**
+     * Returns the cell attribute array for the given row.
+     * WARNING: Returns a direct reference to the internal attrs buffer.
+     * Callers must NOT modify the returned array. The reference is only safe
+     * while holding the session lock (e.g., inside a synchronized(session) block).
+     */
+    public synchronized CellAttribute[] getLineAttrs(int row) {
+        if (row < 0 || row >= currentRows) return null;
         return attrs[row];
     }
 
-    public char[] getScrollbackLineChars(int scrollbackIndex) {
+    public synchronized char[] getScrollbackLineChars(int scrollbackIndex) {
         if (scrollbackIndex < 0 || scrollbackIndex >= scrollback.size()) return null;
         return scrollback.get(scrollbackIndex);
     }
 
-    public CellAttribute[] getScrollbackLineAttrs(int scrollbackIndex) {
+    public synchronized CellAttribute[] getScrollbackLineAttrs(int scrollbackIndex) {
         if (scrollbackIndex < 0 || scrollbackIndex >= scrollbackAttrs.size()) return null;
         return scrollbackAttrs.get(scrollbackIndex);
     }
 
-    public int getScrollbackSize() { return scrollback.size(); }
+    public synchronized int getScrollbackSize() { return scrollback.size(); }
 
-    public int getCursorX() { return cursorX; }
-    public int getCursorY() { return cursorY; }
-    public int getColumns() { return cols; }
-    public int getRows() { return rows; }
+    public synchronized int getCursorX() { return cursorX; }
+    public synchronized int getCursorY() { return cursorY; }
+    public synchronized int getColumns() { return currentCols; }
+    public synchronized int getRows() { return currentRows; }
 
-    public boolean isCursorVisible() { return cursorVisible; }
-    public boolean isApplicationCursorKeys() { return applicationCursorKeys; }
-    public boolean isUsingAltScreen() { return usingAltScreen; }
+    /**
+     * Dynamically grow the terminal buffer if needed (thread-safe, only grows).
+     * Called from TerminalView.onSizeChanged when view needs more rows/cols.
+     */
+    public synchronized void growIfNeeded(int minRows, int minCols) {
+        if (minRows <= currentRows && minCols <= currentCols) return;
+
+        int newRows = Math.max(currentRows, minRows);
+        int newCols = Math.max(currentCols, minCols);
+
+        // Save old dimensions for scroll region check
+        int oldRows = currentRows;
+
+        char[][] newScreen = new char[newRows][newCols];
+        CellAttribute[][] newAttrs = new CellAttribute[newRows][newCols];
+        CellAttribute defaultAttr = new CellAttribute();
+
+        for (int r = 0; r < newRows; r++) {
+            java.util.Arrays.fill(newScreen[r], ' ');
+            for (int c = 0; c < newCols; c++) {
+                newAttrs[r][c] = defaultAttr.copy();
+            }
+        }
+
+        // Copy existing content
+        int copyRows = Math.min(currentRows, newRows);
+        int copyCols = Math.min(currentCols, newCols);
+        for (int r = 0; r < copyRows; r++) {
+            System.arraycopy(screen[r], 0, newScreen[r], 0, copyCols);
+            System.arraycopy(attrs[r], 0, newAttrs[r], 0, copyCols);
+        }
+
+        screen = newScreen;
+        attrs = newAttrs;
+        currentRows = newRows;
+        currentCols = newCols;
+
+        // Also grow backup buffers if they exist (to prevent ArrayIndexOutOfBoundsException
+        // when switching to alt screen after resize). Setting to null forces reallocation
+        // on next use, which loses alt screen content but is safe.
+        mainScreen = null;
+        mainAttrs = null;
+        altScreen = null;
+        altAttrs = null;
+
+        // Adjust cursor if needed
+        cursorX = Math.min(cursorX, newCols - 1);
+        cursorY = Math.min(cursorY, newRows - 1);
+
+        // Update scroll region only if it was at default full-screen (use old dimensions)
+        if (scrollTop == 0 && scrollBottom == oldRows - 1) {
+            scrollBottom = newRows - 1;
+        }
+        // Boundary protection: ensure scroll region doesn't exceed new dimensions
+        scrollTop = Math.min(scrollTop, newRows - 1);
+        scrollBottom = Math.min(scrollBottom, newRows - 1);
+    }
+
+    public synchronized boolean isCursorVisible() { return cursorVisible; }
+    public synchronized boolean isApplicationCursorKeys() { return applicationCursorKeys; }
+    public synchronized boolean isUsingAltScreen() { return usingAltScreen; }
 }
