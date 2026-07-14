@@ -442,6 +442,28 @@ public class TerminalView extends View {
             case KeyEvent.KEYCODE_F12:
                 return "\033[24~".getBytes(StandardCharsets.US_ASCII);
             default:
+                // Number keys (main keyboard and numpad)
+                if (keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9) {
+                    return new byte[]{(byte) ('0' + keyCode - KeyEvent.KEYCODE_0)};
+                }
+                if (keyCode >= KeyEvent.KEYCODE_NUMPAD_0 && keyCode <= KeyEvent.KEYCODE_NUMPAD_9) {
+                    return new byte[]{(byte) ('0' + keyCode - KeyEvent.KEYCODE_NUMPAD_0)};
+                }
+                // Numpad operators
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_DOT)      return new byte[]{(byte) '.'};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_COMMA)    return new byte[]{(byte) ','};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_ADD)      return new byte[]{(byte) '+'};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_SUBTRACT) return new byte[]{(byte) '-'};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_MULTIPLY) return new byte[]{(byte) '*'};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_DIVIDE)   return new byte[]{(byte) '/'};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_EQUALS)   return new byte[]{(byte) '='};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_LEFT_PAREN)  return new byte[]{(byte) '('};
+                if (keyCode == KeyEvent.KEYCODE_NUMPAD_RIGHT_PAREN) return new byte[]{(byte) ')'};
+                // Space
+                if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                    return new byte[]{(byte) ' '};
+                }
+                // Ctrl + any key → control character
                 if (event.isCtrlPressed()) {
                     int ascii = event.getUnicodeChar();
                     if (ascii >= 'a' && ascii <= 'z') {
@@ -450,6 +472,12 @@ public class TerminalView extends View {
                     if (ascii >= 'A' && ascii <= 'Z') {
                         return new byte[]{(byte) (ascii - 'A' + 1)};
                     }
+                }
+                // General fallback: convert printable characters via Unicode
+                int unicodeChar = event.getUnicodeChar(0);
+                if (unicodeChar != 0 && unicodeChar != KeyEvent.KEYCODE_UNKNOWN) {
+                    String str = new String(Character.toChars(unicodeChar));
+                    return str.getBytes(StandardCharsets.UTF_8);
                 }
                 return null;
         }
