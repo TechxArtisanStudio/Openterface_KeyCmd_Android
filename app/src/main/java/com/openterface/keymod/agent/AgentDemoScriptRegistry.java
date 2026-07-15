@@ -47,37 +47,51 @@ public final class AgentDemoScriptRegistry {
     @NonNull
     private static AgentDemoScript heroMixed() {
         List<AgentPlanStep> plan = Arrays.asList(
-                new AgentPlanStep(1, "Connect SSH to target Mac", "~2s", AgentPlanStep.Kind.TERMINAL),
-                new AgentPlanStep(2, "Run df -h /", "Check disk usage", AgentPlanStep.Kind.TERMINAL),
-                new AgentPlanStep(3, "Play macro \"Morning Setup\"", "12 HID steps · ~8s", AgentPlanStep.Kind.MACRO));
+                new AgentPlanStep(1, "Connect SSH to home computer", "~2s", AgentPlanStep.Kind.TERMINAL),
+                new AgentPlanStep(2, "Check disk free space", "df -h /", AgentPlanStep.Kind.TERMINAL),
+                new AgentPlanStep(3, "Find large Downloads files", "Show top 5", AgentPlanStep.Kind.TERMINAL),
+                new AgentPlanStep(4, "Check memory pressure", "Top active apps", AgentPlanStep.Kind.TERMINAL),
+                new AgentPlanStep(5, "Play macro \"Quick Cleanup\"", "10 HID steps · ~9s", AgentPlanStep.Kind.MACRO));
         List<String> terminal = AgentDemoScript.lines(
-                "$ ssh mac-host",
-                "Connecting to mac-host...",
+                "$ ssh home-computer",
+                "Connecting to home-computer...",
                 "Connected.",
                 "$ df -h /",
                 "Filesystem      Size   Used  Avail Capacity  Mounted on",
-                "/dev/disk1s1   460Gi  193Gi  267Gi    42%    /",
-                "Macintosh HD   42% used");
+                "/dev/disk3s1   460Gi  421Gi   39Gi    92%    /",
+                "$ du -sh ~/Downloads/* | sort -hr | head -5",
+                "18G  ~/Downloads/video_exports",
+                "7.4G ~/Downloads/old_installer.dmg",
+                "3.1G ~/Downloads/photo_backup.zip",
+                "$ ps -Ao comm,%mem | sort -k2 -nr | head -5",
+                "PhotoEditor        18.6",
+                "Browser Helper      9.4");
         List<String> macroSteps = AgentDemoScript.lines(
                 "Focus host window",
-                "Open Finder",
-                "Launch Safari",
-                "Open calendar",
-                "Dismiss notifications");
+                "Open Downloads folder",
+                "Select old installer",
+                "Move to Trash",
+                "Open Activity Monitor",
+                "Search PhotoEditor",
+                "Show memory tab",
+                "Open Storage Settings");
         List<String> macroChips = AgentDemoScript.lines(
                 "Sending <CMD>+<TAB>…",
                 "Sending <CMD>+<SPACE>…",
-                "Click Dock · Safari",
+                "Typing Downloads…",
+                "Sending <CMD>+<DELETE>…",
                 "Sending <CMD>+<SPACE>…",
-                "Sending <ESC>…");
+                "Typing Activity Monitor…",
+                "Click Memory",
+                "Open Storage Settings");
         return new AgentDemoScript(
                 AgentDemoScript.ID_HERO_MIXED,
                 "Full workflow",
-                "CLI + Macro in one command",
-                "Check disk space on the Mac, then run my Morning Setup macro.",
-                "I'll connect to your Mac via Terminal, check disk usage, then play your Morning Setup macro on the host.",
+                "Simple computer tune-up",
+                "My computer feels slow. Check storage and memory, then start a quick cleanup.",
+                "I'll check free disk space, find the biggest Downloads items, review memory usage, then run your Quick Cleanup macro on the host.",
                 plan,
-                "Done. Macintosh HD is 42% full. Morning Setup completed in 8s.",
+                "Done. Disk space is tight at 92% used, and PhotoEditor is the top memory user. Quick Cleanup moved the old installer to Trash and opened Storage Settings.",
                 terminal,
                 macroSteps,
                 macroChips,

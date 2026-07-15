@@ -163,7 +163,7 @@ public class AgentFragment extends Fragment {
                 showEmptyState(messages.isEmpty());
                 messagesList.post(() -> {
                     if (adapter.getItemCount() > 0) {
-                        messagesList.smoothScrollToPosition(adapter.getItemCount() - 1);
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
                     }
                 });
             }
