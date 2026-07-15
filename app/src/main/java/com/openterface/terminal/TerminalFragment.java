@@ -105,6 +105,7 @@ public class TerminalFragment extends Fragment {
     private BleEthSocketFactory bleEthSocketFactory;
     private BluetoothService.BleEthDataCallback bleEthCallback;
     private boolean isSshConnected = false;
+    private volatile boolean viewDestroyed = false;
 
     // Demo state
     private TerminalDemoController demoController;
@@ -140,6 +141,17 @@ public class TerminalFragment extends Fragment {
         setupListeners();
         updateConnectionState();
         maybeStartPendingDemo();
+
+        // Restore keyboard visibility state after process death
+        if (savedInstanceState != null) {
+            boolean wasKeyboardVisible = savedInstanceState.getBoolean("custom_keyboard_visible", false);
+            if (wasKeyboardVisible) {
+                // Delay to ensure View is fully initialized.
+                // Note: Do NOT set customKeyboardVisible here — showCustomKeyboard()
+                // checks it as an early-return guard and will skip showing the keyboard.
+                rootView.post(this::showCustomKeyboard);
+            }
+        }
 
         return view;
     }
@@ -1045,12 +1057,21 @@ public class TerminalFragment extends Fragment {
             @Override
             public void onDisconnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = false;
                     teardownTerminalKeyboard();
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
-                    terminalView.postInvalidate();
+                    if (statusText != null) {
+                        statusText.setText(R.string.terminal_disconnected);
+                    }
+                    if (connectBtn != null) {
+                        connectBtn.setText(R.string.terminal_connect);
+                    }
+                    if (connectionOverlay != null) {
+                        connectionOverlay.setVisibility(View.VISIBLE);
+                    }
+                    if (terminalView != null) {
+                        terminalView.postInvalidate();
+                    }
                 });
             }
 
@@ -1058,13 +1079,16 @@ public class TerminalFragment extends Fragment {
             public void onError(String message) {
                 Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
+                    if (viewDestroyed || getContext() == null) return;
                     String displayMessage;
                     if (message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
                     }
-                    statusText.setText(displayMessage);
+                    if (statusText != null) {
+                        statusText.setText(displayMessage);
+                    }
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
                     teardownTerminalKeyboard();
@@ -1079,8 +1103,13 @@ public class TerminalFragment extends Fragment {
 
             if (!usbEcmTransport.isConnected()) {
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": USB ECM");
-                    connectionOverlay.setVisibility(View.VISIBLE);
+                    if (viewDestroyed || getContext() == null) return;
+                    if (statusText != null) {
+                        statusText.setText(getString(R.string.terminal_connection_failed) + ": USB ECM");
+                    }
+                    if (connectionOverlay != null) {
+                        connectionOverlay.setVisibility(View.VISIBLE);
+                    }
                 });
                 return;
             }
@@ -1107,8 +1136,13 @@ public class TerminalFragment extends Fragment {
                 + " isConnected=" + (bluetoothService != null && bluetoothService.isConnected()));
         if (bluetoothService == null || !bluetoothService.isConnected()) {
             mainHandler.post(() -> {
-                statusText.setText(R.string.terminal_connection_failed + ": BLE not connected");
-                connectionOverlay.setVisibility(View.VISIBLE);
+                if (viewDestroyed || getContext() == null) return;
+                if (statusText != null) {
+                    statusText.setText(R.string.terminal_connection_failed + ": BLE not connected");
+                }
+                if (connectionOverlay != null) {
+                    connectionOverlay.setVisibility(View.VISIBLE);
+                }
             });
             return;
         }
@@ -1148,7 +1182,10 @@ public class TerminalFragment extends Fragment {
         // Register for incoming BLE-Eth data
         bleEthCallback = data -> {
             Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
-            bleEthTransport.handleIncomingData(data);
+            BleEthTransport transport = bleEthTransport;
+            if (transport != null && !viewDestroyed) {
+                transport.handleIncomingData(data);
+            }
         };
         Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
         bluetoothService.addBleEthCallback(bleEthCallback);
@@ -1177,45 +1214,59 @@ public class TerminalFragment extends Fragment {
             @Override
             public void onConnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = true;
                     updateConnectionState();
-                    terminalView.postDelayed(() -> {
-                        if (isSshConnected && terminalView != null) {
+                    mainHandler.postDelayed(() -> {
+                        if (!viewDestroyed && rootView != null && isSshConnected) {
                             showCustomKeyboard();
                         }
                     }, 150);
                 });
                 // Start the shell channel (runs on background thread)
-                sshClient.startShell(terminalSession);
+                SshClient client = sshClient;
+                if (client != null && !viewDestroyed) {
+                    client.startShell(terminalSession);
+                }
             }
 
             @Override
             public void onDisconnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = false;
                     updateConnectionState();
                     teardownTerminalKeyboard();
-                    terminalView.postInvalidate();
+                    if (terminalView != null) {
+                        terminalView.postInvalidate();
+                    }
                 });
             }
 
             @Override
             public void onDataReceived(byte[] data, int len) {
                 terminalSession.append(data, len);
-                mainHandler.post(() -> terminalView.invalidate());
+                mainHandler.post(() -> {
+                    if (!viewDestroyed && terminalView != null) {
+                        terminalView.invalidate();
+                    }
+                });
             }
 
             @Override
             public void onError(String message) {
                 Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
+                    if (viewDestroyed || getContext() == null) return;
                     String displayMessage;
                     if (message != null && message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
                     }
-                    statusText.setText(displayMessage);
+                    if (statusText != null) {
+                        statusText.setText(displayMessage);
+                    }
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
                     teardownTerminalKeyboard();
@@ -1370,14 +1421,55 @@ public class TerminalFragment extends Fragment {
         // is not recreated; only onConfigurationChanged is called.
         applyEmptyStateButtonLayout();
         applyKeyboardWeights(!customKeyboardVisible);
+        // Notify remote PTY of new terminal size after rotation.
+        if (sshClient != null && isSshConnected && terminalSession != null) {
+            mainHandler.postDelayed(() -> {
+                if (sshClient != null && isSshConnected && terminalSession != null) {
+                    sshClient.resizeTerminal(terminalSession.getColumns(), terminalSession.getRows());
+                }
+            }, 300);  // Wait for layout to complete and onSizeChanged() to update dimensions
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("custom_keyboard_visible", customKeyboardVisible);
     }
 
     @Override
     public void onDestroyView() {
+        // 1. Set guard flag FIRST to prevent background callbacks from accessing Views
+        viewDestroyed = true;
+
+        // 2. Cancel all Handler callbacks to prevent accessing destroyed Views
+        mainHandler.removeCallbacksAndMessages(null);
+
+        // 3. Stop demo and disconnect SSH
         stopDemo();
         disconnect();
+
+        // 4. Clean up keyboard transport
         teardownTerminalKeyboard();
+
+        // 5. Clear all View references to prevent memory leaks
         rootView = null;
+        terminalView = null;
+        terminalKeyboardSlot = null;
+        connectBtn = null;
+        statusText = null;
+        hostLabel = null;
+        transportBtn = null;
+        ctrlBtn = null;
+        escBtn = null;
+        tabBtn = null;
+        connectionOverlay = null;
+        bottomBar = null;
+        demoButtonRow = null;
+        demoUsbBtn = null;
+        demoBleBtn = null;
+        mainActivity = null;
+
         super.onDestroyView();
     }
 }
