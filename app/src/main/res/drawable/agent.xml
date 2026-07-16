@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <!-- agent-ai-chat.svg; black fill for ImageView theme tint -->
+    <path
+        android:fillColor="@android:color/black"
+        android:pathData="M1.4,5.6c-0.4,0 -0.7,0.3 -0.7,0.7v7.9s1.4,-1.4 1.4,-1.4c0.3,-0.3 0.6,-0.4 1,-0.4h6.5c0.4,0 0.7,-0.3 0.7,-0.7v-5.5c0,-0.4 -0.3,-0.7 -0.7,-0.7H1.4zM9.5,4.9c0.8,0 1.4,0.6 1.4,1.4v5.5c0,0.8 -0.6,1.4 -1.4,1.4H3c-0.2,0 -0.4,0 -0.5,0.2l-1.9,1.9c0,0 -0.2,0.1 -0.2,0.1C0.2,15.3 0,15.1 0,15V6.2c0,-0.8 0.6,-1.4 1.4,-1.4h8.2z" />
+    <path
+        android:fillColor="@android:color/black"
+        android:pathData="M5.4,10.1h-1.3l-0.2,0.6h-1.1l1.4,-3.6h1.2l1.3,3.6h-1.2l-0.2,-0.6zM5.1,9.3l-0.4,-1.3 -0.4,1.3h0.8z" />
+    <path
+        android:fillColor="@android:color/black"
+        android:pathData="M7.1,7.1h1.1v3.6h-1.1v-3.6z" />
+    <path
+        android:fillColor="@android:color/black"
+        android:pathData="M5.8,4.7V1.4c0,-0.4 0.3,-0.7 0.7,-0.7h8.2c0.4,0 0.7,0.3 0.7,0.7v7.9l-1.4,-1.4c-0.3,-0.3 -0.6,-0.4 -1,-0.4h-1.9v0.7s1.9,0 1.9,0c0.2,0 0.4,0 0.5,0.2l1.9,1.9c0,0 0.2,0.1 0.2,0.1c0.2,0 0.3,-0.2 0.3,-0.3V1.4c0,-0.8 -0.6,-1.4 -1.4,-1.4H6.5c-0.8,0 -1.4,0.6 -1.4,1.4v3.3z" />
+    <path
+        android:fillColor="@android:color/black"
+        android:pathData="M7.1,2.4c0,-0.2 0.2,-0.3 0.3,-0.3h6.1c0.2,0 0.3,0.2 0.3,0.3s-0.2,0.3 -0.3,0.3h-6.1c-0.2,0 -0.3,-0.2 -0.3,-0.3zM7.1,4.1c0,-0.2 0.2,-0.3 0.3,-0.3h6.1c0.2,0 0.3,0.2 0.3,0.3s-0.2,0.3 -0.3,0.3h-6.1c-0.2,0 -0.3,-0.2 -0.3,-0.3z" />
+</vector>

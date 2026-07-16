@@ -31,7 +31,6 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.ShortcutProfileManager;
 import com.openterface.keymod.basic.KmBasicKeyboardPrefs;
 import com.openterface.keymod.prefs.KeyboardAlternatesHintsPrefs;
-import com.openterface.keymod.prefs.KmProComposeDraftRetentionPrefs;
 import com.openterface.keymod.prefs.KmProEmbeddedComposeDraftHolder;
 import com.openterface.keymod.prefs.KmProKeyTapPreviewPrefs;
 import com.openterface.keymod.prefs.KmProTouchpadPrefs;
@@ -52,13 +51,9 @@ public class KmProSettingsFragment extends Fragment {
     private MaterialButtonToggleGroup keyTapPreviewToggle;
     private LinearLayout gamingKeyBehaviorSection;
     private MaterialButtonToggleGroup longPressBehaviorToggle;
-    private MaterialButtonToggleGroup touchpadModeToggle;
+    private RadioGroup touchpadModeGroup;
     @Nullable
     private SwitchCompat scrollStripSwitch;
-    @Nullable
-    private SwitchCompat gestureStatusSwitch;
-    @Nullable
-    private SwitchCompat composeDraftRetentionSwitch;
     @Nullable
     private SeekBar scrollStripSensitivitySeekBar;
     @Nullable
@@ -82,8 +77,6 @@ public class KmProSettingsFragment extends Fragment {
     private boolean suppressChordSustainCallback;
     private boolean suppressTouchpadModeToggleCallback;
     private boolean suppressScrollStripPrefsCallback;
-    private boolean suppressGestureStatusPrefsCallback;
-    private boolean suppressComposeDraftRetentionCallback;
     private boolean loadingModifierPrefs;
 
     @Nullable
@@ -98,9 +91,8 @@ public class KmProSettingsFragment extends Fragment {
         keyTapPreviewToggle = view.findViewById(R.id.km_pro_key_tap_preview_toggle);
         gamingKeyBehaviorSection = view.findViewById(R.id.km_pro_gaming_key_behavior_section);
         longPressBehaviorToggle = view.findViewById(R.id.km_pro_long_press_behavior_toggle);
-        touchpadModeToggle = view.findViewById(R.id.km_pro_touchpad_mode_toggle);
+        touchpadModeGroup = view.findViewById(R.id.km_pro_touchpad_mode_group);
         scrollStripSwitch = view.findViewById(R.id.km_pro_touchpad_scroll_strip_switch);
-        gestureStatusSwitch = view.findViewById(R.id.km_pro_touchpad_gesture_status_switch);
         scrollStripSensitivitySeekBar = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_seekbar);
         scrollStripSensitivityValueText = view.findViewById(R.id.km_pro_touchpad_strip_scroll_sensitivity_value_text);
         modifierBehaviorGroup = view.findViewById(R.id.km_pro_modifier_behavior_group);
@@ -108,7 +100,6 @@ public class KmProSettingsFragment extends Fragment {
         chordSustainSwitch = view.findViewById(R.id.km_pro_chord_sustain_switch);
         profileInputLayout = view.findViewById(R.id.km_pro_profile_input_layout);
         profileDropdown = view.findViewById(R.id.km_pro_profile_dropdown);
-        composeDraftRetentionSwitch = view.findViewById(R.id.km_pro_compose_draft_retention_switch);
 
         profileAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
@@ -158,23 +149,10 @@ public class KmProSettingsFragment extends Fragment {
             });
         }
 
-        if (composeDraftRetentionSwitch != null) {
-            composeDraftRetentionSwitch.setOnCheckedChangeListener(
-                    (buttonView, isChecked) -> {
-                        if (suppressComposeDraftRetentionCallback) {
-                            return;
-                        }
-                        KmProComposeDraftRetentionPrefs.write(requireContext(), isChecked);
-                        if (!isChecked) {
-                            KmProEmbeddedComposeDraftHolder.clear();
-                        }
-                    });
-        }
-
-        if (touchpadModeToggle != null) {
-            touchpadModeToggle.addOnButtonCheckedListener(
-                    (group, checkedId, isChecked) -> {
-                        if (!isChecked || suppressTouchpadModeToggleCallback) {
+        if (touchpadModeGroup != null) {
+            touchpadModeGroup.setOnCheckedChangeListener(
+                    (group, checkedId) -> {
+                        if (suppressTouchpadModeToggleCallback) {
                             return;
                         }
                         KmProTouchpadPrefs.writeMode(requireContext(), touchpadModeButtonIdToMode(checkedId));
@@ -190,16 +168,6 @@ public class KmProSettingsFragment extends Fragment {
                         }
                         KmProTouchpadPrefs.writeScrollStripEnabled(requireContext(), isChecked);
                         updateScrollStripSensitivityControlsEnabled();
-                        notifyCompositeTouchpadChromeFromKmProSetup();
-                    });
-        }
-        if (gestureStatusSwitch != null) {
-            gestureStatusSwitch.setOnCheckedChangeListener(
-                    (buttonView, isChecked) -> {
-                        if (suppressGestureStatusPrefsCallback) {
-                            return;
-                        }
-                        KmProTouchpadPrefs.writeGestureStatusLineVisible(requireContext(), isChecked);
                         notifyCompositeTouchpadChromeFromKmProSetup();
                     });
         }
@@ -331,9 +299,7 @@ public class KmProSettingsFragment extends Fragment {
         syncDisplayModeToggleFromPrefs();
         syncAlternateHintsToggleFromPrefs();
         syncKeyTapPreviewToggleFromPrefs();
-        syncComposeDraftRetentionSwitchFromPrefs();
-        syncTouchpadModeToggleFromPrefs();
-        syncGestureStatusSwitchFromPrefs();
+        syncTouchpadModeGroupFromPrefs();
         syncScrollStripControlsFromPrefs();
         updateGamingKeyBehaviorSectionVisibility();
         syncGamingKeyBehaviorToggleFromPrefs();
@@ -387,16 +353,6 @@ public class KmProSettingsFragment extends Fragment {
         suppressKeyTapPreviewToggleCallback = true;
         keyTapPreviewToggle.check(buttonId);
         suppressKeyTapPreviewToggleCallback = false;
-    }
-
-    private void syncComposeDraftRetentionSwitchFromPrefs() {
-        if (composeDraftRetentionSwitch == null) {
-            return;
-        }
-        suppressComposeDraftRetentionCallback = true;
-        composeDraftRetentionSwitch.setChecked(
-                KmProComposeDraftRetentionPrefs.read(requireContext()));
-        suppressComposeDraftRetentionCallback = false;
     }
 
     private void updateGamingKeyBehaviorSectionVisibility() {
@@ -505,14 +461,14 @@ public class KmProSettingsFragment extends Fragment {
         }
     }
 
-    private void syncTouchpadModeToggleFromPrefs() {
-        if (touchpadModeToggle == null) {
+    private void syncTouchpadModeGroupFromPrefs() {
+        if (touchpadModeGroup == null) {
             return;
         }
         int mode = KmProTouchpadPrefs.readMode(requireContext());
         int buttonId = touchpadModeToButtonId(mode);
         suppressTouchpadModeToggleCallback = true;
-        touchpadModeToggle.check(buttonId);
+        touchpadModeGroup.check(buttonId);
         suppressTouchpadModeToggleCallback = false;
     }
 
@@ -536,15 +492,6 @@ public class KmProSettingsFragment extends Fragment {
         }
         suppressScrollStripPrefsCallback = false;
         updateScrollStripSensitivityControlsEnabled();
-    }
-
-    private void syncGestureStatusSwitchFromPrefs() {
-        if (gestureStatusSwitch == null) {
-            return;
-        }
-        suppressGestureStatusPrefsCallback = true;
-        gestureStatusSwitch.setChecked(KmProTouchpadPrefs.isGestureStatusLineVisible(requireContext()));
-        suppressGestureStatusPrefsCallback = false;
     }
 
     private void updateScrollStripSensitivityControlsEnabled() {

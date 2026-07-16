@@ -2,6 +2,7 @@ package com.openterface.terminal;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -13,17 +14,22 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages SSH credential profiles with encrypted storage via EncryptedSharedPreferences.
  */
 public class CredentialManager {
 
+    private static final String TAG = "CredentialManager";
     private static final String PREFS_NAME = "credentials_prefs";
     private static final String KEY_PROFILES = "profiles";
     private static final String KEY_ACTIVE_ID = "active_profile_id";
+    public static final String DEFAULT_KEYCMD_HOST = "192.168.12.1";
 
     private SharedPreferences prefs;
     private final Gson gson;
@@ -42,8 +48,10 @@ public class CredentialManager {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Fallback to plain SharedPreferences if encryption fails (should not happen on API 26+)
-            prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            // S3 Fix: Do NOT silently fall back to plaintext storage.
+            // Throw RuntimeException to make the failure explicit to the caller.
+            Log.e(TAG, "Failed to initialize encrypted storage", e);
+            throw new RuntimeException("Secure storage unavailable", e);
         }
     }
 
@@ -132,6 +140,27 @@ public class CredentialManager {
     }
 
     /**
+     * Seed a default KeyCmd hardware SSH profile for first-run UX. The default IP is provisional
+     * until firmware/networking confirms the assigned address.
+     */
+    public void ensureDefaultKeyCmdProfile() {
+        if (!getAllProfiles().isEmpty()) {
+            return;
+        }
+        CredentialProfile profile = new CredentialProfile();
+        profile.setName("KeyCmd default");
+        profile.setHost(DEFAULT_KEYCMD_HOST);
+        profile.setPort(22);
+        profile.setUsername("root");
+        profile.setPassword("");
+        profile.setTargetOs("linux");
+        profile.setAuthMethod("password");
+        profile.setPrivateKey("");
+        profile.setNotes("Default KeyCmd hardware SSH endpoint. Confirm IP with firmware team.");
+        addProfile(profile);
+    }
+
+    /**
      * Get the active credential profile, or null if none is set.
      */
     @Nullable
@@ -163,6 +192,35 @@ public class CredentialManager {
     }
 
     /**
+     * Get all unique tags across all profiles, sorted alphabetically.
+     */
+    public List<String> getAllTags() {
+        Set<String> tagSet = new LinkedHashSet<>();
+        for (CredentialProfile p : getAllProfiles()) {
+            tagSet.addAll(p.getTags());
+        }
+        List<String> result = new ArrayList<>(tagSet);
+        Collections.sort(result);
+        return result;
+    }
+
+    /**
+     * Remove a tag from all profiles. Saves changes immediately.
+     */
+    public void removeTagFromAllProfiles(String tag) {
+        List<CredentialProfile> profiles = getAllProfiles();
+        boolean changed = false;
+        for (CredentialProfile p : profiles) {
+            if (p.getTags().remove(tag)) {
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveProfiles(profiles);
+        }
+    }
+
+    /**
      * Migrate from legacy TerminalPrefs plaintext credentials. If the old prefs contain a
      * non-empty host or password, create an encrypted profile and clear the plaintext values.
      */
@@ -179,7 +237,9 @@ public class CredentialManager {
         String pass = legacyPrefs.getLastPassword();
 
         // Only migrate if there's meaningful data
-        if ((host != null && !host.isEmpty() && !"192.168.11.1".equals(host))
+        if ((host != null && !host.isEmpty()
+                    && !"192.168.11.1".equals(host)
+                    && !DEFAULT_KEYCMD_HOST.equals(host))
                 || (pass != null && !pass.isEmpty())) {
             CredentialProfile migrated = new CredentialProfile();
             migrated.setName("Default (migrated)");

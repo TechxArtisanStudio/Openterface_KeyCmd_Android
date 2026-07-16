@@ -427,7 +427,7 @@ public class BluetoothDialogFragment extends DialogFragment {
 
             getDialog().getWindow().setLayout(dialogWidth, dialogHeight);
             getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            Log.d(TAG, LOG_PREFIX + "Dialog size set to width: " + dialogWidth + ", height: " + dialogHeight);
+            Log.v(TAG, LOG_PREFIX + "Dialog size set to width: " + dialogWidth + ", height: " + dialogHeight);
         }
     }
 
@@ -575,7 +575,7 @@ public class BluetoothDialogFragment extends DialogFragment {
     private void initializeBluetooth() {
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
-            Log.d(TAG, LOG_PREFIX + "Bluetooth not supported on this device");
+            Log.v(TAG, LOG_PREFIX + "Bluetooth not supported on this device");
             showToast(getString(R.string.bt_toast_bt_not_supported));
             bluetoothSwitch.setEnabled(false);
             return;
@@ -713,14 +713,14 @@ public class BluetoothDialogFragment extends DialogFragment {
 
         synchronized (scanLock) {
             if (isScanning) {
-                Log.d(TAG, LOG_PREFIX + "Scan already in progress, ignoring startBleScan");
+                Log.v(TAG, LOG_PREFIX + "Scan already in progress, ignoring startBleScan");
                 return;
             }
             isScanning = true;
             mainHandler.post(() -> scanButton.setEnabled(false));
         }
 
-        Log.d(TAG, LOG_PREFIX + "Starting BLE scan for Openterface / KeyCmd devices...");
+        Log.v(TAG, LOG_PREFIX + "Starting BLE scan for Openterface / KeyCmd devices...");
         showToast(getString(R.string.bt_toast_scanning_started));
 
         rssiByMac.clear();
@@ -920,6 +920,6 @@ public class BluetoothDialogFragment extends DialogFragment {
             requireContext().unbindService(serviceConnection);
             isServiceBound = false;
         }
-        Log.d(TAG, LOG_PREFIX + "Dialog destroyed, connection maintained by BluetoothService");
+        Log.v(TAG, LOG_PREFIX + "Dialog destroyed, connection maintained by BluetoothService");
     }
 }

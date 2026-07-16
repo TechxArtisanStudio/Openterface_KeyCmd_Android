@@ -26,6 +26,7 @@
     <color name="color_shortcuts">#FFFF9800</color>
     <color name="color_macros">#FFF44336</color>
     <color name="color_voice">#FF00BCD4</color>
+    <color name="color_agent">#FF5C6BC0</color>
     <color name="color_presentation">#FF673AB7</color>
 
     <!-- Connection Status Colors -->
@@ -150,4 +151,7 @@
     <color name="terminal_toolbar_background">#FF1A1A1A</color>
     <color name="terminal_status_text">#FFAAAAAA</color>
     <color name="terminal_bottom_bar">#FF1A1A1A</color>
+    <color name="terminal_transport_badge_bg">#FF20252B</color>
+    <color name="terminal_transport_badge_stroke">#FF303A44</color>
+    <color name="terminal_transport_badge_text">#FF8FD3FF</color>
 </resources>

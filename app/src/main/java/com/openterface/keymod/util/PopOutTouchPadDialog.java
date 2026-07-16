@@ -227,7 +227,7 @@ public class PopOutTouchPadDialog {
         if (sendPresentationPointerKeys) {
             sendKeyHID(6);
         }
-        Log.d(TAG, "Touchpad dialog shown, presentationPointerKeys=" + sendPresentationPointerKeys);
+        Log.v(TAG, "Touchpad dialog shown, presentationPointerKeys=" + sendPresentationPointerKeys);
     }
 
     public void dismissIfShowing() {

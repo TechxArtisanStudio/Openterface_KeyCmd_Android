@@ -214,14 +214,14 @@ public class CompositeFragment extends Fragment {
             BluetoothService.BluetoothBinder binder = (BluetoothService.BluetoothBinder) service;
             bluetoothService = binder.getService();
             isServiceBound = true;
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     };
 
@@ -985,7 +985,7 @@ public class CompositeFragment extends Fragment {
                 check_send_data.append(sendKBData.substring(i)).append(" ");
             }
         }
-        Log.d(TAG, "sendKBData: " + check_send_data.toString().trim());
+        Log.v(TAG, "sendKBData: " + check_send_data.toString().trim());
     }
 
     public static byte[] hexStringToByteArray(String ByteData) {
@@ -1009,7 +1009,7 @@ public class CompositeFragment extends Fragment {
                 byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
                 Thread.sleep(10);
                 bluetoothService.sendData(releaseSendKBDataBytes);
-                Log.d(TAG, "Sent Bluetooth release data");
+                Log.v(TAG, "Sent Bluetooth release data");
             } catch (InterruptedException e) {
                 Log.e(TAG, "Error sending Bluetooth release data: " + e.getMessage());
             }
@@ -1018,7 +1018,7 @@ public class CompositeFragment extends Fragment {
                 byte[] releaseSendKBDataBytes = hexStringToByteArray(releaseSendMSData);
                 Thread.sleep(10);
                 port.write(releaseSendKBDataBytes, 20);
-                Log.d(TAG, "Sent USB release data");
+                Log.v(TAG, "Sent USB release data");
             } catch (IOException | InterruptedException e) {
                 Log.e(TAG, "Error sending USB release data: " + e.getMessage());
             }
@@ -1041,7 +1041,7 @@ public class CompositeFragment extends Fragment {
         updateTouchPadTips();
         updateSplitTouchPadTips();
         updateHybridDragLeftVisual();
-        Log.d(TAG, "Drag mode " + (enabled ? "ON" : "OFF"));
+        Log.v(TAG, "Drag mode " + (enabled ? "ON" : "OFF"));
     }
 
     private void initTouchPadWashStyle() {
@@ -1474,7 +1474,7 @@ public class CompositeFragment extends Fragment {
             }
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     }
 

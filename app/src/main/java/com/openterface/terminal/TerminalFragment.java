@@ -23,7 +23,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -49,6 +53,17 @@ import com.openterface.keymod.SettingsActivity;
 public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
+    private static final String ARG_DEMO_TRANSPORT = "arg_demo_transport";
+
+    public static TerminalFragment newInstance(@Nullable String demoTransport) {
+        TerminalFragment fragment = new TerminalFragment();
+        if (demoTransport != null) {
+            Bundle args = new Bundle();
+            args.putString(ARG_DEMO_TRANSPORT, demoTransport);
+            fragment.setArguments(args);
+        }
+        return fragment;
+    }
 
     private View rootView;
     private TerminalView terminalView;
@@ -126,7 +141,7 @@ public class TerminalFragment extends Fragment {
 
     private void setupListeners() {
         connectBtn.setOnClickListener(v -> {
-            Log.d(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
+            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
             if (isSshConnected) {
                 disconnect();
             } else {
@@ -205,7 +220,6 @@ public class TerminalFragment extends Fragment {
         View titleContainer = dialogView.findViewById(R.id.title_container);
         ImageView searchButton = dialogView.findViewById(R.id.search_device_button);
         SearchView searchView = dialogView.findViewById(R.id.device_search_view);
-
         // Load all profiles
         final List<CredentialProfile> allProfiles = credentialManager.getAllProfiles();
         final int[] selectedProfileIndex = {-1};
@@ -313,7 +327,7 @@ public class TerminalFragment extends Fragment {
                     // Save selected profile as active
                     credentialManager.setActiveProfileId(profile.getId());
 
-                    Log.d(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                    Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
                     connect(profile, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
@@ -331,16 +345,30 @@ public class TerminalFragment extends Fragment {
         deviceListContainer.removeAllViews();
         selectedProfileIndex[0] = -1;
 
-        // Filter profiles by name or description
+        // Filter profiles by name, description, or tags
         List<CredentialProfile> filtered = new ArrayList<>();
         List<Integer> originalIndices = new ArrayList<>();
         for (int i = 0; i < allProfiles.size(); i++) {
             CredentialProfile p = allProfiles.get(i);
-            if (searchQuery.isEmpty()
-                    || p.getDisplayLabel().toLowerCase().contains(searchQuery)
-                    || p.getShortDescription().toLowerCase().contains(searchQuery)) {
+            if (searchQuery.isEmpty()) {
                 filtered.add(p);
                 originalIndices.add(i);
+            } else {
+                boolean matches = p.getDisplayLabel().toLowerCase().contains(searchQuery)
+                        || p.getShortDescription().toLowerCase().contains(searchQuery);
+                if (!matches) {
+                    // Check if any tag matches
+                    for (String tag : p.getTags()) {
+                        if (tag.toLowerCase().contains(searchQuery)) {
+                            matches = true;
+                            break;
+                        }
+                    }
+                }
+                if (matches) {
+                    filtered.add(p);
+                    originalIndices.add(i);
+                }
             }
         }
 
@@ -400,6 +428,11 @@ public class TerminalFragment extends Fragment {
                 }
 
                 applySelectedCardStyle(card, radioIndicator, nameText, descText, themePrimary);
+            });
+
+            card.setOnLongClickListener(v -> {
+                showDeviceInfoDialog(profile);
+                return true;
             });
 
             deviceListContainer.addView(cardView);
@@ -470,10 +503,77 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
+     * Show a device info dialog with full profile details when the user
+     * long-presses a device card in the connection dialog.
+     */
+    private void showDeviceInfoDialog(CredentialProfile profile) {
+        if (getContext() == null) return;
+
+        View dialogView = LayoutInflater.from(getContext())
+                .inflate(R.layout.dialog_device_info, null);
+
+        TextView nameText = dialogView.findViewById(R.id.info_device_name);
+        TextView hostText = dialogView.findViewById(R.id.info_host);
+        TextView portText = dialogView.findViewById(R.id.info_port);
+        TextView usernameText = dialogView.findViewById(R.id.info_username);
+        TextView authTypeText = dialogView.findViewById(R.id.info_auth_type);
+        TextView tagsText = dialogView.findViewById(R.id.info_tags);
+        TextView notesText = dialogView.findViewById(R.id.info_notes);
+        TextView createdText = dialogView.findViewById(R.id.info_created);
+        TextView updatedText = dialogView.findViewById(R.id.info_updated);
+
+        nameText.setText(profile.getDisplayLabel());
+        hostText.setText(profile.getHost() != null ? profile.getHost() : "");
+        portText.setText(String.valueOf(profile.getPort()));
+        usernameText.setText(profile.getUsername() != null ? profile.getUsername() : "");
+
+        String authType = profile.isSshKeyAuth()
+                ? getString(R.string.credential_auth_type_ssh_key)
+                : getString(R.string.credential_auth_type_password);
+        authTypeText.setText(authType);
+
+        List<String> tags = profile.getTags();
+        if (tags != null && !tags.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < tags.size(); i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(tags.get(i));
+            }
+            tagsText.setText(sb.toString());
+        } else {
+            tagsText.setText(R.string.terminal_device_info_no_tags);
+            tagsText.setTextColor(getResources().getColor(R.color.text_secondary));
+        }
+
+        String notes = profile.getNotes();
+        if (notes != null && !notes.isEmpty()) {
+            notesText.setText(notes);
+        } else {
+            notesText.setText(R.string.terminal_device_info_no_notes);
+            notesText.setTextColor(getResources().getColor(R.color.text_secondary));
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        createdText.setText(dateFormat.format(new Date(profile.getCreatedAt())));
+        updatedText.setText(dateFormat.format(new Date(profile.getUpdatedAt())));
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .setNegativeButton(R.string.credential_edit, (dialog, which) -> {
+                    Intent intent = new Intent(requireContext(), SettingsActivity.class);
+                    intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
+                    intent.putExtra(SettingsActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
+                    requireContext().startActivity(intent);
+                })
+                .setPositiveButton(R.string.terminal_device_info_close, null)
+                .show();
+    }
+
+    /**
      * Connect to SSH via the selected transport.
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
-        Log.d(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+        Log.v(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
         statusText.setText(R.string.terminal_connecting);
 
         if (useUsb) {
@@ -555,13 +655,13 @@ public class TerminalFragment extends Fragment {
     private void connectBleEth(CredentialProfile profile) {
         final String host = profile.getHost();
         final int port = profile.getPort();
-        Log.d(TAG, "connectBleEth called");
+        Log.v(TAG, "connectBleEth called");
         if (mainActivity == null) {
             Log.e(TAG, "connectBleEth: mainActivity is null");
             return;
         }
         BluetoothService bluetoothService = mainActivity.getBluetoothService();
-        Log.d(TAG, "connectBleEth: bluetoothService=" + (bluetoothService != null)
+        Log.v(TAG, "connectBleEth: bluetoothService=" + (bluetoothService != null)
                 + " isConnected=" + (bluetoothService != null && bluetoothService.isConnected()));
         if (bluetoothService == null || !bluetoothService.isConnected()) {
             mainHandler.post(() -> {
@@ -589,36 +689,36 @@ public class TerminalFragment extends Fragment {
         // from a previous stalled session, causing new CONNECT to fail.
         for (int cid = 0; cid <= 5; cid++) {
             byte[] cleanupFrame = buildDisconnectFrame(cid);
-            Log.d(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
+            Log.v(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
             bluetoothService.writeBleEthData(cleanupFrame);
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
-        Log.d(TAG, "connectBleEth: waiting 5000ms for full cleanup");
+        Log.v(TAG, "connectBleEth: waiting 5000ms for full cleanup");
         try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
-        Log.d(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
+        Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
 
         bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
-        Log.d(TAG, "connectBleEth: BleEthTransport created");
+        Log.v(TAG, "connectBleEth: BleEthTransport created");
 
         // Register for incoming BLE-Eth data
         bleEthCallback = data -> {
-            Log.d(TAG, "BLE-Eth callback: received " + data.length + " bytes");
+            Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
             bleEthTransport.handleIncomingData(data);
         };
-        Log.d(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
+        Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
         bluetoothService.addBleEthCallback(bleEthCallback);
-        Log.d(TAG, "connectBleEth: callback registered, starting connect thread");
+        Log.v(TAG, "connectBleEth: callback registered, starting connect thread");
 
         // Create SocketFactory that bridges JSch to BleEthTransport.
         // Pass the real target host/port so connectTunnel() sends the correct CONNECT frame.
         bleEthSocketFactory = new BleEthSocketFactory(bleEthTransport, host, port);
-        Log.d(TAG, "connectBleEth: SocketFactory created, starting connect thread");
+        Log.v(TAG, "connectBleEth: SocketFactory created, starting connect thread");
 
         // Start SSH session on background thread (SocketFactory handles BLE-Eth connect)
         new Thread(() -> {
-            Log.d(TAG, "BLE-Eth SSH connect thread started");
+            Log.v(TAG, "BLE-Eth SSH connect thread started");
             runSshSessionWithSocketFactory(profile, bleEthTransport, bleEthSocketFactory);
-            Log.d(TAG, "BLE-Eth SSH connect thread finished");
+            Log.v(TAG, "BLE-Eth SSH connect thread finished");
         }).start();
     }
 

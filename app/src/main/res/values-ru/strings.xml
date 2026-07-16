@@ -1066,6 +1066,10 @@
     <string name="gamepad_config_duplicate_failed">Не удалось дублировать модуль</string>
     <string name="gamepad_config_done">Готово</string>
     <string name="gamepad_key_picker_title">Клавиша выбора</string>
+    <string name="gamepad_key_picker_modifier_keys">Клавиши-модификаторы</string>
+    <string name="gamepad_key_picker_modifier_chord">Комбинировать с клавишей (необязательно)</string>
+    <string name="gamepad_key_picker_modifier_left">Левый</string>
+    <string name="gamepad_key_picker_modifier_right">Правый</string>
     <string name="gamepad_key_picker_save">Сохранить</string>
     <string name="gamepad_key_picker_cd_arrow_up">Клавиша со стрелкой вверх</string>
     <string name="gamepad_key_picker_cd_arrow_down">Клавиша со стрелкой вниз</string>

@@ -260,6 +260,12 @@ public class CustomKeyboardView extends LinearLayout {
      * (built-in Pro layout: row below letters, left of Z) when main keyboard Fn is latched.
      */
     private boolean keyboardAlternatesHintsEnabled = true;
+    /**
+     * Fixed-strip momentary press sync: when a direction/Enter/modifier key on the fixed strip is
+     * held down, its HID code is stored here so the matching main-keyboard key can mirror the
+     * pressed highlight during {@link #refreshBuiltInModifierKeyCapsFromTree()}. Cleared on release.
+     */
+    private int stripMomentarySyncKeyCode = -1;
     /** KM Pro setup: floating label above key while pressed (see {@link KmProKeyTapPreviewPrefs}). */
     private boolean kmProKeyTapPreviewEnabled;
     private final BasicKeyPreview kmProKeyPreview = new BasicKeyPreview();
@@ -427,14 +433,14 @@ public class CustomKeyboardView extends LinearLayout {
             BluetoothService.BluetoothBinder binder = (BluetoothService.BluetoothBinder) service;
             bluetoothService = binder.getService();
             isServiceBound = true;
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     };
 
@@ -658,7 +664,7 @@ public class CustomKeyboardView extends LinearLayout {
 
         // Reload keyboard layout when orientation changes
         boolean isLandscape = newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        Log.d(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
+        Log.v(TAG, "Orientation changed: landscape=" + isLandscape + ", reloading keyboard");
         kmProKeyPreview.dismiss();
         loadKeyboardForCurrentState(getContext());
         removeAllViews();
@@ -684,7 +690,7 @@ public class CustomKeyboardView extends LinearLayout {
         // Load keyboard layout based on orientation (matching iOS behavior)
         reloadForCurrentOrientation();
         
-        Log.d(TAG, "Parsed keyboard (landscape=" + isLandscape(context) + "): lowerKeys=" + lowerKeys.size());
+        Log.v(TAG, "Parsed keyboard (landscape=" + isLandscape(context) + "): lowerKeys=" + lowerKeys.size());
         bindService(context);
         updateKeyboard();
     }
@@ -2406,7 +2412,7 @@ public class CustomKeyboardView extends LinearLayout {
                             System.out.println("Hardcoded icon for Enter: " + iconResId);
                         }
 
-//                        Log.d(TAG,"Parsed Key: label=" + label + ", symbolLabel=" + symbolLabel + ", code=0x" + Integer.toHexString(code).toUpperCase() + ", codeStr=" + codeStr + ", width=" + widthPercent + ", icon=" + iconResId + ", gap=" + horizontalGap + ", repeatable=" + isRepeatable);
+//                        Log.v(TAG,"Parsed Key: label=" + label + ", symbolLabel=" + symbolLabel + ", code=0x" + Integer.toHexString(code).toUpperCase() + ", codeStr=" + codeStr + ", width=" + widthPercent + ", icon=" + iconResId + ", gap=" + horizontalGap + ", repeatable=" + isRepeatable);
                         currentRow.add(new Key(label, symbolLabel, alternates, cornerHint, code, codeStr, widthPercent, iconResId, horizontalGap, isRepeatable, requiresShift, -1, false));
                     }
                 } else if (eventType == XmlPullParser.END_TAG) {
@@ -2551,6 +2557,12 @@ public class CustomKeyboardView extends LinearLayout {
                 boolean on = isProModifierCapVisualOn(k);
                 applyTopPanelKeyCapBackground(v, k, on);
                 v.setSelected(on);
+            } else if (stripMomentarySyncKeyCode != -1
+                    && k.code == stripMomentarySyncKeyCode) {
+                // Momentary press sync: strip key held → mirror on main-keyboard counterpart
+                // (covers both modifier keys and direction/Enter keys).
+                v.setBackgroundResource(R.drawable.press_button_background);
+                v.setSelected(true);
             } else if (isProBuiltInModifierTouchKey(k)) {
                 applyLetterRowKeyFaceBackground(v, k, false);
             }
@@ -2689,7 +2701,7 @@ public class CustomKeyboardView extends LinearLayout {
                 for (String functionCode : functionalKeyCodes) {
                     if (key.codeStr.equals(functionCode)) {
                         isFunctionalKey = true;
-                        Log.d(TAG, "Matched functional key: label=" + key.label + ", code=0x" + Integer.toHexString(key.code));
+                        Log.v(TAG, "Matched functional key: label=" + key.label + ", code=0x" + Integer.toHexString(key.code));
                         break;
                     }
                 }
@@ -2888,7 +2900,7 @@ public class CustomKeyboardView extends LinearLayout {
                             SpannableString spannable = new SpannableString(combinedText);
                             textButton.setText(spannable);
                             textButton.setTextColor(resolveThemeTextColor());
-                            Log.d(TAG, "Applied Spannable: combinedText=" + combinedText + ", symbolLabel=" + symbolLabel + ", displayLabel=" + displayLabel);
+                            Log.v(TAG, "Applied Spannable: combinedText=" + combinedText + ", symbolLabel=" + symbolLabel + ", displayLabel=" + displayLabel);
                         } else {
                             textButton.setText(showAlternateLabel && !symbolLabel.isEmpty() ? symbolLabel : displayLabel);
                             textButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
@@ -3081,12 +3093,13 @@ public class CustomKeyboardView extends LinearLayout {
         if (!BuildConfig.DEBUG && !Log.isLoggable(TAG_KMPRO_TOUCH, Log.DEBUG)) {
             return;
         }
-        Log.d(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
+        Log.v(TAG_KMPRO_TOUCH, SystemClock.uptimeMillis() + " " + message);
     }
 
     /** Attaches click + touch + long-click listeners to a key view. */
     private void attachKeyListeners(View btn, Key key) {
         if (isProBuiltInModifierTouchKey(key)) {
+            btn.setTag(key);
             btn.setOnTouchListener(createProMainKeyboardModifierTouchListener(key));
             return;
         }
@@ -4648,6 +4661,25 @@ public class CustomKeyboardView extends LinearLayout {
         return modifiers;
     }
 
+    /** FN strip icon resource: {@code ic_swap_horiz_24} normally; hidden (0) when Fn is latched so the key renders as text "Sw". */
+    private int fnStripIconRes() {
+        return fixedTopLocalFnLocked ? 0 : R.drawable.ic_swap_horiz_24;
+    }
+
+    /** FN strip label: "FN" normally; "Sw" when Fn is latched. */
+    private String fnStripLabel() {
+        return fixedTopLocalFnLocked ? "Sw" : "FN";
+    }
+
+    /**
+     * Non-modifier keys whose fixed-strip press should mirror a momentary highlight on the matching
+     * main-keyboard key. Main keyboard has no arrow cluster in any orientation; only {@code Enter}
+     * (0x28) is shared between fixed strip and main keyboard.
+     */
+    private static boolean isStripMomentarySyncKey(int keyCode) {
+        return keyCode == 0x28; // Enter
+    }
+
     private List<Key> buildFixedTopRowsPage0() {
         List<Key> keys = new ArrayList<>(TOP_PANEL_COLUMNS * 2);
         // Row 2: HID F7–F12, = (scan 0x40–0x45, 0x2E). Strip shows digit/symbol caps when local Fn latch is off; F caps when latch on (see resolveFixedTopLocalFnMapping).
@@ -4665,7 +4697,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("F4", "", 0x3D, "3D", 1f, 0, 0f, false, false, -1, true), 0, 3, 3));
         keys.add(fixedStripSlotKey(new Key("F5", "", 0x3E, "3E", 1f, 0, 0f, false, false, -1, true), 0, 3, 4));
         keys.add(fixedStripSlotKey(new Key("F6", "", 0x3F, "3F", 1f, 0, 0f, false, false, -1, true), 0, 3, 5));
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
@@ -4689,7 +4721,7 @@ public class CustomKeyboardView extends LinearLayout {
         keys.add(fixedStripSlotKey(new Key("LEFT", "", 0x50, "50", 1f, R.drawable.keyboard_arrow_left_24, 0f, false, false, -1, true), 1, 3, 3));
         keys.add(fixedStripSlotKey(new Key("DOWN", "", 0x51, "51", 1f, R.drawable.keyboard_arrow_down_24, 0f, false, false, -1, true), 1, 3, 4));
         keys.add(fixedStripSlotKey(new Key("RIGHT", "", 0x4F, "4F", 1f, R.drawable.keyboard_arrow_right_24, 0f, false, false, -1, true), 1, 3, 5));
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
@@ -4753,7 +4785,7 @@ public class CustomKeyboardView extends LinearLayout {
             keys.add(fixedStripSlotKey(buildPage2PunctKey("-", 0x2D, false), 2, 3, 4));
             keys.add(fixedStripSlotKey(buildPage2PunctKey("_", 0x2D, true), 2, 3, 5));
         }
-        keys.add(markFixedRowKey(new Key("FN", "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, R.drawable.ic_swap_horiz_24, 0f, false, false, -1, true)));
+        keys.add(markFixedRowKey(new Key(fnStripLabel(), "", KEY_FIXED_TOP_LOCAL_FN, "F00C", 1f, fnStripIconRes(), 0f, false, false, -1, true)));
         applyStripSlotOverrides(keys);
         return keys;
     }
@@ -5693,6 +5725,10 @@ public class CustomKeyboardView extends LinearLayout {
                                 proHoldLockPopupRunnable, KmBasicHoldLockTiming.HOLD_LOCK_POPUP_MS);
                     }
                     v.setPressed(true);
+                    if (key != null) {
+                        stripMomentarySyncKeyCode = key.code;
+                        refreshBuiltInModifierKeyCapsFromTree();
+                    }
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (isMacCapsMomentaryFromTopStripModifier(key)) {
@@ -5739,6 +5775,10 @@ public class CustomKeyboardView extends LinearLayout {
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_UP:
                     v.setPressed(false);
+                    if (stripMomentarySyncKeyCode != -1) {
+                        stripMomentarySyncKeyCode = -1;
+                        post(this::refreshBuiltInModifierKeyCapsFromTree);
+                    }
                     longPressHandler.removeCallbacks(proChordLongPressRunnable);
                     longPressHandler.removeCallbacks(proHoldLockPopupRunnable);
                     if (pendingMacCapsLongPress[0] != null) {
@@ -6204,6 +6244,10 @@ public class CustomKeyboardView extends LinearLayout {
                     }
                     if (key != null) {
                         v.setPressed(true);
+                        if (isStripMomentarySyncKey(key.code)) {
+                            stripMomentarySyncKeyCode = key.code;
+                            refreshBuiltInModifierKeyCapsFromTree();
+                        }
                     }
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -6216,6 +6260,10 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                         if (key != null) {
                             v.setPressed(false);
+                        }
+                        if (stripMomentarySyncKeyCode != -1) {
+                            stripMomentarySyncKeyCode = -1;
+                            post(this::refreshBuiltInModifierKeyCapsFromTree);
                         }
                         if (pendingFnStripEditLongPress[0] != null) {
                             longPressHandler.removeCallbacks(pendingFnStripEditLongPress[0]);
@@ -6230,6 +6278,10 @@ public class CustomKeyboardView extends LinearLayout {
                 case MotionEvent.ACTION_UP:
                     if (key != null) {
                         v.setPressed(false);
+                    }
+                    if (stripMomentarySyncKeyCode != -1) {
+                        stripMomentarySyncKeyCode = -1;
+                        post(this::refreshBuiltInModifierKeyCapsFromTree);
                     }
                     boolean stripSuppressTapUp = holdRepeatSuppressUpTap;
                     if (key != null && fixedStripCellSupportsHoldRepeat(key)) {
@@ -7783,7 +7835,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (port == null) {
             clearProChordAndHoldLockPopupUiState();
         }
-        Log.d(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
+        Log.v(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
     }
 
     public static String makeChecksum(String data) {
@@ -7801,7 +7853,7 @@ public class CustomKeyboardView extends LinearLayout {
                         + " btConn="
                         + (bluetoothService != null && bluetoothService.isConnected()));
         KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
-        Log.d(TAG, "Sent keyboard release (all keys)");
+        Log.v(TAG, "Sent keyboard release (all keys)");
         post(this::reassertKeyboardAfterHidRelease);
     }
 
@@ -7836,7 +7888,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void handleKeyPress(Key key) {
-        Log.d(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
+        Log.v(TAG, "Key pressed: label=" + key.label + ", code=" + key.code);
         logKmProTouch(
                 "handleKeyPress enter label="
                         + (key != null ? key.label : "null")
@@ -8327,7 +8379,7 @@ public class CustomKeyboardView extends LinearLayout {
         if (isServiceBound) {
             getContext().unbindService(serviceConnection);
             isServiceBound = false;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
         }
     }
 }

@@ -230,7 +230,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         autoLineReturn = prefs.getBoolean(PREF_AUTO_LINE_RETURN, false);
         updateMiniToolbarState();
 
-        Log.d(TAG, "Loaded settings - API Key: " + (apiKey.isEmpty() ? "not set" : "set") +
+        Log.v(TAG, "Loaded settings - API Key: " + (apiKey.isEmpty() ? "not set" : "set") +
                 ", Language: " + language);
     }
 
@@ -614,7 +614,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             recordingThread = new Thread(this::recordAudio);
             recordingThread.start();
 
-            Log.d(TAG, "Recording started");
+            Log.v(TAG, "Recording started");
 
         } catch (SecurityException e) {
             Log.e(TAG, "Permission denied", e);
@@ -644,7 +644,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         statusText.setText(R.string.voice_status_processing);
         progressBar.setVisibility(View.VISIBLE);
 
-        Log.d(TAG, "Recording stopped");
+        Log.v(TAG, "Recording stopped");
     }
 
     private void recordAudio() {
@@ -662,7 +662,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
             // Recording complete, send to Whisper
             byte[] audioData = audioStream.toByteArray();
-            Log.d(TAG, "Recorded " + audioData.length + " bytes");
+            Log.v(TAG, "Recorded " + audioData.length + " bytes");
 
             if (audioData.length > 0) {
                 sendToWhisper(audioData);
@@ -701,7 +701,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
                     if (result != null) {
                         appendTranscribedText(result);
                         statusText.setText(R.string.voice_status_transcribed);
-                        Log.d(TAG, "Transcription: " + result);
+                        Log.v(TAG, "Transcription: " + result);
                         if (!result.trim().isEmpty()) {
                             if (prefs.getBoolean(PREF_AI_ENABLED, false)) {
                                 refineTextWithAI(result);
@@ -824,7 +824,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
 
         // Read response
         int responseCode = conn.getResponseCode();
-        Log.d(TAG, "Whisper API response code: " + responseCode);
+        Log.v(TAG, "Whisper API response code: " + responseCode);
 
         if (responseCode == 200) {
             java.io.BufferedReader reader = new java.io.BufferedReader(
@@ -857,7 +857,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
     }
 
     private void sendTextAsKeystrokes(String text) {
-        Log.d(TAG, "Sending text: " + text);
+        Log.v(TAG, "Sending text: " + text);
 
         if (!(requireActivity() instanceof MainActivity)) return;
         MainActivity mainActivity = (MainActivity) requireActivity();
@@ -1053,7 +1053,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             if (aiApiKey.isEmpty() && aiEndpoint.contains("api.openai.com")) {
                 aiApiKey = prefs.getString("whisper_api_key", "");
             }
-            Log.d(TAG, "AI refine: providerIdx=" + providerIdx
+            Log.v(TAG, "AI refine: providerIdx=" + providerIdx
                     + " perProviderKey=" + (perProviderKey.isEmpty() ? "(empty)" : perProviderKey.substring(0, Math.min(8, perProviderKey.length())) + "...")
                     + " endpoint=" + aiEndpoint);
             aiModel    = prefs.getString("ai_model", "gpt-4o-mini");
@@ -1146,7 +1146,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         os.close();
 
         int responseCode = conn.getResponseCode();
-        Log.d(TAG, "AI API response code: " + responseCode + " for " + url);
+        Log.v(TAG, "AI API response code: " + responseCode + " for " + url);
         if (responseCode == 200) {
             java.io.BufferedReader reader = new java.io.BufferedReader(
                     new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
@@ -1154,7 +1154,7 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
             String line;
             while ((line = reader.readLine()) != null) sb.append(line);
             reader.close();
-            Log.d(TAG, "AI API response body: " + sb.toString().substring(0, Math.min(200, sb.length())));
+            Log.v(TAG, "AI API response body: " + sb.toString().substring(0, Math.min(200, sb.length())));
             JSONObject response = new JSONObject(sb.toString());
             return response.getJSONArray("choices")
                            .getJSONObject(0)

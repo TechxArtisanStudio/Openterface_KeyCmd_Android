@@ -121,7 +121,7 @@ public final class HelpImageDownloader {
 
         // Already cached — return immediately
         if (localFile.exists()) {
-            Log.d(TAG, "Image cache hit: " + url);
+            Log.v(TAG, "Cache hit: " + url);
             store.touchCached(localFile);
             if (callback != null) {
                 mainHandler.post(() -> callback.onSuccess(localFile));
@@ -132,10 +132,8 @@ public final class HelpImageDownloader {
         // Already in flight — register callback for notification
         synchronized (pendingCallbacks) {
             if (downloading.contains(url)) {
-                Log.d(TAG, "Image already downloading, registering listener: " + url);
-                if (callback != null) {
-                    pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
-                }
+                Log.v(TAG, "Already downloading, queuing callback: " + url);
+                enqueueCallback(url, callback);
                 return;
             }
             downloading.add(url);
@@ -351,8 +349,8 @@ public final class HelpImageDownloader {
 
                 // Atomic rename
                 if (tempFile.renameTo(destFile)) {
-                    Log.d(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
-                    return downloaded;
+                    Log.v(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
+                    notifySuccess(destFile);
                 } else {
                     // Clean up temp file
                     // noinspection ResultOfMethodCallIgnored

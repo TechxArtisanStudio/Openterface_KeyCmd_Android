@@ -37,7 +37,7 @@ public class GamepadConfigManager {
         String key = KEY_POSITIONS + "_" + layout.name();
         String json = gson.toJson(positions);
         prefs.edit().putString(key, json).apply();
-        Log.d(TAG, "Saved positions for " + layout.name() + ": " + positions.size() + " components");
+        Log.v(TAG, "Saved positions for " + layout.name() + ": " + positions.size() + " components");
     }
 
     /**
@@ -54,7 +54,7 @@ public class GamepadConfigManager {
 
         Type type = new TypeToken<Map<String, ComponentPosition>>(){}.getType();
         Map<String, ComponentPosition> positions = gson.fromJson(json, type);
-        Log.d(TAG, "Loaded positions for " + layout.name() + ": " + positions.size() + " components");
+        Log.v(TAG, "Loaded positions for " + layout.name() + ": " + positions.size() + " components");
         return positions;
     }
 
@@ -64,7 +64,7 @@ public class GamepadConfigManager {
     public void saveButtonMapping(String buttonId, int keyCode) {
         String key = KEY_MAPPINGS + "_" + buttonId;
         prefs.edit().putInt(key, keyCode).apply();
-        Log.d(TAG, "Saved mapping: " + buttonId + " -> " + keyCode);
+        Log.v(TAG, "Saved mapping: " + buttonId + " -> " + keyCode);
     }
 
     /**
@@ -73,7 +73,7 @@ public class GamepadConfigManager {
     public int loadButtonMapping(String buttonId, int defaultKeyCode) {
         String key = KEY_MAPPINGS + "_" + buttonId;
         int keyCode = prefs.getInt(key, defaultKeyCode);
-        Log.d(TAG, "Loaded mapping: " + buttonId + " -> " + keyCode);
+        Log.v(TAG, "Loaded mapping: " + buttonId + " -> " + keyCode);
         return keyCode;
     }
 
@@ -85,7 +85,7 @@ public class GamepadConfigManager {
         SharedPreferences.Editor editor = prefs.edit();
         // This is simplified - in production, track all button IDs per layout
         editor.apply();
-        Log.d(TAG, "Reset mappings for " + layout.name());
+        Log.v(TAG, "Reset mappings for " + layout.name());
     }
 
     /**

@@ -26,6 +26,7 @@ public final class SavedTextRepository {
 
     private static final String PREFS_NAME = "SavedTextPrefs";
     private static final String KEY_ITEMS_JSON = "saved_text_items_v1";
+    private static final String KEY_STARTER_TEMPLATES_SEEDED_V1 = "starter_templates_seeded_v1";
 
     /** Keeps SharedPreferences size reasonable. */
     public static final int MAX_ITEMS = 60;
@@ -44,6 +45,7 @@ public final class SavedTextRepository {
 
     @NonNull
     public synchronized List<SavedTextItem> loadSorted() {
+        ensureStarterTemplatesSeededOnce();
         List<SavedTextItem> raw = readAll();
         sortInPlace(raw);
         return raw;
@@ -199,6 +201,17 @@ public final class SavedTextRepository {
                 list.remove(drop);
             }
         }
+    }
+
+    private void ensureStarterTemplatesSeededOnce() {
+        if (prefs.getBoolean(KEY_STARTER_TEMPLATES_SEEDED_V1, false)) {
+            return;
+        }
+        prefs.edit().putBoolean(KEY_STARTER_TEMPLATES_SEEDED_V1, true).apply();
+        if (!readAll().isEmpty()) {
+            return;
+        }
+        writeAll(ComposeSavedTextStarters.buildStarterItems(System.currentTimeMillis()));
     }
 
     @NonNull

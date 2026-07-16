@@ -199,7 +199,7 @@ public final class HelpImageConfigManager {
             String json = new String(data, StandardCharsets.UTF_8);
             HelpImageConfig config = HelpImageConfig.fromJson(json);
             if (config != null) {
-                Log.d(TAG, "Loaded config from disk, version=" + config.version);
+                Log.v(TAG, "Loaded config from disk, version=" + config.version);
             }
             return config;
         } catch (IOException e) {
@@ -236,7 +236,7 @@ public final class HelpImageConfigManager {
                 HelpImageConfig config = HelpImageConfig.fromJson(json);
                 if (config != null) {
                     saveToDisk(config, json);
-                    Log.d(TAG, "Fetched config from network, version=" + config.version);
+                    Log.v(TAG, "Fetched config from network, version=" + config.version);
                     cachedConfig = config;
                     return config;
                 }

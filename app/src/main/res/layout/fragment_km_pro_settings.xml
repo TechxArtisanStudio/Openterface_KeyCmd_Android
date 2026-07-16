@@ -217,32 +217,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    android:text="@string/km_pro_settings_section_compose_draft_retention"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/km_pro_settings_section_compose_draft_retention_summary"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/km_pro_compose_draft_retention_switch"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/km_pro_settings_compose_draft_retention_switch"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
                     android:text="@string/km_pro_settings_section_touchpad"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
@@ -256,86 +230,77 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/km_pro_touchpad_mode_toggle"
+                <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    app:checkedButton="@+id/km_pro_touchpad_mode_gestures"
-                    app:selectionRequired="true"
-                    app:singleSelection="true">
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/card_background"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/km_pro_touchpad_mode_gestures"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
+                    <RadioGroup
+                        android:id="@+id/km_pro_touchpad_mode_group"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:maxLines="2"
-                        android:minHeight="48dp"
-                        android:textSize="13sp"
-                        android:text="@string/km_pro_touchpad_mode_gestures" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/km_pro_touchpad_mode_strip"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:maxLines="2"
-                        android:minHeight="48dp"
-                        android:textSize="13sp"
-                        android:text="@string/km_pro_touchpad_mode_strip" />
+                        <RadioButton
+                            android:id="@+id/km_pro_touchpad_mode_gestures"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:paddingBottom="4dp"
+                            android:text="@string/km_pro_touchpad_mode_gestures"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/km_pro_touchpad_mode_hybrid"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:gravity="center"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:maxLines="2"
-                        android:minHeight="48dp"
-                        android:textSize="13sp"
-                        android:text="@string/km_pro_touchpad_mode_hybrid" />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="32dp"
+                            android:layout_marginBottom="12dp"
+                            android:text="@string/km_pro_touchpad_mode_gestures_desc"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:text="@string/km_pro_touchpad_gesture_status_title"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                        <RadioButton
+                            android:id="@+id/km_pro_touchpad_mode_strip"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="4dp"
+                            android:text="@string/km_pro_touchpad_mode_strip"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/km_pro_touchpad_gesture_status_summary"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="32dp"
+                            android:layout_marginBottom="12dp"
+                            android:text="@string/km_pro_touchpad_mode_strip_desc"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
 
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/km_pro_touchpad_gesture_status_switch"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/km_pro_touchpad_gesture_status_switch"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp" />
+                        <RadioButton
+                            android:id="@+id/km_pro_touchpad_mode_hybrid"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="4dp"
+                            android:text="@string/km_pro_touchpad_mode_hybrid"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="32dp"
+                            android:text="@string/km_pro_touchpad_mode_hybrid_desc"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
+                    </RadioGroup>
+                </androidx.cardview.widget.CardView>
 
                 <TextView
                     android:layout_width="match_parent"

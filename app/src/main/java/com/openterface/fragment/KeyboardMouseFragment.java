@@ -147,6 +147,7 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        applyKmBasicRootLandscapeSafeInsets(view);
         kbMouseHost = view.findViewById(R.id.kb_mouse_host);
         View chromeInset = view.findViewById(R.id.km_basic_chrome_inset_container);
         applyKmBasicChromeTopInset(chromeInset);
@@ -155,14 +156,49 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     /**
+     * In landscape, side system bars and cutouts are applied <strong>once</strong> on this host root
+     * ({@code max(navigationBars, displayCutout)} on each horizontal axis), matching {@link
+     * com.openterface.fragment.BasicComposeFragment#setupBasicComposeImeInsets}. Sub-fragments keep
+     * only the fixed {@code basic_keyboard_content_inset} dimens horizontally so we do not stack the
+     * same nav/cutout inset again on the keyboard / touchpad / numpad (which produced a dead band /
+     * black strip on some phones in landscape).
+     */
+    private void applyKmBasicRootLandscapeSafeInsets(@NonNull View kbMouseRoot) {
+        final int baseStart = ViewCompat.getPaddingStart(kbMouseRoot);
+        final int baseTop = kbMouseRoot.getPaddingTop();
+        final int baseEnd = ViewCompat.getPaddingEnd(kbMouseRoot);
+        final int baseBottom = kbMouseRoot.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(
+                kbMouseRoot,
+                (v, windowInsets) -> {
+                    boolean landscape =
+                            v.getResources().getConfiguration().orientation
+                                    == Configuration.ORIENTATION_LANDSCAPE;
+                    int padStart = baseStart;
+                    int padEnd = baseEnd;
+                    if (landscape) {
+                        Insets bars =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                        Insets cut =
+                                windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
+                        padStart = baseStart + Math.max(bars.left, cut.left);
+                        padEnd = baseEnd + Math.max(bars.right, cut.right);
+                    }
+                    ViewCompat.setPaddingRelative(v, padStart, baseTop, padEnd, baseBottom);
+                    return windowInsets;
+                });
+        ViewCompat.requestApplyInsets(kbMouseRoot);
+    }
+
+    /**
      * Adds top padding only to the tab chrome strip (not the whole KM Basic host), using status-bar
      * insets. Scoped this way so we do not shrink the keyboard area or affect other activities.
      * Avoids merging displayCutout into top (can over-pad on some devices when combined with
      * statusBars).
      *
-     * <p>In landscape, pads the trailing end with {@code max(navigationBars, displayCutout)} on the
-     * end axis so Target OS, Setup, and connection stay clear of side system navigation (same merge as
-     * {@link com.openterface.fragment.BasicComposeFragment#setupBasicComposeImeInsets}).
+     * <p>Landscape horizontal clearing of side system bars lives on {@link
+     * #applyKmBasicRootLandscapeSafeInsets(View)} so chrome and body share one inset; do not add
+     * duplicate end padding here.
      */
     private void applyKmBasicChromeTopInset(@Nullable View chromeInsetContainer) {
         if (chromeInsetContainer == null) {
@@ -181,18 +217,7 @@ public final class KeyboardMouseFragment extends Fragment {
                     int statusTop =
                             windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
                     int topPad = baseTop + (statusTop > 0 ? statusTop : minTop);
-                    boolean landscape =
-                            v.getResources().getConfiguration().orientation
-                                    == Configuration.ORIENTATION_LANDSCAPE;
-                    int endPad = baseEnd;
-                    if (landscape) {
-                        Insets bars =
-                                windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
-                        Insets cut =
-                                windowInsets.getInsets(WindowInsetsCompat.Type.displayCutout());
-                        endPad = baseEnd + Math.max(bars.right, cut.right);
-                    }
-                    ViewCompat.setPaddingRelative(v, baseStart, topPad, endPad, baseBottom);
+                    ViewCompat.setPaddingRelative(v, baseStart, topPad, baseEnd, baseBottom);
                     return windowInsets;
                 });
         ViewCompat.requestApplyInsets(chromeInsetContainer);
@@ -227,6 +252,10 @@ public final class KeyboardMouseFragment extends Fragment {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        View root = getView();
+        if (root != null) {
+            ViewCompat.requestApplyInsets(root);
+        }
         updateKbMouseHostVisibilityForCurrentState();
         refreshBasicEmbeddedChrome();
         notifyKeyboardBodyIfShown();

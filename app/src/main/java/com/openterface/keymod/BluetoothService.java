@@ -16,6 +16,7 @@ import com.openterface.keymod.hid.Ch9329InboundParser;
 import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleConnection;
 import com.polidea.rxandroidble2.RxBleDevice;
+import com.polidea.rxandroidble2.exceptions.BleAlreadyConnectedException;
 import com.polidea.rxandroidble2.exceptions.BleDisconnectedException;
 
 import java.util.Arrays;
@@ -53,6 +54,9 @@ public class BluetoothService extends Service {
     private Disposable rssiPollDisposable;
     private final Set<ConnectionStateListener> connectionStateListeners = new CopyOnWriteArraySet<>();
     private volatile boolean reconnectSuppressed;
+    private int alreadyConnectedRetryCount = 0;
+    private static final int MAX_ALREADY_CONNECTED_RETRIES = 3;
+    private static final long ALREADY_CONNECTED_RETRY_DELAY_MS = 1000;
     @Nullable
     private Ch9329InboundParser hostLockInboundParser;
     @Nullable
@@ -92,7 +96,7 @@ public class BluetoothService extends Service {
             // to FFF1 and dispatches to BLE-Eth callbacks. Creating a second subscription
             // would cause duplicate delivery and corrupt frame parsing for split frames.
             if (hostLockNotifyDisposable != null) {
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth callbacks will receive data via shared host lock subscription");
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth callbacks will receive data via shared host lock subscription");
             } else {
                 Log.w(TAG, LOG_PREFIX + "No active BLE notification subscription yet - callbacks will not receive data until connected");
             }
@@ -103,7 +107,7 @@ public class BluetoothService extends Service {
     public void removeBleEthCallback(BleEthDataCallback callback) {
         if (callback != null) {
             bleEthCallbacks.remove(callback);
-            Log.d(TAG, LOG_PREFIX + "BLE-Eth callback unregistered. Remaining callbacks: " + bleEthCallbacks.size());
+            Log.v(TAG, LOG_PREFIX + "BLE-Eth callback unregistered. Remaining callbacks: " + bleEthCallbacks.size());
         }
         if (bleEthCallbacks.isEmpty() && bleEthNotifyDisposable != null) {
             Log.i(TAG, LOG_PREFIX + "No more BLE-Eth callbacks, stopping notifications");
@@ -121,14 +125,14 @@ public class BluetoothService extends Service {
 
         bleEthNotifyDisposable = connection.setupNotification(NOTIFY_CHARACTERISTIC_UUID)
             .flatMap(notificationObservable -> {
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth notification setup successful, subscribing to observable");
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth notification setup successful, subscribing to observable");
                 return notificationObservable;
             })
             .subscribe(
                 bytes -> {
-                    Log.d(TAG, LOG_PREFIX + "BLE-Eth notification received: " + bytes.length + " bytes: " + bytesToHex(bytes));
+                    Log.v(TAG, LOG_PREFIX + "BLE-Eth notification received: " + bytes.length + " bytes: " + bytesToHex(bytes));
                     int callbackCount = bleEthCallbacks.size();
-                    Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + callbackCount + " callbacks");
+                    Log.v(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + callbackCount + " callbacks");
                     for (BleEthDataCallback callback : bleEthCallbacks) {
                         try {
                             callback.onBleEthData(bytes);
@@ -153,13 +157,13 @@ public class BluetoothService extends Service {
 
     private void stopBleEthNotifications() {
         if (bleEthNotifyDisposable != null) {
-            Log.d(TAG, LOG_PREFIX + "Stopping BLE-Eth notifications");
+            Log.v(TAG, LOG_PREFIX + "Stopping BLE-Eth notifications");
             bleEthNotifyDisposable.dispose();
             connectionDisposables.remove(bleEthNotifyDisposable);
             bleEthNotifyDisposable = null;
             Log.i(TAG, LOG_PREFIX + "BLE-Eth notifications stopped");
         } else {
-            Log.d(TAG, LOG_PREFIX + "stopBleEthNotifications called but no active subscription");
+            Log.v(TAG, LOG_PREFIX + "stopBleEthNotifications called but no active subscription");
         }
     }
 
@@ -169,7 +173,7 @@ public class BluetoothService extends Service {
             Log.w(TAG, LOG_PREFIX + "Cannot write BLE-Eth data: no active connection");
             return;
         }
-        Log.d(TAG, LOG_PREFIX + "BLE-Eth TX " + data.length + " bytes: " + bytesToHex(data));
+        Log.v(TAG, LOG_PREFIX + "BLE-Eth TX " + data.length + " bytes: " + bytesToHex(data));
 
         byte[] frame = Arrays.copyOf(data, data.length);
         bleEthWriteExecutor.execute(() -> writeBleEthInternal(frame));
@@ -208,7 +212,7 @@ public class BluetoothService extends Service {
                 System.arraycopy(data, offset, chunk, 0, chunkLen);
                 offset += chunkLen;
                 boolean lastChunk = offset >= data.length;
-                Log.d(TAG, LOG_PREFIX + "BLE-Eth TX chunk: " + chunk.length + " bytes"
+                Log.v(TAG, LOG_PREFIX + "BLE-Eth TX chunk: " + chunk.length + " bytes"
                         + (lastChunk ? " (last)" : ""));
 
                 if (!writeBleEthChunk(connection, characteristic, chunk, false)) {
@@ -375,7 +379,7 @@ public class BluetoothService extends Service {
                         .subscribe(
                                 bytes -> {
                                     if (bytes == null || bytes.length == 0) return;
-                                    Log.d(TAG, LOG_PREFIX + "BLE RX " + bytes.length + " bytes: " + bytesToHex(bytes));
+                                    Log.v(TAG, LOG_PREFIX + "BLE RX " + bytes.length + " bytes: " + bytesToHex(bytes));
                                     // 1) Dispatch to host lock inbound parser (existing use)
                                     if (hostLockInboundParser != null) {
                                         hostLockInboundParser.append(bytes, bytes.length);
@@ -387,7 +391,7 @@ public class BluetoothService extends Service {
                                     //    Filtering here would drop continuation bytes and break
                                     //    multi-notification frames.
                                     if (!bleEthCallbacks.isEmpty()) {
-                                        Log.d(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + bleEthCallbacks.size() + " callbacks");
+                                        Log.v(TAG, LOG_PREFIX + "BLE-Eth dispatching " + bytes.length + " bytes to " + bleEthCallbacks.size() + " callbacks");
                                         for (BleEthDataCallback cb : bleEthCallbacks) {
                                             cb.onBleEthData(bytes);
                                         }
@@ -501,13 +505,28 @@ public class BluetoothService extends Service {
         // Check if already connected to this device
         if (isConnected() && connectedDevice != null &&
                 connectedDevice.getMacAddress().equals(deviceAddress)) {
-            Log.d(TAG, LOG_PREFIX + "Already connected to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+            Log.v(TAG, LOG_PREFIX + "Already connected to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
             return;
+        }
+
+        // Tear down the previous connection before starting a new one.
+        // Without this, the old GATT connection lingers in connectionDisposables
+        // alongside the new one.  Android's BLE stack typically allows only one
+        // active GATT connection, so the old one causes BleDisconnectedException
+        // on the new attempt.
+        if (connectedDevice != null
+                && !connectedDevice.getMacAddress().equals(deviceAddress)) {
+            Log.v(TAG, LOG_PREFIX + "Switching device from "
+                    + sanitizeDeviceName(connectedDevice.getName())
+                    + " (" + connectedDevice.getMacAddress() + ") to "
+                    + sanitizeDeviceName(device.getName())
+                    + " (" + deviceAddress + ")");
+            teardownCurrentConnection();
         }
 
         synchronized (connectingDevices) {
             if (connectingDevices.contains(deviceAddress)) {
-                Log.d(TAG, LOG_PREFIX + "Already connecting to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+                Log.v(TAG, LOG_PREFIX + "Already connecting to device: " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                 return;
             }
             connectingDevices.add(deviceAddress);
@@ -522,16 +541,26 @@ public class BluetoothService extends Service {
                     synchronized (connectingDevices) {
                         connectingDevices.remove(deviceAddress);
                     }
-                    Log.d(TAG, LOG_PREFIX + "Connection disposed for device: " + sanitizeDeviceName(device.getName()));
+                    Log.v(TAG, LOG_PREFIX + "Connection disposed for device: " + sanitizeDeviceName(device.getName()));
                 })
                 .subscribe(
                         connection -> {
                             synchronized (connectingDevices) {
                                 connectingDevices.remove(deviceAddress);
                             }
+                            // Guard: if the user switched to another device while
+                            // this connection was being established, ignore the result.
+                            if (connectedDevice == null
+                                    || !connectedDevice.getMacAddress().equals(deviceAddress)) {
+                                Log.v(TAG, LOG_PREFIX + "Stale connection callback for "
+                                        + deviceAddress + ", current device is "
+                                        + (connectedDevice != null ? connectedDevice.getMacAddress() : "null"));
+                                return;
+                            }
                             activeConnection = connection;
                             bleEthWriteCharacteristic = null;
-                            Log.d(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
+                            alreadyConnectedRetryCount = 0;
+                            Log.v(TAG, LOG_PREFIX + "Connected to " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + ")");
                             notifyBluetoothConnected(device);
                             startRssiPolling();
                             connection.requestMtu(BLE_ETH_TARGET_MTU)
@@ -550,6 +579,15 @@ public class BluetoothService extends Service {
                             synchronized (connectingDevices) {
                                 connectingDevices.remove(deviceAddress);
                             }
+                            // Guard: if the user switched to another device, do not
+                            // update state or schedule reconnect for the old device.
+                            if (connectedDevice != null
+                                    && !connectedDevice.getMacAddress().equals(deviceAddress)) {
+                                Log.v(TAG, LOG_PREFIX + "Stale error callback for "
+                                        + deviceAddress + ", current device is "
+                                        + connectedDevice.getMacAddress() + " - ignoring");
+                                return;
+                            }
                             Log.e(TAG, LOG_PREFIX + "Connection error for device " + sanitizeDeviceName(device.getName()) + " (" + deviceAddress + "): " + throwable.toString());
                             activeConnection = null;
                             bleEthWriteCharacteristic = null;
@@ -557,6 +595,36 @@ public class BluetoothService extends Service {
                             notifyBluetoothError(device, throwable.toString());
                             notifyBluetoothDisconnected(device);
                             stopRssiPolling();
+                            // BleAlreadyConnectedException: the previous GATT connection on this
+                            // device hasn't fully released at the OS level yet.  Retry after a
+                            // short delay to give Android's BLE stack time to clean up.
+                            if (throwable instanceof BleAlreadyConnectedException) {
+                                if (alreadyConnectedRetryCount < MAX_ALREADY_CONNECTED_RETRIES) {
+                                    alreadyConnectedRetryCount++;
+                                    Log.w(TAG, LOG_PREFIX + "Device already connected at GATT level, "
+                                            + "retry " + alreadyConnectedRetryCount
+                                            + "/" + MAX_ALREADY_CONNECTED_RETRIES
+                                            + " after " + ALREADY_CONNECTED_RETRY_DELAY_MS + "ms");
+                                    Observable.timer(ALREADY_CONNECTED_RETRY_DELAY_MS,
+                                            TimeUnit.MILLISECONDS)
+                                            .subscribe(
+                                                    ignored -> {
+                                                        if (connectedDevice != null
+                                                                && connectedDevice.getMacAddress()
+                                                                        .equals(deviceAddress)) {
+                                                            connectToDevice(device);
+                                                        }
+                                                    },
+                                                    err -> Log.e(TAG, LOG_PREFIX
+                                                            + "Already-connected retry error: "
+                                                            + err));
+                                    return;
+                                }
+                                Log.e(TAG, LOG_PREFIX
+                                        + "BleAlreadyConnectedException persisted after "
+                                        + MAX_ALREADY_CONNECTED_RETRIES + " retries");
+                                alreadyConnectedRetryCount = 0;
+                            }
                             // Check if the error is a BleDisconnectedException with status 255
                             if (throwable instanceof BleDisconnectedException) {
                                 String errorMessage = throwable.toString();
@@ -588,7 +656,7 @@ public class BluetoothService extends Service {
                 .subscribe(
                         aLong -> {
                             if (connectedDevice != null && connectedDevice.getMacAddress().equals(device.getMacAddress())) {
-                                Log.d(TAG, LOG_PREFIX + "Attempting to reconnect to " + sanitizeDeviceName(device.getName()));
+                                Log.v(TAG, LOG_PREFIX + "Attempting to reconnect to " + sanitizeDeviceName(device.getName()));
                                 connectToDevice(device);
                             }
                         },
@@ -610,7 +678,7 @@ public class BluetoothService extends Service {
         if (activeConnection == null) {
             Log.w(TAG, LOG_PREFIX + "Cannot send data: No active connection, packet=" + packetHex);
             if (connectedDevice != null) {
-                Log.d(TAG, LOG_PREFIX + "Attempting to reconnect before sending data");
+                Log.v(TAG, LOG_PREFIX + "Attempting to reconnect before sending data");
                 connectToDevice(connectedDevice);
             }
             return;
@@ -673,7 +741,7 @@ public class BluetoothService extends Service {
         bleEthWriteCharacteristic = null;
         connectedDevice = null;
         stopReconnect();
-        Log.d(TAG, LOG_PREFIX + "BluetoothService destroyed");
+        Log.v(TAG, LOG_PREFIX + "BluetoothService destroyed");
     }
 
     public void disconnect() {
@@ -688,7 +756,28 @@ public class BluetoothService extends Service {
             if (previousDevice != null) {
                 notifyBluetoothDisconnected(previousDevice);
             }
-            Log.d(TAG, LOG_PREFIX + "Bluetooth disconnected");
+            Log.v(TAG, LOG_PREFIX + "Bluetooth disconnected");
+        }
+    }
+
+    /**
+     * Tear down the current connection without notifying listeners.
+     * Used internally by {@link #connectToDevice} when switching between devices,
+     * so the old GATT connection is fully cleaned up before the new one starts.
+     * Listeners are not notified because the caller will immediately emit
+     * onBluetoothConnecting for the new device.
+     */
+    private void teardownCurrentConnection() {
+        stopHostLockBleNotifications();
+        stopBleEthNotifications();
+        stopRssiPolling();
+        stopReconnect();
+        connectionDisposables.clear();
+        activeConnection = null;
+        bleEthWriteCharacteristic = null;
+        connectedDevice = null;
+        synchronized (connectingDevices) {
+            connectingDevices.clear();
         }
     }
 }

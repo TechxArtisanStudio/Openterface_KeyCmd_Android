@@ -421,7 +421,7 @@ public final class HidTextKeystrokeSender {
     public static void sendUnicodeCharMacOS(int codePoint, ConnectionManager cm)
             throws InterruptedException {
         String hex = String.format("%04x", codePoint);
-        Log.d(TAG, "Unicode hex input: U+" + hex.toUpperCase(Locale.ROOT) + " for codePoint=" + codePoint);
+        Log.v(TAG, "Unicode hex input: U+" + hex.toUpperCase(Locale.ROOT) + " for codePoint=" + codePoint);
 
         final int kAlt = 0x04;
 
@@ -446,7 +446,7 @@ public final class HidTextKeystrokeSender {
     public static void sendUnicodeCharWindows(int codePoint, ConnectionManager cm)
             throws InterruptedException {
         String hex = String.format("%04X", codePoint);
-        Log.d(TAG, "Windows Unicode input: U+" + hex);
+        Log.v(TAG, "Windows Unicode input: U+" + hex);
 
         final int kAlt = 0x04;
         final int kNumpadPlus = 0x57;
@@ -515,7 +515,7 @@ public final class HidTextKeystrokeSender {
     public static void sendUnicodeCharLinux(int codePoint, ConnectionManager cm)
             throws InterruptedException {
         String hex = String.format("%04x", codePoint);
-        Log.d(TAG, "Linux Unicode input: U+" + hex);
+        Log.v(TAG, "Linux Unicode input: U+" + hex);
 
         final int kCtrlShift = 0x01 | 0x02;
 

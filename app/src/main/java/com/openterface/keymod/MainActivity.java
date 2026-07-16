@@ -73,6 +73,7 @@ import com.openterface.terminal.TerminalFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
+import com.openterface.fragment.AgentFragment;
 import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.help.HelpImageConfig;
@@ -101,6 +102,13 @@ import com.polidea.rxandroidble2.scan.ScanSettings;
 import android.app.PendingIntent;
 
 public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
+
+    public static final String EXTRA_TERMINAL_DEMO = "terminal_demo";
+    public static final String EXTRA_AGENT_DEMO_SCRIPT = "agent_demo_script";
+    public static final String EXTRA_AGENT_DEMO_AUTO_PLAY = "agent_demo_auto_play";
+    public static final String EXTRA_AGENT_DEMO_AUTO_APPROVE = "agent_demo_auto_approve";
+    public static final String EXTRA_AGENT_DEMO_SKIP_GATE = "agent_demo_skip_gate";
+    public static final String EXTRA_AGENT_DEMO_PAUSE_AT = "agent_demo_pause_at";
 
     private static final String TAG = "MainActivity";
     /** Google Form: bug reports (opened from nav drawer). */
@@ -159,6 +167,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private String currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
     @Nullable
     private String pendingKbMouseSubmode;
+    @Nullable
+    private String pendingTerminalDemoTransport;
+    private String pendingAgentDemoScript;
+    private boolean pendingAgentAutoPlay;
+    private boolean pendingAgentAutoApprove;
+    private boolean pendingAgentSkipGate;
+    private String pendingAgentPauseAt;
     private View drawerImeRestoreTarget;
     private boolean restoreImeAfterDrawerClose;
     private DrawerCloseReason drawerCloseReason = DrawerCloseReason.NONE;
@@ -178,6 +193,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navVoice;
     private LinearLayout navPresentation;
     private LinearLayout navTerminal;
+    private LinearLayout navAgent;
     private ImageButton targetOsHeaderButton;
     @Nullable
     private View headerRightCluster;
@@ -334,7 +350,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             isServiceBound = true;
             bluetoothService.setRxBleClient(rxBleClient);
             bluetoothService.setHostLockInboundParser(hostLockInboundParser);
-            Log.d(TAG, "Bound to BluetoothService");
+            Log.v(TAG, "Bound to BluetoothService");
 
             // Keep ConnectionManager in sync with the newly bound service.
             if (connectionManager != null) {
@@ -349,7 +365,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.d(TAG, "Unbound from BluetoothService");
+            Log.v(TAG, "Unbound from BluetoothService");
 
             if (connectionManager != null) {
                 connectionManager.setBluetoothService(null);
@@ -423,7 +439,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         String earlyKbSub =
                 KeyboardMouseFragment.normalizeKmBasicSubmode(
                         launchIntent.getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
-        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, earlyKbSub)) {
+        // Determine what submode will actually be used (default to touchpad if null)
+        String actualSubmode = earlyKbSub != null ? earlyKbSub : KeyboardMouseFragment.SUBMODE_TOUCHPAD;
+        if (shouldLockLandscapeForKmBasicKeyboardIntent(earlyLaunchMode, actualSubmode)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
@@ -456,6 +474,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         pendingKbMouseSubmode =
                 KeyboardMouseFragment.normalizeKmBasicSubmode(
                         getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
+        pendingTerminalDemoTransport = launchIntent.getStringExtra(EXTRA_TERMINAL_DEMO);
+        pendingAgentDemoScript = launchIntent.getStringExtra(EXTRA_AGENT_DEMO_SCRIPT);
+        pendingAgentAutoPlay = launchIntent.getBooleanExtra(EXTRA_AGENT_DEMO_AUTO_PLAY, false);
+        pendingAgentAutoApprove = launchIntent.getBooleanExtra(EXTRA_AGENT_DEMO_AUTO_APPROVE, false);
+        pendingAgentSkipGate = launchIntent.getBooleanExtra(EXTRA_AGENT_DEMO_SKIP_GATE, false);
+        pendingAgentPauseAt = launchIntent.getStringExtra(EXTRA_AGENT_DEMO_PAUSE_AT);
         String launchMode = getIntent().getStringExtra("launch_mode");
         if (launchMode != null) {
             handleLaunchMode(launchMode);
@@ -605,6 +629,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         navVoice = findViewById(R.id.nav_voice);
         navPresentation = findViewById(R.id.nav_presentation);
         navTerminal = findViewById(R.id.nav_terminal);
+        navAgent = findViewById(R.id.nav_agent);
         setupDrawerImeBehavior();
 
         targetOsHeaderButton = findViewById(R.id.target_os_header_button);
@@ -665,12 +690,24 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (headerLayout != null) {
             headerLayout.setVisibility(hideAppHeader ? View.GONE : View.VISIBLE);
         }
-        TextView appTitle = findViewById(R.id.app_title);
+        View appTitle = findViewById(R.id.app_title);
         if (appTitle != null) {
             if (hideAppHeader) {
                 appTitle.setVisibility(View.VISIBLE);
             } else {
                 appTitle.setVisibility(hideHeaderAppTitleForFragment(f) ? View.GONE : View.VISIBLE);
+            }
+        }
+        TextView appTitleMode = findViewById(R.id.app_title_mode);
+        if (appTitleMode != null) {
+            if (f instanceof TerminalFragment) {
+                appTitleMode.setText(R.string.top_mode_label_terminal);
+                appTitleMode.setVisibility(View.VISIBLE);
+            } else if (f instanceof AgentFragment) {
+                appTitleMode.setText(R.string.top_mode_label_agent);
+                appTitleMode.setVisibility(View.VISIBLE);
+            } else {
+                appTitleMode.setVisibility(View.GONE);
             }
         }
         updateImmersiveForTopFragment();
@@ -804,7 +841,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      */
     private void syncKmProHeaderTabsSpacerVisibility() {
         if (kmProHeaderTabsSpacer != null) {
-            TextView appTitle = findViewById(R.id.app_title);
+            View appTitle = findViewById(R.id.app_title);
             boolean headerShown = headerLayout == null || headerLayout.getVisibility() == View.VISIBLE;
             boolean showSpacer =
                     headerShown
@@ -830,7 +867,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             headerEndPullSpacer.setVisibility(View.GONE);
             return;
         }
-        TextView appTitle = findViewById(R.id.app_title);
+        View appTitle = findViewById(R.id.app_title);
         boolean titleVisible = appTitle != null && appTitle.getVisibility() == View.VISIBLE;
         boolean proTabsVisible =
                 kmProHeaderTabsScroll != null
@@ -1313,7 +1350,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             return;
         }
         if (!connectionManager.isAutoConnectEnabled()) {
-            Log.d(TAG, "Bluetooth auto-connect disabled; skipping BluetoothAutoConnectManager");
+            Log.v(TAG, "Bluetooth auto-connect disabled; skipping BluetoothAutoConnectManager");
             return;
         }
 
@@ -1322,7 +1359,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         autoConnectManager.setAutoConnectListener(new BluetoothAutoConnectManager.AutoConnectListener() {
             @Override
             public void onAutoConnectStarted() {
-                Log.d(TAG, "Auto-connect started");
+                Log.v(TAG, "Auto-connect started");
                 runOnUiThread(() -> {
                     UiToastLimiter.show(
                             MainActivity.this,
@@ -1335,7 +1372,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
             @Override
             public void onAutoConnectSuccess(RxBleDevice device) {
-                Log.d(TAG, "Auto-connect successful: " + device.getName());
+                Log.v(TAG, "Auto-connect successful: " + device.getName());
                 runOnUiThread(() -> {
                     isBluetoothConnected = true;
                     if (connectionManager != null) {
@@ -1369,7 +1406,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
 
             @Override
             public void onAutoConnectRetrying(int retryCount) {
-                Log.d(TAG, "Auto-connect retrying: attempt " + retryCount);
+                Log.v(TAG, "Auto-connect retrying: attempt " + retryCount);
                 if (retryCount == 1) {
                     runOnUiThread(() -> UiToastLimiter.show(
                             MainActivity.this,
@@ -1395,6 +1432,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private int headerConnectionClusterTint(
             ConnectionManager.ConnectionType type, ConnectionManager.ConnectionState state) {
         switch (state) {
+            case CONNECTING:
             case CONNECTED:
                 return ThemeManager.getColorPrimary(this);
             default:
@@ -1512,7 +1550,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 .subscribe(
                         (scanResult) -> {
                             String deviceName = scanResult.getBleDevice().getName();
-                            Log.d("ScanResult", "find device: " + (deviceName != null ? deviceName : "unknown device"));
+                            Log.v("ScanResult", "find device: " + (deviceName != null ? deviceName : "unknown device"));
                         },
                         (Throwable throwable) -> {
                             Log.e("ScanError", "scan error", throwable);
@@ -1634,6 +1672,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 drawerLayout.closeDrawer(GravityCompat.START);
             });
         }
+        if (navAgent != null) {
+            navAgent.setOnClickListener(v -> {
+                currentNavMode = LaunchPanelActivity.MODE_AGENT;
+                updateNavSelection();
+                showAgentFragment();
+                markDrawerCloseAsNavigation();
+                drawerLayout.closeDrawer(GravityCompat.START);
+            });
+        }
 
         // Welcome & Guide — returns to LaunchPanelActivity (mode picker + tutorial)
         View chooseModeButton = findViewById(R.id.choose_mode_button);
@@ -1746,14 +1793,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             Fragment bluetoothDialog = fragmentManager.findFragmentByTag("BluetoothDialog");
             if (bluetoothDialog instanceof BluetoothDialogFragment) {
                 ((BluetoothDialogFragment) bluetoothDialog).dismiss();
-                Log.d(TAG, "Dismissed BluetoothDialogFragment");
+                Log.v(TAG, "Dismissed BluetoothDialogFragment");
             }
             
             // Dismiss ConnectionDialogFragment if open
             Fragment connectionDialog = fragmentManager.findFragmentByTag("ConnectionDialog");
             if (connectionDialog instanceof ConnectionDialogFragment) {
                 ((ConnectionDialogFragment) connectionDialog).dismiss();
-                Log.d(TAG, "Dismissed ConnectionDialogFragment");
+                Log.v(TAG, "Dismissed ConnectionDialogFragment");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error dismissing dialogs: " + e.getMessage());
@@ -1786,6 +1833,9 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         }
         if (navTerminal != null) {
             navTerminal.setSelected(LaunchPanelActivity.MODE_TERMINAL.equals(currentNavMode));
+        }
+        if (navAgent != null) {
+            navAgent.setSelected(LaunchPanelActivity.MODE_AGENT.equals(currentNavMode));
         }
     }
 
@@ -1992,8 +2042,30 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private void showTerminalFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.fragment_container, new TerminalFragment());
+        transaction.replace(
+                R.id.fragment_container,
+                TerminalFragment.newInstance(pendingTerminalDemoTransport));
         transaction.commit();
+        pendingTerminalDemoTransport = null;
+    }
+
+    private void showAgentFragment() {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction transaction = fragmentManager.beginTransaction();
+        transaction.replace(
+                R.id.fragment_container,
+                AgentFragment.newInstance(
+                        pendingAgentDemoScript,
+                        pendingAgentAutoPlay,
+                        pendingAgentAutoApprove,
+                        pendingAgentSkipGate,
+                        pendingAgentPauseAt));
+        transaction.commit();
+        pendingAgentDemoScript = null;
+        pendingAgentAutoPlay = false;
+        pendingAgentAutoApprove = false;
+        pendingAgentSkipGate = false;
+        pendingAgentPauseAt = null;
     }
 
     /** Switch primary content mode (same behavior as side nav). Used by top-strip PH shortcuts. */
@@ -2027,7 +2099,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         updateNavSelection();
         switch (mode) {
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE:
-                showKeyboardMouseFragment(consumePendingKbMouseSubmode());
+                String submode = consumePendingKbMouseSubmode();
+                if (submode == null) {
+                    submode = KeyboardMouseFragment.SUBMODE_TOUCHPAD;
+                }
+                showKeyboardMouseFragment(submode);
                 break;
             case LaunchPanelActivity.MODE_KEYBOARD_MOUSE_PRO:
                 consumePendingKbMouseSubmode();
@@ -2056,6 +2132,10 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             case LaunchPanelActivity.MODE_TERMINAL:
                 consumePendingKbMouseSubmode();
                 showTerminalFragment();
+                break;
+            case LaunchPanelActivity.MODE_AGENT:
+                consumePendingKbMouseSubmode();
+                showAgentFragment();
                 break;
             default:
                 currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
@@ -2097,7 +2177,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                         for (int i = 0; i < numBytesRead; i++) {
                             allReadData.append(String.format("%02X ", buffer[i]));
                         }
-                        Log.d(TAG, "Read data: " + allReadData.toString().trim());
+                        Log.v(TAG, "Read data: " + allReadData.toString().trim());
 
                         if (onDataReadListener != null) {
                             onDataReadListener.onDataRead();
@@ -2181,7 +2261,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     @Override
     public void onBluetoothConnectionChanged(boolean isConnected) {
         isBluetoothConnected = isConnected;
-        Log.d(TAG, "Bluetooth connection state updated: " + isConnected);
+        Log.v(TAG, "Bluetooth connection state updated: " + isConnected);
 
         if (connectionManager != null) {
             connectionManager.setBluetoothService(bluetoothService);
@@ -2193,15 +2273,15 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             com.polidea.rxandroidble2.RxBleDevice connectedDevice = bluetoothService.getConnectedDevice();
             if (connectedDevice != null) {
                 connectionManager.connectBluetooth(connectedDevice);
-                Log.d(TAG, "Updated ConnectionManager with BLE device");
+                Log.v(TAG, "Updated ConnectionManager with BLE device");
             } else {
-                Log.d(TAG, "Bluetooth connected but connectedDevice is null; state synced from callback");
+                Log.v(TAG, "Bluetooth connected but connectedDevice is null; state synced from callback");
             }
             startHostLockPolling();
         } else if (!isConnected && connectionManager != null && 
                    connectionManager.getCurrentConnectionType() == ConnectionManager.ConnectionType.BLUETOOTH) {
             connectionManager.disconnect();
-            Log.d(TAG, "Disconnected Bluetooth in ConnectionManager");
+            Log.v(TAG, "Disconnected Bluetooth in ConnectionManager");
         }
         
         if (isConnected) {

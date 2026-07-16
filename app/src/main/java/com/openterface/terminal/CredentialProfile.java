@@ -1,5 +1,7 @@
 package com.openterface.terminal;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,9 +19,12 @@ public class CredentialProfile {
     private String username;
     private String password;
     private String authType;
+    private String targetOs;
+    private String authMethod;
     private String privateKey;
     private String keyPassphrase;
     private String notes;
+    private List<String> tags;
     private boolean isActive;
     private long createdAt;
     private long updatedAt;
@@ -30,6 +35,7 @@ public class CredentialProfile {
         this.privateKey = "";
         this.keyPassphrase = "";
         this.notes = "";
+        this.tags = new ArrayList<>();
         this.createdAt = System.currentTimeMillis();
         this.updatedAt = this.createdAt;
     }
@@ -44,9 +50,12 @@ public class CredentialProfile {
         this.username = username;
         this.password = password;
         this.authType = AUTH_TYPE_PASSWORD;
+        this.targetOs = "linux";
+        this.authMethod = "password";
         this.privateKey = "";
         this.keyPassphrase = "";
         this.notes = "";
+        this.tags = new ArrayList<>();
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -81,6 +90,12 @@ public class CredentialProfile {
         return AUTH_TYPE_SSH_KEY.equals(getAuthType());
     }
 
+    public String getTargetOs() { return targetOs != null ? targetOs : "linux"; }
+    public void setTargetOs(String targetOs) { this.targetOs = targetOs; }
+
+    public String getAuthMethod() { return authMethod != null ? authMethod : "password"; }
+    public void setAuthMethod(String authMethod) { this.authMethod = authMethod; }
+
     public String getPrivateKey() { return privateKey != null ? privateKey : ""; }
     public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
 
@@ -89,6 +104,9 @@ public class CredentialProfile {
 
     public String getNotes() { return notes != null ? notes : ""; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public List<String> getTags() { return tags != null ? tags : new ArrayList<>(); }
+    public void setTags(List<String> tags) { this.tags = tags; }
 
     public boolean isActive() { return isActive; }
     public void setActive(boolean active) { isActive = active; }
