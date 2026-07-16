@@ -207,6 +207,14 @@ public class TerminalFragment extends Fragment {
         contentContainer.removeAllViews();
 
         inflateTerminalLayout(LayoutInflater.from(requireContext()), contentContainer);
+
+        // Rebind the preserved terminal session to the new TerminalView
+        // (initTerminal() only creates a new session if null, here we just rebind)
+        if (terminalView != null && terminalSession != null) {
+            terminalView.setTerminalSession(terminalSession);
+            terminalView.setFontSize(prefs.getFontSize());
+        }
+
         setupListeners();
         updateConnectionState();
 
