@@ -4717,10 +4717,30 @@ public class CustomKeyboardView extends LinearLayout {
         return keys;
     }
 
+    /**
+     * Optional override for the secondary layout toggle key label.
+     * When non-null, this label is used instead of the preference-derived label.
+     * This allows the terminal to set its own label independently of KM Pro preferences.
+     */
+    @Nullable private String secondaryToggleLabelOverride;
+
+    /**
+     * Set an explicit label for the IME/BI (or Split/Full) toggle key.
+     * Pass null to revert to preference-derived labels.
+     */
+    public void setSecondaryToggleLabelOverride(@Nullable String label) {
+        this.secondaryToggleLabelOverride = label;
+    }
+
     private Key buildKmProSecondaryLayoutToggleKey() {
         Context ctx = getContext();
         if (ctx == null) {
             return new Key("BI", "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        // Use override label if set (allows terminal to control its own label)
+        if (secondaryToggleLabelOverride != null) {
+            return new Key(secondaryToggleLabelOverride, "", KEY_IME_TOGGLE, "F00A",
+                    1f, 0, 0f, false, false, -1, true);
         }
         if (isLandscape(ctx)) {
             boolean split = KmProSubmodePrefs.isLandscapeSplit(ctx);

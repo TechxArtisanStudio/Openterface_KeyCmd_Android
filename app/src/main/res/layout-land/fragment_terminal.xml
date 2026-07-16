@@ -92,7 +92,7 @@
 
     </LinearLayout>
 
-    <!-- Horizontal split: left keyboard | center terminal | right keyboard -->
+    <!-- Horizontal layout: left keyboard | terminal | right keyboard -->
     <LinearLayout
         android:id="@+id/terminal_split_root"
         android:layout_width="match_parent"
@@ -100,15 +100,15 @@
         android:layout_weight="1"
         android:orientation="horizontal">
 
-        <!-- Left keyboard column (weight=1, matches KM Pro landscape split) -->
+        <!-- Left keyboard column (weight=0 when hidden, weight=1 when split) -->
         <LinearLayout
             android:id="@+id/terminal_split_left_column"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_weight="0"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-            <!-- Top shortcut panel (placeholder for keyboard top panel) -->
             <FrameLayout
                 android:id="@+id/terminal_split_top_left"
                 android:layout_width="match_parent"
@@ -128,12 +128,12 @@
 
         </LinearLayout>
 
-        <!-- Center terminal column (weight=1.2, same as KM Pro touchpad column) -->
+        <!-- Center terminal column (weight=1 when hidden/fullscreen, weight=2 when split) -->
         <FrameLayout
             android:id="@+id/terminal_display_area"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1.2"
+            android:layout_weight="1"
             android:background="@color/terminal_background">
 
             <com.openterface.terminal.TerminalView
@@ -224,15 +224,15 @@
 
         </FrameLayout>
 
-        <!-- Right keyboard column (weight=1, matches KM Pro landscape split) -->
+        <!-- Right keyboard column (weight=0 when hidden, weight=1 when split) -->
         <LinearLayout
             android:id="@+id/terminal_split_right_column"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_weight="0"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-            <!-- Top shortcut panel (placeholder for keyboard top panel) -->
             <FrameLayout
                 android:id="@+id/terminal_split_top_right"
                 android:layout_width="match_parent"

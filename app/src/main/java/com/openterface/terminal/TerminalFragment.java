@@ -96,6 +96,12 @@ public class TerminalFragment extends Fragment {
     @Nullable private FrameLayout terminalSplitTopLeft;
     @Nullable private FrameLayout terminalSplitTopRight;
 
+    // Landscape keyboard state management
+    private enum LandscapeKeyboardState { HIDDEN, SPLIT, FULLSCREEN }
+    private LandscapeKeyboardState landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+    @Nullable private CustomKeyboardView terminalFullscreenKeyboardView;
+    @Nullable private TerminalKeyboardTransport terminalFullscreenTransport;
+
     private Button connectBtn;
     private TextView statusText;
     private MaterialButton transportBtn;
@@ -268,6 +274,12 @@ public class TerminalFragment extends Fragment {
                 == Configuration.ORIENTATION_LANDSCAPE;
 
         if (isLandscape) {
+            // Ensure keyboard toggle labels read terminal's state, not KM Pro's leftover preference.
+            // Terminal always starts with IME surface hidden (built-in keyboard).
+            try {
+                com.openterface.keymod.prefs.KmProSubmodePrefs.setPortraitInputSurface(
+                        requireContext(), false);
+            } catch (Exception ignored) {}
             // Landscape split layout: left keyboard | center terminal | right keyboard
             terminalKeyboardViewLeft = view.findViewById(R.id.terminal_keyboard_view_left);
             terminalKeyboardViewRight = view.findViewById(R.id.terminal_keyboard_view_right);
@@ -275,6 +287,8 @@ public class TerminalFragment extends Fragment {
             terminalSplitTopRight = view.findViewById(R.id.terminal_split_top_right);
             terminalKeyboardSlot = null;
             terminalImeHost = null;
+            // Landscape keyboard starts hidden
+            landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
         } else {
             // Portrait layout: terminal on top, keyboard slot below with IME host
             terminalKeyboardSlot = view.findViewById(R.id.terminal_keyboard_slot);
@@ -381,18 +395,20 @@ public class TerminalFragment extends Fragment {
 
         if (terminalKeyboardViewLeft == null || terminalKeyboardViewRight == null) return;
 
+        // Set split parts when keyboard is actually shown
+        terminalKeyboardViewLeft.setSplitPart(CustomKeyboardView.SPLIT_LEFT);
+        terminalKeyboardViewRight.setSplitPart(CustomKeyboardView.SPLIT_RIGHT);
+        terminalKeyboardViewLeft.setSplitPartner(terminalKeyboardViewRight);
+        terminalKeyboardViewRight.setSplitPartner(terminalKeyboardViewLeft);
+
         if (terminalKeyboardTransportLeft == null) {
             OutputStream leftOutput = createTerminalSessionOutput();
             terminalKeyboardTransportLeft = new TerminalKeyboardTransport(leftOutput);
             terminalKeyboardViewLeft.setTransport(terminalKeyboardTransportLeft);
-            terminalKeyboardViewLeft.setSplitPart(CustomKeyboardView.SPLIT_LEFT);
-            terminalKeyboardViewLeft.setSplitPartner(terminalKeyboardViewRight);
 
-            // IME toggle on left keyboard: show system IME on terminal view
+            // Toggle listener: switch between split and fullscreen
             terminalKeyboardViewLeft.setOnKmProSecondaryLayoutToggleListener(source -> {
-                if (terminalView != null) {
-                    terminalView.showKeyboard();
-                }
+                toggleLandscapeKeyboardMode();
             });
         }
 
@@ -400,39 +416,25 @@ public class TerminalFragment extends Fragment {
             OutputStream rightOutput = createTerminalSessionOutput();
             terminalKeyboardTransportRight = new TerminalKeyboardTransport(rightOutput);
             terminalKeyboardViewRight.setTransport(terminalKeyboardTransportRight);
-            terminalKeyboardViewRight.setSplitPart(CustomKeyboardView.SPLIT_RIGHT);
-            terminalKeyboardViewRight.setSplitPartner(terminalKeyboardViewLeft);
 
             terminalKeyboardViewRight.setOnKmProSecondaryLayoutToggleListener(source -> {
-                if (terminalView != null) {
-                    terminalView.showKeyboard();
-                }
+                toggleLandscapeKeyboardMode();
             });
         }
 
-        // Create the shared top shortcut panels (3 scrollable rows) across both keyboards.
-        // Post to ensure view hierarchy is fully laid out before building panels.
         setupLandscapeTopPanels();
     }
 
     /**
      * Build and attach the 3-row scrollable top shortcut panel in landscape split mode.
      * Uses post() to wait for layout pass so dimensions are valid.
-     * Also ensures splitPart is set BEFORE the top panel is created, so the keyboard view
-     * does not render its internal top rows (which would squeeze the letter area).
+     * Does NOT set splitPart here — that happens when the keyboard is actually shown.
      */
     private void setupLandscapeTopPanels() {
         if (terminalKeyboardViewLeft == null || terminalKeyboardViewRight == null
                 || terminalSplitTopLeft == null || terminalSplitTopRight == null) {
             return;
         }
-        // Ensure split parts are set immediately so updateKeyboard() suppresses internal top rows.
-        // This must happen BEFORE createSplitLandscapeTopPanel() is posted.
-        terminalKeyboardViewLeft.setSplitPart(CustomKeyboardView.SPLIT_LEFT);
-        terminalKeyboardViewRight.setSplitPart(CustomKeyboardView.SPLIT_RIGHT);
-        terminalKeyboardViewLeft.setSplitPartner(terminalKeyboardViewRight);
-        terminalKeyboardViewRight.setSplitPartner(terminalKeyboardViewLeft);
-
         terminalKeyboardViewLeft.post(() -> {
             if (terminalKeyboardViewLeft == null
                     || terminalSplitTopLeft == null || terminalSplitTopRight == null) {
@@ -441,6 +443,162 @@ public class TerminalFragment extends Fragment {
             terminalKeyboardViewLeft.createSplitLandscapeTopPanel(
                     terminalSplitTopLeft, null, terminalSplitTopRight);
         });
+    }
+
+    // ── Landscape keyboard state management ──────────────────────────────────
+
+    /** Show the split keyboard: left keyboard | terminal | right keyboard. */
+    private void showLandscapeSplitKeyboard() {
+        // Remove any fullscreen overlay first
+        removeFullscreenKeyboardOverlay();
+
+        // Attach transports and set split parts if not done yet
+        attachLandscapeSplitKeyboardTransport();
+
+        // Show left/right columns
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 1f, View.VISIBLE);
+        setColumnWeight(rightCol, 1f, View.VISIBLE);
+
+        // Terminal gets weight=2 (center column, proportional)
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        setWeight(displayArea, 2f);
+
+        landscapeKeyboardState = LandscapeKeyboardState.SPLIT;
+        refreshLandscapeToggleKeyLabel(true);
+        Log.v(TAG, "Landscape split keyboard shown");
+    }
+
+    /**
+     * Show the fullscreen keyboard: a single keyboard overlays the entire terminal area.
+     * Keyboard is added as a child of terminal_display_area (FrameLayout).
+     */
+    private void showLandscapeFullscreenKeyboard() {
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        if (!(displayArea instanceof FrameLayout)) return;
+        FrameLayout displayFrame = (FrameLayout) displayArea;
+
+        // Hide split columns
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 0f, View.GONE);
+        setColumnWeight(rightCol, 0f, View.GONE);
+
+        // Terminal fills full width
+        setWeight(displayArea, 1f);
+
+        // Create fullscreen keyboard overlay if not yet created
+        if (terminalFullscreenKeyboardView == null && terminalSession != null) {
+            View inflated = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.fragment_keyboard, displayFrame, false);
+            terminalFullscreenKeyboardView = inflated.findViewById(R.id.keyboard_view);
+            displayFrame.addView(inflated, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+
+            OutputStream output = createTerminalSessionOutput();
+            terminalFullscreenTransport = new TerminalKeyboardTransport(output);
+            terminalFullscreenKeyboardView.setTransport(terminalFullscreenTransport);
+
+            terminalFullscreenKeyboardView.setOnKmProSecondaryLayoutToggleListener(source -> {
+                toggleLandscapeKeyboardMode();
+            });
+
+            if (isAdded()) {
+                String label = getString(R.string.km_pro_secondary_toggle_full_short);
+                terminalFullscreenKeyboardView.setSecondaryToggleLabelOverride(label);
+                terminalFullscreenKeyboardView.reloadForCurrentOrientation();
+            }
+        } else if (terminalFullscreenKeyboardView != null) {
+            View parent = (View) terminalFullscreenKeyboardView.getParent();
+            if (parent != null) parent.setVisibility(View.VISIBLE);
+        }
+
+        landscapeKeyboardState = LandscapeKeyboardState.FULLSCREEN;
+        refreshLandscapeToggleKeyLabel(false);
+        Log.v(TAG, "Landscape fullscreen keyboard shown");
+    }
+
+    /** Remove the fullscreen keyboard overlay from display area. */
+    private void removeFullscreenKeyboardOverlay() {
+        if (terminalFullscreenKeyboardView != null) {
+            View parent = (View) terminalFullscreenKeyboardView.getParent();
+            if (parent != null) {
+                parent.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    /** Hide all landscape keyboards. Terminal takes full area. */
+    private void hideLandscapeKeyboard() {
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 0f, View.GONE);
+        setColumnWeight(rightCol, 0f, View.GONE);
+
+        removeFullscreenKeyboardOverlay();
+
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        setWeight(displayArea, 1f);
+
+        landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+        Log.v(TAG, "Landscape keyboard hidden");
+    }
+
+    /** Toggle between split and fullscreen keyboard modes in landscape. */
+    private void toggleLandscapeKeyboardMode() {
+        if (landscapeKeyboardState == LandscapeKeyboardState.SPLIT) {
+            showLandscapeFullscreenKeyboard();
+        } else if (landscapeKeyboardState == LandscapeKeyboardState.FULLSCREEN) {
+            showLandscapeSplitKeyboard();
+        } else {
+            showLandscapeSplitKeyboard();
+        }
+    }
+
+    /**
+     * Refresh the landscape toggle key label ("Split"/"Full") on both split keyboard views.
+     * Uses the secondaryToggleLabelOverride API so terminal state does not affect KM Pro preferences.
+     */
+    private void refreshLandscapeToggleKeyLabel(boolean isSplit) {
+        if (!isAdded()) return;
+        try {
+            String label = getString(isSplit
+                    ? R.string.km_pro_secondary_toggle_split_short
+                    : R.string.km_pro_secondary_toggle_full_short);
+            if (terminalKeyboardViewLeft != null) {
+                terminalKeyboardViewLeft.setSecondaryToggleLabelOverride(label);
+                terminalKeyboardViewLeft.reloadForCurrentOrientation();
+            }
+            if (terminalKeyboardViewRight != null) {
+                terminalKeyboardViewRight.setSecondaryToggleLabelOverride(label);
+                terminalKeyboardViewRight.reloadForCurrentOrientation();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Helper: set layout_weight on a view (must be child of LinearLayout). */
+    private void setWeight(View view, float weight) {
+        if (view == null) return;
+        ViewGroup.LayoutParams lp = view.getLayoutParams();
+        if (lp instanceof LinearLayout.LayoutParams) {
+            ((LinearLayout.LayoutParams) lp).weight = weight;
+            view.setLayoutParams(lp);
+        }
+    }
+
+    /** Helper: set both weight and visibility on a keyboard column. */
+    private void setColumnWeight(View column, float weight, int visibility) {
+        if (column == null) return;
+        setWeight(column, weight);
+        column.setVisibility(visibility);
     }
 
     /**
@@ -476,15 +634,18 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Show the custom keyboard. In portrait, makes the keyboard slot visible and hides IME surface.
-     * In landscape, the split keyboards are always part of the layout — nothing to show.
+     * Show the custom keyboard.
+     * Portrait: makes the keyboard slot visible and hides IME surface.
+     * Landscape: shows the split keyboard if hidden; does nothing if already visible.
      */
     private void showCustomKeyboard() {
         boolean isLandscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
         if (isLandscape) {
-            // Landscape: split keyboards are always visible as part of the layout
-            hideTerminalImeSurface();
+            // In landscape, show split keyboard if hidden
+            if (landscapeKeyboardState == LandscapeKeyboardState.HIDDEN) {
+                showLandscapeSplitKeyboard();
+            }
             return;
         }
 
@@ -596,10 +757,12 @@ public class TerminalFragment extends Fragment {
     private void refreshTerminalToggleKeyLabel() {
         if (!isAdded() || terminalKeyboardView == null) return;
         try {
-            com.openterface.keymod.prefs.KmProSubmodePrefs.setPortraitInputSurface(
-                    requireContext(), imeSurfaceVisible);
+            String label = getString(imeSurfaceVisible
+                    ? R.string.km_pro_secondary_toggle_built_in_short
+                    : R.string.km_pro_secondary_toggle_ime_short);
+            terminalKeyboardView.setSecondaryToggleLabelOverride(label);
+            terminalKeyboardView.reloadForCurrentOrientation();
         } catch (Exception ignored) {}
-        terminalKeyboardView.reloadForCurrentOrientation();
     }
 
     /**
@@ -663,7 +826,7 @@ public class TerminalFragment extends Fragment {
         hideTerminalImeSurface();
 
         if (isLandscape) {
-            // Landscape: disconnect split keyboard transports
+            // Landscape: disconnect split and fullscreen keyboard transports
             if (terminalKeyboardTransportLeft != null) {
                 terminalKeyboardTransportLeft.disconnect();
                 terminalKeyboardTransportLeft = null;
@@ -678,6 +841,20 @@ public class TerminalFragment extends Fragment {
             if (terminalKeyboardViewRight != null) {
                 terminalKeyboardViewRight.clearCustomTransport();
             }
+            if (terminalFullscreenTransport != null) {
+                terminalFullscreenTransport.disconnect();
+                terminalFullscreenTransport = null;
+            }
+            if (terminalFullscreenKeyboardView != null) {
+                terminalFullscreenKeyboardView.clearCustomTransport();
+                // Remove fullscreen keyboard overlay from its parent
+                View fsParent = (View) terminalFullscreenKeyboardView.getParent();
+                if (fsParent != null && fsParent.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) fsParent.getParent()).removeView(fsParent);
+                }
+            }
+            terminalFullscreenKeyboardView = null;
+            landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
         } else {
             // Portrait: disconnect single keyboard transport
             if (terminalKeyboardTransport != null) {
@@ -737,9 +914,11 @@ public class TerminalFragment extends Fragment {
             boolean isLandscape = getResources().getConfiguration().orientation
                     == Configuration.ORIENTATION_LANDSCAPE;
             if (isLandscape) {
-                // In landscape, tapping terminal toggles system IME on terminal view
-                if (terminalView != null) {
-                    terminalView.showKeyboard();
+                // In landscape: tap shows split keyboard if hidden, hides if showing
+                if (landscapeKeyboardState == LandscapeKeyboardState.HIDDEN) {
+                    showLandscapeSplitKeyboard();
+                } else {
+                    hideLandscapeKeyboard();
                 }
             } else {
                 // In portrait, tapping terminal toggles custom keyboard
@@ -1729,6 +1908,8 @@ public class TerminalFragment extends Fragment {
         terminalKeyboardViewRight = null;
         terminalSplitTopLeft = null;
         terminalSplitTopRight = null;
+        terminalFullscreenKeyboardView = null;
+        terminalFullscreenTransport = null;
         connectBtn = null;
         statusText = null;
         hostLabel = null;
