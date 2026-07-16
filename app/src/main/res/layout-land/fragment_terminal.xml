@@ -12,12 +12,12 @@
         android:id="@+id/terminal_top_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="40dp"
+        android:minHeight="36dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@color/terminal_toolbar_background"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
 
         <!-- Left side: connection status -->
         <LinearLayout
@@ -32,16 +32,20 @@
                 android:layout_height="wrap_content"
                 android:text="@string/terminal_disconnected"
                 android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/terminal_host_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
                 android:visibility="gone" />
 
         </LinearLayout>
@@ -57,22 +61,31 @@
                 android:id="@+id/terminal_transport_btn"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="6dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="4dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/terminal_transport_ble"
-                android:textSize="12sp"
+                android:textSize="10sp"
                 android:visibility="gone"
                 app:icon="@drawable/ic_bluetooth_24"
                 app:iconGravity="textStart"
-                app:iconPadding="4dp" />
+                app:iconPadding="2dp"
+                app:iconSize="14dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/terminal_connect_btn"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="28dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:text="@string/terminal_connect"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:visibility="gone" />
 
         </LinearLayout>
