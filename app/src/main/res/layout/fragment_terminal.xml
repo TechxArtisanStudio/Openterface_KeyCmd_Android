@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/terminal_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -174,61 +175,36 @@
 
     </FrameLayout>
 
-    <!-- Keyboard slot (empty container, CustomKeyboardView created dynamically) -->
-    <FrameLayout
+    <!-- Keyboard slot: CustomKeyboardView + hidden IME host (revealed when IME toggle requested) -->
+    <LinearLayout
         android:id="@+id/terminal_keyboard_slot"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1.5"
-        android:visibility="gone" />
-
-    <!-- Keyboard Toggle Row (Ctrl, Esc, Tab for on-screen access) -->
-    <LinearLayout
-        android:id="@+id/terminal_bottom_bar"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/terminal_bottom_bar_height"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/terminal_bottom_bar"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <Button
-            android:id="@+id/terminal_ctrl_btn"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:minWidth="0dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="Ctrl"
-            android:textSize="@dimen/terminal_bottom_bar_text_size"
-            android:background="?attr/selectableItemBackgroundBorderless" />
-
-        <Button
-            android:id="@+id/terminal_esc_btn"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:minWidth="0dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="Esc"
-            android:textSize="@dimen/terminal_bottom_bar_text_size"
-            android:background="?attr/selectableItemBackgroundBorderless" />
-
-        <Button
-            android:id="@+id/terminal_tab_btn"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:minWidth="0dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="Tab"
-            android:textSize="@dimen/terminal_bottom_bar_text_size"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+        <!-- IME host EditText: invisible until IME toggle; system IME floats below the custom keyboard -->
+        <EditText
+            android:id="@+id/terminal_ime_host"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/km_pro_ime_host_height"
+            android:visibility="gone"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:inputType="text|textNoSuggestions"
+            android:imeOptions="flagNoExtractUi|actionDone"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center_vertical|start"
+            android:maxLines="1"
+            android:scrollHorizontally="true"
+            android:cursorVisible="false"
+            android:textSize="1sp"
+            android:textColor="@android:color/transparent"
+            android:textColorHint="@android:color/transparent"
+            android:contentDescription="@string/km_pro_ime_direct_send_input_a11y"
+            android:importantForAutofill="no" />
 
     </LinearLayout>
 
