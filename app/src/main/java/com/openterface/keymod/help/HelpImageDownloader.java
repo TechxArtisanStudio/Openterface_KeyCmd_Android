@@ -133,7 +133,9 @@ public final class HelpImageDownloader {
         synchronized (pendingCallbacks) {
             if (downloading.contains(url)) {
                 Log.v(TAG, "Already downloading, queuing callback: " + url);
-                enqueueCallback(url, callback);
+                if (callback != null) {
+                    pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
+                }
                 return;
             }
             downloading.add(url);
@@ -350,7 +352,7 @@ public final class HelpImageDownloader {
                 // Atomic rename
                 if (tempFile.renameTo(destFile)) {
                     Log.v(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
-                    notifySuccess(destFile);
+                    notifyAllListeners(url, destFile, null);
                 } else {
                     // Clean up temp file
                     // noinspection ResultOfMethodCallIgnored
