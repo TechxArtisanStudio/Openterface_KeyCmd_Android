@@ -49,10 +49,17 @@ public class TerminalView extends View {
     private static final float AUTO_FIT_WIDTH_FILL = 0.97f;
     private static final float AUTO_FIT_HEIGHT_FILL = 0.94f;
 
+    // Horizontal scroll
+    private int scrollOffsetX = 0;        // Horizontal scroll offset in columns
+    private int maxContentWidth = 0;      // Max content width of visible rows (columns)
+    private float hScrollLastX = 0;       // Last touch X for horizontal drag
+    private boolean hScrolling = false;   // Whether horizontal scroll is active
+
     // Color scheme
     private static final int DEFAULT_BG = Color.BLACK;
     private static final int DEFAULT_FG = 0xFFD0D0D0; // light gray for readability
     private static final int CURSOR_COLOR = 0x88FFFFFF;
+    private static final int SCROLLBAR_COLOR = 0x40FFFFFF; // semi-transparent white
 
     public TerminalView(Context context) {
         super(context);
@@ -119,8 +126,65 @@ public class TerminalView extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
+
+        // Horizontal scroll: single-finger drag when content exceeds view width
+        int viewCols = charWidth > 0 ? (int) (getWidth() / charWidth) : 0;
+        boolean canScrollH = maxContentWidth > viewCols;
+
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                hScrollLastX = event.getX();
+                hScrolling = false;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (canScrollH && !scaleDetector.isInProgress()) {
+                    float dx = event.getX() - hScrollLastX;
+                    float dy = event.getY() - (hScrollLastY != 0 ? hScrollLastY : event.getY());
+                    // Determine if this is primarily a horizontal gesture
+                    if (!hScrolling && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > charWidth) {
+                        hScrolling = true;
+                    }
+                    if (hScrolling) {
+                        int colDelta = (int) (dx / charWidth);
+                        if (colDelta != 0) {
+                            scrollHorizontally(-colDelta);
+                            hScrollLastX = event.getX();
+                        }
+                        return true;
+                    }
+                }
+                hScrollLastX = event.getX();
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                hScrolling = false;
+                break;
+        }
+
         gestureDetector.onTouchEvent(event);
         return true;
+    }
+
+    private float hScrollLastY = 0;
+
+    /** Scroll horizontally by the given number of columns (positive = right). */
+    private void scrollHorizontally(int colDelta) {
+        if (session == null || charWidth <= 0) return;
+        int viewCols = (int) (getWidth() / charWidth);
+        int maxOffset = Math.max(0, maxContentWidth - viewCols);
+        scrollOffsetX = Math.max(0, Math.min(maxOffset, scrollOffsetX + colDelta));
+        invalidate();
+    }
+
+    /** Reset horizontal scroll offset to 0. */
+    public void resetScrollX() {
+        scrollOffsetX = 0;
+        invalidate();
+    }
+
+    /** Get current horizontal scroll offset in columns. */
+    public int getScrollOffsetX() {
+        return scrollOffsetX;
     }
 
     public void setTerminalSession(TerminalSession session) {
@@ -198,6 +262,8 @@ public class TerminalView extends View {
             int viewCols = Math.max(1, (int) (w / charWidth));
             session.growIfNeeded(viewRows, viewCols);
         }
+        // Reset horizontal scroll on size change
+        scrollOffsetX = 0;
     }
 
     @Override
@@ -239,18 +305,49 @@ public class TerminalView extends View {
 
             float textOffsetY = -textPaint.getFontMetrics().top; // baseline offset
 
+            // Calculate max content width of visible rows (for horizontal scroll)
+            maxContentWidth = 0;
+            for (int r = 0; r < drawRows; r++) {
+                char[] line = session.getLineChars(startRow + r);
+                if (line == null) continue;
+                for (int c = line.length - 1; c >= 0; c--) {
+                    if (line[c] != ' ' && line[c] != 0 && line[c] != '\t'
+                            && line[c] != '\r' && line[c] != '\n') {
+                        maxContentWidth = Math.max(maxContentWidth, c + 1);
+                        break;
+                    }
+                }
+            }
+
+            // Clamp horizontal scroll offset
+            int maxScrollOffset = Math.max(0, maxContentWidth - viewCols);
+            scrollOffsetX = Math.max(0, Math.min(maxScrollOffset, scrollOffsetX));
+
+            // Auto-scroll to keep cursor visible
+            int cursorX = session.getCursorX();
+            if (cursorX < scrollOffsetX) {
+                scrollOffsetX = cursorX;
+            } else if (cursorX >= scrollOffsetX + viewCols) {
+                scrollOffsetX = cursorX - viewCols + 1;
+            }
+            scrollOffsetX = Math.max(0, Math.min(maxScrollOffset, scrollOffsetX));
+
+            // Determine column range to draw
+            int startCol = scrollOffsetX;
+            int endCol = Math.min(cols, scrollOffsetX + viewCols);
+
             for (int row = 0; row < drawRows; row++) {
                 char[] line = session.getLineChars(startRow + row);
                 if (line == null) continue;
                 CellAttribute[] lineAttrs = session.getLineAttrs(startRow + row);
 
-                int col = 0;
-                while (col < drawCols) {
+                int col = startCol;
+                while (col < endCol) {
                     char ch = line[col];
                     CellAttribute attr = (lineAttrs != null && col < lineAttrs.length)
                         ? lineAttrs[col] : CellAttribute.DEFAULT;
 
-                    float x = col * charWidth;
+                    float x = (col - scrollOffsetX) * charWidth;
                     float y = row * charHeight + textOffsetY;
 
                     // Resolve inverse: swap fg/bg
@@ -300,11 +397,27 @@ public class TerminalView extends View {
                 int cy = session.getCursorY();
                 // Adjust cursor Y for the scroll offset (we display from startRow)
                 int displayCy = cy - startRow;
-                if (cx < drawCols && displayCy >= 0 && displayCy < drawRows) {
-                    float x = cx * charWidth;
+                if (cx >= scrollOffsetX && cx < scrollOffsetX + viewCols
+                        && displayCy >= 0 && displayCy < drawRows) {
+                    float x = (cx - scrollOffsetX) * charWidth;
                     float y = displayCy * charHeight;
                     canvas.drawRect(x, y, x + charWidth, y + charHeight, cursorPaint);
                 }
+            }
+
+            // Draw horizontal scrollbar if content exceeds view width
+            if (maxContentWidth > viewCols) {
+                float scrollbarHeight = 4 * getResources().getDisplayMetrics().density;
+                float scrollbarY = getHeight() - scrollbarHeight;
+                float totalWidth = maxContentWidth * charWidth;
+                float visibleWidth = viewCols * charWidth;
+                float thumbWidth = Math.max(scrollbarHeight * 2,
+                        visibleWidth * visibleWidth / totalWidth);
+                float thumbX = scrollOffsetX * charWidth * visibleWidth / totalWidth;
+
+                bgPaint.setColor(SCROLLBAR_COLOR);
+                canvas.drawRect(thumbX, scrollbarY, thumbX + thumbWidth,
+                        scrollbarY + scrollbarHeight, bgPaint);
             }
         }
     }

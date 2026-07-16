@@ -1663,6 +1663,9 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed) return;
                     isSshConnected = true;
+                    if (terminalView != null) {
+                        terminalView.resetScrollX();
+                    }
                     updateConnectionState();
                     mainHandler.postDelayed(() -> {
                         if (!viewDestroyed && rootView != null && isSshConnected) {
@@ -1685,6 +1688,7 @@ public class TerminalFragment extends Fragment {
                     updateConnectionState();
                     teardownTerminalKeyboard();
                     if (terminalView != null) {
+                        terminalView.resetScrollX();
                         terminalView.postInvalidate();
                     }
                 });
@@ -1763,6 +1767,9 @@ public class TerminalFragment extends Fragment {
         bleEthSocketFactory = null;
         usbEcmTransport = null;
         isSshConnected = false;
+        if (terminalView != null) {
+            terminalView.resetScrollX();
+        }
         teardownTerminalKeyboard();
         updateConnectionState();
     }
