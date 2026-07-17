@@ -14,20 +14,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayDeque;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Queue;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Downloads help guide images/GIFs from the remote server and caches them locally.
+ * Downloads help guide images/GIFs/MP4s from the remote server and caches them
+ * via {@link RemoteResourceStore}.
  * <p>
  * Features:
  * <ul>
- *   <li>Sequential download queue (avoids overwhelming the network)</li>
- *   <li>Deduplication (same URL only downloaded once per session)</li>
+ *   <li>Concurrent download pool (2 threads)</li>
+ *   <li>Deduplication — same URL only downloaded once; multiple listeners supported</li>
+ *   <li>Retry with exponential backoff (1s / 2s / 4s, max 3 retries)</li>
+ *   <li>Progress callback</li>
+ *   <li>Versioned cache paths via {@link RemoteResourceStore}</li>
+ *   <li>LRU eviction on write</li>
  *   <li>Thread-safe public API</li>
  *   <li>Callbacks fire on the main thread</li>
  * </ul>
@@ -35,9 +43,10 @@ import java.util.concurrent.Executors;
  * Usage:
  * <pre>
  * HelpImageDownloader downloader = HelpImageDownloader.getInstance(context);
- * downloader.download(imageUrl, new HelpImageDownloader.Callback() {
+ * downloader.download(imageUrl, configVersion, new HelpImageDownloader.Callback() {
  *     public void onSuccess(File localFile) { ... }
  *     public void onError(Exception e) { ... }
+ *     public void onProgress(long downloaded, long total) { ... }
  * });
  * </pre>
  */
@@ -45,20 +54,26 @@ public final class HelpImageDownloader {
 
     private static final String TAG = "HelpImageDownloader";
 
-    /** Max concurrent downloads. Keep low to avoid network pressure. */
+    /** Max concurrent downloads. */
     private static final int MAX_CONCURRENT = 2;
 
-    /** Read timeout for image downloads (15 seconds). */
+    /** Read timeout for downloads (15 seconds). */
     private static final int READ_TIMEOUT_MS = 15_000;
 
-    /** Connect timeout for image downloads (10 seconds). */
+    /** Connect timeout for downloads (10 seconds). */
     private static final int CONNECT_TIMEOUT_MS = 10_000;
 
-    /** In-flight URL deduplication set. */
+    /** Maximum number of retry attempts for IOException. */
+    private static final int MAX_RETRIES = 3;
+
+    /** Retry delays in ms: 1s, 2s, 4s (exponential backoff). */
+    private static final long[] RETRY_DELAYS_MS = {1000, 2000, 4000};
+
+    /** In-flight URL deduplication set (shared for images and videos). */
     private final Set<String> downloading = new HashSet<>();
 
-    /** Queue of pending download tasks (runs one-at-a-time internally). */
-    private final Queue<DownloadTask> queue = new ArrayDeque<>();
+    /** Pending callbacks per URL — supports multiple listeners per download. */
+    private final Map<String, List<Callback>> pendingCallbacks = new HashMap<>();
 
     /** Executor for background download threads. */
     private final ExecutorService executor = Executors.newFixedThreadPool(MAX_CONCURRENT);
@@ -66,94 +81,98 @@ public final class HelpImageDownloader {
     /** Main-thread handler for callbacks. */
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    /** Cache directory where downloaded files are stored. */
-    private final File cacheDir;
+    /** Unified cache store (versioned paths + LRU). */
+    private final RemoteResourceStore store;
 
     private static HelpImageDownloader instance;
 
     private HelpImageDownloader(Context context) {
-        HelpImageConfigManager mgr = HelpImageConfigManager.getInstance(context);
-        this.cacheDir = mgr.getCacheDir();
+        Context appContext = context.getApplicationContext();
+        this.store = RemoteResourceStore.getInstance(appContext);
     }
 
     @NonNull
     public static synchronized HelpImageDownloader getInstance(@NonNull Context context) {
         if (instance == null) {
-            instance = new HelpImageDownloader(context.getApplicationContext());
+            instance = new HelpImageDownloader(context);
         }
         return instance;
     }
 
-    // ---- Public API ----
+    // =====================================================================
+    // Public API — Image
+    // =====================================================================
 
     /**
-     * Download an image from the given URL and cache it locally.
+     * Download an image from the given URL and cache it locally under the versioned path.
      * <p>
-     * If the file is already cached, the callback fires immediately with
-     * the cached file. If the same URL is already being downloaded, the
-     * callback is queued for the existing download.
+     * If the file is already cached, the callback fires immediately with the cached file
+     * and {@link RemoteResourceStore#touchCached} is called to update LRU order.
+     * If the same URL is already being downloaded, the callback is registered and will
+     * be notified when the in-flight download completes.
      *
-     * @param url      the image URL (http/https)
-     * @param callback receives the local file on success, or error
+     * @param url           the image URL (http/https/file)
+     * @param configVersion the config version for cache path resolution
+     * @param callback      receives the local file on success, error, or progress
      */
-    public void download(@NonNull String url, @Nullable Callback callback) {
-        File localFile = resolveCacheFile(url);
+    public void download(@NonNull String url, @NonNull String configVersion,
+                         @Nullable Callback callback) {
+        File localFile = store.getImageFile(url, configVersion);
 
         // Already cached — return immediately
         if (localFile.exists()) {
             Log.v(TAG, "Cache hit: " + url);
+            store.touchCached(localFile);
             if (callback != null) {
                 mainHandler.post(() -> callback.onSuccess(localFile));
             }
             return;
         }
 
-        // Already in flight — just add callback to existing task
-        synchronized (downloading) {
+        // Already in flight — register callback for notification
+        synchronized (pendingCallbacks) {
             if (downloading.contains(url)) {
                 Log.v(TAG, "Already downloading, queuing callback: " + url);
-                enqueueCallback(url, callback);
+                if (callback != null) {
+                    pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
+                }
                 return;
             }
             downloading.add(url);
+            if (callback != null) {
+                pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
+            }
         }
 
         // Start a new download
-        DownloadTask task = new DownloadTask(url, localFile, callback);
-        executor.execute(task);
+        executor.execute(new DownloadTask(url, localFile, RemoteResourceStore.Kind.IMAGE));
     }
 
     /**
      * Pre-load a batch of images into the cache (fire and forget).
      * Useful for warming the cache before a user visits a mode.
      */
-    public void preload(@NonNull Iterable<String> urls) {
+    public void preload(@NonNull Iterable<String> urls, @NonNull String configVersion) {
         for (String url : urls) {
-            download(url, null);
+            download(url, configVersion, null);
         }
     }
 
     /**
-     * Clear all cached images from disk.
+     * Pre-load a batch of videos into the cache (fire and forget).
+     * Useful for warming the cache before a user visits a step with video.
      */
-    public void clearCache() {
-        executor.execute(() -> {
-            if (cacheDir.exists()) {
-                File[] files = cacheDir.listFiles();
-                if (files != null) {
-                    for (File f : files) {
-                        if (f.isFile()) f.delete();
-                    }
-                }
-            }
-        });
+    public void preloadVideo(@NonNull Iterable<String> urls, @NonNull String configVersion) {
+        for (String url : urls) {
+            downloadVideo(url, configVersion, null);
+        }
     }
 
     /**
      * Check if a URL's image is already cached locally.
      */
-    public boolean isCached(@NonNull String url) {
-        return resolveCacheFile(url).exists();
+    public boolean isCached(@NonNull String url, @NonNull String configVersion) {
+        return store.isImageCached(url, configVersion);
     }
 
     /**
@@ -161,80 +180,171 @@ public final class HelpImageDownloader {
      * Returns null if not cached.
      */
     @Nullable
-    public File getCachedFile(@NonNull String url) {
-        File file = resolveCacheFile(url);
+    public File getCachedFile(@NonNull String url, @NonNull String configVersion) {
+        File file = store.getImageFile(url, configVersion);
         return file.exists() ? file : null;
     }
 
-    // ---- Internals ----
+    // =====================================================================
+    // Public API — Video
+    // =====================================================================
 
     /**
-     * Derive a local file path from a URL. Uses the URL's last path segment
-     * as the filename, stored under {@link #cacheDir}.
+     * Download a video from the given URL and cache it locally under the versioned path.
+     * <p>
+     * Same semantics as {@link #download} but for video (MP4) resources.
+     *
+     * @param url           the video URL (http/https/file)
+     * @param configVersion the config version for cache path resolution
+     * @param callback      receives the local file on success, error, or progress
      */
-    @NonNull
-    private File resolveCacheFile(@NonNull String url) {
-        String fileName = url;
-        int lastSlash = url.lastIndexOf('/');
-        if (lastSlash >= 0 && lastSlash < url.length() - 1) {
-            fileName = url.substring(lastSlash + 1);
+    public void downloadVideo(@NonNull String url, @NonNull String configVersion,
+                              @Nullable Callback callback) {
+        File localFile = store.getVideoFile(url, configVersion);
+
+        // Already cached — return immediately
+        if (localFile.exists()) {
+            Log.d(TAG, "Video cache hit: " + url);
+            store.touchCached(localFile);
+            if (callback != null) {
+                mainHandler.post(() -> callback.onSuccess(localFile));
+            }
+            return;
         }
-        // Sanitize: replace query params and special chars
-        fileName = fileName.replaceAll("[^a-zA-Z0-9._\\-]", "_");
-        return new File(cacheDir, fileName);
+
+        // Already in flight — register callback for notification
+        synchronized (pendingCallbacks) {
+            if (downloading.contains(url)) {
+                Log.d(TAG, "Video already downloading, registering listener: " + url);
+                if (callback != null) {
+                    pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
+                }
+                return;
+            }
+            downloading.add(url);
+            if (callback != null) {
+                pendingCallbacks.computeIfAbsent(url, k -> new ArrayList<>()).add(callback);
+            }
+        }
+
+        // Start a new video download
+        executor.execute(new DownloadTask(url, localFile, RemoteResourceStore.Kind.VIDEO));
     }
 
     /**
-     * Add a callback to an already-in-flight download task.
+     * Check if a URL's video is already cached locally.
      */
-    private void enqueueCallback(@NonNull String url, @Nullable Callback callback) {
-        // Simple approach: the existing task will fire its own callback.
-        // For multiple callbacks, we'd need a listener list. For now, log it.
-        // If callback is non-null, we still fire it when the existing download completes
-        // by re-registering. This is a simplification — for production, use a
-        // Map<String, List<Callback>> to track all listeners.
+    public boolean isVideoCached(@NonNull String url, @NonNull String configVersion) {
+        return store.isVideoCached(url, configVersion);
     }
 
-    // ---- Download Task ----
+    /**
+     * Get the local file path for a video URL, without downloading.
+     * Returns null if not cached.
+     */
+    @Nullable
+    public File getCachedVideoFile(@NonNull String url, @NonNull String configVersion) {
+        File file = store.getVideoFile(url, configVersion);
+        return file.exists() ? file : null;
+    }
 
-    private final class DownloadTask implements Runnable {
-        private final String url;
-        private final File destFile;
-        private final Callback callback;
+    // =====================================================================
+    // Public API — Cache management
+    // =====================================================================
 
-        DownloadTask(String url, File destFile, Callback callback) {
-            this.url = url;
-            this.destFile = destFile;
-            this.callback = callback;
+    /**
+     * Clear all cached resources (images + videos + index).
+     * Delegates to {@link RemoteResourceStore#clearAll()}.
+     */
+    public void clearCache() {
+        store.clearAll();
+    }
+
+    // =====================================================================
+    // Internals — listener notification
+    // =====================================================================
+
+    /**
+     * Notify all registered listeners for a URL and clean up tracking state.
+     * Called on the download executor thread; posts callbacks to the main thread.
+     */
+    private void notifyAllListeners(@NonNull String url, @Nullable File file,
+                                    @Nullable Exception error) {
+        List<Callback> callbacks;
+        synchronized (pendingCallbacks) {
+            callbacks = pendingCallbacks.remove(url);
+            downloading.remove(url);
         }
+        if (callbacks == null || callbacks.isEmpty()) return;
 
-        @Override
-        public void run() {
-            HttpURLConnection conn = null;
+        if (error != null) {
+            for (Callback cb : callbacks) {
+                mainHandler.post(() -> cb.onError(error));
+            }
+        } else if (file != null) {
+            for (Callback cb : callbacks) {
+                mainHandler.post(() -> cb.onSuccess(file));
+            }
+        }
+    }
+
+    // =====================================================================
+    // Internals — HTTP download with retry
+    // =====================================================================
+
+    /**
+     * Perform the actual HTTP download with retry logic.
+     * Downloads to a temp file first, then atomically renames to the destination.
+     *
+     * @return total bytes downloaded
+     * @throws IOException if all retry attempts fail
+     */
+    private long doDownload(@NonNull String url, @NonNull File destFile,
+                            @Nullable Callback progressCallback) throws IOException {
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            URLConnection conn = null;
             try {
                 URL target = new URL(url);
-                conn = (HttpURLConnection) target.openConnection();
+                conn = target.openConnection();
                 conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
                 conn.setReadTimeout(READ_TIMEOUT_MS);
-                conn.setRequestMethod("GET");
-                conn.setInstanceFollowRedirects(true);
 
-                int code = conn.getResponseCode();
-                if (code != 200) {
-                    notifyError(new IOException("HTTP " + code + " for " + url));
-                    return;
+                // HTTP-specific checks (only for http/https connections)
+                if (conn instanceof HttpURLConnection) {
+                    HttpURLConnection httpConn = (HttpURLConnection) conn;
+                    httpConn.setRequestMethod("GET");
+                    httpConn.setInstanceFollowRedirects(true);
+                    int code = httpConn.getResponseCode();
+                    if (code != 200) {
+                        throw new IOException("HTTP " + code + " for " + url);
+                    }
                 }
 
+                long totalBytes = conn.getContentLength(); // -1 if unknown
+
                 // Download to a temp file first, then rename (atomic swap)
-                File tempFile = new File(destFile.getParentFile(), destFile.getName() + ".tmp");
+                File tempFile = new File(destFile.getParentFile(),
+                        destFile.getName() + ".download");
+                // Ensure parent directory exists
+                File parent = tempFile.getParentFile();
+                if (parent != null && !parent.exists()) {
+                    // noinspection ResultOfMethodCallIgnored
+                    parent.mkdirs();
+                }
+
+                long downloaded = 0;
                 try (InputStream is = conn.getInputStream();
                      FileOutputStream fos = new FileOutputStream(tempFile)) {
                     byte[] buffer = new byte[8192];
                     int read;
-                    long total = 0;
                     while ((read = is.read(buffer)) != -1) {
                         fos.write(buffer, 0, read);
-                        total += read;
+                        downloaded += read;
+                        // Report progress on main thread
+                        if (progressCallback != null) {
+                            final long d = downloaded, t = totalBytes;
+                            mainHandler.post(() -> progressCallback.onProgress(d, t));
+                        }
                     }
                     fos.flush();
                 }
@@ -242,53 +352,127 @@ public final class HelpImageDownloader {
                 // Atomic rename
                 if (tempFile.renameTo(destFile)) {
                     Log.v(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
-                    notifySuccess(destFile);
+                    return downloaded;
                 } else {
-                    notifyError(new IOException("Failed to rename temp file: " + tempFile));
+                    // Clean up temp file
+                    // noinspection ResultOfMethodCallIgnored
+                    tempFile.delete();
+                    throw new IOException("Failed to rename temp file: " + tempFile);
                 }
             } catch (IOException e) {
-                Log.w(TAG, "Download failed: " + url, e);
-                notifyError(e);
-            } finally {
-                if (conn != null) conn.disconnect();
-                synchronized (downloading) {
-                    downloading.remove(url);
+                if (attempt < MAX_RETRIES) {
+                    long delay = RETRY_DELAYS_MS[attempt];
+                    Log.w(TAG, "Download attempt " + (attempt + 1) + "/" + (MAX_RETRIES + 1)
+                            + " failed, retrying in " + delay + "ms: " + url, e);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                } else {
+                    Log.w(TAG, "Download failed after " + (MAX_RETRIES + 1)
+                            + " attempts: " + url, e);
+                    throw e;
                 }
-                // Process next queued task
-                processNext();
+            } finally {
+                if (conn instanceof HttpURLConnection) {
+                    ((HttpURLConnection) conn).disconnect();
+                }
             }
         }
+        // Unreachable, but compiler requires a return/throw
+        throw new IOException("Unreachable");
+    }
 
-        private void notifySuccess(@NonNull File file) {
-            if (callback != null) {
-                mainHandler.post(() -> callback.onSuccess(file));
-            }
+    // =====================================================================
+    // Download Task (unified for images and videos)
+    // =====================================================================
+
+    /**
+     * Unified download task for both images and videos.
+     * Handles retry, progress, RemoteResourceStore notification, and multi-listener dispatch.
+     */
+    private final class DownloadTask implements Runnable {
+        private final String url;
+        private final File destFile;
+        private final RemoteResourceStore.Kind kind;
+
+        DownloadTask(@NonNull String url, @NonNull File destFile,
+                     @NonNull RemoteResourceStore.Kind kind) {
+            this.url = url;
+            this.destFile = destFile;
+            this.kind = kind;
         }
 
-        private void notifyError(@NonNull Exception e) {
-            if (callback != null) {
-                mainHandler.post(() -> callback.onError(e));
+        @Override
+        public void run() {
+            // Collect all pending callbacks for progress reporting
+            List<Callback> progressListeners;
+            synchronized (pendingCallbacks) {
+                List<Callback> list = pendingCallbacks.get(url);
+                progressListeners = list != null ? new ArrayList<>(list) : null;
+            }
+
+            // Create a composite callback that fans out progress to all listeners
+            Callback progressFanOut = progressListeners != null ? new Callback() {
+                @Override
+                public void onSuccess(@NonNull File localFile) { /* handled by notifyAll */ }
+
+                @Override
+                public void onError(@NonNull Exception error) { /* handled by notifyAll */ }
+
+                @Override
+                public void onProgress(long downloadedBytes, long totalBytes) {
+                    for (Callback cb : progressListeners) {
+                        cb.onProgress(downloadedBytes, totalBytes);
+                    }
+                }
+            } : null;
+
+            Exception lastError = null;
+            try {
+                long bytes = doDownload(url, destFile, progressFanOut);
+                // Register in LRU index
+                store.onResourceWritten(kind, destFile, bytes);
+                // Notify all listeners of success
+                notifyAllListeners(url, destFile, null);
+            } catch (IOException e) {
+                lastError = e;
+                // Clean up partial file
+                if (destFile.exists()) {
+                    // noinspection ResultOfMethodCallIgnored
+                    destFile.delete();
+                }
+                // Notify all listeners of failure
+                notifyAllListeners(url, null, lastError);
             }
         }
     }
 
-    private void processNext() {
-        DownloadTask next;
-        synchronized (queue) {
-            next = queue.poll();
-        }
-        if (next != null) {
-            executor.execute(next);
-        }
-    }
+    // =====================================================================
+    // Callback interface
+    // =====================================================================
 
-    // ---- Callback ----
-
+    /**
+     * Callback for download operations.
+     * All methods are called on the main thread.
+     */
     public interface Callback {
-        /** Called on the main thread when download succeeds. */
+        /** Called when download succeeds. */
         void onSuccess(@NonNull File localFile);
 
-        /** Called on the main thread when download fails. */
+        /** Called when download fails (after all retries exhausted). */
         void onError(@NonNull Exception error);
+
+        /**
+         * Called periodically during download to report progress.
+         *
+         * @param downloadedBytes bytes downloaded so far
+         * @param totalBytes      total size in bytes, or -1 if unknown (no Content-Length)
+         */
+        default void onProgress(long downloadedBytes, long totalBytes) {
+            // Default no-op — override to receive progress updates
+        }
     }
 }

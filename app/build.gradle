@@ -92,6 +92,7 @@ android {
         setProperty("archivesBaseName", "KeyCmd")
 
         buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
+        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://assets.openterface.com/keymod/android/help_config.json"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -182,6 +183,6 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // ExoPlayer for video playback in tutorial overlay
+    // ExoPlayer for MP4 video playback in tutorial overlay
     implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
 }

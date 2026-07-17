@@ -2,6 +2,9 @@ package com.openterface.keymod;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
+import android.net.Uri;
+import android.util.Log;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
@@ -25,11 +28,18 @@ import androidx.cardview.widget.CardView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.ui.PlayerView;
 import com.openterface.keymod.help.HelpImageConfig;
 import com.openterface.keymod.help.HelpImageConfigManager;
 import com.openterface.keymod.help.HelpImageDownloader;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Beginner tutorial overlay that highlights views step-by-step.
@@ -42,15 +52,32 @@ public class TutorialOverlay extends FrameLayout {
     private final View dimView;
     private final HighlightView highlightView;
     private final CardView tooltipCard;
-    private final ImageView helpImageView;
-    private final ProgressBar loadingIndicator;
-    private final TextView tooltipText;
-    private final Button nextButton;
-    private final Button skipButton;
     private final Rect highlightRect = new Rect();
+
+    // Layout-related fields are non-final so the tooltip card content can be rebuilt
+    // when the device rotates (see {@link #onConfigurationChanged}).
+    private ImageView helpImageView;
+    private PlayerView helpVideoView;
+    private ProgressBar loadingIndicator;
+    private TextView tooltipText;
+    private Button nextButton;
+    private Button skipButton;
+    private LinearLayout buttonRow;
+    private boolean isLandscape;
+
+    /**
+     * In landscape, media views are wrapped in a left-side column. This is {@code null} in portrait,
+     * where media views are added directly into the vertical content column. Hidden when no media
+     * is available for a step so the text column can expand to full width.
+     */
+    @Nullable
+    private LinearLayout mediaColumn;
 
     private HelpImageConfig config;
     private String currentModeKey;
+
+    @Nullable
+    private ExoPlayer videoPlayer;
 
     private Step[] steps;
     private int currentStep = 0;
@@ -58,6 +85,14 @@ public class TutorialOverlay extends FrameLayout {
     private boolean markBasicQuickStartPrefOnDismiss = true;
     @Nullable
     private Runnable onDismissExtra;
+
+    /** Current video error listener, tracked to prevent accumulation on the player. */
+    @Nullable
+    private Player.Listener currentVideoListener;
+
+    /** URL of the in-progress background video download (for cancellation on step change). */
+    @Nullable
+    private String backgroundVideoDownloadUrl;
 
     public static boolean isShown(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -95,23 +130,84 @@ public class TutorialOverlay extends FrameLayout {
         tooltipCard.setUseCompatPadding(false);
         tooltipCard.setContentPadding(0, 0, 0, 0);
 
-        int padding = dpToPx(20);
+        // Build the tooltip card content based on the current orientation.
+        buildTooltipContent();
+
+        addView(tooltipCard);
+    }
+
+    /**
+     * (Re)builds the tooltip card's inner content layout based on the current orientation.
+     * Called once from the constructor and again from {@link #onConfigurationChanged(Configuration)}
+     * when the device rotates.
+     */
+    private void buildTooltipContent() {
+        Context context = getContext();
+        int surfaceColor = resolveThemeColor(context, com.google.android.material.R.attr.colorSurface, 0xFFFFFFFF);
+        int onSurfaceColor = resolveThemeColor(context, com.google.android.material.R.attr.colorOnSurface, 0xFF000000);
+        int primaryColor = resolveThemeColor(context, android.R.attr.colorPrimary, 0xFF1976D2);
+        int secondaryTextColor = resolveThemeColor(context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF757575);
+
+        // Remove any previous content (e.g. after a rotation rebuild).
+        tooltipCard.removeAllViews();
+
+        // Detect orientation for layout direction
+        isLandscape = context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+
+        int padding = dpToPx(isLandscape ? 16 : 20);
         LinearLayout content = new LinearLayout(context);
-        content.setOrientation(LinearLayout.VERTICAL);
+        content.setOrientation(isLandscape
+                ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
         content.setPadding(padding, padding, padding, padding);
         content.setBackgroundColor(surfaceColor);
+
+        // --- Media column / area ---
+        // In landscape, media lives in a left-side vertical container.
+        // In portrait, media is added directly into the vertical content column.
+        // The mediaColumn is hidden dynamically when no media is available for a step,
+        // allowing the text column to expand to full width (landscape only).
+        if (isLandscape) {
+            mediaColumn = new LinearLayout(context);
+            mediaColumn.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams mediaColParams = new LinearLayout.LayoutParams(
+                    0, LayoutParams.WRAP_CONTENT, 1f);
+            mediaColParams.setMarginEnd(dpToPx(12));
+            content.addView(mediaColumn, mediaColParams);
+            // Start hidden; shown when a step has media to display.
+            mediaColumn.setVisibility(View.GONE);
+        } else {
+            mediaColumn = null;
+        }
+
+        // Local reference used only during construction. In portrait mode media views
+        // go directly into the vertical content column; in landscape they go into
+        // the left-side mediaColumn (which starts GONE until a step has media).
+        final LinearLayout mediaTarget = isLandscape ? mediaColumn : content;
 
         // Help image area (GIF/PNG overlay)
         helpImageView = new ImageView(context);
         helpImageView.setAdjustViewBounds(true);
         helpImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        helpImageView.setMaxHeight(dpToPx(180));
+        helpImageView.setMaxHeight(dpToPx(isLandscape ? 140 : 180));
         helpImageView.setVisibility(View.GONE);
         helpImageView.setBackgroundColor(0x00000000);
         LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         imageParams.bottomMargin = dpToPx(8);
-        content.addView(helpImageView, imageParams);
+        mediaTarget.addView(helpImageView, imageParams);
+
+        // Help video area (MP4 overlay)
+        helpVideoView = new PlayerView(context);
+        helpVideoView.setResizeMode(
+                com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        helpVideoView.setUseController(true);
+        helpVideoView.setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING);
+        helpVideoView.setVisibility(View.GONE);
+        LinearLayout.LayoutParams videoParams = new LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        videoParams.bottomMargin = dpToPx(8);
+        mediaTarget.addView(helpVideoView, videoParams);
 
         // Loading indicator
         loadingIndicator = new ProgressBar(context);
@@ -120,19 +216,34 @@ public class TutorialOverlay extends FrameLayout {
                 dpToPx(32), dpToPx(32));
         loadingParams.gravity = Gravity.CENTER_HORIZONTAL;
         loadingParams.bottomMargin = dpToPx(4);
-        content.addView(loadingIndicator, loadingParams);
+        mediaTarget.addView(loadingIndicator, loadingParams);
+
+        // --- Text + button column / area ---
+        // In landscape, text and buttons live in a right-side vertical container.
+        // In portrait, they are added directly into the vertical content column.
+        final LinearLayout textColumn;
+        if (isLandscape) {
+            textColumn = new LinearLayout(context);
+            textColumn.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout.LayoutParams textColParams = new LinearLayout.LayoutParams(
+                    0, LayoutParams.WRAP_CONTENT, 1f);
+            textColParams.setMarginStart(dpToPx(4));
+            content.addView(textColumn, textColParams);
+        } else {
+            textColumn = content;
+        }
 
         tooltipText = new TextView(context);
-        tooltipText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
+        tooltipText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, isLandscape ? 14 : 15);
         tooltipText.setTextColor(onSurfaceColor);
-        tooltipText.setGravity(Gravity.CENTER);
+        tooltipText.setGravity(isLandscape ? Gravity.START : Gravity.CENTER);
         tooltipText.setLineSpacing(0, 1.3f);
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-        content.addView(tooltipText, textParams);
+        textColumn.addView(tooltipText, textParams);
 
         // Button row
-        LinearLayout buttonRow = new LinearLayout(context);
+        buttonRow = new LinearLayout(context);
         buttonRow.setOrientation(LinearLayout.HORIZONTAL);
         buttonRow.setGravity(Gravity.END);
         int topMargin = dpToPx(12);
@@ -169,13 +280,47 @@ public class TutorialOverlay extends FrameLayout {
 
         buttonRow.addView(skipButton);
         buttonRow.addView(nextButton);
-        content.addView(buttonRow);
+        textColumn.addView(buttonRow);
 
         tooltipCard.addView(content);
+        int cardWidthDp;
+        if (isLandscape) {
+            // In landscape, use ~85% of screen width but cap at 560dp so the card
+            // stays readable and does not overflow on narrow landscape devices.
+            int screenWidthDp = context.getResources().getConfiguration().screenWidthDp;
+            cardWidthDp = Math.min(560, (int) (screenWidthDp * 0.85f));
+            // Ensure the card is at least 360dp wide so the two columns are usable.
+            cardWidthDp = Math.max(cardWidthDp, 360);
+        } else {
+            cardWidthDp = 300;
+        }
         LayoutParams cardParams = new LayoutParams(
-                dpToPx(300), LayoutParams.WRAP_CONTENT);
+                dpToPx(cardWidthDp), LayoutParams.WRAP_CONTENT);
         tooltipCard.setLayoutParams(cardParams);
-        addView(tooltipCard);
+    }
+
+    @Override
+    protected void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Release the old player so it can be re-created against the new PlayerView
+        // that buildTooltipContent() creates below.
+        removeCurrentVideoListener();
+        backgroundVideoDownloadUrl = null;
+        if (videoPlayer != null) {
+            videoPlayer.release();
+            videoPlayer = null;
+        }
+
+        // Rebuild the tooltip card content for the new orientation.
+        buildTooltipContent();
+
+        // Re-show the current step so the tooltip is re-positioned and media re-loaded
+        // for the new layout. If no steps are set yet this is a no-op.
+        if (steps != null && currentStep < steps.length) {
+            showCurrentStep();
+        } else {
+            positionTooltipFallback();
+        }
     }
 
     public void setSteps(Step[] steps) {
@@ -207,6 +352,21 @@ public class TutorialOverlay extends FrameLayout {
         this.currentModeKey = modeKey;
     }
 
+    /**
+     * Look up the StepConfig for a given imageKey from the current mode.
+     * Used to read poster/autoPlay/loop fields.
+     */
+    @Nullable
+    private HelpImageConfig.StepConfig getStepConfig(String imageKey) {
+        if (config == null || currentModeKey == null || imageKey == null) return null;
+        HelpImageConfig.ModeConfig mode = config.modes.get(currentModeKey);
+        if (mode == null || mode.steps == null) return null;
+        for (HelpImageConfig.StepConfig sc : mode.steps) {
+            if (imageKey.equals(sc.id)) return sc;
+        }
+        return null;
+    }
+
     private void showCurrentStep() {
         if (steps == null || currentStep >= steps.length) {
             dismiss();
@@ -227,8 +387,12 @@ public class TutorialOverlay extends FrameLayout {
             nextButton.setText(getContext().getString(R.string.tutorial_next));
         }
 
-        // Load help image for this step
-        loadHelpImage(step);
+        // Load help media for this step (video preferred, fallback to image)
+        stopVideo();
+        loadHelpMedia(step);
+
+        // Preload media for upcoming steps in the background
+        preloadUpcomingSteps();
 
         // Find the target view
         View targetView = null;
@@ -271,7 +435,10 @@ public class TutorialOverlay extends FrameLayout {
         targetView.getLocationOnScreen(location);
         int viewTop = location[1];
 
-        int cardHeight = dpToPx(140);
+        boolean isLandscape = getContext().getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        // In landscape the card is wider but shorter (media + text are side-by-side).
+        int cardHeight = dpToPx(isLandscape ? 220 : 140);
         int tooltipBottom = viewTop - dpToPx(40);
 
         LayoutParams params = (LayoutParams) tooltipCard.getLayoutParams();
@@ -405,65 +572,237 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * Load the help image for the given step (if a config and imageKey are available).
-     * Shows a loading indicator while downloading, then displays the image with Glide.
+     * Load help media for the given step (video only for now).
+     * If a video is configured, attempts to play it.
+     * If no video, hides media area and shows text-only guidance.
      */
-    private void loadHelpImage(Step step) {
+    private void loadHelpMedia(Step step) {
         String imageKey = step.imageKey();
         if (config == null || currentModeKey == null || imageKey == null) {
-            hideImageArea();
+            hideMediaArea();
             return;
         }
 
-        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
-        if (imageUrl == null) {
-            hideImageArea();
+        // Try video only
+        String videoUrl = config.getVideoUrl(currentModeKey, imageKey);
+        if (videoUrl != null) {
+            showVideoWithUrl(videoUrl, imageKey);
             return;
         }
+
+        // No video configured — hide media area, show text-only guidance
+        hideMediaArea();
+    }
+
+    /**
+     * Load and play a video. Uses local cache if available (instant start),
+     * otherwise streams from remote URL while downloading to cache in background.
+     * On failure, hides media area and shows text-only guidance.
+     */
+    private void showVideoWithUrl(String videoUrl, String imageKey) {
+        showMediaColumn();
+        helpImageView.setVisibility(View.GONE);
+        helpVideoView.setVisibility(View.VISIBLE);
 
         HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+        File cachedVideo = downloader.getCachedVideoFile(videoUrl, config.version);
 
-        // If already cached, load immediately
-        File cached = downloader.getCachedFile(imageUrl);
-        if (cached != null) {
-            showImage(cached);
+        if (cachedVideo != null) {
+            // Cached → play from local file (instant start)
+            Log.d("TutorialOverlay", "Using cached video: " + cachedVideo.getAbsolutePath());
+            playVideoFromUri(Uri.fromFile(cachedVideo), imageKey);
             return;
         }
 
-        // Show loading indicator and download
-        helpImageView.setVisibility(View.GONE);
-        loadingIndicator.setVisibility(View.VISIBLE);
+        // Not cached → show poster, stream from remote URL, cache in background
+        showPosterForStep(imageKey);
+        playVideoFromUri(Uri.parse(videoUrl), imageKey);
 
-        downloader.download(imageUrl, new HelpImageDownloader.Callback() {
+        // Background download for next-time instant start
+        backgroundVideoDownloadUrl = videoUrl;
+        downloader.downloadVideo(videoUrl, config.version, new HelpImageDownloader.Callback() {
             @Override
-            public void onSuccess(File localFile) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    showImage(localFile);
-                });
+            public void onSuccess(@NonNull File localFile) {
+                backgroundVideoDownloadUrl = null;
+                Log.d("TutorialOverlay", "Video cached for next time: " + localFile);
             }
 
             @Override
-            public void onError(Exception error) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    hideImageArea();
-                });
+            public void onError(@NonNull Exception error) {
+                backgroundVideoDownloadUrl = null;
+                Log.w("TutorialOverlay", "Background video cache failed", error);
             }
         });
     }
 
+    /**
+     * Unified video playback: initializes player if needed, removes old listener,
+     * configures autoPlay/loop from StepConfig, and attaches a tracked error listener.
+     */
+    private void playVideoFromUri(Uri uri, String imageKey) {
+        if (videoPlayer == null) {
+            videoPlayer = new ExoPlayer.Builder(getContext()).build();
+        }
+        // Always (re)attach the player to the current helpVideoView — this handles
+        // the case where the view was rebuilt after a configuration change.
+        helpVideoView.setPlayer(videoPlayer);
+
+        // Remove old listener to prevent accumulation
+        removeCurrentVideoListener();
+
+        // Read loop/autoPlay from StepConfig
+        HelpImageConfig.StepConfig stepConfig = getStepConfig(imageKey);
+        int repeatMode = (stepConfig != null && stepConfig.loop)
+                ? Player.REPEAT_MODE_ALL : Player.REPEAT_MODE_OFF;
+        boolean autoPlay = stepConfig == null || stepConfig.autoPlay;
+
+        videoPlayer.setMediaItem(MediaItem.fromUri(uri));
+        videoPlayer.setRepeatMode(repeatMode);
+
+        // Attach tracked error listener for fallback
+        currentVideoListener = new Player.Listener() {
+            @Override
+            public void onPlayerError(@NonNull PlaybackException error) {
+                post(() -> fallbackToImage(imageKey));
+            }
+        };
+        videoPlayer.addListener(currentVideoListener);
+
+        videoPlayer.prepare();
+        videoPlayer.setPlayWhenReady(autoPlay);
+    }
+
+    /**
+     * Remove the current video error listener to prevent accumulation.
+     */
+    private void removeCurrentVideoListener() {
+        if (videoPlayer != null && currentVideoListener != null) {
+            videoPlayer.removeListener(currentVideoListener);
+        }
+        currentVideoListener = null;
+    }
+
+    /**
+     * When video playback fails, hide media area and show text-only guidance.
+     * Image fallback is disabled because remote image assets are not yet available.
+     */
+    private void fallbackToImage(String imageKey) {
+        stopVideo();
+        hideMediaArea();
+    }
+
+    /**
+     * Stop video playback, remove error listener, and cancel background download marker.
+     */
+    private void stopVideo() {
+        removeCurrentVideoListener();
+        backgroundVideoDownloadUrl = null;
+        if (videoPlayer != null) {
+            videoPlayer.stop();
+            videoPlayer.clearMediaItems();
+        }
+        helpVideoView.setVisibility(View.GONE);
+    }
+
     private void showImage(File localFile) {
+        showMediaColumn();
         helpImageView.setVisibility(View.VISIBLE);
+        helpVideoView.setVisibility(View.GONE);
         Glide.with(getContext())
                 .load(localFile)
                 .diskCacheStrategy(DiskCacheStrategy.NONE) // already cached by downloader
                 .into(helpImageView);
     }
 
-    private void hideImageArea() {
+    /**
+     * Show a poster image while the video is streaming/loading.
+     */
+    private void showPosterForStep(String imageKey) {
+        HelpImageConfig.StepConfig stepConfig = getStepConfig(imageKey);
+        if (stepConfig == null || stepConfig.poster == null || stepConfig.poster.isEmpty()) return;
+
+        String posterUrl;
+        if (stepConfig.poster.startsWith("http://") || stepConfig.poster.startsWith("https://")) {
+            posterUrl = stepConfig.poster;
+        } else {
+            String base = config.baseUrl;
+            if (!base.endsWith("/")) base += "/";
+            posterUrl = base + stepConfig.poster;
+        }
+
+        helpImageView.setVisibility(View.VISIBLE);
+        Glide.with(getContext())
+                .load(posterUrl)
+                .diskCacheStrategy(DiskCacheStrategy.DATA)
+                .into(helpImageView);
+    }
+
+    /**
+     * Preload media for the next 2 steps in the background (fire and forget).
+     */
+    private void preloadUpcomingSteps() {
+        if (config == null || currentModeKey == null || steps == null) return;
+        String version = config.version;
+        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
+
+        List<String> imageUrls = new ArrayList<>();
+        List<String> videoUrls = new ArrayList<>();
+
+        for (int i = currentStep + 1; i <= Math.min(currentStep + 2, steps.length - 1); i++) {
+            String imageKey = steps[i].imageKey();
+            if (imageKey == null) continue;
+
+            String videoUrl = config.getVideoUrl(currentModeKey, imageKey);
+            if (videoUrl != null && !downloader.isVideoCached(videoUrl, version)) {
+                videoUrls.add(videoUrl);
+            }
+
+            String imageUrl = config.getImageUrl(currentModeKey, imageKey);
+            if (imageUrl != null && !downloader.isCached(imageUrl, version)) {
+                imageUrls.add(imageUrl);
+            }
+        }
+
+        if (!imageUrls.isEmpty()) downloader.preload(imageUrls, version);
+        if (!videoUrls.isEmpty()) downloader.preloadVideo(videoUrls, version);
+    }
+
+    private void hideMediaArea() {
         helpImageView.setVisibility(View.GONE);
+        helpVideoView.setVisibility(View.GONE);
         loadingIndicator.setVisibility(View.GONE);
+        // In landscape, collapse the empty media column so the text column expands
+        // to full width instead of being squeezed to the right of an empty area.
+        if (mediaColumn != null) {
+            mediaColumn.setVisibility(View.GONE);
+        }
+        // With no media, the text fills the full card width — center the buttons
+        // so they don't look off to one side.
+        buttonRow.setGravity(Gravity.CENTER);
+    }
+
+    /**
+     * In landscape, make the left-side media column visible. No-op in portrait
+     * (where media views are added directly to the content column).
+     * Also restores right-aligned buttons since they share the narrow text column.
+     */
+    private void showMediaColumn() {
+        if (mediaColumn != null) {
+            mediaColumn.setVisibility(View.VISIBLE);
+        }
+        // With media present, buttons share the narrow right column — keep them right-aligned.
+        buttonRow.setGravity(Gravity.END);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        backgroundVideoDownloadUrl = null;
+        // Release ExoPlayer to prevent memory leaks
+        if (videoPlayer != null) {
+            videoPlayer.release();
+            videoPlayer = null;
+        }
     }
 
     private int dpToPx(int dp) {
