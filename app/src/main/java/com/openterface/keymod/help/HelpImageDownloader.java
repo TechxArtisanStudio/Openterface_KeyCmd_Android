@@ -352,7 +352,7 @@ public final class HelpImageDownloader {
                 // Atomic rename
                 if (tempFile.renameTo(destFile)) {
                     Log.v(TAG, "Downloaded: " + url + " (" + destFile.length() + " bytes)");
-                    notifyAllListeners(url, destFile, null);
+                    return downloaded;
                 } else {
                     // Clean up temp file
                     // noinspection ResultOfMethodCallIgnored

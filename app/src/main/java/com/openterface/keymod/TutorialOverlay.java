@@ -457,9 +457,9 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * Load help media for the given step (video preferred, fallback to image).
-     * If a video is configured, attempts to play it; on failure, falls back to image.
-     * If no video, loads image as before.
+     * Load help media for the given step (video only for now).
+     * If a video is configured, attempts to play it.
+     * If no video, hides media area and shows text-only guidance.
      */
     private void loadHelpMedia(Step step) {
         String imageKey = step.imageKey();
@@ -468,58 +468,21 @@ public class TutorialOverlay extends FrameLayout {
             return;
         }
 
-        // 1. Try video first
+        // Try video only
         String videoUrl = config.getVideoUrl(currentModeKey, imageKey);
         if (videoUrl != null) {
             showVideoWithUrl(videoUrl, imageKey);
             return;
         }
 
-        // 2. Fallback to image (existing logic)
-        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
-        if (imageUrl == null) {
-            hideMediaArea();
-            return;
-        }
-
-        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
-        String version = config.version;
-
-        // If already cached, load immediately
-        File cached = downloader.getCachedFile(imageUrl, version);
-        if (cached != null) {
-            showImage(cached);
-            return;
-        }
-
-        // Show loading indicator and download
-        helpImageView.setVisibility(View.GONE);
-        helpVideoView.setVisibility(View.GONE);
-        loadingIndicator.setVisibility(View.VISIBLE);
-
-        downloader.download(imageUrl, version, new HelpImageDownloader.Callback() {
-            @Override
-            public void onSuccess(File localFile) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    showImage(localFile);
-                });
-            }
-
-            @Override
-            public void onError(Exception error) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    hideMediaArea();
-                });
-            }
-        });
+        // No video configured — hide media area, show text-only guidance
+        hideMediaArea();
     }
 
     /**
      * Load and play a video. Uses local cache if available (instant start),
      * otherwise streams from remote URL while downloading to cache in background.
-     * On failure, fallback to the step's image.
+     * On failure, hides media area and shows text-only guidance.
      */
     private void showVideoWithUrl(String videoUrl, String imageKey) {
         helpImageView.setVisibility(View.GONE);
@@ -602,46 +565,12 @@ public class TutorialOverlay extends FrameLayout {
     }
 
     /**
-     * When video playback fails, fall back to the step's image.
-     * Downloads the fallback image if not cached.
+     * When video playback fails, hide media area and show text-only guidance.
+     * Image fallback is disabled because remote image assets are not yet available.
      */
     private void fallbackToImage(String imageKey) {
         stopVideo();
-        if (config == null || currentModeKey == null) {
-            hideMediaArea();
-            return;
-        }
-        String imageUrl = config.getImageUrl(currentModeKey, imageKey);
-        if (imageUrl == null) {
-            hideMediaArea();
-            return;
-        }
-        HelpImageDownloader downloader = HelpImageDownloader.getInstance(getContext());
-        File cached = downloader.getCachedFile(imageUrl, config.version);
-        if (cached != null) {
-            showImage(cached);
-            return;
-        }
-        // Download fallback image (previously just hid the media area)
-        loadingIndicator.setVisibility(View.VISIBLE);
-        helpImageView.setVisibility(View.GONE);
-        downloader.download(imageUrl, config.version, new HelpImageDownloader.Callback() {
-            @Override
-            public void onSuccess(@NonNull File localFile) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    showImage(localFile);
-                });
-            }
-
-            @Override
-            public void onError(@NonNull Exception error) {
-                post(() -> {
-                    loadingIndicator.setVisibility(View.GONE);
-                    hideMediaArea();
-                });
-            }
-        });
+        hideMediaArea();
     }
 
     /**

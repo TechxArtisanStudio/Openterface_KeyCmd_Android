@@ -63,7 +63,7 @@ public final class RemoteResourceStore {
 
     private static final String TAG = "RemoteResourceStore";
 
-    /** Root directory name under filesDir. */
+    /** Root directory name under cacheDir. */
     private static final String ROOT_DIR = "help_resources";
 
     /** Index file name. */
@@ -122,7 +122,7 @@ public final class RemoteResourceStore {
 
     private RemoteResourceStore(Context context, long imageMaxBytes, long videoMaxBytes) {
         Context appContext = context.getApplicationContext();
-        this.rootDir = new File(appContext.getFilesDir(), ROOT_DIR);
+        this.rootDir = new File(appContext.getCacheDir(), ROOT_DIR);
         this.indexFile = new File(rootDir, INDEX_FILE);
         this.imageMaxBytes = imageMaxBytes;
         this.videoMaxBytes = videoMaxBytes;
