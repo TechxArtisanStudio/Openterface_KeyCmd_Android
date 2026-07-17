@@ -2580,6 +2580,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (isTutorialOverlayShowing()) {
             return;
         }
+
+        // Start the tutorial with the landscape keyboard interface as the background.
+        // This ensures the first thing the user sees is the full keyboard layout in landscape,
+        // rather than whichever submode they happened to be in before.
+        ensureKmBasicKeyboardSubmodeForGuide();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+
         TutorialOverlay overlay = new TutorialOverlay(this);
         overlay.setMarkBasicQuickStartPrefOnDismiss(markBasicPrefOnDismiss);
 
