@@ -2,18 +2,23 @@ package com.openterface.terminal;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -22,6 +27,7 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -31,9 +37,6 @@ import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
@@ -42,9 +45,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.CustomKeyboardView;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
-import com.openterface.keymod.SettingsActivity;
 
 /**
  * Main fragment hosting the terminal UI.
@@ -54,6 +57,8 @@ public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
     private static final String ARG_DEMO_TRANSPORT = "arg_demo_transport";
+    private static final String DEMO_USB = "usb";
+    private static final String DEMO_BLE = "ble";
 
     public static TerminalFragment newInstance(@Nullable String demoTransport) {
         TerminalFragment fragment = new TerminalFragment();
@@ -65,17 +70,46 @@ public class TerminalFragment extends Fragment {
         return fragment;
     }
 
-    private View rootView;
+    @Nullable private View rootView;
+    private FrameLayout contentContainer;
     private TerminalView terminalView;
     private TerminalSession terminalSession;
 
+    // Custom keyboard (TerminalKeyboardTransport)
+    private LinearLayout terminalKeyboardSlot;
+    @Nullable private CustomKeyboardView terminalKeyboardView;
+    @Nullable private TerminalKeyboardTransport terminalKeyboardTransport;
+    private boolean customKeyboardVisible = false;
+
+    // Terminal IME surface: hidden EditText that pops the system IME above the custom keyboard.
+    // Text diffs are forwarded to TerminalSession (same pattern as KM Pro's imeHost).
+    @Nullable private EditText terminalImeHost;
+    private boolean imeSurfaceVisible = false;
+    @Nullable private TextWatcher terminalImeTextWatcher;
+    private String terminalImeLastProcessed = "";
+
+    // Landscape split keyboard views (only non-null in landscape)
+    @Nullable private CustomKeyboardView terminalKeyboardViewLeft;
+    @Nullable private CustomKeyboardView terminalKeyboardViewRight;
+    @Nullable private TerminalKeyboardTransport terminalKeyboardTransportLeft;
+    @Nullable private TerminalKeyboardTransport terminalKeyboardTransportRight;
+    @Nullable private FrameLayout terminalSplitTopLeft;
+    @Nullable private FrameLayout terminalSplitTopRight;
+
+    // Landscape keyboard state management
+    private enum LandscapeKeyboardState { HIDDEN, SPLIT, FULLSCREEN }
+    private LandscapeKeyboardState landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+    @Nullable private CustomKeyboardView terminalFullscreenKeyboardView;
+    @Nullable private TerminalKeyboardTransport terminalFullscreenTransport;
+
     private Button connectBtn;
-    private Button ctrlBtn;
-    private Button escBtn;
-    private Button tabBtn;
     private TextView statusText;
+    private MaterialButton transportBtn;
+    private TextView hostLabel;
     private LinearLayout connectionOverlay;
-    private LinearLayout bottomBar;
+    private Button demoUsbBtn;
+    private Button demoBleBtn;
+    private LinearLayout demoButtonRow;
 
     private MainActivity mainActivity;
     private TerminalPrefs prefs;
@@ -88,6 +122,15 @@ public class TerminalFragment extends Fragment {
     private BleEthSocketFactory bleEthSocketFactory;
     private BluetoothService.BleEthDataCallback bleEthCallback;
     private boolean isSshConnected = false;
+    private volatile boolean viewDestroyed = false;
+
+    // Demo state
+    private TerminalDemoController demoController;
+    private boolean isDemoActive = false;
+    @Nullable
+    private TerminalDemoController.DemoTransport activeDemoTransport;
+    @Nullable
+    private String activeSessionHost;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -104,108 +147,877 @@ public class TerminalFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_terminal, container, false);
-
         prefs = new TerminalPrefs(requireContext());
         credentialManager = new CredentialManager(requireContext());
         credentialManager.migrateFromTerminalPrefs(requireContext());
-        initViews(view);
+        credentialManager.ensureDefaultKeyCmdProfile();
+
+        // Use a FrameLayout container so we can swap layouts on orientation change
+        contentContainer = new FrameLayout(requireContext());
+        contentContainer.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        inflateTerminalLayout(inflater, contentContainer);
         initTerminal();
         setupListeners();
         updateConnectionState();
+        maybeStartPendingDemo();
 
-        return view;
+        // Restore keyboard visibility state after process death
+        if (savedInstanceState != null) {
+            boolean wasKeyboardVisible = savedInstanceState.getBoolean("custom_keyboard_visible", false);
+            if (wasKeyboardVisible) {
+                // Delay to ensure View is fully initialized.
+                // Note: Do NOT set customKeyboardVisible here — showCustomKeyboard()
+                // checks it as an early-return guard and will skip showing the keyboard.
+                rootView.post(this::showCustomKeyboard);
+            }
+        }
+
+        return contentContainer;
+    }
+
+    /**
+     * Inflate the appropriate terminal layout (portrait or landscape) into the container.
+     * Android resource qualifiers handle portrait vs landscape selection automatically.
+     */
+    private void inflateTerminalLayout(@NonNull LayoutInflater inflater,
+                                       @NonNull ViewGroup container) {
+        View view = inflater.inflate(R.layout.fragment_terminal, container, false);
+        container.addView(view);
+        initViews(view);
+
+        // In landscape, the split keyboards are always visible in the layout —
+        // attach their transports immediately so they are ready for input.
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        if (isLandscape) {
+            // Always create the top shortcut panels (they don't need a terminal session).
+            setupLandscapeTopPanels();
+            // Attach transports only when the terminal session is already available.
+            if (terminalSession != null) {
+                attachLandscapeSplitKeyboardTransport();
+            }
+        }
+    }
+
+    /**
+     * Re-inflate the terminal layout after orientation change.
+     * Preserves SSH connection and terminal session, only rebuilds views.
+     */
+    private void reInflateLayout() {
+        if (contentContainer == null) return;
+        viewDestroyed = false; // reset for new view hierarchy
+
+        // Clean up old view references but preserve SSH/session state
+        teardownTerminalKeyboard();
+        contentContainer.removeAllViews();
+
+        inflateTerminalLayout(LayoutInflater.from(requireContext()), contentContainer);
+
+        // Rebind the preserved terminal session to the new TerminalView
+        // (initTerminal() only creates a new session if null, here we just rebind)
+        if (terminalView != null && terminalSession != null) {
+            terminalView.setTerminalSession(terminalSession);
+            terminalView.setFontSize(prefs.getFontSize());
+        }
+
+        setupListeners();
+        updateConnectionState();
+
+        // Restore keyboard visibility
+        if (customKeyboardVisible) {
+            rootView.post(this::showCustomKeyboard);
+        }
+    }
+
+    private void maybeStartPendingDemo() {
+        Bundle args = getArguments();
+        if (args == null) {
+            return;
+        }
+        String transport = args.getString(ARG_DEMO_TRANSPORT);
+        if (transport == null) {
+            return;
+        }
+        args.remove(ARG_DEMO_TRANSPORT);
+        mainHandler.postDelayed(() -> {
+            if (!isAdded()) {
+                return;
+            }
+            if (DEMO_BLE.equalsIgnoreCase(transport)) {
+                showConnectionDialog(TerminalDemoController.DemoTransport.BLE);
+            } else if (DEMO_USB.equalsIgnoreCase(transport)) {
+                showConnectionDialog(TerminalDemoController.DemoTransport.USB);
+            } else {
+                showConnectionDialog(TerminalDemoController.DemoTransport.BLE);
+            }
+        }, 350);
     }
 
     private void initViews(View view) {
         rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
-        ctrlBtn = view.findViewById(R.id.terminal_ctrl_btn);
-        escBtn = view.findViewById(R.id.terminal_esc_btn);
-        tabBtn = view.findViewById(R.id.terminal_tab_btn);
         statusText = view.findViewById(R.id.terminal_status);
+        transportBtn = view.findViewById(R.id.terminal_transport_btn);
+        hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
-        bottomBar = view.findViewById(R.id.terminal_bottom_bar);
+        demoButtonRow = view.findViewById(R.id.terminal_empty_button_row);
+        demoUsbBtn = view.findViewById(R.id.terminal_demo_usb_btn);
+        demoBleBtn = view.findViewById(R.id.terminal_demo_ble_btn);
+        demoController = new TerminalDemoController();
+        if (demoButtonRow != null) {
+            applyEmptyStateButtonLayout();
+        }
+
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+
+        if (isLandscape) {
+            // Ensure keyboard toggle labels read terminal's state, not KM Pro's leftover preference.
+            // Terminal always starts with IME surface hidden (built-in keyboard).
+            try {
+                com.openterface.keymod.prefs.KmProSubmodePrefs.setPortraitInputSurface(
+                        requireContext(), false);
+            } catch (Exception ignored) {}
+            // Landscape split layout: left keyboard | center terminal | right keyboard
+            terminalKeyboardViewLeft = view.findViewById(R.id.terminal_keyboard_view_left);
+            terminalKeyboardViewRight = view.findViewById(R.id.terminal_keyboard_view_right);
+            terminalSplitTopLeft = view.findViewById(R.id.terminal_split_top_left);
+            terminalSplitTopRight = view.findViewById(R.id.terminal_split_top_right);
+            terminalKeyboardSlot = null;
+            terminalImeHost = null;
+            // Landscape keyboard starts hidden
+            landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+        } else {
+            // Portrait layout: terminal on top, keyboard slot below with IME host
+            terminalKeyboardSlot = view.findViewById(R.id.terminal_keyboard_slot);
+            terminalImeHost = view.findViewById(R.id.terminal_ime_host);
+            terminalKeyboardViewLeft = null;
+            terminalKeyboardViewRight = null;
+            terminalSplitTopLeft = null;
+            terminalSplitTopRight = null;
+        }
+    }
+
+    private void applyEmptyStateButtonLayout() {
+        if (demoButtonRow == null || demoBleBtn == null || demoUsbBtn == null) {
+            return;
+        }
+        boolean isLandscape =
+                getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        int width = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_width);
+        int height = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_height);
+        int gap = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_gap);
+        demoButtonRow.setOrientation(isLandscape ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+
+        LinearLayout.LayoutParams bleParams = new LinearLayout.LayoutParams(width, height);
+        demoBleBtn.setLayoutParams(bleParams);
+
+        LinearLayout.LayoutParams usbParams = new LinearLayout.LayoutParams(width, height);
+        if (isLandscape) {
+            usbParams.setMarginStart(gap);
+        } else {
+            usbParams.topMargin = gap;
+        }
+        demoUsbBtn.setLayoutParams(usbParams);
     }
 
     private void initTerminal() {
-        terminalSession = new TerminalSession(
-                prefs.getTerminalRows(),
-                prefs.getTerminalCols(),
-                prefs.getScrollbackSize()
-        );
+        if (terminalSession == null) {
+            terminalSession = new TerminalSession(
+                    prefs.getTerminalRows(),
+                    prefs.getTerminalCols(),
+                    prefs.getScrollbackSize()
+            );
+        }
         terminalView.setTerminalSession(terminalSession);
         terminalView.setFontSize(prefs.getFontSize());
     }
 
-    private void setupListeners() {
-        connectBtn.setOnClickListener(v -> {
-            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
-            if (isSshConnected) {
-                disconnect();
-            } else {
-                showConnectionDialog();
-            }
-        });
+    /**
+     * Dynamically create CustomKeyboardView and inject TerminalKeyboardTransport.
+     * Portrait: single keyboard in terminalKeyboardSlot.
+     * Landscape: two split keyboards (terminalKeyboardViewLeft, terminalKeyboardViewRight)
+     * already inflated from XML — only create transports here.
+     * Key presses are sent to terminalSession (which exists even when SSH is not connected).
+     */
+    private void attachKeyboardTransport() {
+        if (terminalSession == null) return;
 
-        ctrlBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.showKeyboard();
-            }
-        });
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
 
-        escBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.sendSpecialKey("Esc");
-                terminalView.showKeyboard();
-            }
-        });
+        if (isLandscape) {
+            attachLandscapeSplitKeyboardTransport();
+        } else {
+            attachPortraitKeyboardTransport();
+        }
+    }
 
-        tabBtn.setOnClickListener(v -> {
-            if (terminalView != null) {
-                terminalView.sendSpecialKey("Tab");
-                terminalView.showKeyboard();
-            }
-        });
+    /** Portrait: inflate CustomKeyboardView into keyboard slot, set up single transport. */
+    private void attachPortraitKeyboardTransport() {
+        if (terminalKeyboardSlot == null || terminalSession == null) return;
 
-        terminalView.setOnClickListener(v -> {
-            if (isSshConnected && terminalView != null) {
-                terminalView.showKeyboard();
-            }
-        });
+        if (terminalKeyboardView == null) {
+            // Inflate from XML to get keyBackground, theme, padding attributes
+            View inflated = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.fragment_keyboard, terminalKeyboardSlot, false);
+            terminalKeyboardView = inflated.findViewById(R.id.keyboard_view);
+            terminalKeyboardSlot.addView(inflated, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0, 1f));
 
-        // Handle IME insets to keep bottom bar above the keyboard
-        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
-            Insets imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime());
-            if (imeInsets.bottom > 0) {
-                // IME is visible, add bottom padding to push bottom bar above IME
-                rootView.setPadding(0, 0, 0, imeInsets.bottom);
-            } else {
-                // IME is hidden, remove padding
-                rootView.setPadding(0, 0, 0, 0);
+            OutputStream sessionOutput = createTerminalSessionOutput();
+            terminalKeyboardTransport = new TerminalKeyboardTransport(sessionOutput);
+            terminalKeyboardView.setTransport(terminalKeyboardTransport);
+
+            // IME toggle: toggle between custom keyboard letter body and system IME.
+            // Unlike KM Pro (which uses a shared preference), the terminal tracks its
+            // own IME state locally so it does not follow KM Pro's last-used mode.
+            terminalKeyboardView.setOnKmProSecondaryLayoutToggleListener(source -> {
+                if (imeSurfaceVisible) {
+                    hideTerminalImeSurface();
+                } else {
+                    showTerminalImeSurface();
+                }
+                refreshTerminalToggleKeyLabel();
+            });
+            // Ensure the toggle key label reflects the terminal's own state,
+            // not whatever KM Pro last wrote to KmProSubmodePrefs.
+            refreshTerminalToggleKeyLabel();
+        }
+    }
+
+    /** Landscape: set up transports on the two split keyboard views. */
+    private void attachLandscapeSplitKeyboardTransport() {
+        if (terminalSession == null) return;
+
+        if (terminalKeyboardViewLeft == null || terminalKeyboardViewRight == null) return;
+
+        // Set split parts when keyboard is actually shown
+        terminalKeyboardViewLeft.setSplitPart(CustomKeyboardView.SPLIT_LEFT);
+        terminalKeyboardViewRight.setSplitPart(CustomKeyboardView.SPLIT_RIGHT);
+        terminalKeyboardViewLeft.setSplitPartner(terminalKeyboardViewRight);
+        terminalKeyboardViewRight.setSplitPartner(terminalKeyboardViewLeft);
+
+        if (terminalKeyboardTransportLeft == null) {
+            OutputStream leftOutput = createTerminalSessionOutput();
+            terminalKeyboardTransportLeft = new TerminalKeyboardTransport(leftOutput);
+            terminalKeyboardViewLeft.setTransport(terminalKeyboardTransportLeft);
+
+            // Toggle listener: switch between split and fullscreen
+            terminalKeyboardViewLeft.setOnKmProSecondaryLayoutToggleListener(source -> {
+                toggleLandscapeKeyboardMode();
+            });
+        }
+
+        if (terminalKeyboardTransportRight == null) {
+            OutputStream rightOutput = createTerminalSessionOutput();
+            terminalKeyboardTransportRight = new TerminalKeyboardTransport(rightOutput);
+            terminalKeyboardViewRight.setTransport(terminalKeyboardTransportRight);
+
+            terminalKeyboardViewRight.setOnKmProSecondaryLayoutToggleListener(source -> {
+                toggleLandscapeKeyboardMode();
+            });
+        }
+
+        setupLandscapeTopPanels();
+    }
+
+    /**
+     * Build and attach the 3-row scrollable top shortcut panel in landscape split mode.
+     * Uses post() to wait for layout pass so dimensions are valid.
+     * Does NOT set splitPart here — that happens when the keyboard is actually shown.
+     */
+    private void setupLandscapeTopPanels() {
+        if (terminalKeyboardViewLeft == null || terminalKeyboardViewRight == null
+                || terminalSplitTopLeft == null || terminalSplitTopRight == null) {
+            return;
+        }
+        terminalKeyboardViewLeft.post(() -> {
+            if (terminalKeyboardViewLeft == null
+                    || terminalSplitTopLeft == null || terminalSplitTopRight == null) {
+                return;
             }
-            return insets;
+            terminalKeyboardViewLeft.createSplitLandscapeTopPanel(
+                    terminalSplitTopLeft, null, terminalSplitTopRight);
         });
     }
 
-    private void updateConnectionState() {
-        if (isSshConnected) {
-            statusText.setText(R.string.terminal_connected);
-            connectBtn.setText(R.string.terminal_disconnect);
-            connectionOverlay.setVisibility(View.GONE);
-        } else {
-            statusText.setText(R.string.terminal_disconnected);
-            connectBtn.setText(R.string.terminal_connect);
-            connectionOverlay.setVisibility(View.VISIBLE);
+    // ── Landscape keyboard state management ──────────────────────────────────
+
+    /** Show the split keyboard: left keyboard | terminal | right keyboard. */
+    private void showLandscapeSplitKeyboard() {
+        // Remove any fullscreen overlay first
+        removeFullscreenKeyboardOverlay();
+
+        // Attach transports and set split parts if not done yet
+        attachLandscapeSplitKeyboardTransport();
+
+        // Show left/right columns
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 1f, View.VISIBLE);
+        setColumnWeight(rightCol, 1f, View.VISIBLE);
+
+        // Terminal gets weight=2 (center column, proportional)
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        setWeight(displayArea, 2f);
+
+        landscapeKeyboardState = LandscapeKeyboardState.SPLIT;
+        refreshLandscapeToggleKeyLabel(true);
+        Log.v(TAG, "Landscape split keyboard shown");
+    }
+
+    /**
+     * Show the fullscreen keyboard: a single keyboard overlays the entire terminal area.
+     * Keyboard is added as a child of terminal_display_area (FrameLayout).
+     */
+    private void showLandscapeFullscreenKeyboard() {
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        if (!(displayArea instanceof FrameLayout)) return;
+        FrameLayout displayFrame = (FrameLayout) displayArea;
+
+        // Hide split columns
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 0f, View.GONE);
+        setColumnWeight(rightCol, 0f, View.GONE);
+
+        // Terminal fills full width
+        setWeight(displayArea, 1f);
+
+        // Create fullscreen keyboard overlay if not yet created
+        if (terminalFullscreenKeyboardView == null && terminalSession != null) {
+            View inflated = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.fragment_keyboard, displayFrame, false);
+            terminalFullscreenKeyboardView = inflated.findViewById(R.id.keyboard_view);
+            displayFrame.addView(inflated, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+
+            OutputStream output = createTerminalSessionOutput();
+            terminalFullscreenTransport = new TerminalKeyboardTransport(output);
+            terminalFullscreenKeyboardView.setTransport(terminalFullscreenTransport);
+
+            terminalFullscreenKeyboardView.setOnKmProSecondaryLayoutToggleListener(source -> {
+                toggleLandscapeKeyboardMode();
+            });
+
+            if (isAdded()) {
+                String label = getString(R.string.km_pro_secondary_toggle_full_short);
+                terminalFullscreenKeyboardView.setSecondaryToggleLabelOverride(label);
+                terminalFullscreenKeyboardView.reloadForCurrentOrientation();
+            }
+        } else if (terminalFullscreenKeyboardView != null) {
+            View parent = (View) terminalFullscreenKeyboardView.getParent();
+            if (parent != null) parent.setVisibility(View.VISIBLE);
         }
+
+        landscapeKeyboardState = LandscapeKeyboardState.FULLSCREEN;
+        refreshLandscapeToggleKeyLabel(false);
+        Log.v(TAG, "Landscape fullscreen keyboard shown");
+    }
+
+    /** Remove the fullscreen keyboard overlay from display area. */
+    private void removeFullscreenKeyboardOverlay() {
+        if (terminalFullscreenKeyboardView != null) {
+            View parent = (View) terminalFullscreenKeyboardView.getParent();
+            if (parent != null) {
+                parent.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    /** Hide all landscape keyboards. Terminal takes full area. */
+    private void hideLandscapeKeyboard() {
+        View leftCol = terminalKeyboardViewLeft != null
+                ? (View) terminalKeyboardViewLeft.getParent() : null;
+        View rightCol = terminalKeyboardViewRight != null
+                ? (View) terminalKeyboardViewRight.getParent() : null;
+        setColumnWeight(leftCol, 0f, View.GONE);
+        setColumnWeight(rightCol, 0f, View.GONE);
+
+        removeFullscreenKeyboardOverlay();
+
+        View displayArea = rootView != null ? rootView.findViewById(R.id.terminal_display_area) : null;
+        setWeight(displayArea, 1f);
+
+        landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+        Log.v(TAG, "Landscape keyboard hidden");
+    }
+
+    /** Toggle between split and fullscreen keyboard modes in landscape. */
+    private void toggleLandscapeKeyboardMode() {
+        if (landscapeKeyboardState == LandscapeKeyboardState.SPLIT) {
+            showLandscapeFullscreenKeyboard();
+        } else if (landscapeKeyboardState == LandscapeKeyboardState.FULLSCREEN) {
+            showLandscapeSplitKeyboard();
+        } else {
+            showLandscapeSplitKeyboard();
+        }
+    }
+
+    /**
+     * Refresh the landscape toggle key label ("Split"/"Full") on both split keyboard views.
+     * Uses the secondaryToggleLabelOverride API so terminal state does not affect KM Pro preferences.
+     */
+    private void refreshLandscapeToggleKeyLabel(boolean isSplit) {
+        if (!isAdded()) return;
+        try {
+            String label = getString(isSplit
+                    ? R.string.km_pro_secondary_toggle_split_short
+                    : R.string.km_pro_secondary_toggle_full_short);
+            if (terminalKeyboardViewLeft != null) {
+                terminalKeyboardViewLeft.setSecondaryToggleLabelOverride(label);
+                terminalKeyboardViewLeft.reloadForCurrentOrientation();
+            }
+            if (terminalKeyboardViewRight != null) {
+                terminalKeyboardViewRight.setSecondaryToggleLabelOverride(label);
+                terminalKeyboardViewRight.reloadForCurrentOrientation();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Helper: set layout_weight on a view (must be child of LinearLayout). */
+    private void setWeight(View view, float weight) {
+        if (view == null) return;
+        ViewGroup.LayoutParams lp = view.getLayoutParams();
+        if (lp instanceof LinearLayout.LayoutParams) {
+            ((LinearLayout.LayoutParams) lp).weight = weight;
+            view.setLayoutParams(lp);
+        }
+    }
+
+    /** Helper: set both weight and visibility on a keyboard column. */
+    private void setColumnWeight(View column, float weight, int visibility) {
+        if (column == null) return;
+        setWeight(column, weight);
+        column.setVisibility(visibility);
+    }
+
+    /**
+     * Create an OutputStream that forwards writes to the current terminalSession.
+     * The OutputStream accesses terminalSession by field reference, so it automatically
+     * uses the current session even after resetTerminalSession().
+     */
+    private OutputStream createTerminalSessionOutput() {
+        return new OutputStream() {
+            @Override
+            public void write(int b) {
+                if (terminalSession != null) {
+                    terminalSession.onKeyInput(new byte[]{(byte) b});
+                }
+            }
+
+            @Override
+            public void write(byte[] b) {
+                if (terminalSession != null) {
+                    terminalSession.onKeyInput(b);
+                }
+            }
+
+            @Override
+            public void write(byte[] b, int off, int len) {
+                if (terminalSession != null) {
+                    byte[] sub = new byte[len];
+                    System.arraycopy(b, off, sub, 0, len);
+                    terminalSession.onKeyInput(sub);
+                }
+            }
+        };
+    }
+
+    /**
+     * Show the custom keyboard.
+     * Portrait: makes the keyboard slot visible and hides IME surface.
+     * Landscape: shows the split keyboard if hidden; does nothing if already visible.
+     */
+    private void showCustomKeyboard() {
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        if (isLandscape) {
+            // In landscape, show split keyboard if hidden
+            if (landscapeKeyboardState == LandscapeKeyboardState.HIDDEN) {
+                showLandscapeSplitKeyboard();
+            }
+            return;
+        }
+
+        if (terminalKeyboardSlot == null) {
+            Log.w(TAG, "showCustomKeyboard: terminalKeyboardSlot is null");
+            return;
+        }
+        if (customKeyboardVisible && !imeSurfaceVisible) return; // already showing
+
+        try {
+            attachKeyboardTransport();
+            hideTerminalImeSurface();
+            terminalKeyboardSlot.setVisibility(View.VISIBLE);
+            if (terminalKeyboardView != null) {
+                terminalKeyboardView.setKmProPortraitLetterBodyVisible(true);
+            }
+            customKeyboardVisible = true;
+            Log.v(TAG, "Custom keyboard shown successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to show custom keyboard, falling back to system IME", e);
+            if (terminalView != null) {
+                terminalView.showKeyboard();
+            }
+        }
+    }
+
+    /** Hide the custom keyboard in portrait. No-op in landscape. */
+    private void hideCustomKeyboard() {
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        if (isLandscape) return; // Landscape split keyboards are always visible
+
+        if (terminalKeyboardSlot == null) return;
+        if (!customKeyboardVisible) return;
+
+        terminalKeyboardSlot.setVisibility(View.GONE);
+        customKeyboardVisible = false;
+        Log.v(TAG, "Custom keyboard hidden");
+    }
+
+    // ── Terminal IME surface (portrait only) ─────────────────────────────────
+
+    /**
+     * Show the terminal IME surface: hide custom keyboard letter body, show IME host EditText,
+     * focus it to trigger the system IME. Text changes are forwarded to the terminal session.
+     * Mirrors KM Pro's showKmProImeSurface() pattern.
+     */
+    private void showTerminalImeSurface() {
+        if (!isAdded() || imeSurfaceVisible) return;
+        if (terminalImeHost == null || terminalKeyboardView == null
+                || terminalKeyboardSlot == null) return;
+
+        hideCustomKeyboard();
+
+        // Ensure keyboard slot is visible so IME host is part of the layout
+        terminalKeyboardSlot.setVisibility(View.VISIBLE);
+        customKeyboardVisible = true;
+
+        // Hide custom keyboard letter body, keep shortcut strip visible
+        terminalKeyboardView.setKmProPortraitLetterBodyVisible(false);
+
+        // Show and focus IME host to trigger system IME
+        terminalImeHost.setVisibility(View.VISIBLE);
+        terminalImeHost.requestFocus();
+        attachTerminalImeTextWatcher();
+        InputMethodManager imm =
+                (InputMethodManager)
+                        requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            terminalImeHost.post(
+                    () -> imm.showSoftInput(terminalImeHost,
+                            InputMethodManager.SHOW_IMPLICIT));
+        }
+
+        imeSurfaceVisible = true;
+        Log.v(TAG, "Terminal IME surface shown");
+    }
+
+    /** Hide the terminal IME surface: hide IME host, restore custom keyboard letter body. */
+    private void hideTerminalImeSurface() {
+        if (!imeSurfaceVisible) return;
+
+        detachTerminalImeTextWatcher();
+        if (terminalImeHost != null) {
+            InputMethodManager imm =
+                    (InputMethodManager)
+                            requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(terminalImeHost.getWindowToken(), 0);
+            }
+            terminalImeHost.clearFocus();
+            terminalImeHost.setVisibility(View.GONE);
+            terminalImeLastProcessed = "";
+        }
+        if (terminalKeyboardView != null) {
+            terminalKeyboardView.setKmProPortraitLetterBodyVisible(true);
+        }
+
+        imeSurfaceVisible = false;
+        Log.v(TAG, "Terminal IME surface hidden");
+    }
+
+    /**
+     * Refresh the terminal keyboard's IME toggle key label ("IME"/"BI") based on the
+     * terminal's own imeSurfaceVisible state. Also writes to KmProSubmodePrefs so the
+     * shared toggle label stays in sync and so KM Pro restores this state when the user
+     * switches back to KM Pro mode.
+     */
+    private void refreshTerminalToggleKeyLabel() {
+        if (!isAdded() || terminalKeyboardView == null) return;
+        try {
+            String label = getString(imeSurfaceVisible
+                    ? R.string.km_pro_secondary_toggle_built_in_short
+                    : R.string.km_pro_secondary_toggle_ime_short);
+            terminalKeyboardView.setSecondaryToggleLabelOverride(label);
+            terminalKeyboardView.reloadForCurrentOrientation();
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Attach a TextWatcher to terminalImeHost that diffs text changes and forwards them
+     * to terminalSession as byte input (same pattern as KmProImeDirectSendController but
+     * sends to TerminalSession instead of HID).
+     */
+    private void attachTerminalImeTextWatcher() {
+        if (terminalImeHost == null || terminalImeTextWatcher != null) return;
+        terminalImeLastProcessed = safeImeText();
+        terminalImeTextWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (terminalSession == null || terminalImeHost == null) return;
+                final String now = s.toString();
+                final String oldS = terminalImeLastProcessed;
+                if (oldS.equals(now)) return;
+                // Compute LCP-based diff and send to terminal
+                int lcp = 0;
+                int n = Math.min(oldS.length(), now.length());
+                while (lcp < n && oldS.charAt(lcp) == now.charAt(lcp)) lcp++;
+                int deleteCount = oldS.length() - lcp;
+                for (int i = 0; i < deleteCount; i++) {
+                    terminalSession.onKeyInput(new byte[]{0x7F}); // Backspace
+                }
+                String insert = now.substring(lcp);
+                if (!insert.isEmpty()) {
+                    terminalSession.onKeyInput(insert.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                terminalImeLastProcessed = now;
+            }
+        };
+        terminalImeHost.addTextChangedListener(terminalImeTextWatcher);
+    }
+
+    private void detachTerminalImeTextWatcher() {
+        if (terminalImeHost != null && terminalImeTextWatcher != null) {
+            terminalImeHost.removeTextChangedListener(terminalImeTextWatcher);
+        }
+        terminalImeTextWatcher = null;
+    }
+
+    private String safeImeText() {
+        if (terminalImeHost == null) return "";
+        Editable ed = terminalImeHost.getText();
+        return ed != null ? ed.toString() : "";
+    }
+
+    // ── Keyboard teardown ────────────────────────────────────────────────────
+
+    /** Remove keyboard views and reset state. Called on SSH disconnect. */
+    private void teardownTerminalKeyboard() {
+        if (rootView == null) return;
+
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+
+        // Hide IME surface first
+        hideTerminalImeSurface();
+
+        if (isLandscape) {
+            // Landscape: disconnect split and fullscreen keyboard transports
+            if (terminalKeyboardTransportLeft != null) {
+                terminalKeyboardTransportLeft.disconnect();
+                terminalKeyboardTransportLeft = null;
+            }
+            if (terminalKeyboardTransportRight != null) {
+                terminalKeyboardTransportRight.disconnect();
+                terminalKeyboardTransportRight = null;
+            }
+            if (terminalKeyboardViewLeft != null) {
+                terminalKeyboardViewLeft.clearCustomTransport();
+            }
+            if (terminalKeyboardViewRight != null) {
+                terminalKeyboardViewRight.clearCustomTransport();
+            }
+            if (terminalFullscreenTransport != null) {
+                terminalFullscreenTransport.disconnect();
+                terminalFullscreenTransport = null;
+            }
+            if (terminalFullscreenKeyboardView != null) {
+                terminalFullscreenKeyboardView.clearCustomTransport();
+                // Remove fullscreen keyboard overlay from its parent
+                View fsParent = (View) terminalFullscreenKeyboardView.getParent();
+                if (fsParent != null && fsParent.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) fsParent.getParent()).removeView(fsParent);
+                }
+            }
+            terminalFullscreenKeyboardView = null;
+            landscapeKeyboardState = LandscapeKeyboardState.HIDDEN;
+        } else {
+            // Portrait: disconnect single keyboard transport
+            if (terminalKeyboardTransport != null) {
+                terminalKeyboardTransport.disconnect();
+                terminalKeyboardTransport = null;
+            }
+            if (terminalKeyboardView != null) {
+                terminalKeyboardView.clearCustomTransport();
+            }
+            if (terminalKeyboardSlot != null) {
+                terminalKeyboardSlot.removeAllViews();
+                terminalKeyboardSlot.setVisibility(View.GONE);
+            }
+            terminalKeyboardView = null;
+        }
+        customKeyboardVisible = false;
+    }
+
+    /** Toggle custom keyboard visibility (portrait only). */
+    private void toggleCustomKeyboard() {
+        boolean isLandscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        if (isLandscape) return; // No-op in landscape
+
+        if (customKeyboardVisible) {
+            hideCustomKeyboard();
+        } else {
+            showCustomKeyboard();
+        }
+    }
+
+    private void setupListeners() {
+        connectBtn.setOnClickListener(v -> {
+            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected
+                    + " isDemoActive=" + isDemoActive);
+            if (isSessionActive()) {
+                if (isDemoActive) {
+                    stopDemo();
+                } else {
+                    disconnect();
+                }
+            } else {
+                showConnectChoiceDialog();
+            }
+        });
+
+        if (demoUsbBtn != null) {
+            demoUsbBtn.setOnClickListener(v ->
+                    showConnectionDialog(TerminalDemoController.DemoTransport.USB));
+        }
+        if (demoBleBtn != null) {
+            demoBleBtn.setOnClickListener(v ->
+                    showConnectionDialog(TerminalDemoController.DemoTransport.BLE));
+        }
+
+        terminalView.setOnClickListener(v -> {
+            boolean isLandscape = getResources().getConfiguration().orientation
+                    == Configuration.ORIENTATION_LANDSCAPE;
+            if (isLandscape) {
+                // In landscape: tap shows split keyboard if hidden, hides if showing
+                if (landscapeKeyboardState == LandscapeKeyboardState.HIDDEN) {
+                    showLandscapeSplitKeyboard();
+                } else {
+                    hideLandscapeKeyboard();
+                }
+            } else {
+                // In portrait, tapping terminal toggles custom keyboard
+                if (terminalView != null) {
+                    toggleCustomKeyboard();
+                }
+            }
+        });
+
+        // No IME insets listener here. MainActivity uses adjustResize so the window
+        // already shrinks for the IME. Adding extra bottom padding would push the
+        // keyboard slot ABOVE the system IME (the opposite of what we want).
+    }
+
+    private void updateConnectionState() {
+        // Update transport button visibility and icon
+        if (transportBtn != null) {
+            if (isSshConnected || isDemoActive) {
+                transportBtn.setVisibility(View.VISIBLE);
+                if (isDemoActive && activeDemoTransport == TerminalDemoController.DemoTransport.USB) {
+                    transportBtn.setText(R.string.terminal_transport_usb);
+                    transportBtn.setIconResource(R.drawable.ic_usb_24);
+                } else {
+                    transportBtn.setText(R.string.terminal_transport_ble);
+                    transportBtn.setIconResource(R.drawable.ic_bluetooth_24);
+                }
+            } else {
+                transportBtn.setVisibility(View.GONE);
+            }
+        }
+
+        // Update status text
+        if (statusText != null) {
+            if (isSshConnected || isDemoActive) {
+                statusText.setText(R.string.terminal_connected);
+            } else {
+                statusText.setText(R.string.terminal_disconnected);
+            }
+        }
+
+        // Update host label
+        if (hostLabel != null) {
+            if (isSessionActive()) {
+                hostLabel.setVisibility(View.VISIBLE);
+                String hostText = activeSessionHost != null
+                        ? activeSessionHost
+                        : TerminalDemoController.DEMO_HOST;
+                hostLabel.setText(hostText);
+                Log.v(TAG, "Host label set to VISIBLE, text=" + hostText
+                        + ", isSshConnected=" + isSshConnected
+                        + ", isDemoActive=" + isDemoActive);
+            } else {
+                hostLabel.setVisibility(View.GONE);
+                Log.v(TAG, "Host label set to GONE, isSshConnected=" + isSshConnected
+                        + ", isDemoActive=" + isDemoActive);
+            }
+        } else {
+            Log.v(TAG, "hostLabel is null, cannot update visibility");
+        }
+
+        // Update connect/disconnect button - always visible
+        if (connectBtn != null) {
+            connectBtn.setVisibility(View.VISIBLE);
+            if (isSessionActive()) {
+                connectBtn.setText(R.string.terminal_disconnect);
+                connectionOverlay.setVisibility(View.GONE);
+                // Hide demo buttons when connected
+                if (demoButtonRow != null) {
+                    demoButtonRow.setVisibility(View.GONE);
+                }
+            } else {
+                connectBtn.setText(R.string.terminal_connect);
+                // Show connection overlay with demo buttons when disconnected
+                if (connectionOverlay != null) {
+                    connectionOverlay.setVisibility(View.VISIBLE);
+                }
+                // Show demo buttons row
+                if (demoButtonRow != null) {
+                    demoButtonRow.setVisibility(View.VISIBLE);
+                }
+            }
+        }
+    }
+
+    /** Offer preview demo or real SSH when disconnected. */
+    private void showConnectChoiceDialog() {
+        showConnectionDialog(null);
     }
 
     /**
      * Show SSH connection dialog with card-style device list and transport selection.
      */
     private void showConnectionDialog() {
+        showConnectionDialog(null);
+    }
+
+    private void showConnectionDialog(@Nullable TerminalDemoController.DemoTransport demoTransport) {
         if (getContext() == null) return;
+        stopDemo();
 
         View dialogView = LayoutInflater.from(getContext())
                 .inflate(R.layout.terminal_connection_dialog, null);
@@ -216,6 +1028,7 @@ public class TerminalFragment extends Fragment {
         RadioButton bleRadio = dialogView.findViewById(R.id.transport_ble);
         LinearLayout deviceListContainer = dialogView.findViewById(R.id.device_list_container);
         TextView emptyText = dialogView.findViewById(R.id.device_empty_text);
+        TextView longPressHint = dialogView.findViewById(R.id.long_press_hint);
         MaterialButton addProfileBtn = dialogView.findViewById(R.id.add_profile_button);
         View titleContainer = dialogView.findViewById(R.id.title_container);
         ImageView searchButton = dialogView.findViewById(R.id.search_device_button);
@@ -233,11 +1046,11 @@ public class TerminalFragment extends Fragment {
         if (allProfiles.isEmpty()) {
             deviceListContainer.setVisibility(View.GONE);
             titleContainer.setVisibility(View.GONE);
+            longPressHint.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             addProfileBtn.setVisibility(View.VISIBLE);
             addProfileBtn.setOnClickListener(v -> {
-                Intent intent = new Intent(requireContext(), SettingsActivity.class);
-                intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
+                Intent intent = new Intent(requireContext(), CredentialActivity.class);
                 requireContext().startActivity(intent);
             });
         } else {
@@ -283,25 +1096,36 @@ public class TerminalFragment extends Fragment {
         }
 
         // Check transport availability and set defaults
-        boolean usbAvailable = isUsbEcmAvailable();
-        boolean bleAvailable = isBleAvailable();
+        if (demoTransport != null) {
+            transportGroup.check(demoTransport == TerminalDemoController.DemoTransport.USB
+                    ? R.id.transport_usb : R.id.transport_ble);
+            usbRadio.setEnabled(demoTransport == TerminalDemoController.DemoTransport.USB);
+            bleRadio.setEnabled(demoTransport == TerminalDemoController.DemoTransport.BLE);
+        } else {
+            boolean usbAvailable = isUsbEcmAvailable();
+            boolean bleAvailable = isBleAvailable();
 
-        if (usbAvailable && !bleAvailable) {
-            transportGroup.check(R.id.transport_usb);
-            bleRadio.setEnabled(false);
-        } else if (bleAvailable && !usbAvailable) {
-            transportGroup.check(R.id.transport_ble);
-            usbRadio.setEnabled(false);
-        } else if (bleAvailable) {
-            transportGroup.check(R.id.transport_ble);
-        } else if (!usbAvailable && !bleAvailable) {
-            Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
-            return;
+            if (usbAvailable && !bleAvailable) {
+                transportGroup.check(R.id.transport_usb);
+                bleRadio.setEnabled(false);
+            } else if (bleAvailable && !usbAvailable) {
+                transportGroup.check(R.id.transport_ble);
+                usbRadio.setEnabled(false);
+            } else if (bleAvailable) {
+                transportGroup.check(R.id.transport_ble);
+            } else if (!usbAvailable && !bleAvailable) {
+                Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
+                return;
+            }
         }
+
+        int positiveText = demoTransport != null
+                ? R.string.terminal_start_demo
+                : R.string.terminal_connect;
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
-                .setPositiveButton(R.string.terminal_connect, (dialog, which) -> {
+                .setPositiveButton(positiveText, (dialog, which) -> {
                     if (allProfiles.isEmpty()) {
                         Toast.makeText(getContext(), R.string.terminal_no_devices, Toast.LENGTH_SHORT).show();
                         return;
@@ -327,8 +1151,16 @@ public class TerminalFragment extends Fragment {
                     // Save selected profile as active
                     credentialManager.setActiveProfileId(profile.getId());
 
-                    Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
-                    connect(profile, useUsb);
+                    if (demoTransport != null) {
+                        statusText.setText(R.string.terminal_connecting);
+                        if (hostLabel != null) {
+                            hostLabel.setText(host);
+                        }
+                        startDemo(demoTransport, host);
+                    } else {
+                        Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                        connect(profile, useUsb);
+                    }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -560,13 +1392,78 @@ public class TerminalFragment extends Fragment {
         new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
                 .setNegativeButton(R.string.credential_edit, (dialog, which) -> {
-                    Intent intent = new Intent(requireContext(), SettingsActivity.class);
-                    intent.putExtra(SettingsActivity.EXTRA_TAB_INDEX, SettingsActivity.TAB_CREDENTIALS);
-                    intent.putExtra(SettingsActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
+                    Intent intent = new Intent(requireContext(), CredentialActivity.class);
+                    intent.putExtra(CredentialActivity.EXTRA_EDIT_PROFILE_ID, profile.getId());
                     requireContext().startActivity(intent);
                 })
                 .setPositiveButton(R.string.terminal_device_info_close, null)
                 .show();
+    }
+
+    private boolean isSessionActive() {
+        return isSshConnected || isDemoActive;
+    }
+
+    private void resetTerminalSession() {
+        terminalSession = new TerminalSession(
+                prefs.getTerminalRows(),
+                prefs.getTerminalCols(),
+                prefs.getScrollbackSize()
+        );
+        terminalView.setTerminalSession(terminalSession);
+    }
+
+    private void startDemo(@NonNull TerminalDemoController.DemoTransport transport) {
+        startDemo(transport, TerminalDemoController.DEMO_HOST);
+    }
+
+    private void startDemo(@NonNull TerminalDemoController.DemoTransport transport, @NonNull String host) {
+        if (getContext() == null || terminalSession == null || demoController == null) {
+            return;
+        }
+        disconnect();
+        resetTerminalSession();
+        isDemoActive = true;
+        activeDemoTransport = transport;
+        activeSessionHost = host;
+        updateConnectionState();
+        statusText.setText(R.string.terminal_connecting);
+
+        demoController.start(requireContext(), terminalSession, transport,
+                new TerminalDemoController.Listener() {
+                    @Override
+                    public void onOutputAppended() {
+                        if (terminalView != null) {
+                            terminalView.invalidate();
+                        }
+                    }
+
+                    @Override
+                    public void onFinished() {
+                        if (!isDemoActive) {
+                            return;
+                        }
+                        statusText.setText(R.string.terminal_connected);
+                        if (terminalView != null) {
+                            terminalView.invalidate();
+                        }
+                    }
+                });
+    }
+
+    private void stopDemo() {
+        if (demoController != null) {
+            demoController.stop();
+        }
+        if (!isDemoActive) {
+            return;
+        }
+        isDemoActive = false;
+        activeDemoTransport = null;
+        activeSessionHost = null;
+        teardownTerminalKeyboard();
+        resetTerminalSession();
+        updateConnectionState();
     }
 
     /**
@@ -574,6 +1471,8 @@ public class TerminalFragment extends Fragment {
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
         Log.v(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+        stopDemo();
+        activeSessionHost = profile.getHost();
         statusText.setText(R.string.terminal_connecting);
 
         if (useUsb) {
@@ -605,11 +1504,21 @@ public class TerminalFragment extends Fragment {
             @Override
             public void onDisconnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = false;
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
-                    terminalView.postInvalidate();
+                    teardownTerminalKeyboard();
+                    if (statusText != null) {
+                        statusText.setText(R.string.terminal_disconnected);
+                    }
+                    if (connectBtn != null) {
+                        connectBtn.setText(R.string.terminal_connect);
+                    }
+                    if (connectionOverlay != null) {
+                        connectionOverlay.setVisibility(View.VISIBLE);
+                    }
+                    if (terminalView != null) {
+                        terminalView.postInvalidate();
+                    }
                 });
             }
 
@@ -617,15 +1526,19 @@ public class TerminalFragment extends Fragment {
             public void onError(String message) {
                 Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
+                    if (viewDestroyed || getContext() == null) return;
                     String displayMessage;
                     if (message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
                     }
-                    statusText.setText(displayMessage);
+                    if (statusText != null) {
+                        statusText.setText(displayMessage);
+                    }
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     updateConnectionState();
                 });
             }
@@ -637,8 +1550,13 @@ public class TerminalFragment extends Fragment {
 
             if (!usbEcmTransport.isConnected()) {
                 mainHandler.post(() -> {
-                    statusText.setText(getString(R.string.terminal_connection_failed) + ": USB ECM");
-                    connectionOverlay.setVisibility(View.VISIBLE);
+                    if (viewDestroyed || getContext() == null) return;
+                    if (statusText != null) {
+                        statusText.setText(getString(R.string.terminal_connection_failed) + ": USB ECM");
+                    }
+                    if (connectionOverlay != null) {
+                        connectionOverlay.setVisibility(View.VISIBLE);
+                    }
                 });
                 return;
             }
@@ -665,8 +1583,13 @@ public class TerminalFragment extends Fragment {
                 + " isConnected=" + (bluetoothService != null && bluetoothService.isConnected()));
         if (bluetoothService == null || !bluetoothService.isConnected()) {
             mainHandler.post(() -> {
-                statusText.setText(R.string.terminal_connection_failed + ": BLE not connected");
-                connectionOverlay.setVisibility(View.VISIBLE);
+                if (viewDestroyed || getContext() == null) return;
+                if (statusText != null) {
+                    statusText.setText(R.string.terminal_connection_failed + ": BLE not connected");
+                }
+                if (connectionOverlay != null) {
+                    connectionOverlay.setVisibility(View.VISIBLE);
+                }
             });
             return;
         }
@@ -693,8 +1616,11 @@ public class TerminalFragment extends Fragment {
             bluetoothService.writeBleEthData(cleanupFrame);
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
         }
-        Log.v(TAG, "connectBleEth: waiting 5000ms for full cleanup");
-        try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+        // Wait for firmware to process DISCONNECT frames.
+        // Firmware typically completes within 500ms; 3000ms provides safe margin
+        // for BLE latency and edge cases without excessive user wait time.
+        Log.v(TAG, "connectBleEth: waiting 3000ms for firmware cleanup");
+        try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
         Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
 
         bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
@@ -703,7 +1629,10 @@ public class TerminalFragment extends Fragment {
         // Register for incoming BLE-Eth data
         bleEthCallback = data -> {
             Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
-            bleEthTransport.handleIncomingData(data);
+            BleEthTransport transport = bleEthTransport;
+            if (transport != null && !viewDestroyed) {
+                transport.handleIncomingData(data);
+            }
         };
         Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
         bluetoothService.addBleEthCallback(bleEthCallback);
@@ -723,65 +1652,89 @@ public class TerminalFragment extends Fragment {
     }
 
     /**
-     * Run the SSH session with a custom SocketFactory (for BLE-Eth).
+     * Create the shared SSH client listener.
+     * Handles connect/disconnect lifecycle, data routing, and error display.
+     * Used by both {@link #runSshSession} and {@link #runSshSessionWithSocketFactory}.
      */
-    private void runSshSessionWithSocketFactory(CredentialProfile profile,
-                                                 TransportAdapter transport,
-                                                 com.jcraft.jsch.SocketFactory socketFactory) {
-        sshClient = new SshClient(profile, transport, socketFactory);
-        sshClient.setListener(new SshClient.Listener() {
+    private SshClient.Listener createSshListener() {
+        return new SshClient.Listener() {
             @Override
             public void onConnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = true;
-                    statusText.setText(R.string.terminal_connected);
-                    connectBtn.setText(R.string.terminal_disconnect);
-                    connectionOverlay.setVisibility(View.GONE);
-                    terminalView.postDelayed(() -> {
-                        if (isSshConnected && terminalView != null) {
-                            terminalView.showKeyboard();
+                    if (terminalView != null) {
+                        terminalView.resetScrollX();
+                    }
+                    updateConnectionState();
+                    mainHandler.postDelayed(() -> {
+                        if (!viewDestroyed && rootView != null && isSshConnected) {
+                            showCustomKeyboard();
                         }
                     }, 150);
                 });
-                // Start the shell channel
-                sshClient.startShell(terminalSession);
+                // Start the shell channel (runs on background thread)
+                SshClient client = sshClient;
+                if (client != null && !viewDestroyed) {
+                    client.startShell(terminalSession);
+                }
             }
 
             @Override
             public void onDisconnected() {
                 mainHandler.post(() -> {
+                    if (viewDestroyed) return;
                     isSshConnected = false;
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
-                    terminalView.postInvalidate();
+                    updateConnectionState();
+                    teardownTerminalKeyboard();
+                    if (terminalView != null) {
+                        terminalView.resetScrollX();
+                        terminalView.postInvalidate();
+                    }
                 });
             }
 
             @Override
             public void onDataReceived(byte[] data, int len) {
                 terminalSession.append(data, len);
-                mainHandler.post(() -> terminalView.invalidate());
+                mainHandler.post(() -> {
+                    if (!viewDestroyed && terminalView != null) {
+                        terminalView.invalidate();
+                    }
+                });
             }
 
             @Override
             public void onError(String message) {
                 Log.e(TAG, "SSH error: " + message);
                 mainHandler.post(() -> {
+                    if (viewDestroyed || getContext() == null) return;
                     String displayMessage;
-                    if (message.contains("AUTH_FAILED")) {
+                    if (message != null && message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
                     }
-                    statusText.setText(displayMessage);
+                    if (statusText != null) {
+                        statusText.setText(displayMessage);
+                    }
                     Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
                     isSshConnected = false;
+                    teardownTerminalKeyboard();
                     updateConnectionState();
                 });
             }
-        });
+        };
+    }
 
+    /**
+     * Run the SSH session with a custom SocketFactory (for BLE-Eth).
+     */
+    private void runSshSessionWithSocketFactory(CredentialProfile profile,
+                                                 TransportAdapter transport,
+                                                 com.jcraft.jsch.SocketFactory socketFactory) {
+        sshClient = new SshClient(profile, transport, socketFactory);
+        sshClient.setListener(createSshListener());
         sshClient.connect();
     }
 
@@ -790,59 +1743,7 @@ public class TerminalFragment extends Fragment {
      */
     private void runSshSession(CredentialProfile profile, TransportAdapter transport) {
         sshClient = new SshClient(profile, transport);
-        sshClient.setListener(new SshClient.Listener() {
-            @Override
-            public void onConnected() {
-                mainHandler.post(() -> {
-                    isSshConnected = true;
-                    statusText.setText(R.string.terminal_connected);
-                    connectBtn.setText(R.string.terminal_disconnect);
-                    connectionOverlay.setVisibility(View.GONE);
-                    terminalView.postDelayed(() -> {
-                        if (isSshConnected && terminalView != null) {
-                            terminalView.showKeyboard();
-                        }
-                    }, 150);
-                });
-                // Start the shell channel
-                sshClient.startShell(terminalSession);
-            }
-
-            @Override
-            public void onDisconnected() {
-                mainHandler.post(() -> {
-                    isSshConnected = false;
-                    statusText.setText(R.string.terminal_disconnected);
-                    connectBtn.setText(R.string.terminal_connect);
-                    connectionOverlay.setVisibility(View.VISIBLE);
-                    terminalView.postInvalidate();
-                });
-            }
-
-            @Override
-            public void onDataReceived(byte[] data, int len) {
-                terminalSession.append(data, len);
-                mainHandler.post(() -> terminalView.invalidate());
-            }
-
-            @Override
-            public void onError(String message) {
-                Log.e(TAG, "SSH error: " + message);
-                mainHandler.post(() -> {
-                    String displayMessage;
-                    if (message.contains("AUTH_FAILED")) {
-                        displayMessage = getString(R.string.terminal_auth_failed);
-                    } else {
-                        displayMessage = getFriendlyErrorMessage(message);
-                    }
-                    statusText.setText(displayMessage);
-                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
-                    isSshConnected = false;
-                    updateConnectionState();
-                });
-            }
-        });
-
+        sshClient.setListener(createSshListener());
         sshClient.connect();
     }
 
@@ -866,6 +1767,10 @@ public class TerminalFragment extends Fragment {
         bleEthSocketFactory = null;
         usbEcmTransport = null;
         isSshConnected = false;
+        if (terminalView != null) {
+            terminalView.resetScrollX();
+        }
+        teardownTerminalKeyboard();
         updateConnectionState();
     }
 
@@ -934,7 +1839,15 @@ public class TerminalFragment extends Fragment {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_connection_timeout);
         }
 
-        // Unknown host - DNS resolution failed
+        // Unknown host - DNS resolution failed.
+        // NOTE: Distinguishes from "UnknownHostKey" (JSch host-key verification failure)
+        // which contains "UnknownHostKey" but the user only sees "unknownhost" when
+        // mapped to the i18n "Unknown host" message above. We check the more specific
+        // JSch message "UnknownHostKey" first so it has its own mapping.
+        if (lowerError.contains("unknownhostkey") || lowerError.contains("unknown host key")) {
+            return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_host_key_unknown);
+        }
+
         if (lowerError.contains("unknownhost") || lowerError.contains("unknown host") || lowerError.contains("resolve")) {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_unknown_host);
         }
@@ -955,8 +1868,65 @@ public class TerminalFragment extends Fragment {
     }
 
     @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Re-inflate layout to switch between portrait and landscape layouts.
+        // MainActivity uses configChanges="orientation" so the Activity
+        // is not recreated; only onConfigurationChanged is called.
+        reInflateLayout();
+        // Notify remote PTY of new terminal size after rotation.
+        if (sshClient != null && isSshConnected && terminalSession != null) {
+            mainHandler.postDelayed(() -> {
+                if (sshClient != null && isSshConnected && terminalSession != null) {
+                    sshClient.resizeTerminal(terminalSession.getColumns(), terminalSession.getRows());
+                }
+            }, 300);  // Wait for layout to complete and onSizeChanged() to update dimensions
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("custom_keyboard_visible", customKeyboardVisible);
+    }
+
+    @Override
     public void onDestroyView() {
+        // 1. Set guard flag FIRST to prevent background callbacks from accessing Views
+        viewDestroyed = true;
+
+        // 2. Cancel all Handler callbacks to prevent accessing destroyed Views
+        mainHandler.removeCallbacksAndMessages(null);
+
+        // 3. Stop demo and disconnect SSH
+        stopDemo();
         disconnect();
+
+        // 4. Clean up keyboard transport
+        teardownTerminalKeyboard();
+
+        // 5. Clear all View references to prevent memory leaks
+        rootView = null;
+        terminalView = null;
+        terminalKeyboardSlot = null;
+        terminalImeHost = null;
+        terminalKeyboardView = null;
+        terminalKeyboardViewLeft = null;
+        terminalKeyboardViewRight = null;
+        terminalSplitTopLeft = null;
+        terminalSplitTopRight = null;
+        terminalFullscreenKeyboardView = null;
+        terminalFullscreenTransport = null;
+        connectBtn = null;
+        statusText = null;
+        hostLabel = null;
+        transportBtn = null;
+        connectionOverlay = null;
+        demoButtonRow = null;
+        demoUsbBtn = null;
+        demoBleBtn = null;
+        mainActivity = null;
+
         super.onDestroyView();
     }
 }

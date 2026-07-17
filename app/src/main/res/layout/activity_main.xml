@@ -157,6 +157,17 @@
                         android:tint="@color/text_secondary"/>
 
                     <ImageButton
+                        android:id="@+id/credential_header_button"
+                        android:layout_width="@dimen/header_right_cluster_icon_size"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:layout_marginEnd="@dimen/header_right_cluster_button_gap"
+                        android:src="@drawable/ic_settings"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/credential_manager"
+                        android:padding="@dimen/header_right_cluster_icon_padding"
+                        android:tint="@color/text_secondary"/>
+
+                    <ImageButton
                         android:id="@+id/mode_guide_header_button"
                         android:layout_width="@dimen/header_right_cluster_icon_size"
                         android:layout_height="@dimen/header_right_cluster_icon_size"
@@ -195,16 +206,18 @@
 
                         <ImageView
                             android:id="@+id/connection_button"
-                            android:layout_width="@dimen/header_connection_icon_size"
-                            android:layout_height="@dimen/header_connection_icon_size"
+                            android:layout_width="@dimen/header_right_cluster_icon_size"
+                            android:layout_height="@dimen/header_right_cluster_icon_size"
+                            android:padding="@dimen/header_right_cluster_icon_padding"
                             android:src="@drawable/ic_bluetooth"
                             android:tint="@color/text_secondary"
                             android:contentDescription="@string/connection"/>
 
                         <ImageView
                             android:id="@+id/signal_bars"
-                            android:layout_width="@dimen/header_connection_icon_size"
-                            android:layout_height="@dimen/header_connection_icon_size"
+                            android:layout_width="@dimen/header_right_cluster_icon_size"
+                            android:layout_height="@dimen/header_right_cluster_icon_size"
+                            android:padding="@dimen/header_right_cluster_icon_padding"
                             android:layout_marginStart="3dp"
                             android:src="@drawable/signal_cellular_alt_off_24px"
                             android:tint="?attr/colorPrimary"

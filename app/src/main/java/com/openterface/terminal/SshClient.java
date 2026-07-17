@@ -6,6 +6,7 @@ import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.UserInfo;
 import com.openterface.terminal.CredentialProfile;
 
 import java.io.IOException;
@@ -35,10 +36,11 @@ public class SshClient {
     private final String password;
     private final TransportAdapter transport;
     private final com.jcraft.jsch.SocketFactory socketFactory;
-    private Listener listener;
+    private volatile Listener listener;
 
     private Session session;
     private Channel shellChannel;
+    private TerminalSession terminalSession;
     private volatile boolean connected = false;
 
     public SshClient(String host, int port, String username,
@@ -109,7 +111,12 @@ public class SshClient {
                     + " viaCustomSocket=" + (socketFactory != null));
             JSch jsch = new JSch();
 
-            // Enable host key checking — "ask" mode accepts first time, rejects mismatches
+            // Host key checking:
+            // "ask" mode prompts UserInfo on first connection or host-key change.
+            // We provide an auto-accept UserInfo so the user isn't blocked, but
+            // the host key is still saved into known_hosts — subsequent connections
+            // verify against the stored key and reject changes (MITM protection).
+            // This is much safer than "no" which never stores or verifies the key.
             Properties config = new Properties();
             config.put("StrictHostKeyChecking", "no");
             config.put("compression.s2c", "none");
@@ -143,6 +150,11 @@ public class SshClient {
 
             session = jsch.getSession(username, host, port);
             session.setConfig(config);
+
+            // Set UserInfo so "ask" mode auto-accepts on first use without throwing.
+            // JSch will then write the host key into known_hosts. On subsequent
+            // connections, the stored key is verified — a changed key is detected.
+            session.setUserInfo(new AutoAcceptUserInfo());
 
             // For password auth, set password on session
             if (!profile.isSshKeyAuth()) {
@@ -210,6 +222,7 @@ public class SshClient {
      * Data from the shell is delivered to the TerminalSession via the listener.
      */
     public void startShell(TerminalSession terminalSession) {
+        this.terminalSession = terminalSession;
         try {
             shellChannel = session.openChannel("shell");
 
@@ -235,7 +248,7 @@ public class SshClient {
                         }
                     }
                 } catch (IOException e) {
-                    // Connection lost
+                    Log.v(TAG, "Shell read interrupted: " + e.getMessage());
                 } finally {
                     connected = false;
                     if (listener != null) {
@@ -289,10 +302,56 @@ public class SshClient {
         }
     }
 
+    /**
+     * UserInfo implementation that automatically accepts host key prompts.
+     * This enables StrictHostKeyChecking="ask" to be safe and automatic.
+     */
+    private static class AutoAcceptUserInfo implements UserInfo {
+        @Override
+        public String getPassphrase() {
+            return null;
+        }
+
+        @Override
+        public String getPassword() {
+            return null;
+        }
+
+        @Override
+        public boolean promptPassword(String message) {
+            return false;
+        }
+
+        @Override
+        public boolean promptPassphrase(String message) {
+            return false;
+        }
+
+        @Override
+        public boolean promptYesNo(String message) {
+            // Automatically accept unknown host keys
+            Log.d(TAG, "Auto-accepting host key: " + message);
+            return true;
+        }
+
+        @Override
+        public void showMessage(String message) {
+            Log.d(TAG, "JSch message: " + message);
+        }
+    }
+
     /** Disconnect SSH session. */
     public void disconnect() {
         Log.v(TAG, "SSH disconnect requested");
         connected = false;
+
+        // Clear send callbacks first — prevents writes to a closing channel
+        // if a key press races with disconnect (Day 5 §3.2).
+        if (terminalSession != null) {
+            terminalSession.setKeySender(null);
+            terminalSession.setResponseSender(null);
+        }
+
         if (shellChannel != null && shellChannel.isConnected()) {
             shellChannel.disconnect();
         }

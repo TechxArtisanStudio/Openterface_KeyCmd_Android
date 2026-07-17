@@ -2124,6 +2124,10 @@ public class CompositeFragment extends Fragment {
             keyboardView.setShortcutsStripOnly(false);
             keyboardView.reloadForCurrentOrientation();
             keyboardView.setShowExtraPortraitKeys(false);
+            // Force hide IME surface and restore letter body visibility.
+            // This ensures the letter body is visible even if isPortraitImeSurface
+            // pref was left as true from a previous IME toggle session.
+            hideKmProImeSurface();
         }
 
         syncMainActivityKmProTabs();

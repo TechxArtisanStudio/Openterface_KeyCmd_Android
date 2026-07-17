@@ -175,7 +175,11 @@ dependencies {
     // SSH client for Terminal feature
     implementation 'com.github.mwiede:jsch:0.2.17'
 
-    // BouncyCastle for Ed25519 key generation and encryption
+    // Apache MINA SSHD for OpenSSH-compatible key generation
+    implementation 'org.apache.sshd:sshd-common:2.14.0'
+    implementation 'net.i2p.crypto:eddsa:0.3.0'
+
+    // BouncyCastle (required by JSch for certain ciphers)
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
     implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
     

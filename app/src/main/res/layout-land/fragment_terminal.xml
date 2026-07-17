@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/terminal_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_background">
+
+    <!-- Top status bar (compact for landscape) -->
+    <LinearLayout
+        android:id="@+id/terminal_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="36dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/terminal_toolbar_background"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Left side: connection status -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/terminal_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/terminal_disconnected"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/terminal_host_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Right side: transport + connect buttons -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_transport_btn"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_marginEnd="4dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/terminal_transport_ble"
+                android:textSize="10sp"
+                android:visibility="gone"
+                app:icon="@drawable/ic_bluetooth_24"
+                app:iconGravity="textStart"
+                app:iconPadding="2dp"
+                app:iconSize="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_connect_btn"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/terminal_connect"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Horizontal layout: left keyboard | terminal | right keyboard -->
+    <LinearLayout
+        android:id="@+id/terminal_split_root"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- Left keyboard column (weight=0 when hidden, weight=1 when split) -->
+        <LinearLayout
+            android:id="@+id/terminal_split_left_column"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:id="@+id/terminal_split_top_left"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.openterface.keymod.CustomKeyboardView
+                android:id="@+id/terminal_keyboard_view_left"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="2.2"
+                android:paddingTop="@dimen/keyboard_outer_padding_top"
+                android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
+                android:keyBackground="@drawable/key_background"
+                android:theme="@style/ButtonTheme"
+                app:showGuiHidKey="false" />
+
+        </LinearLayout>
+
+        <!-- Center terminal column (weight=1 when hidden/fullscreen, weight=2 when split) -->
+        <FrameLayout
+            android:id="@+id/terminal_display_area"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@color/terminal_background">
+
+            <com.openterface.terminal.TerminalView
+                android:id="@+id/terminal_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+
+            <!-- Connection overlay (shown when disconnected) -->
+            <LinearLayout
+                android:id="@+id/terminal_connection_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@color/terminal_background"
+                android:visibility="gone"
+                android:paddingStart="12dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="16dp">
+
+                <ImageView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_terminal"
+                    android:tint="@color/text_secondary"
+                    android:importantForAccessibility="no"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/top_mode_label_terminal"
+                    android:textSize="16sp"
+                    android:textColor="@color/terminal_status_text"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="240dp"
+                    android:text="@string/top_mode_label_terminal_summary"
+                    android:textSize="12sp"
+                    android:textColor="@color/terminal_status_text"
+                    android:gravity="center"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/terminal_empty_button_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:showDividers="middle"
+                    android:divider="@android:color/transparent"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/terminal_demo_ble_btn"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="@string/terminal_demo_ble"
+                        android:textSize="12sp"
+                        app:icon="@drawable/ic_bluetooth_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/terminal_demo_usb_btn"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/terminal_demo_usb"
+                        android:textSize="12sp"
+                        android:textColor="@color/terminal_status_text"
+                        app:icon="@drawable/ic_usb_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="6dp"
+                        app:iconTint="@color/terminal_status_text" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- Right keyboard column (weight=0 when hidden, weight=1 when split) -->
+        <LinearLayout
+            android:id="@+id/terminal_split_right_column"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <FrameLayout
+                android:id="@+id/terminal_split_top_right"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.openterface.keymod.CustomKeyboardView
+                android:id="@+id/terminal_keyboard_view_right"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="2.2"
+                android:paddingTop="@dimen/keyboard_outer_padding_top"
+                android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
+                android:keyBackground="@drawable/key_background"
+                android:theme="@style/ButtonTheme"
+                app:showGuiHidKey="false" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

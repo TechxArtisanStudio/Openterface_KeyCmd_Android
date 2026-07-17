@@ -80,6 +80,14 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:theme="@style/Theme.KeyCmd" />
 
+        <!-- Credential Activity -->
+        <activity
+            android:name="com.openterface.terminal.CredentialActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.KeyCmd" />
+
         <service
             android:name="com.openterface.keymod.BluetoothService"
             android:enabled="true"

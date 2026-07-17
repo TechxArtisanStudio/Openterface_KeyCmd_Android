@@ -6,7 +6,7 @@
     <string name="settings_tab_voice">语音</string>
     <string name="settings_tab_ai">人工智能</string>
     <string name="settings_tab_history">AI 记录</string>
-    <string name="settings_tab_credentials">凭据</string>
+    <string name="credential_manager">凭据管理</string>
     <string name="settings_language_section_title">语言</string>
     <string name="settings_app_language_label">应用语言</string>
     <string name="app_language_follow_system">遵循系统语言</string>
@@ -1408,6 +1408,7 @@
     <string name="terminal_device_info_no_notes">无备注</string>
     <string name="terminal_device_info_close">关闭</string>
     <string name="terminal_device_info_edit">编辑</string>
+    <string name="terminal_long_press_hint">提示：长按设备可打开设备信息卡片。</string>
     <string name="credential_add">+ 添加凭据</string>
     <string name="credential_edit">编辑</string>
     <string name="credential_save">保存</string>
@@ -1425,7 +1426,7 @@
     <string name="credential_tags_hint">输入标签名回车添加</string>
     <string name="credential_tag_filter">按标签筛选</string>
     <string name="select_tags_title">选择标签</string>
-    <string name="select_tags_add_hint">输入新标签名称</string>
+    <string name="select_tags_add_hint">输入标签名称回车添加</string>
     <string name="select_tags_all_label">所有标签（点击选择）</string>
     <string name="select_tags_selected_label">当前设备选中的标签</string>
     <string name="select_tags_none">无</string>
@@ -1439,6 +1440,7 @@
     <string name="terminal_error_connection_refused">远程主机拒绝连接</string>
     <string name="terminal_error_connection_timeout">连接超时，请检查网络</string>
     <string name="terminal_error_unknown_host">未知主机，请检查主机名</string>
+    <string name="terminal_error_host_key_unknown">主机密钥验证失败，请检查主机密钥后重试</string>
     <string name="terminal_error_no_route">无法到达远程主机，请检查网络</string>
     <string name="terminal_error_generic">连接时发生错误</string>
 
@@ -1447,9 +1449,13 @@
     <string name="credential_generate">生成</string>
     <string name="credential_key_algorithm">算法</string>
     <string name="credential_key_info">密钥信息</string>
-    <string name="credential_key_rsa_4096">RSA 4096</string>
-    <string name="credential_key_rsa_2048">RSA 2048</string>
+    <string name="credential_key_size">密钥大小</string>
     <string name="credential_key_ed25519">ED25519</string>
+    <string name="credential_key_ed25519_desc">OpenSSH 6.5+</string>
+    <string name="credential_key_ecdsa">ECDSA</string>
+    <string name="credential_key_ecdsa_desc">暂不支持</string>
+    <string name="credential_key_rsa">RSA</string>
+    <string name="credential_key_rsa_desc">兼容旧设备</string>
     <string name="credential_key_name">名称</string>
     <string name="credential_key_rounds">轮数</string>
     <string name="credential_key_save_passphrase">保存密码</string>
@@ -1460,6 +1466,7 @@
     <string name="credential_public_key_title">公钥</string>
     <string name="credential_public_key_copy">复制</string>
     <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
+    <string name="credential_public_key_not_available">不可用（请重新导入或重新生成密钥以查看）</string>
     <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
     <string name="credential_push_key">推送到服务器</string>
     <string name="credential_push_key_title">推送公钥</string>
@@ -1480,9 +1487,10 @@
     <string name="credential_key_paste">粘贴</string>
     <string name="credential_key_import_file">从文件导入</string>
     <string name="credential_key_generate">生成</string>
+    <string name="credential_key_delete">删除</string>
+    <string name="credential_key_delete_confirm">确定删除存储的 SSH 密钥？</string>
     <string name="credential_key_copy">复制</string>
     <string name="credential_key_reveal">展开</string>
-    <string name="credential_ed25519_passphrase_warning">⚠️ Ed25519 密码加密为实验性功能，可能存在兼容性问题</string>
     <string name="credential_key_collapse">隐藏</string>
     <string name="credential_key_hide">隐藏</string>
     <string name="credential_private_key_hint">私钥（PEM 格式）</string>

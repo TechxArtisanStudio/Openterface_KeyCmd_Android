@@ -317,20 +317,17 @@ public class AnsiEscapeParserTest {
         @Override public void onScroll(int lines) { scrollLines += lines; }
         @Override public void onSetAttribute(int code) { sgrAttributes.add(code); }
         @Override public void onResetAttributes() { sgrResetCount++; resetCount++; }
-        @Override public void onSetFg256(int index) { fg256 = index; }
-        @Override public void onSetBg256(int index) { bg256 = index; }
-        @Override public void onSetFgTrueColor(int r, int g, int b) { fgTrueColor = (r << 16) | (g << 8) | b; }
-        @Override public void onSetBgTrueColor(int r, int g, int b) { bgTrueColor = (r << 16) | (g << 8) | b; }
-        @Override public void onDecModeSet(int mode) { decModesSet.add(mode); }
-        @Override public void onDecModeReset(int mode) { decModesReset.add(mode); }
-        @Override public void onDeviceStatusReport(int code) { deviceStatusReportCount++; }
-        @Override public void onDeviceAttributesRequest() { deviceAttributesRequestCount++; }
-        @Override public void onSetScrollRegion(int top, int bottom) {
-            scrollRegionTop = top;
-            scrollRegionBottom = bottom;
-        }
-        @Override public void onSaveCursor() { saveCursorCount++; }
-        @Override public void onRestoreCursor() { restoreCursorCount++; }
+        @Override public void onSetFg256(int index) { /* stub */ }
+        @Override public void onSetBg256(int index) { /* stub */ }
+        @Override public void onSetFgTrueColor(int r, int g, int b) { /* stub */ }
+        @Override public void onSetBgTrueColor(int r, int g, int b) { /* stub */ }
+        @Override public void onDecModeSet(int mode) { /* stub */ }
+        @Override public void onDecModeReset(int mode) { /* stub */ }
+        @Override public void onDeviceStatusReport(int code) { /* stub */ }
+        @Override public void onDeviceAttributesRequest() { /* stub */ }
+        @Override public void onSetScrollRegion(int top, int bottom) { /* stub */ }
+        @Override public void onSaveCursor() { /* stub */ }
+        @Override public void onRestoreCursor() { /* stub */ }
         @Override public void onUnknownSequence(String s) { unknownCount++; }
     }
 }

@@ -72,7 +72,9 @@ import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.hid.Ch9329PacketUtil;
+import com.openterface.keymod.hid.HidKeyboardTransport;
 import com.openterface.keymod.hid.KeyboardHidTransport;
+import com.openterface.keymod.hid.KeyboardTransport;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.keymod.util.KeyParser;
 import com.openterface.keymod.util.TopModeShortcutPrefs;
@@ -327,6 +329,8 @@ public class CustomKeyboardView extends LinearLayout {
 
     private List<List<Key>> lowerKeys;
     private UsbSerialPort port;
+    private volatile KeyboardTransport transport;
+    private volatile boolean useCustomTransport = false;
     private Handler repeatHandler = new Handler();
     /** Hold-to-repeat for Space / Bksp / DEL / arrows: tap-like HID pairs after {@link ViewConfiguration} delays. */
     private Runnable holdKeyRepeatRunnable;
@@ -434,6 +438,7 @@ public class CustomKeyboardView extends LinearLayout {
             bluetoothService = binder.getService();
             isServiceBound = true;
             Log.v(TAG, "Bound to BluetoothService");
+            updateTransport();
         }
 
         @Override
@@ -441,6 +446,7 @@ public class CustomKeyboardView extends LinearLayout {
             isServiceBound = false;
             bluetoothService = null;
             Log.v(TAG, "Unbound from BluetoothService");
+            updateTransport();
         }
     };
 
@@ -1026,7 +1032,7 @@ public class CustomKeyboardView extends LinearLayout {
         proChordHostHoldSent = false;
         proChordActiveExtKey = 0;
         proChordLongPressAnchorView = null;
-        if (holdLockController != null) {
+        if (holdLockController != null && transport instanceof HidKeyboardTransport) {
             holdLockController.reassertKeyboardModifiersIfNeeded(
                     port, bluetoothService, isServiceBound);
         }
@@ -1049,7 +1055,7 @@ public class CustomKeyboardView extends LinearLayout {
         proChordHostHoldSent = false;
         proChordActiveExtKey = 0;
         proChordLongPressAnchorView = null;
-        if (holdLockController != null) {
+        if (holdLockController != null && transport instanceof HidKeyboardTransport) {
             holdLockController.reassertKeyboardModifiersIfNeeded(
                     port, bluetoothService, isServiceBound);
         }
@@ -1069,7 +1075,7 @@ public class CustomKeyboardView extends LinearLayout {
         }
         if (KmBasicKeyboardPrefs.PREF_KEY.equals(key)) {
             clearProChordAndHoldLockPopupUiState();
-            if (holdLockController != null) {
+            if (holdLockController != null && transport instanceof HidKeyboardTransport) {
                 holdLockController.clearAllAndReleaseHid(port, bluetoothService, isServiceBound);
             }
             isShiftLeftLocked = false;
@@ -1101,19 +1107,13 @@ public class CustomKeyboardView extends LinearLayout {
         if (ctx != null && KmBasicKeyboardPrefs.isChordSustainHidEnabled(ctx)) {
             int agg = proChordSustainAggregateBootMaskOr0();
             if (agg != 0) {
-                KeyboardHidTransport.sendKeyReport(
-                        port,
-                        bluetoothService,
-                        isServiceBound,
-                        mergeHoldLockedBootMask(agg),
-                        0);
+                if (transport != null && transport.isConnected()) {
+                    transport.sendKey(mergeHoldLockedBootMask(agg), 0);
+                }
             } else if (proChordActiveExtKey != 0) {
-                KeyboardHidTransport.sendKeyReport(
-                        port,
-                        bluetoothService,
-                        isServiceBound,
-                        mergeHoldLockedBootMask(0),
-                        proChordActiveExtKey);
+                if (transport != null && transport.isConnected()) {
+                    transport.sendKey(mergeHoldLockedBootMask(0), proChordActiveExtKey);
+                }
             }
             proChordHostHoldSent = true;
         } else {
@@ -1124,7 +1124,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void reassertKeyboardAfterHidRelease() {
-        if (holdLockController != null) {
+        if (holdLockController != null && transport instanceof HidKeyboardTransport) {
             holdLockController.reassertKeyboardModifiersIfNeeded(port, bluetoothService, isServiceBound);
         }
         Context ctx = getContext();
@@ -1134,19 +1134,13 @@ public class CustomKeyboardView extends LinearLayout {
                 && !proChordSustainBootByView.isEmpty()) {
             int agg = proChordSustainAggregateBootMaskOr0();
             if (agg != 0) {
-                KeyboardHidTransport.sendKeyReport(
-                        port,
-                        bluetoothService,
-                        isServiceBound,
-                        mergeHoldLockedBootMask(agg),
-                        0);
+                if (transport != null && transport.isConnected()) {
+                    transport.sendKey(mergeHoldLockedBootMask(agg), 0);
+                }
             } else if (proChordActiveExtKey != 0) {
-                KeyboardHidTransport.sendKeyReport(
-                        port,
-                        bluetoothService,
-                        isServiceBound,
-                        mergeHoldLockedBootMask(0),
-                        proChordActiveExtKey);
+                if (transport != null && transport.isConnected()) {
+                    transport.sendKey(mergeHoldLockedBootMask(0), proChordActiveExtKey);
+                }
             }
             proChordHostHoldSent = true;
         }
@@ -1197,19 +1191,16 @@ public class CustomKeyboardView extends LinearLayout {
         if (!proChordSustainBootByView.isEmpty()) {
             int agg = proChordSustainAggregateBootMaskOr0();
             if (agg != 0) {
-                KeyboardHidTransport.sendKeyReport(
-                        port,
-                        bluetoothService,
-                        isServiceBound,
-                        mergeHoldLockedBootMask(agg),
-                        0);
-            } else if (holdLockController != null) {
+                if (transport != null && transport.isConnected()) {
+                    transport.sendKey(mergeHoldLockedBootMask(agg), 0);
+                }
+            } else if (holdLockController != null && transport instanceof HidKeyboardTransport) {
                 holdLockController.reassertKeyboardModifiersIfNeeded(
                         port, bluetoothService, isServiceBound);
             }
             proChordHostHoldSent = true;
         } else {
-            if (holdLockController != null) {
+            if (holdLockController != null && transport instanceof HidKeyboardTransport) {
                 holdLockController.reassertKeyboardModifiersIfNeeded(
                         port, bluetoothService, isServiceBound);
             }
@@ -4726,10 +4717,30 @@ public class CustomKeyboardView extends LinearLayout {
         return keys;
     }
 
+    /**
+     * Optional override for the secondary layout toggle key label.
+     * When non-null, this label is used instead of the preference-derived label.
+     * This allows the terminal to set its own label independently of KM Pro preferences.
+     */
+    @Nullable private String secondaryToggleLabelOverride;
+
+    /**
+     * Set an explicit label for the IME/BI (or Split/Full) toggle key.
+     * Pass null to revert to preference-derived labels.
+     */
+    public void setSecondaryToggleLabelOverride(@Nullable String label) {
+        this.secondaryToggleLabelOverride = label;
+    }
+
     private Key buildKmProSecondaryLayoutToggleKey() {
         Context ctx = getContext();
         if (ctx == null) {
             return new Key("BI", "", KEY_IME_TOGGLE, "F00A", 1f, 0, 0f, false, false, -1, true);
+        }
+        // Use override label if set (allows terminal to control its own label)
+        if (secondaryToggleLabelOverride != null) {
+            return new Key(secondaryToggleLabelOverride, "", KEY_IME_TOGGLE, "F00A",
+                    1f, 0, 0f, false, false, -1, true);
         }
         if (isLandscape(ctx)) {
             boolean split = KmProSubmodePrefs.isLandscapeSplit(ctx);
@@ -5825,7 +5836,8 @@ public class CustomKeyboardView extends LinearLayout {
                             committedLock = activeHoldLockPopup.commitIfLockSelected();
                         }
                         dismissProHoldLockPopup();
-                        if (committedLock && holdLockController != null && ma != null) {
+                        if (committedLock && holdLockController != null && ma != null
+                                && transport instanceof HidKeyboardTransport) {
                             setModifierLockedStateForKey(key, false);
                             holdLockController.lockModifier(
                                     holdLockPendingModMask,
@@ -5846,6 +5858,7 @@ public class CustomKeyboardView extends LinearLayout {
                                 int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
                                 if (holdLockController != null
                                         && ma != null
+                                        && transport instanceof HidKeyboardTransport
                                         && holdLockController.isModifierLocked(boot)) {
                                     holdLockController.unlockModifier(
                                             boot,
@@ -5863,6 +5876,7 @@ public class CustomKeyboardView extends LinearLayout {
                             if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
                                 int boot = bootModifierMaskForBuiltInExtendedKey(key.code);
                                 if (holdLockController != null
+                                        && transport instanceof HidKeyboardTransport
                                         && holdLockController.isModifierLocked(boot)) {
                                     holdLockController.unlockModifier(
                                             boot,
@@ -5985,7 +5999,8 @@ public class CustomKeyboardView extends LinearLayout {
                         activeHoldLockPopup.updatePointer(event.getRawX(), event.getRawY());
                         boolean committedLock = activeHoldLockPopup.commitIfLockSelected();
                         dismissProHoldLockPopup();
-                        if (committedLock && holdLockController != null && ma != null) {
+                        if (committedLock && holdLockController != null && ma != null
+                                && transport instanceof HidKeyboardTransport) {
                             setModifierLockedStateForKey(key, false);
                             holdLockController.lockModifier(
                                     holdLockPendingModMask,
@@ -6007,6 +6022,7 @@ public class CustomKeyboardView extends LinearLayout {
                         } else if (BasicKeyFeedback.isPointerInsideView(v, event)) {
                             if (holdLockController != null
                                     && ma != null
+                                    && transport instanceof HidKeyboardTransport
                                     && holdLockController.isModifierLocked(boot)) {
                                 holdLockController.unlockModifier(
                                         boot,
@@ -6019,7 +6035,9 @@ public class CustomKeyboardView extends LinearLayout {
                         }
                     } else {
                         if (BasicKeyFeedback.isPointerInsideView(v, event) && ma != null) {
-                            if (holdLockController != null && holdLockController.isModifierLocked(boot)) {
+                            if (holdLockController != null
+                                    && transport instanceof HidKeyboardTransport
+                                    && holdLockController.isModifierLocked(boot)) {
                                 holdLockController.unlockModifier(
                                         boot,
                                         port,
@@ -7835,7 +7853,61 @@ public class CustomKeyboardView extends LinearLayout {
         if (port == null) {
             clearProChordAndHoldLockPopupUiState();
         }
+        updateTransport();
         Log.v(TAG, "Port set in CustomKeyboardView: " + (port != null ? "Valid" : "Null"));
+    }
+
+    /** Rebuild transport from current port / BT state. Called when hardware state changes. */
+    private void updateTransport() {
+        // If a custom transport was set (e.g., TerminalKeyboardTransport for terminal mode),
+        // don't override it with the default HID transport.
+        if (useCustomTransport) {
+            return;
+        }
+        this.transport = new HidKeyboardTransport(
+                getContext(), port, bluetoothService, isServiceBound);
+    }
+
+    /**
+     * Set a custom transport (e.g. TerminalKeyboardTransport for terminal mode).
+     * Overrides the auto-created HidKeyboardTransport.
+     */
+    public void setTransport(KeyboardTransport t) {
+        this.transport = t;
+        this.useCustomTransport = true;
+    }
+
+    /**
+     * Clear the custom transport and revert to the default HID transport.
+     * Called when exiting terminal mode to restore normal keyboard behavior.
+     * After this call, updateTransport() will rebuild HidKeyboardTransport
+     * from current port / BT state on next hardware state change.
+     */
+    public void clearCustomTransport() {
+        this.useCustomTransport = false;
+        this.transport = null;
+        // Rebuild the default HID transport from current hardware state
+        updateTransport();
+    }
+
+    /**
+     * Toggle Ctrl lock state programmatically.
+     * Updates internal state, refreshes key visuals, and syncs to split partner.
+     * Used by TerminalFragment's bottom bar Ctrl button.
+     */
+    public void toggleCtrlLock() {
+        isCtrlLeftLocked = !isCtrlLeftLocked;
+        syncModifierStates();
+        updateKeyboard();
+        refreshVisibleTopPanelButtonStates();
+    }
+
+    /**
+     * Query current Ctrl lock state.
+     * Used by TerminalFragment to sync the bottom bar Ctrl button visual.
+     */
+    public boolean isCtrlLocked() {
+        return isCtrlLeftLocked;
     }
 
     public static String makeChecksum(String data) {
@@ -7852,7 +7924,9 @@ public class CustomKeyboardView extends LinearLayout {
                         + isServiceBound
                         + " btConn="
                         + (bluetoothService != null && bluetoothService.isConnected()));
-        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
+        if (transport != null && transport.isConnected()) {
+            transport.sendAllKeysReleased();
+        }
         Log.v(TAG, "Sent keyboard release (all keys)");
         post(this::reassertKeyboardAfterHidRelease);
     }
@@ -8184,7 +8258,9 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void sendKeyboardAllKeysReleasedSync() {
-        KeyboardHidTransport.sendAllKeysReleased(port, bluetoothService, isServiceBound);
+        if (transport != null && transport.isConnected()) {
+            transport.sendAllKeysReleased();
+        }
     }
 
     private boolean isBackspaceKey(Key key) {
@@ -8251,7 +8327,9 @@ public class CustomKeyboardView extends LinearLayout {
                         + isServiceBound
                         + " btConn="
                         + (bluetoothService != null && bluetoothService.isConnected()));
-        KeyboardHidTransport.sendKeyReport(port, bluetoothService, isServiceBound, m, keyCode);
+        if (transport != null && transport.isConnected()) {
+            transport.sendKey(m, keyCode);
+        }
     }
 
     /**
