@@ -289,6 +289,13 @@ public class AnsiEscapeParserTest {
         int scrollLines;
         int resetCount;
         int unknownCount;
+        int scrollRegionTop = -2, scrollRegionBottom = -2;
+        int saveCursorCount, restoreCursorCount;
+        int deviceStatusReportCount, deviceAttributesRequestCount;
+        int fg256 = -1, bg256 = -1;
+        int fgTrueColor = -1, bgTrueColor = -1;
+        List<Integer> decModesSet = new ArrayList<>();
+        List<Integer> decModesReset = new ArrayList<>();
 
         @Override public void onCharacter(char ch) { chars.append(ch); }
         @Override public void onNewline() { newlineCount++; }
@@ -318,9 +325,9 @@ public class AnsiEscapeParserTest {
         @Override public void onDecModeReset(int mode) { /* stub */ }
         @Override public void onDeviceStatusReport(int code) { /* stub */ }
         @Override public void onDeviceAttributesRequest() { /* stub */ }
+        @Override public void onSetScrollRegion(int top, int bottom) { /* stub */ }
         @Override public void onSaveCursor() { /* stub */ }
         @Override public void onRestoreCursor() { /* stub */ }
-        @Override public void onSetScrollRegion(int top, int bottom) { /* stub */ }
         @Override public void onUnknownSequence(String s) { unknownCount++; }
     }
 }
