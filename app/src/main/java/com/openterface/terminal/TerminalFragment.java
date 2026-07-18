@@ -1381,6 +1381,7 @@ public class TerminalFragment extends Fragment {
 
     /**
      * Connect via BLE-Eth transport. Uses the app's BluetoothService.
+     * Runs cleanup and connection on background thread to avoid blocking UI.
      */
     private void connectBleEth(CredentialProfile profile) {
         final String host = profile.getHost();
@@ -1406,61 +1407,62 @@ public class TerminalFragment extends Fragment {
             return;
         }
 
-        // Clean up any previous BLE-Eth connection
-        if (bleEthCallback != null) {
-            bluetoothService.removeBleEthCallback(bleEthCallback);
-            bleEthCallback = null;
-        }
-        if (bleEthTransport != null) {
-            bleEthTransport.disconnect();
-            bleEthTransport = null;
-        }
-        if (bleEthSocketFactory != null) {
-            bleEthSocketFactory = null;
-        }
-
-        // Send DISCONNECT for all possible connection slots (0-5) to clean up
-        // any stale firmware state. The firmware's TCP tunnel slot may be stuck
-        // from a previous stalled session, causing new CONNECT to fail.
-        for (int cid = 0; cid <= 5; cid++) {
-            byte[] cleanupFrame = buildDisconnectFrame(cid);
-            Log.v(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
-            bluetoothService.writeBleEthData(cleanupFrame);
-            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
-        }
-        // Wait for firmware to process DISCONNECT frames.
-        // Firmware typically completes within 500ms; 3000ms provides safe margin
-        // for BLE latency and edge cases without excessive user wait time.
-        Log.v(TAG, "connectBleEth: waiting 3000ms for firmware cleanup");
-        try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
-        Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
-
-        bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
-        Log.v(TAG, "connectBleEth: BleEthTransport created");
-
-        // Register for incoming BLE-Eth data
-        bleEthCallback = data -> {
-            Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
-            BleEthTransport transport = bleEthTransport;
-            if (transport != null && !viewDestroyed) {
-                transport.handleIncomingData(data);
-            }
-        };
-        Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
-        bluetoothService.addBleEthCallback(bleEthCallback);
-        Log.v(TAG, "connectBleEth: callback registered, starting connect thread");
-
-        // Create SocketFactory that bridges JSch to BleEthTransport.
-        // Pass the real target host/port so connectTunnel() sends the correct CONNECT frame.
-        bleEthSocketFactory = new BleEthSocketFactory(bleEthTransport, host, port);
-        Log.v(TAG, "connectBleEth: SocketFactory created, starting connect thread");
-
-        // Start SSH session on background thread (SocketFactory handles BLE-Eth connect)
+        // Run cleanup and connection on background thread to avoid ANR
         new Thread(() -> {
+            // Clean up any previous BLE-Eth connection
+            if (bleEthCallback != null) {
+                bluetoothService.removeBleEthCallback(bleEthCallback);
+                bleEthCallback = null;
+            }
+            if (bleEthTransport != null) {
+                bleEthTransport.disconnect();
+                bleEthTransport = null;
+            }
+            if (bleEthSocketFactory != null) {
+                bleEthSocketFactory = null;
+            }
+
+            // Send DISCONNECT for all possible connection slots (0-5) to clean up
+            // any stale firmware state. The firmware's TCP tunnel slot may be stuck
+            // from a previous stalled session, causing new CONNECT to fail.
+            for (int cid = 0; cid <= 5; cid++) {
+                byte[] cleanupFrame = buildDisconnectFrame(cid);
+                Log.v(TAG, "connectBleEth: sending cleanup DISCONNECT for connId=" + cid);
+                bluetoothService.writeBleEthData(cleanupFrame);
+                try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            }
+            // Wait for firmware to process DISCONNECT frames.
+            // Firmware typically completes within 500ms; 3000ms provides safe margin
+            // for BLE latency and edge cases without excessive user wait time.
+            Log.v(TAG, "connectBleEth: waiting 3000ms for firmware cleanup");
+            try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
+            Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
+
+            bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
+            Log.v(TAG, "connectBleEth: BleEthTransport created");
+
+            // Register for incoming BLE-Eth data
+            bleEthCallback = data -> {
+                Log.v(TAG, "BLE-Eth callback: received " + data.length + " bytes");
+                BleEthTransport transport = bleEthTransport;
+                if (transport != null && !viewDestroyed) {
+                    transport.handleIncomingData(data);
+                }
+            };
+            Log.v(TAG, "connectBleEth: registering BLE-Eth callback with BluetoothService");
+            bluetoothService.addBleEthCallback(bleEthCallback);
+            Log.v(TAG, "connectBleEth: callback registered, starting connect thread");
+
+            // Create SocketFactory that bridges JSch to BleEthTransport.
+            // Pass the real target host/port so connectTunnel() sends the correct CONNECT frame.
+            bleEthSocketFactory = new BleEthSocketFactory(bleEthTransport, host, port);
+            Log.v(TAG, "connectBleEth: SocketFactory created, starting SSH session");
+
+            // Start SSH session (SocketFactory handles BLE-Eth connect)
             Log.v(TAG, "BLE-Eth SSH connect thread started");
             runSshSessionWithSocketFactory(profile, bleEthTransport, bleEthSocketFactory);
             Log.v(TAG, "BLE-Eth SSH connect thread finished");
-        }).start();
+        }, "BLE-Eth-Connect").start();
     }
 
     /**

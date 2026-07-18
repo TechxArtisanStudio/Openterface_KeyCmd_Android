@@ -528,6 +528,8 @@ by TechxArtisan</string>
     <string name="bluetooth_settings_title">Bluetooth Settings</string>
     <string name="scan_for_devices">Scan for Devices</string>
     <string name="bluetooth_on_off">Bluetooth On/Off</string>
+    <string name="bt_turn_on_bluetooth">Turn on Bluetooth</string>
+    <string name="bt_warning_bluetooth_off">Bluetooth is off. Turn it on to scan and connect to devices.</string>
     <string name="bluetooth_card_tap_hint">Tap to manage</string>
     <string name="bluetooth_status_connected_with_hint">%1$s\n%2$s</string>
     <string name="bt_paired_actions_hint">Tap a paired device to connect or disconnect. Long-press to forget.</string>

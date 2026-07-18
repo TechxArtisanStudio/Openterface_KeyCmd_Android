@@ -2,9 +2,11 @@ package com.openterface.keymod;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -20,7 +22,6 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
-import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -52,7 +53,8 @@ public class BluetoothDialogFragment extends DialogFragment {
     private static final int SCAN_DURATION_MS = 12000;
 
     private BluetoothAdapter bluetoothAdapter;
-    private Switch bluetoothSwitch;
+    private Button turnOnBtButton;
+    private TextView btWarningText;
     private ListView devicesListView;
     private Button scanButton;
     private ListDeviceAdapter devicesAdapter;
@@ -71,12 +73,33 @@ public class BluetoothDialogFragment extends DialogFragment {
 
     private final ArrayList<RxBleDevice> scannedDevices = new ArrayList<>();
     private Runnable scanEndRunnable;
+    private boolean btReceiverRegistered;
 
     public interface BluetoothConnectionListener {
         void onBluetoothConnectionChanged(boolean isConnected);
     }
 
     private BluetoothConnectionListener connectionListener;
+
+    private final BroadcastReceiver btStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                Log.v(TAG, LOG_PREFIX + "BT state changed to: " + state);
+                if (state == BluetoothAdapter.STATE_OFF) {
+                    stopScan();
+                    scannedDevices.clear();
+                    rssiByMac.clear();
+                    if (connectionListener != null) {
+                        connectionListener.onBluetoothConnectionChanged(false);
+                    }
+                }
+                updateBluetoothState();
+                rebuildDeviceList();
+            }
+        }
+    };
 
     private final BluetoothService.ConnectionStateListener bleStateListener =
             new BluetoothService.ConnectionStateListener() {
@@ -399,6 +422,9 @@ public class BluetoothDialogFragment extends DialogFragment {
         if (!isServiceBound) {
             bindService();
         }
+        IntentFilter btFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        requireContext().registerReceiver(btStateReceiver, btFilter);
+        btReceiverRegistered = true;
         rebuildDeviceList();
         return view;
     }
@@ -432,21 +458,17 @@ public class BluetoothDialogFragment extends DialogFragment {
     }
 
     private void initializeUIComponents(View view) {
-        bluetoothSwitch = view.findViewById(R.id.bluetooth_switch);
+        turnOnBtButton = view.findViewById(R.id.turn_on_bt_button);
+        btWarningText = view.findViewById(R.id.bt_warning_text);
         devicesListView = view.findViewById(R.id.devices_list);
         scanButton = view.findViewById(R.id.scan_button);
 
         devicesAdapter = new ListDeviceAdapter(requireContext(), rows);
         devicesListView.setAdapter(devicesAdapter);
 
-        bluetoothSwitch.setOnCheckedChangeListener(
-                (buttonView, isChecked) -> {
-                    if (isChecked) {
-                        enableBluetooth();
-                    } else {
-                        disableBluetooth();
-                    }
-                });
+        turnOnBtButton.setOnClickListener(v -> {
+            enableBluetooth();
+        });
 
         devicesListView.setOnItemClickListener(
                 (parent, v, position, id) -> {
@@ -577,7 +599,7 @@ public class BluetoothDialogFragment extends DialogFragment {
         if (bluetoothAdapter == null) {
             Log.v(TAG, LOG_PREFIX + "Bluetooth not supported on this device");
             showToast(getString(R.string.bt_toast_bt_not_supported));
-            bluetoothSwitch.setEnabled(false);
+            updateBluetoothState();
             return;
         }
 
@@ -597,8 +619,7 @@ public class BluetoothDialogFragment extends DialogFragment {
         }
 
         if (hasRequiredPermissions) {
-            bluetoothSwitch.setEnabled(true);
-            bluetoothSwitch.setChecked(bluetoothAdapter.isEnabled());
+            updateBluetoothState();
         } else {
             checkPermissions();
         }
@@ -648,7 +669,6 @@ public class BluetoothDialogFragment extends DialogFragment {
 
         if (!hasPermission) {
             checkPermissions();
-            bluetoothSwitch.setChecked(false);
             return;
         }
         if (!bluetoothAdapter.isEnabled()) {
@@ -667,24 +687,16 @@ public class BluetoothDialogFragment extends DialogFragment {
         }
     }
 
-    private void disableBluetooth() {
+    private void updateBluetoothState() {
         if (bluetoothAdapter == null) {
+            turnOnBtButton.setEnabled(false);
+            btWarningText.setVisibility(View.GONE);
             return;
         }
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED) {
-            showToast(getString(R.string.bt_toast_bt_permissions_required));
-            return;
-        }
-        if (bluetoothAdapter.isEnabled()) {
-            bluetoothAdapter.disable();
-            stopScan();
-            rebuildDeviceList();
-            showToast(getString(R.string.bt_toast_bt_disabled));
-            if (connectionListener != null) {
-                connectionListener.onBluetoothConnectionChanged(false);
-            }
-        }
+        boolean enabled = bluetoothAdapter.isEnabled();
+        turnOnBtButton.setVisibility(enabled ? View.GONE : View.VISIBLE);
+        btWarningText.setVisibility(enabled ? View.GONE : View.VISIBLE);
+        scanButton.setEnabled(enabled);
     }
 
     private void startBleScan() {
@@ -872,7 +884,7 @@ public class BluetoothDialogFragment extends DialogFragment {
                 connectMostRecentPairedIfIdle();
             } else {
                 showToast(getString(R.string.bt_toast_permissions_denied));
-                bluetoothSwitch.setEnabled(false);
+                updateBluetoothState();
             }
         }
     }
@@ -899,11 +911,15 @@ public class BluetoothDialogFragment extends DialogFragment {
         if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
             if (resultCode == requireActivity().RESULT_OK) {
                 showToast(getString(R.string.bt_toast_bt_enabled));
+                updateBluetoothState();
                 if (isServiceBound) {
                     connectMostRecentPairedIfIdle();
+                    if (!isScanning) {
+                        startBleScan();
+                    }
                 }
             } else {
-                bluetoothSwitch.setChecked(false);
+                updateBluetoothState();
                 showToast(getString(R.string.bt_toast_bt_not_enabled));
             }
         }
@@ -913,6 +929,10 @@ public class BluetoothDialogFragment extends DialogFragment {
     public void onDestroyView() {
         super.onDestroyView();
         stopScan();
+        if (btReceiverRegistered) {
+            requireContext().unregisterReceiver(btStateReceiver);
+            btReceiverRegistered = false;
+        }
         if (bluetoothService != null) {
             bluetoothService.removeConnectionStateListener(bleStateListener);
         }
