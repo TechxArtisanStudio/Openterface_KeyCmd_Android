@@ -77,9 +77,6 @@
     <dimen name="terminal_empty_icon_margin_bottom">18dp</dimen>
     <dimen name="terminal_empty_title_margin_bottom">8dp</dimen>
     <dimen name="terminal_empty_summary_margin_bottom">24dp</dimen>
-    <dimen name="terminal_empty_button_width">248dp</dimen>
-    <dimen name="terminal_empty_button_height">44dp</dimen>
-    <dimen name="terminal_empty_button_gap">8dp</dimen>
 
     <!-- Agent gate: portrait favors comfortable scan depth; landscape overrides tighten vertical rhythm. -->
     <dimen name="agent_gate_padding_h">24dp</dimen>

@@ -37,9 +37,6 @@
     <dimen name="terminal_empty_icon_margin_bottom">12dp</dimen>
     <dimen name="terminal_empty_title_margin_bottom">6dp</dimen>
     <dimen name="terminal_empty_summary_margin_bottom">18dp</dimen>
-    <dimen name="terminal_empty_button_width">224dp</dimen>
-    <dimen name="terminal_empty_button_height">38dp</dimen>
-    <dimen name="terminal_empty_button_gap">8dp</dimen>
 
     <!-- Agent gate: one-row actions fit above the fold in landscape. -->
     <dimen name="agent_gate_padding_h">28dp</dimen>

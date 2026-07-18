@@ -135,42 +135,6 @@
                 android:gravity="center"
                 android:layout_marginBottom="@dimen/terminal_empty_summary_margin_bottom" />
 
-            <LinearLayout
-                android:id="@+id/terminal_empty_button_row"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:showDividers="none"
-                android:visibility="gone">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/terminal_demo_ble_btn"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="@dimen/terminal_empty_button_width"
-                    android:layout_height="@dimen/terminal_empty_button_height"
-                    android:text="@string/terminal_demo_ble"
-                    android:textSize="13sp"
-                    app:icon="@drawable/ic_bluetooth_24"
-                    app:iconGravity="textStart"
-                    app:iconPadding="8dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/terminal_demo_usb_btn"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="@dimen/terminal_empty_button_width"
-                    android:layout_height="@dimen/terminal_empty_button_height"
-                    android:layout_marginTop="@dimen/terminal_empty_button_gap"
-                    android:text="@string/terminal_demo_usb"
-                    android:textSize="13sp"
-                    android:textColor="@color/terminal_status_text"
-                    app:icon="@drawable/ic_usb_24"
-                    app:iconGravity="textStart"
-                    app:iconPadding="8dp"
-                    app:iconTint="@color/terminal_status_text" />
-
-            </LinearLayout>
-
         </LinearLayout>
 
     </FrameLayout>

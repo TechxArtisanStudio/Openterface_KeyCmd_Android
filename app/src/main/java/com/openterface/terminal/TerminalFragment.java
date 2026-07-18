@@ -56,18 +56,9 @@ import com.openterface.keymod.R;
 public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
-    private static final String ARG_DEMO_TRANSPORT = "arg_demo_transport";
-    private static final String DEMO_USB = "usb";
-    private static final String DEMO_BLE = "ble";
 
-    public static TerminalFragment newInstance(@Nullable String demoTransport) {
-        TerminalFragment fragment = new TerminalFragment();
-        if (demoTransport != null) {
-            Bundle args = new Bundle();
-            args.putString(ARG_DEMO_TRANSPORT, demoTransport);
-            fragment.setArguments(args);
-        }
-        return fragment;
+    public static TerminalFragment newInstance() {
+        return new TerminalFragment();
     }
 
     @Nullable private View rootView;
@@ -107,9 +98,6 @@ public class TerminalFragment extends Fragment {
     private MaterialButton transportBtn;
     private TextView hostLabel;
     private LinearLayout connectionOverlay;
-    private Button demoUsbBtn;
-    private Button demoBleBtn;
-    private LinearLayout demoButtonRow;
 
     private MainActivity mainActivity;
     private TerminalPrefs prefs;
@@ -124,11 +112,6 @@ public class TerminalFragment extends Fragment {
     private boolean isSshConnected = false;
     private volatile boolean viewDestroyed = false;
 
-    // Demo state
-    private TerminalDemoController demoController;
-    private boolean isDemoActive = false;
-    @Nullable
-    private TerminalDemoController.DemoTransport activeDemoTransport;
     @Nullable
     private String activeSessionHost;
 
@@ -160,7 +143,6 @@ public class TerminalFragment extends Fragment {
         initTerminal();
         setupListeners();
         updateConnectionState();
-        maybeStartPendingDemo();
 
         // Restore keyboard visibility state after process death
         if (savedInstanceState != null) {
@@ -230,30 +212,6 @@ public class TerminalFragment extends Fragment {
         }
     }
 
-    private void maybeStartPendingDemo() {
-        Bundle args = getArguments();
-        if (args == null) {
-            return;
-        }
-        String transport = args.getString(ARG_DEMO_TRANSPORT);
-        if (transport == null) {
-            return;
-        }
-        args.remove(ARG_DEMO_TRANSPORT);
-        mainHandler.postDelayed(() -> {
-            if (!isAdded()) {
-                return;
-            }
-            if (DEMO_BLE.equalsIgnoreCase(transport)) {
-                showConnectionDialog(TerminalDemoController.DemoTransport.BLE);
-            } else if (DEMO_USB.equalsIgnoreCase(transport)) {
-                showConnectionDialog(TerminalDemoController.DemoTransport.USB);
-            } else {
-                showConnectionDialog(TerminalDemoController.DemoTransport.BLE);
-            }
-        }, 350);
-    }
-
     private void initViews(View view) {
         rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
@@ -262,13 +220,6 @@ public class TerminalFragment extends Fragment {
         transportBtn = view.findViewById(R.id.terminal_transport_btn);
         hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
-        demoButtonRow = view.findViewById(R.id.terminal_empty_button_row);
-        demoUsbBtn = view.findViewById(R.id.terminal_demo_usb_btn);
-        demoBleBtn = view.findViewById(R.id.terminal_demo_ble_btn);
-        demoController = new TerminalDemoController();
-        if (demoButtonRow != null) {
-            applyEmptyStateButtonLayout();
-        }
 
         boolean isLandscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
@@ -298,29 +249,6 @@ public class TerminalFragment extends Fragment {
             terminalSplitTopLeft = null;
             terminalSplitTopRight = null;
         }
-    }
-
-    private void applyEmptyStateButtonLayout() {
-        if (demoButtonRow == null || demoBleBtn == null || demoUsbBtn == null) {
-            return;
-        }
-        boolean isLandscape =
-                getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        int width = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_width);
-        int height = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_height);
-        int gap = getResources().getDimensionPixelSize(R.dimen.terminal_empty_button_gap);
-        demoButtonRow.setOrientation(isLandscape ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
-
-        LinearLayout.LayoutParams bleParams = new LinearLayout.LayoutParams(width, height);
-        demoBleBtn.setLayoutParams(bleParams);
-
-        LinearLayout.LayoutParams usbParams = new LinearLayout.LayoutParams(width, height);
-        if (isLandscape) {
-            usbParams.setMarginStart(gap);
-        } else {
-            usbParams.topMargin = gap;
-        }
-        demoUsbBtn.setLayoutParams(usbParams);
     }
 
     private void initTerminal() {
@@ -888,27 +816,13 @@ public class TerminalFragment extends Fragment {
 
     private void setupListeners() {
         connectBtn.setOnClickListener(v -> {
-            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected
-                    + " isDemoActive=" + isDemoActive);
+            Log.v(TAG, "TerminalFragment connectBtn clicked, isSshConnected=" + isSshConnected);
             if (isSessionActive()) {
-                if (isDemoActive) {
-                    stopDemo();
-                } else {
-                    disconnect();
-                }
+                disconnect();
             } else {
-                showConnectChoiceDialog();
+                showConnectionDialog();
             }
         });
-
-        if (demoUsbBtn != null) {
-            demoUsbBtn.setOnClickListener(v ->
-                    showConnectionDialog(TerminalDemoController.DemoTransport.USB));
-        }
-        if (demoBleBtn != null) {
-            demoBleBtn.setOnClickListener(v ->
-                    showConnectionDialog(TerminalDemoController.DemoTransport.BLE));
-        }
 
         terminalView.setOnClickListener(v -> {
             boolean isLandscape = getResources().getConfiguration().orientation
@@ -936,15 +850,8 @@ public class TerminalFragment extends Fragment {
     private void updateConnectionState() {
         // Update transport button visibility and icon
         if (transportBtn != null) {
-            if (isSshConnected || isDemoActive) {
+            if (isSshConnected) {
                 transportBtn.setVisibility(View.VISIBLE);
-                if (isDemoActive && activeDemoTransport == TerminalDemoController.DemoTransport.USB) {
-                    transportBtn.setText(R.string.terminal_transport_usb);
-                    transportBtn.setIconResource(R.drawable.ic_usb_24);
-                } else {
-                    transportBtn.setText(R.string.terminal_transport_ble);
-                    transportBtn.setIconResource(R.drawable.ic_bluetooth_24);
-                }
             } else {
                 transportBtn.setVisibility(View.GONE);
             }
@@ -952,7 +859,7 @@ public class TerminalFragment extends Fragment {
 
         // Update status text
         if (statusText != null) {
-            if (isSshConnected || isDemoActive) {
+            if (isSshConnected) {
                 statusText.setText(R.string.terminal_connected);
             } else {
                 statusText.setText(R.string.terminal_disconnected);
@@ -963,17 +870,13 @@ public class TerminalFragment extends Fragment {
         if (hostLabel != null) {
             if (isSessionActive()) {
                 hostLabel.setVisibility(View.VISIBLE);
-                String hostText = activeSessionHost != null
-                        ? activeSessionHost
-                        : TerminalDemoController.DEMO_HOST;
+                String hostText = activeSessionHost != null ? activeSessionHost : "";
                 hostLabel.setText(hostText);
                 Log.v(TAG, "Host label set to VISIBLE, text=" + hostText
-                        + ", isSshConnected=" + isSshConnected
-                        + ", isDemoActive=" + isDemoActive);
+                        + ", isSshConnected=" + isSshConnected);
             } else {
                 hostLabel.setVisibility(View.GONE);
-                Log.v(TAG, "Host label set to GONE, isSshConnected=" + isSshConnected
-                        + ", isDemoActive=" + isDemoActive);
+                Log.v(TAG, "Host label set to GONE, isSshConnected=" + isSshConnected);
             }
         } else {
             Log.v(TAG, "hostLabel is null, cannot update visibility");
@@ -985,39 +888,21 @@ public class TerminalFragment extends Fragment {
             if (isSessionActive()) {
                 connectBtn.setText(R.string.terminal_disconnect);
                 connectionOverlay.setVisibility(View.GONE);
-                // Hide demo buttons when connected
-                if (demoButtonRow != null) {
-                    demoButtonRow.setVisibility(View.GONE);
-                }
             } else {
                 connectBtn.setText(R.string.terminal_connect);
-                // Show connection overlay with demo buttons when disconnected
+                // Show connection overlay when disconnected
                 if (connectionOverlay != null) {
                     connectionOverlay.setVisibility(View.VISIBLE);
                 }
-                // Show demo buttons row
-                if (demoButtonRow != null) {
-                    demoButtonRow.setVisibility(View.VISIBLE);
-                }
             }
         }
-    }
-
-    /** Offer preview demo or real SSH when disconnected. */
-    private void showConnectChoiceDialog() {
-        showConnectionDialog(null);
     }
 
     /**
      * Show SSH connection dialog with card-style device list and transport selection.
      */
     private void showConnectionDialog() {
-        showConnectionDialog(null);
-    }
-
-    private void showConnectionDialog(@Nullable TerminalDemoController.DemoTransport demoTransport) {
         if (getContext() == null) return;
-        stopDemo();
 
         View dialogView = LayoutInflater.from(getContext())
                 .inflate(R.layout.terminal_connection_dialog, null);
@@ -1096,36 +981,25 @@ public class TerminalFragment extends Fragment {
         }
 
         // Check transport availability and set defaults
-        if (demoTransport != null) {
-            transportGroup.check(demoTransport == TerminalDemoController.DemoTransport.USB
-                    ? R.id.transport_usb : R.id.transport_ble);
-            usbRadio.setEnabled(demoTransport == TerminalDemoController.DemoTransport.USB);
-            bleRadio.setEnabled(demoTransport == TerminalDemoController.DemoTransport.BLE);
-        } else {
-            boolean usbAvailable = isUsbEcmAvailable();
-            boolean bleAvailable = isBleAvailable();
+        boolean usbAvailable = isUsbEcmAvailable();
+        boolean bleAvailable = isBleAvailable();
 
-            if (usbAvailable && !bleAvailable) {
-                transportGroup.check(R.id.transport_usb);
-                bleRadio.setEnabled(false);
-            } else if (bleAvailable && !usbAvailable) {
-                transportGroup.check(R.id.transport_ble);
-                usbRadio.setEnabled(false);
-            } else if (bleAvailable) {
-                transportGroup.check(R.id.transport_ble);
-            } else if (!usbAvailable && !bleAvailable) {
-                Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
-                return;
-            }
+        if (usbAvailable && !bleAvailable) {
+            transportGroup.check(R.id.transport_usb);
+            bleRadio.setEnabled(false);
+        } else if (bleAvailable && !usbAvailable) {
+            transportGroup.check(R.id.transport_ble);
+            usbRadio.setEnabled(false);
+        } else if (bleAvailable) {
+            transportGroup.check(R.id.transport_ble);
+        } else if (!usbAvailable && !bleAvailable) {
+            Toast.makeText(getContext(), R.string.terminal_disconnected_hint, Toast.LENGTH_SHORT).show();
+            return;
         }
-
-        int positiveText = demoTransport != null
-                ? R.string.terminal_start_demo
-                : R.string.terminal_connect;
 
         new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
-                .setPositiveButton(positiveText, (dialog, which) -> {
+                .setPositiveButton(R.string.terminal_connect, (dialog, which) -> {
                     if (allProfiles.isEmpty()) {
                         Toast.makeText(getContext(), R.string.terminal_no_devices, Toast.LENGTH_SHORT).show();
                         return;
@@ -1151,16 +1025,8 @@ public class TerminalFragment extends Fragment {
                     // Save selected profile as active
                     credentialManager.setActiveProfileId(profile.getId());
 
-                    if (demoTransport != null) {
-                        statusText.setText(R.string.terminal_connecting);
-                        if (hostLabel != null) {
-                            hostLabel.setText(host);
-                        }
-                        startDemo(demoTransport, host);
-                    } else {
-                        Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
-                        connect(profile, useUsb);
-                    }
+                    Log.v(TAG, "Dialog positive: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+                    connect(profile, useUsb);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -1401,7 +1267,7 @@ public class TerminalFragment extends Fragment {
     }
 
     private boolean isSessionActive() {
-        return isSshConnected || isDemoActive;
+        return isSshConnected;
     }
 
     private void resetTerminalSession() {
@@ -1413,65 +1279,11 @@ public class TerminalFragment extends Fragment {
         terminalView.setTerminalSession(terminalSession);
     }
 
-    private void startDemo(@NonNull TerminalDemoController.DemoTransport transport) {
-        startDemo(transport, TerminalDemoController.DEMO_HOST);
-    }
-
-    private void startDemo(@NonNull TerminalDemoController.DemoTransport transport, @NonNull String host) {
-        if (getContext() == null || terminalSession == null || demoController == null) {
-            return;
-        }
-        disconnect();
-        resetTerminalSession();
-        isDemoActive = true;
-        activeDemoTransport = transport;
-        activeSessionHost = host;
-        updateConnectionState();
-        statusText.setText(R.string.terminal_connecting);
-
-        demoController.start(requireContext(), terminalSession, transport,
-                new TerminalDemoController.Listener() {
-                    @Override
-                    public void onOutputAppended() {
-                        if (terminalView != null) {
-                            terminalView.invalidate();
-                        }
-                    }
-
-                    @Override
-                    public void onFinished() {
-                        if (!isDemoActive) {
-                            return;
-                        }
-                        statusText.setText(R.string.terminal_connected);
-                        if (terminalView != null) {
-                            terminalView.invalidate();
-                        }
-                    }
-                });
-    }
-
-    private void stopDemo() {
-        if (demoController != null) {
-            demoController.stop();
-        }
-        if (!isDemoActive) {
-            return;
-        }
-        isDemoActive = false;
-        activeDemoTransport = null;
-        activeSessionHost = null;
-        teardownTerminalKeyboard();
-        resetTerminalSession();
-        updateConnectionState();
-    }
-
     /**
      * Connect to SSH via the selected transport.
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
         Log.v(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
-        stopDemo();
         activeSessionHost = profile.getHost();
         statusText.setText(R.string.terminal_connecting);
 
@@ -1898,8 +1710,7 @@ public class TerminalFragment extends Fragment {
         // 2. Cancel all Handler callbacks to prevent accessing destroyed Views
         mainHandler.removeCallbacksAndMessages(null);
 
-        // 3. Stop demo and disconnect SSH
-        stopDemo();
+        // 3. Disconnect SSH
         disconnect();
 
         // 4. Clean up keyboard transport
@@ -1922,9 +1733,6 @@ public class TerminalFragment extends Fragment {
         hostLabel = null;
         transportBtn = null;
         connectionOverlay = null;
-        demoButtonRow = null;
-        demoUsbBtn = null;
-        demoBleBtn = null;
         mainActivity = null;
 
         super.onDestroyView();

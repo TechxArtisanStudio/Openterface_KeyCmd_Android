@@ -103,7 +103,6 @@ import android.app.PendingIntent;
 
 public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
 
-    public static final String EXTRA_TERMINAL_DEMO = "terminal_demo";
     public static final String EXTRA_AGENT_DEMO_SCRIPT = "agent_demo_script";
     public static final String EXTRA_AGENT_DEMO_AUTO_PLAY = "agent_demo_auto_play";
     public static final String EXTRA_AGENT_DEMO_AUTO_APPROVE = "agent_demo_auto_approve";
@@ -167,8 +166,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private String currentNavMode = LaunchPanelActivity.MODE_KEYBOARD_MOUSE;
     @Nullable
     private String pendingKbMouseSubmode;
-    @Nullable
-    private String pendingTerminalDemoTransport;
     private String pendingAgentDemoScript;
     private boolean pendingAgentAutoPlay;
     private boolean pendingAgentAutoApprove;
@@ -475,7 +472,6 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         pendingKbMouseSubmode =
                 KeyboardMouseFragment.normalizeKmBasicSubmode(
                         getIntent().getStringExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE));
-        pendingTerminalDemoTransport = launchIntent.getStringExtra(EXTRA_TERMINAL_DEMO);
         pendingAgentDemoScript = launchIntent.getStringExtra(EXTRA_AGENT_DEMO_SCRIPT);
         pendingAgentAutoPlay = launchIntent.getBooleanExtra(EXTRA_AGENT_DEMO_AUTO_PLAY, false);
         pendingAgentAutoApprove = launchIntent.getBooleanExtra(EXTRA_AGENT_DEMO_AUTO_APPROVE, false);
@@ -2055,11 +2051,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private void showTerminalFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(
-                R.id.fragment_container,
-                TerminalFragment.newInstance(pendingTerminalDemoTransport));
+        transaction.replace(R.id.fragment_container, TerminalFragment.newInstance());
         transaction.commit();
-        pendingTerminalDemoTransport = null;
     }
 
     private void showAgentFragment() {

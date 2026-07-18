@@ -93,8 +93,7 @@ public class LaunchPanelActivity extends AppCompatActivity {
         if (launchIntent.getBooleanExtra(AUTO_LAUNCH, false)) {
             String mode = launchIntent.getStringExtra("launch_mode");
             if (mode != null) {
-                String terminalDemo = launchIntent.getStringExtra(MainActivity.EXTRA_TERMINAL_DEMO);
-                launchModeInternal(mode, null, terminalDemo);
+                launchModeInternal(mode, null);
                 return;
             }
         }
@@ -278,29 +277,21 @@ String primary = primaryLaunchModeFor(selectedMode);
         }
 
         String kbSub = kbMouseInitialSubmodeFor(selectedMode);
-        launchModeInternal(primary, kbSub, null);
+        launchModeInternal(primary, kbSub);
     }
 
     private void launchModeInternal(
             @NonNull String primaryLaunchMode,
-            @Nullable String kbMouseSubmode,
-            @Nullable String terminalDemoTransport) {
+            @Nullable String kbMouseSubmode) {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("launch_mode", primaryLaunchMode);
         if (kbMouseSubmode != null && MODE_KEYBOARD_MOUSE.equals(primaryLaunchMode)) {
             intent.putExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE, kbMouseSubmode);
         }
-        if (terminalDemoTransport != null) {
-            intent.putExtra(MainActivity.EXTRA_TERMINAL_DEMO, terminalDemoTransport);
-        }
 
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
-    }
-
-    private void launchModeInternal(@NonNull String primaryLaunchMode, @Nullable String kbMouseSubmode) {
-        launchModeInternal(primaryLaunchMode, kbMouseSubmode, null);
     }
 
     @NonNull
