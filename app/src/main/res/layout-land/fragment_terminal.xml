@@ -183,43 +183,6 @@
                     android:gravity="center"
                     android:layout_marginBottom="12dp" />
 
-                <LinearLayout
-                    android:id="@+id/terminal_empty_button_row"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:showDividers="middle"
-                    android:divider="@android:color/transparent"
-                    android:visibility="gone">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/terminal_demo_ble_btn"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:text="@string/terminal_demo_ble"
-                        android:textSize="12sp"
-                        app:icon="@drawable/ic_bluetooth_24"
-                        app:iconGravity="textStart"
-                        app:iconPadding="6dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/terminal_demo_usb_btn"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginStart="8dp"
-                        android:text="@string/terminal_demo_usb"
-                        android:textSize="12sp"
-                        android:textColor="@color/terminal_status_text"
-                        app:icon="@drawable/ic_usb_24"
-                        app:iconGravity="textStart"
-                        app:iconPadding="6dp"
-                        app:iconTint="@color/terminal_status_text" />
-
-                </LinearLayout>
-
             </LinearLayout>
 
         </FrameLayout>
