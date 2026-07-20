@@ -19,6 +19,7 @@ import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -72,6 +73,20 @@ public class TerminalFragment extends Fragment {
     @Nullable private TerminalKeyboardTransport terminalKeyboardTransport;
     private boolean customKeyboardVisible = false;
 
+    // Submode management (Keyboard/Compose)
+    private enum TerminalSubmode { KEYBOARD, COMPOSE }
+    private TerminalSubmode currentSubmode = TerminalSubmode.KEYBOARD;
+    @Nullable private ImageButton terminalTabKeyboard;
+    @Nullable private ImageButton terminalTabCompose;
+    @Nullable private LinearLayout terminalComposeContainer;
+    @Nullable private EditText terminalComposeEditor;
+    @Nullable private MaterialButton terminalComposeClearBtn;
+    @Nullable private MaterialButton terminalComposeLibraryBtn;
+    @Nullable private MaterialButton terminalComposeSaveBtn;
+    @Nullable private MaterialButton terminalComposeSendBtn;
+    @Nullable private FrameLayout terminalComposeShortcutStripWrap;
+    @Nullable private CustomKeyboardView terminalComposeShortcutStrip;
+
     // Terminal IME surface: hidden EditText that pops the system IME above the custom keyboard.
     // Text diffs are forwarded to TerminalSession (same pattern as KM Pro's imeHost).
     @Nullable private EditText terminalImeHost;
@@ -95,7 +110,6 @@ public class TerminalFragment extends Fragment {
 
     private Button connectBtn;
     private TextView statusText;
-    private MaterialButton transportBtn;
     private TextView hostLabel;
     private LinearLayout connectionOverlay;
 
@@ -144,7 +158,7 @@ public class TerminalFragment extends Fragment {
         setupListeners();
         updateConnectionState();
 
-        // Restore keyboard visibility state after process death
+        // Restore keyboard visibility state and submode after process death
         if (savedInstanceState != null) {
             boolean wasKeyboardVisible = savedInstanceState.getBoolean("custom_keyboard_visible", false);
             if (wasKeyboardVisible) {
@@ -152,6 +166,23 @@ public class TerminalFragment extends Fragment {
                 // Note: Do NOT set customKeyboardVisible here — showCustomKeyboard()
                 // checks it as an early-return guard and will skip showing the keyboard.
                 rootView.post(this::showCustomKeyboard);
+            }
+
+            // Restore submode
+            String submodeName = savedInstanceState.getString("terminal_submode");
+            if (submodeName != null) {
+                try {
+                    TerminalSubmode savedSubmode = TerminalSubmode.valueOf(submodeName);
+                    if (savedSubmode != currentSubmode) {
+                        rootView.post(() -> switchSubmode(savedSubmode));
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            // Restore compose editor content
+            String composeText = savedInstanceState.getString("terminal_compose_text");
+            if (composeText != null && terminalComposeEditor != null) {
+                terminalComposeEditor.setText(composeText);
             }
         }
 
@@ -217,9 +248,50 @@ public class TerminalFragment extends Fragment {
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
         statusText = view.findViewById(R.id.terminal_status);
-        transportBtn = view.findViewById(R.id.terminal_transport_btn);
         hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
+
+        // Initialize submode UI
+        terminalTabKeyboard = view.findViewById(R.id.terminal_tab_keyboard);
+        terminalTabCompose = view.findViewById(R.id.terminal_tab_compose);
+        terminalComposeContainer = view.findViewById(R.id.terminal_compose_container);
+        terminalComposeEditor = view.findViewById(R.id.terminal_compose_editor);
+        terminalComposeClearBtn = view.findViewById(R.id.terminal_compose_clear);
+        terminalComposeLibraryBtn = view.findViewById(R.id.terminal_compose_library);
+        terminalComposeSaveBtn = view.findViewById(R.id.terminal_compose_save);
+        terminalComposeSendBtn = view.findViewById(R.id.terminal_compose_send);
+        terminalComposeShortcutStripWrap = view.findViewById(R.id.terminal_compose_shortcut_strip_wrap);
+        terminalComposeShortcutStrip = view.findViewById(R.id.terminal_compose_shortcut_strip);
+
+        // Set initial submode state (keyboard selected)
+        if (terminalTabKeyboard != null) {
+            terminalTabKeyboard.setSelected(true);
+        }
+        if (terminalTabCompose != null) {
+            terminalTabCompose.setSelected(false);
+        }
+
+        // Set up submode tab click listeners
+        if (terminalTabKeyboard != null) {
+            terminalTabKeyboard.setOnClickListener(v -> switchSubmode(TerminalSubmode.KEYBOARD));
+        }
+        if (terminalTabCompose != null) {
+            terminalTabCompose.setOnClickListener(v -> switchSubmode(TerminalSubmode.COMPOSE));
+        }
+
+        // Set up compose button listeners
+        if (terminalComposeSendBtn != null) {
+            terminalComposeSendBtn.setOnClickListener(v -> sendComposeToTerminal());
+        }
+        if (terminalComposeClearBtn != null) {
+            terminalComposeClearBtn.setOnClickListener(v -> clearComposeEditor());
+        }
+        if (terminalComposeLibraryBtn != null) {
+            terminalComposeLibraryBtn.setOnClickListener(v -> showComposeLibraryComingSoon());
+        }
+        if (terminalComposeSaveBtn != null) {
+            terminalComposeSaveBtn.setOnClickListener(v -> showComposeLibraryComingSoon());
+        }
 
         boolean isLandscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
@@ -825,6 +897,9 @@ public class TerminalFragment extends Fragment {
         });
 
         terminalView.setOnClickListener(v -> {
+            // In compose mode, don't toggle keyboard - the compose editor handles input
+            if (currentSubmode == TerminalSubmode.COMPOSE) return;
+
             boolean isLandscape = getResources().getConfiguration().orientation
                     == Configuration.ORIENTATION_LANDSCAPE;
             if (isLandscape) {
@@ -848,15 +923,6 @@ public class TerminalFragment extends Fragment {
     }
 
     private void updateConnectionState() {
-        // Update transport button visibility and icon
-        if (transportBtn != null) {
-            if (isSshConnected) {
-                transportBtn.setVisibility(View.VISIBLE);
-            } else {
-                transportBtn.setVisibility(View.GONE);
-            }
-        }
-
         // Update status text
         if (statusText != null) {
             if (isSshConnected) {
@@ -1481,11 +1547,14 @@ public class TerminalFragment extends Fragment {
                         terminalView.resetScrollX();
                     }
                     updateConnectionState();
-                    mainHandler.postDelayed(() -> {
-                        if (!viewDestroyed && rootView != null && isSshConnected) {
-                            showCustomKeyboard();
-                        }
-                    }, 150);
+                    // Only show custom keyboard if in keyboard submode
+                    if (currentSubmode == TerminalSubmode.KEYBOARD) {
+                        mainHandler.postDelayed(() -> {
+                            if (!viewDestroyed && rootView != null && isSshConnected) {
+                                showCustomKeyboard();
+                            }
+                        }, 150);
+                    }
                 });
                 // Start the shell channel (runs on background thread)
                 SshClient client = sshClient;
@@ -1702,6 +1771,13 @@ public class TerminalFragment extends Fragment {
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean("custom_keyboard_visible", customKeyboardVisible);
+        outState.putString("terminal_submode", currentSubmode.name());
+        if (terminalComposeEditor != null) {
+            String composeText = terminalComposeEditor.getText().toString();
+            if (!composeText.isEmpty()) {
+                outState.putString("terminal_compose_text", composeText);
+            }
+        }
     }
 
     @Override
@@ -1733,10 +1809,84 @@ public class TerminalFragment extends Fragment {
         connectBtn = null;
         statusText = null;
         hostLabel = null;
-        transportBtn = null;
         connectionOverlay = null;
         mainActivity = null;
+        terminalTabCompose = null;
+        terminalComposeContainer = null;
+        terminalComposeEditor = null;
+        terminalComposeClearBtn = null;
+        terminalComposeLibraryBtn = null;
+        terminalComposeSaveBtn = null;
+        terminalComposeSendBtn = null;
+        terminalComposeShortcutStripWrap = null;
+        terminalComposeShortcutStrip = null;
 
         super.onDestroyView();
+    }
+
+    // ── Submode switching (Keyboard/Compose) ──────────────────────────────────
+
+    private void switchSubmode(TerminalSubmode next) {
+        if (currentSubmode == next) return;
+        currentSubmode = next;
+
+        if (terminalTabKeyboard != null) terminalTabKeyboard.setSelected(next == TerminalSubmode.KEYBOARD);
+        if (terminalTabCompose != null) terminalTabCompose.setSelected(next == TerminalSubmode.COMPOSE);
+
+        if (next == TerminalSubmode.KEYBOARD) {
+            if (terminalComposeContainer != null) terminalComposeContainer.setVisibility(View.GONE);
+            if (terminalComposeShortcutStripWrap != null) terminalComposeShortcutStripWrap.setVisibility(View.GONE);
+            hideTerminalComposeIme();
+            if (customKeyboardVisible && terminalKeyboardSlot != null) {
+                terminalKeyboardSlot.setVisibility(View.VISIBLE);
+            }
+        } else {
+            if (terminalKeyboardSlot != null) terminalKeyboardSlot.setVisibility(View.GONE);
+            hideCustomKeyboard();
+            if (terminalComposeContainer != null) terminalComposeContainer.setVisibility(View.VISIBLE);
+            if (terminalComposeShortcutStripWrap != null) {
+                terminalComposeShortcutStripWrap.setVisibility(View.VISIBLE);
+                // Set shortcuts strip only mode for smaller key height (same as KM Pro compose)
+                if (terminalComposeShortcutStrip != null) {
+                    terminalComposeShortcutStrip.setShortcutsStripOnly(true);
+                    terminalComposeShortcutStrip.reloadForCurrentOrientation();
+                }
+            }
+            showTerminalComposeIme();
+        }
+    }
+
+    private void showTerminalComposeIme() {
+        if (terminalComposeEditor == null || !isAdded()) return;
+        terminalComposeEditor.requestFocus();
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) terminalComposeEditor.post(() -> imm.showSoftInput(terminalComposeEditor, InputMethodManager.SHOW_IMPLICIT));
+    }
+
+    private void hideTerminalComposeIme() {
+        if (terminalComposeEditor == null) return;
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(terminalComposeEditor.getWindowToken(), 0);
+        terminalComposeEditor.clearFocus();
+    }
+
+    private void sendComposeToTerminal() {
+        if (terminalSession == null || terminalComposeEditor == null) return;
+        String text = terminalComposeEditor.getText().toString();
+        if (text.isEmpty()) {
+            if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        terminalSession.onKeyInput(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        terminalComposeEditor.setText("");
+        if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_sent, Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearComposeEditor() {
+        if (terminalComposeEditor != null) terminalComposeEditor.setText("");
+    }
+
+    private void showComposeLibraryComingSoon() {
+        if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_library_coming_soon, Toast.LENGTH_SHORT).show();
     }
 }

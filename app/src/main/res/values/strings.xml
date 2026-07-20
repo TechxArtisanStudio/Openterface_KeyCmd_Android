@@ -1573,6 +1573,17 @@ by TechxArtisan</string>
     <string name="terminal_error_no_route">Cannot reach remote host. Please check network</string>
     <string name="terminal_error_generic">An error occurred while connecting</string>
 
+    <!-- Terminal Compose mode -->
+    <string name="terminal_submode_keyboard">Keyboard</string>
+    <string name="terminal_submode_compose">Compose</string>
+    <string name="terminal_compose_hint">Type commands here, then send to terminal…</string>
+    <string name="terminal_compose_send">Send</string>
+    <string name="terminal_compose_sent">Sent to terminal</string>
+    <string name="terminal_compose_empty">Nothing to send</string>
+    <string name="terminal_compose_clear_cd">Clear editor</string>
+    <string name="terminal_compose_library_cd">Open saved texts</string>
+    <string name="terminal_compose_library_coming_soon">Saved texts library coming soon</string>
+
     <!-- Remote-added strings -->
     <string name="top_mode_label_terminal_summary">SSH over USB or Bluetooth</string>
     <string name="top_mode_label_agent">Agent</string>

@@ -1444,6 +1444,17 @@
     <string name="terminal_error_no_route">无法到达远程主机，请检查网络</string>
     <string name="terminal_error_generic">连接时发生错误</string>
 
+    <!-- Terminal Compose mode -->
+    <string name="terminal_submode_keyboard">键盘</string>
+    <string name="terminal_submode_compose">编辑</string>
+    <string name="terminal_compose_hint">在此输入命令，然后发送到终端…</string>
+    <string name="terminal_compose_send">发送</string>
+    <string name="terminal_compose_sent">已发送到终端</string>
+    <string name="terminal_compose_empty">没有可发送的内容</string>
+    <string name="terminal_compose_clear_cd">清空编辑器</string>
+    <string name="terminal_compose_library_cd">打开收藏库</string>
+    <string name="terminal_compose_library_coming_soon">收藏库功能即将推出</string>
+
     <!-- SSH Key Generation -->
     <string name="credential_generate_key">生成密钥</string>
     <string name="credential_generate">生成</string>
