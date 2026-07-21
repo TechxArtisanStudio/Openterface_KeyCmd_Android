@@ -256,6 +256,7 @@
                         android:layout_marginBottom="8dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/ai_api_key_input_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         app:endIconMode="password_toggle"
@@ -265,7 +266,6 @@
                             android:id="@+id/ai_api_key_edittext"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="@string/settings_ai_api_key_hint"
                             android:inputType="textPassword"
                             android:maxLines="1"
                             android:textSize="14sp" />

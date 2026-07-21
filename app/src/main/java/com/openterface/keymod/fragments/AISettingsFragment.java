@@ -21,6 +21,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
 import com.openterface.keymod.agent.settings.AIKeyManager;
 import com.openterface.keymod.util.SensitivePageShield;
@@ -270,6 +271,7 @@ public class AISettingsFragment extends Fragment {
     private Spinner  providerSpinner;
     private EditText endpointEditText;
     private EditText apiKeyEditText;
+    private TextInputLayout apiKeyInputLayout;
     private Spinner  modelSpinner;
     private Button   testConnectionButton;
 
@@ -313,6 +315,7 @@ public class AISettingsFragment extends Fragment {
         providerSpinner       = view.findViewById(R.id.ai_provider_spinner);
         endpointEditText      = view.findViewById(R.id.ai_endpoint_edittext);
         apiKeyEditText        = view.findViewById(R.id.ai_api_key_edittext);
+        apiKeyInputLayout     = view.findViewById(R.id.ai_api_key_input_layout);
         modelSpinner          = view.findViewById(R.id.ai_model_spinner);
         testConnectionButton  = view.findViewById(R.id.ai_test_button);
 
@@ -422,7 +425,7 @@ public class AISettingsFragment extends Fragment {
             }
         }
         apiKeyEditText.setText(apiKey != null ? apiKey : "");
-        apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
+        apiKeyInputLayout.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
                 providerDisplayName(providerIndex)));
     }
 
