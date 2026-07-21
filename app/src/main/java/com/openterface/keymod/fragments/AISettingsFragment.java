@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
 import com.openterface.keymod.R;
+import com.openterface.keymod.agent.settings.AIKeyManager;
 import com.openterface.keymod.util.SensitivePageShield;
 
 /**
@@ -276,6 +277,9 @@ public class AISettingsFragment extends Fragment {
     private boolean isLoadingSettings = false;
     private SensitivePageShield shield;
 
+    // ── Agent Settings Managers ───────────────────────────────────────────────
+    private AIKeyManager keyManager;
+
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
     @Nullable
@@ -284,6 +288,10 @@ public class AISettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings_ai, container, false);
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+
+        // Initialize Agent Settings Managers
+        keyManager = AIKeyManager.getInstance(requireContext());
+
         initializeViews(view);
         loadSettings();
         setupListeners();
@@ -379,10 +387,7 @@ public class AISettingsFragment extends Fragment {
         }
 
         // API key — per-provider only, no cross-provider fallback
-        String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIndex, "");
-        apiKeyEditText.setText(apiKey);
-        apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
-                providerDisplayName(providerIndex)));
+        loadApiKeyWithMigration(providerIndex);
 
         // Model — migrate from old Integer storage
         String savedModel;
@@ -395,6 +400,30 @@ public class AISettingsFragment extends Fragment {
         restoreModelSelection(providerIndex, savedModel);
 
         isLoadingSettings = false;
+    }
+
+    // ── API Key helpers ───────────────────────────────────────────────────
+
+    /**
+     * Load API key for a provider, migrating from SharedPreferences if needed.
+     * Also updates the EditText with the loaded key and provider-specific hint.
+     *
+     * @param providerIndex the provider index
+     */
+    private void loadApiKeyWithMigration(int providerIndex) {
+        String providerId = String.valueOf(providerIndex);
+        String apiKey = keyManager.getKey(providerId);
+        if (apiKey == null) {
+            // Migrate from SharedPreferences if not found in encrypted storage
+            apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIndex, "");
+            if (!apiKey.isEmpty()) {
+                keyManager.saveKey(providerId, apiKey);
+                Log.i("AISettings", "Migrated API key for provider " + providerIndex + " to encrypted storage");
+            }
+        }
+        apiKeyEditText.setText(apiKey != null ? apiKey : "");
+        apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
+                providerDisplayName(providerIndex)));
     }
 
     // ── Role helpers ──────────────────────────────────────────────────────
@@ -551,11 +580,9 @@ public class AISettingsFragment extends Fragment {
                     prefs.edit().putString(PREF_AI_ENDPOINT, PROVIDER_ENDPOINTS[pos]).apply();
                 }
                 prefs.edit().putString(PREF_AI_MODEL, PROVIDER_MODELS[pos][0]).apply();
-                // Load the saved API key for this specific provider
+                // Load the saved API key for this specific provider from encrypted storage
                 isLoadingSettings = true;
-                apiKeyEditText.setText(prefs.getString(PREF_AI_API_KEY + "_" + pos, ""));
-                apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
-                        providerDisplayName(pos)));
+                loadApiKeyWithMigration(pos);
                 isLoadingSettings = false;
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
@@ -576,10 +603,13 @@ public class AISettingsFragment extends Fragment {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Save to SharedPreferences for backward compatibility
                 int currentProvider = providerSpinner.getSelectedItemPosition();
                 prefs.edit()
                     .putString(PREF_AI_API_KEY + "_" + currentProvider, s.toString())
                     .apply();
+                // Save to encrypted AIKeyManager
+                keyManager.saveKey(String.valueOf(currentProvider), s.toString());
                 Log.v("AISettings", "Saved API key for provider " + currentProvider
                         + " (length=" + s.length() + ")");
             }
@@ -629,14 +659,16 @@ public class AISettingsFragment extends Fragment {
             shield = new SensitivePageShield(requireActivity());
             shield.registerSensitiveView(apiKeyEditText);
         }
-        shield.enable();
+        // Disable shield when fragment is visible to allow EditText input
+        shield.disable();
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        // Enable shield when leaving to hide API key from screenshots/recent apps
         if (shield != null) {
-            shield.disable();
+            shield.enable();
         }
     }
 
