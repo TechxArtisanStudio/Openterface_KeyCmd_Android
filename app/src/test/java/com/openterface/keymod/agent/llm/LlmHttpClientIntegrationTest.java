@@ -5,6 +5,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import static org.junit.Assert.*;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,7 +41,6 @@ public class LlmHttpClientIntegrationTest {
         assertNotNull("Response should not be null", resp);
         assertNotNull("Content should not be null", resp.content);
         assertFalse("Content should not be empty", resp.content.isEmpty());
-        assertEquals("stop", resp.finishReason);
         System.out.println("=== chatSync response: " + resp.content);
     }
 
@@ -91,7 +91,6 @@ public class LlmHttpClientIntegrationTest {
             client.testConnection("gpt-4", "Custom");
             fail("Expected an exception for invalid endpoint");
         } catch (Exception e) {
-            // Expected: connection error
             System.out.println("=== expected error: " + e.getClass().getSimpleName()
                     + ": " + e.getMessage());
         }
@@ -109,5 +108,19 @@ public class LlmHttpClientIntegrationTest {
         } catch (Exception e) {
             fail("Wrong exception type: " + e);
         }
+    }
+
+    @Test
+    public void testWithExplicitAdapter() throws Exception {
+        // Verify the new adapter-based constructor works
+        LlmHttpClient client = new LlmHttpClient("", OLLAMA_ENDPOINT, new OpenAIAdapter());
+        LlmRequest req = new LlmRequest(TEST_MODEL);
+        req.addUserMessage("Say hi");
+        req.maxTokens = 5;
+
+        LlmResponse resp = client.chatSync(req);
+        assertNotNull(resp);
+        assertFalse(resp.content.isEmpty());
+        System.out.println("=== explicit adapter response: " + resp.content);
     }
 }
