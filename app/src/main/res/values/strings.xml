@@ -195,6 +195,8 @@
     <string name="settings_ai_toast_enter_api_key">Please enter API key</string>
     <string name="settings_ai_toast_testing">Testing AI connection…</string>
     <string name="settings_ai_toast_success">AI connection successful!</string>
+    <string name="settings_ai_toast_connection_failed">Connection failed</string>
+    <string name="settings_ai_toast_unsupported_provider">This provider is not yet supported</string>
     <string-array name="settings_ai_role_names">
         <item>Text refinement</item>
         <item>Command assistant</item>

@@ -2,6 +2,8 @@ package com.openterface.keymod.fragments;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,8 +25,12 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
+import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.settings.AIKeyManager;
 import com.openterface.keymod.util.SensitivePageShield;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * AI Settings Fragment — mirrors iOS AISettingsView.swift.
@@ -39,6 +45,7 @@ import com.openterface.keymod.util.SensitivePageShield;
 public class AISettingsFragment extends Fragment {
 
     // ── Preference keys ───────────────────────────────────────────────────
+    private static final String TAG = "AISettingsFragment";
     private static final String PREF_AI_ENABLED       = "ai_enabled";
     private static final String PREF_AI_ROLE          = "ai_role";
     private static final String PREF_AI_SYSTEM_PROMPT = "ai_system_prompt";
@@ -254,7 +261,9 @@ public class AISettingsFragment extends Fragment {
                     "mixtral-8x7b-32768", "gemma2-9b-it"},
             {"qwen-max", "qwen-plus", "qwen-turbo", "qwen2.5-72b-instruct"},
             {"deepseek-chat", "deepseek-reasoner"},
-            {"custom-model"}
+            {"qwen2.5:7b", "qwen2.5:14b", "qwen2.5:32b",
+                    "llama3.3", "llama3.2", "llama3.1",
+                    "mistral", "gemma2", "phi4", "custom-model"}
     };
     private static final int PROVIDER_CUSTOM_INDEX = PROVIDER_ENDPOINTS.length - 1;
 
@@ -281,6 +290,10 @@ public class AISettingsFragment extends Fragment {
 
     // ── Agent Settings Managers ───────────────────────────────────────────────
     private AIKeyManager keyManager;
+
+    // ── Threading for connection test ─────────────────────────────────────────
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -641,14 +654,63 @@ public class AISettingsFragment extends Fragment {
                 Toast.makeText(getContext(), R.string.settings_ai_toast_enter_endpoint, Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (TextUtils.isEmpty(apiKey)) {
+
+            // Get current provider and model selections
+            int providerIndex = providerSpinner.getSelectedItemPosition();
+            String providerName = providerDisplayName(providerIndex);
+
+            // API key is optional for Custom provider (local services like Ollama don't need it)
+            boolean isCustomProvider = (providerIndex == PROVIDER_CUSTOM_INDEX);
+            if (!isCustomProvider && TextUtils.isEmpty(apiKey)) {
                 Toast.makeText(getContext(), R.string.settings_ai_toast_enter_api_key, Toast.LENGTH_SHORT).show();
                 return;
             }
-            Toast.makeText(getContext(), R.string.settings_ai_toast_testing, Toast.LENGTH_SHORT).show();
-            testConnectionButton.postDelayed(() ->
-                    Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show(),
-                    1500);
+
+            String[] models = PROVIDER_MODELS[providerIndex];
+            int modelPos = modelSpinner.getSelectedItemPosition();
+            String model = (modelPos >= 0 && modelPos < models.length)
+                    ? models[modelPos] : "gpt-4o-mini";
+
+            // UI: disable button, show testing toast
+            testConnectionButton.setEnabled(false);
+            testConnectionButton.setText(R.string.settings_ai_toast_testing);
+            Toast.makeText(getContext(), R.string.settings_ai_toast_testing,
+                    Toast.LENGTH_SHORT).show();
+
+            // Execute on background thread
+            executor.execute(() -> {
+                try {
+                    LlmHttpClient client = new LlmHttpClient(apiKey, endpoint);
+                    client.testConnection(model, providerName);
+
+                    mainHandler.post(() -> {
+                        if (!isAdded()) return;
+                        testConnectionButton.setEnabled(true);
+                        testConnectionButton.setText(R.string.settings_ai_test_connection);
+                        Toast.makeText(getContext(), R.string.settings_ai_toast_success,
+                                Toast.LENGTH_SHORT).show();
+                    });
+                } catch (LlmHttpClient.UnsupportedProviderException e) {
+                    mainHandler.post(() -> {
+                        if (!isAdded()) return;
+                        testConnectionButton.setEnabled(true);
+                        testConnectionButton.setText(R.string.settings_ai_test_connection);
+                        Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+                    });
+                } catch (Exception e) {
+                    Log.e(TAG, "Connection test failed", e);
+                    mainHandler.post(() -> {
+                        if (!isAdded()) return;
+                        testConnectionButton.setEnabled(true);
+                        testConnectionButton.setText(R.string.settings_ai_test_connection);
+                        String msg = getString(R.string.settings_ai_toast_connection_failed)
+                                + ": " + e.getMessage();
+                        // Truncate for toast (200 char limit)
+                        if (msg.length() > 200) msg = msg.substring(0, 200) + "…";
+                        Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
         });
     }
 
@@ -677,6 +739,7 @@ public class AISettingsFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        executor.shutdownNow();
         super.onDestroyView();
         if (shield != null) {
             shield.release();
