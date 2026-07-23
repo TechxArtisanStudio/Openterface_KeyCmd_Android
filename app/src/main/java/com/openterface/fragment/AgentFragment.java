@@ -38,9 +38,12 @@ import com.openterface.keymod.agent.AgentPlanStep;
 import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
+import com.openterface.keymod.agent.llm.LlmHttpClient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** Agent mode marketing MVP — curated demo scripts with Plan/Act UI. */
 public class AgentFragment extends Fragment {
@@ -78,6 +81,9 @@ public class AgentFragment extends Fragment {
     @Nullable private AgentController agentController;
     private boolean realEngineEnabled = false;
     private final List<AgentMessage> chatMessages = new ArrayList<>();
+    @Nullable private ExecutorService verifyExecutor;
+    private volatile boolean verifyRunning = false;
+    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     @NonNull
     public static AgentFragment newInstance(
@@ -115,11 +121,114 @@ public class AgentFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         bindViews(view);
         setupMessagesList();
-        setupInput();
         applySessionBarLayout();
         setupGate(view);
         setupDemoPicker();
         applyLaunchArgs();
+        refreshEngineState();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Re-check API config when returning from settings
+        refreshEngineState();
+    }
+
+    /**
+     * Re-evaluate engine state and gate visibility.
+     * Called on resume to pick up settings changes.
+     */
+    private void refreshEngineState() {
+        if (inputField == null) return; // views not bound yet
+        if (verifyRunning) return;      // verification already in progress
+
+        if (!isApiKeyConfigured()) {
+            disableEngine();
+            return;
+        }
+
+        // API field is non-empty — verify it actually works
+        verifyRunning = true;
+        if (verifyExecutor == null) {
+            verifyExecutor = Executors.newSingleThreadExecutor();
+        }
+        inputField.setHint(R.string.agent_state_thinking);
+        inputField.setEnabled(false);
+        sendButton.setEnabled(false);
+
+        verifyExecutor.submit(() -> {
+            boolean valid = testApiConnection();
+            verifyRunning = false;
+
+            if (!isAdded()) return;
+            mainHandler.post(() -> {
+                if (valid) {
+                    enableEngine();
+                } else {
+                    disableEngine();
+                    Toast.makeText(requireContext(),
+                            "API connection failed. Please check your settings.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    /** Test API connection using LlmHttpClient.testConnection() */
+    private boolean testApiConnection() {
+        try {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+            String endpoint = prefs.getString(PREF_AI_ENDPOINT, "https://api.openai.com/v1");
+            String model = prefs.getString(PREF_AI_MODEL, "gpt-4o-mini");
+            int providerIdx = prefs.getInt(PREF_AI_PROVIDER, 0);
+            String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIdx, "");
+
+            String providerName = getProviderNameFromIndex(providerIdx);
+            LlmHttpClient client = new LlmHttpClient(apiKey, endpoint);
+            client.testConnection(model, providerName);
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "API verification failed", e);
+            return false;
+        }
+    }
+
+    @NonNull
+    private String getProviderNameFromIndex(int index) {
+        String[] names = getResources().getStringArray(R.array.settings_ai_provider_names);
+        if (index >= 0 && index < names.length) return names[index];
+        return "OpenAI";
+    }
+
+    private void enableEngine() {
+        if (!realEngineEnabled) {
+            realEngineEnabled = true;
+            agentController = new AgentController(requireContext());
+            setupAgentController();
+        }
+        inputField.setEnabled(true);
+        sendButton.setEnabled(true);
+        inputField.setHint(R.string.agent_input_hint_real);
+        sendButton.setOnClickListener(v -> submitToAgent());
+        showGate(false);
+    }
+
+    private void disableEngine() {
+        if (realEngineEnabled) {
+            if (agentController != null) {
+                agentController.shutdown();
+                agentController = null;
+            }
+            realEngineEnabled = false;
+            chatMessages.clear();
+        }
+        inputField.setEnabled(false);
+        sendButton.setEnabled(false);
+        inputField.setHint(R.string.agent_input_hint);
+        sendButton.setOnClickListener(v ->
+                Toast.makeText(requireContext(), R.string.agent_input_demo_only, Toast.LENGTH_SHORT).show());
+        showGate(true);
     }
 
     private void bindViews(@NonNull View view) {
@@ -208,25 +317,6 @@ public class AgentFragment extends Fragment {
         });
     }
 
-    private void setupInput() {
-        // Check if real AI engine is available (API key configured)
-        if (isApiKeyConfigured()) {
-            realEngineEnabled = true;
-            agentController = new AgentController(requireContext());
-            setupAgentController();
-            inputField.setEnabled(true);
-            sendButton.setEnabled(true);
-            inputField.setHint(R.string.agent_input_hint_real);
-            sendButton.setOnClickListener(v -> submitToAgent());
-        } else {
-            // Demo-only mode
-            inputField.setEnabled(false);
-            sendButton.setEnabled(false);
-            sendButton.setOnClickListener(v ->
-                    Toast.makeText(requireContext(), R.string.agent_input_demo_only, Toast.LENGTH_SHORT).show());
-        }
-    }
-
     private void setupGate(@NonNull View view) {
         LinearLayout buttonRow = view.findViewById(R.id.agent_gate_button_row);
         MaterialButton byok = view.findViewById(R.id.agent_gate_byok_button);
@@ -242,7 +332,7 @@ public class AgentFragment extends Fragment {
         github.setOnClickListener(v -> mockConnect(getString(R.string.agent_gate_github_connected_toast)));
         skip.setOnClickListener(v -> mockConnect(null));
 
-        if (isDemoTokenConnected() || shouldSkipGate()) {
+        if (isDemoTokenConnected() || shouldSkipGate() || isApiKeyConfigured()) {
             showConnectedUi();
             maybeStartAutoDemo();
         } else {
@@ -392,13 +482,29 @@ public class AgentFragment extends Fragment {
     // ── Day 3: Real Agent Engine ─────────────────────────────────────────
 
     /**
-     * Check if an API key is configured for the active provider.
-     * Day 3 only checks the first provider key; Day 7+ will check active provider index.
+     * Check if the active provider is configured.
+     * Uses the same provider list as AgentSettingsBottomSheet.
+     * For providers that don't need an API key (Ollama, Local Qwen),
+     * only checks that an endpoint is configured.
      */
     private boolean isApiKeyConfigured() {
         if (!isAdded()) return false;
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+
+        // Use the same provider list as AISettingsFragment
+        String[] providerNames = getResources().getStringArray(R.array.settings_ai_provider_names);
         int providerIdx = prefs.getInt(PREF_AI_PROVIDER, 0);
+
+        if (providerIdx < 0 || providerIdx >= providerNames.length) {
+            return false;
+        }
+
+        // Custom provider (last index) — only endpoint is required
+        if (providerIdx == providerNames.length - 1) {
+            String endpoint = prefs.getString(PREF_AI_ENDPOINT, "");
+            return !TextUtils.isEmpty(endpoint);
+        }
+
         String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIdx, "");
         return !TextUtils.isEmpty(apiKey);
     }
@@ -554,6 +660,9 @@ public class AgentFragment extends Fragment {
         super.onDestroy();
         if (agentController != null) {
             agentController.shutdown();
+        }
+        if (verifyExecutor != null) {
+            verifyExecutor.shutdownNow();
         }
     }
 }

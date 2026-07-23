@@ -194,6 +194,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private ImageButton targetOsHeaderButton;
     private ImageButton credentialHeaderButton;
     @Nullable
+    private ImageButton agentSettingsHeaderButton;
+    @Nullable
     private View headerRightCluster;
     @Nullable
     private View headerEndPullSpacer;
@@ -641,6 +643,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             credentialHeaderButton.setOnClickListener(v -> {
                 Intent intent = new Intent(this, com.openterface.terminal.CredentialActivity.class);
                 startActivity(intent);
+            });
+        }
+        agentSettingsHeaderButton = findViewById(R.id.agent_settings_header_button);
+        if (agentSettingsHeaderButton != null) {
+            agentSettingsHeaderButton.setOnClickListener(v -> {
+                new AgentSettingsBottomSheet().show(getSupportFragmentManager(), "agent_settings");
             });
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
@@ -1845,6 +1853,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         if (credentialHeaderButton != null) {
             boolean showCredential = LaunchPanelActivity.MODE_TERMINAL.equals(currentNavMode);
             credentialHeaderButton.setVisibility(showCredential ? View.VISIBLE : View.GONE);
+        }
+        // Agent settings button is only relevant for Agent mode
+        if (agentSettingsHeaderButton != null) {
+            boolean showAgent = LaunchPanelActivity.MODE_AGENT.equals(currentNavMode);
+            agentSettingsHeaderButton.setVisibility(showAgent ? View.VISIBLE : View.GONE);
         }
     }
 
