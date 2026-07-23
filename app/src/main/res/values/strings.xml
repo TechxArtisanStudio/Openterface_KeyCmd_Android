@@ -1601,6 +1601,28 @@ by TechxArtisan</string>
     <string name="agent_edit_plan_coming_soon">Edit plan is coming soon.</string>
     <string name="agent_input_demo_only">Agent chat is demo-only in this preview build.</string>
     <string name="agent_gate_github_connected_toast">GitHub connected (demo). Limited free tier active.</string>
+
+    <!-- Agent state texts (Day 3) -->
+    <string name="agent_state_idle">Enter your request</string>
+    <string name="agent_state_thinking">Thinking…</string>
+    <string name="agent_state_waiting_approve">Waiting for approval</string>
+    <string name="agent_state_executing">Executing…</string>
+    <string name="agent_state_retrying">Retrying (%1$d/%2$d)…</string>
+    <string name="agent_state_error">An error occurred</string>
+
+    <!-- Agent action buttons (Day 3) -->
+    <string name="agent_action_submit">Submit</string>
+    <string name="agent_action_approve">Approve &amp; Run</string>
+    <string name="agent_action_cancel">Cancel</string>
+    <string name="agent_action_retry">Retry</string>
+
+    <!-- Agent plan texts (Day 3) -->
+    <string name="agent_plan_summary">Plan summary</string>
+    <string name="agent_plan_step_format">Step %1$d: %2$s</string>
+    <string name="agent_plan_empty">No plan</string>
+    <string name="agent_input_hint_real">Describe what you want to do…</string>
+    <string name="agent_executor_not_implemented">Tool executor not yet implemented</string>
+    <string name="agent_settings_header_cd">Agent settings</string>
     <string name="gamepad_key_picker_modifier_keys">Modifier keys</string>
     <string name="gamepad_key_picker_modifier_left">Left</string>
     <string name="gamepad_key_picker_modifier_right">Right</string>

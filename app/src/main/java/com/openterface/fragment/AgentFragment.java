@@ -21,6 +21,9 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.text.TextUtils;
+import android.util.Log;
+
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
@@ -31,11 +34,22 @@ import com.openterface.keymod.agent.AgentDemoScript;
 import com.openterface.keymod.agent.AgentDemoScriptRegistry;
 import com.openterface.keymod.agent.AgentMessage;
 import com.openterface.keymod.agent.AgentMessageAdapter;
+import com.openterface.keymod.agent.AgentPlanStep;
+import com.openterface.keymod.agent.core.AgentController;
+import com.openterface.keymod.agent.core.AgentPlan;
+import com.openterface.keymod.agent.core.AgentState;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Agent mode marketing MVP — curated demo scripts with Plan/Act UI. */
 public class AgentFragment extends Fragment {
+
+    private static final String TAG = "AgentFragment";
+    private static final String PREF_AI_API_KEY = "ai_api_key";
+    private static final String PREF_AI_ENDPOINT = "ai_endpoint";
+    private static final String PREF_AI_MODEL = "ai_model";
+    private static final String PREF_AI_PROVIDER = "ai_provider";
 
     public static final String ARG_DEMO_SCRIPT = "agent_demo_script";
     public static final String ARG_AUTO_PLAY = "agent_demo_auto_play";
@@ -59,6 +73,11 @@ public class AgentFragment extends Fragment {
     private AgentMessageAdapter adapter;
     private AgentDemoPlayer demoPlayer;
     @Nullable private AgentDemoScript pendingAutoScript;
+
+    // Day 3: Real Agent engine
+    @Nullable private AgentController agentController;
+    private boolean realEngineEnabled = false;
+    private final List<AgentMessage> chatMessages = new ArrayList<>();
 
     @NonNull
     public static AgentFragment newInstance(
@@ -135,7 +154,9 @@ public class AgentFragment extends Fragment {
         adapter.setActBarListener(new AgentMessageAdapter.ActBarListener() {
             @Override
             public void onApprove() {
-                if (demoPlayer != null) {
+                if (realEngineEnabled && agentController != null) {
+                    agentController.approveAndRun();
+                } else if (demoPlayer != null) {
                     demoPlayer.approveAndRun();
                 }
             }
@@ -147,7 +168,9 @@ public class AgentFragment extends Fragment {
 
             @Override
             public void onCancel() {
-                if (demoPlayer != null) {
+                if (realEngineEnabled && agentController != null) {
+                    agentController.cancel();
+                } else if (demoPlayer != null) {
                     demoPlayer.reset();
                 }
                 showEmptyState(true);
@@ -186,10 +209,22 @@ public class AgentFragment extends Fragment {
     }
 
     private void setupInput() {
-        inputField.setEnabled(false);
-        sendButton.setEnabled(false);
-        sendButton.setOnClickListener(v ->
-                Toast.makeText(requireContext(), R.string.agent_input_demo_only, Toast.LENGTH_SHORT).show());
+        // Check if real AI engine is available (API key configured)
+        if (isApiKeyConfigured()) {
+            realEngineEnabled = true;
+            agentController = new AgentController(requireContext());
+            setupAgentController();
+            inputField.setEnabled(true);
+            sendButton.setEnabled(true);
+            inputField.setHint(R.string.agent_input_hint_real);
+            sendButton.setOnClickListener(v -> submitToAgent());
+        } else {
+            // Demo-only mode
+            inputField.setEnabled(false);
+            sendButton.setEnabled(false);
+            sendButton.setOnClickListener(v ->
+                    Toast.makeText(requireContext(), R.string.agent_input_demo_only, Toast.LENGTH_SHORT).show());
+        }
     }
 
     private void setupGate(@NonNull View view) {
@@ -352,5 +387,173 @@ public class AgentFragment extends Fragment {
             return AgentDemoPlayer.PauseAt.NONE;
         }
         return AgentDemoPlayer.PauseAt.ACT;
+    }
+
+    // ── Day 3: Real Agent Engine ─────────────────────────────────────────
+
+    /**
+     * Check if an API key is configured for the active provider.
+     * Day 3 only checks the first provider key; Day 7+ will check active provider index.
+     */
+    private boolean isApiKeyConfigured() {
+        if (!isAdded()) return false;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        int providerIdx = prefs.getInt(PREF_AI_PROVIDER, 0);
+        String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIdx, "");
+        return !TextUtils.isEmpty(apiKey);
+    }
+
+    /**
+     * Initialize the AgentController and wire up listener callbacks.
+     */
+    private void setupAgentController() {
+        if (agentController == null) return;
+
+        agentController.setListener(new AgentController.AgentListener() {
+            @Override
+            public void onStateChanged(@NonNull AgentState state) {
+                if (!isAdded()) return;
+                updateUiForState(state);
+            }
+
+            @Override
+            public void onPlanReady(@NonNull AgentPlan plan) {
+                if (!isAdded()) return;
+                showAgentPlan(plan);
+            }
+
+            @Override
+            public void onExecutionProgress(int currentStep, int totalSteps) {
+                // Day 5: update execution UI
+                Log.d(TAG, "Execution progress: " + currentStep + "/" + totalSteps);
+            }
+
+            @Override
+            public void onRetry(int attempt, int maxAttempts) {
+                if (!isAdded()) return;
+                Log.d(TAG, "Retrying step: " + attempt + "/" + maxAttempts);
+            }
+
+            @Override
+            public void onExecutionComplete() {
+                if (!isAdded()) return;
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+                showEmptyState(false);
+            }
+
+            @Override
+            public void onError(@NonNull String message) {
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+            }
+        });
+    }
+
+    /**
+     * Submit user input to the real AgentController.
+     */
+    private void submitToAgent() {
+        if (agentController == null) return;
+        String prompt = inputField.getText().toString().trim();
+        if (prompt.isEmpty()) return;
+
+        // Track user message in local list
+        chatMessages.add(AgentMessage.user(prompt));
+
+        inputField.setText("");
+        inputField.setEnabled(false);
+        sendButton.setEnabled(false);
+        showEmptyState(false);
+
+        adapter.submitList(new ArrayList<>(chatMessages));
+        messagesList.post(() -> {
+            if (adapter.getItemCount() > 0) {
+                messagesList.scrollToPosition(adapter.getItemCount() - 1);
+            }
+        });
+
+        agentController.submit(prompt);
+    }
+
+    /**
+     * Update UI elements based on Agent state.
+     */
+    private void updateUiForState(@NonNull AgentState state) {
+        switch (state) {
+            case IDLE:
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+                inputField.setHint(R.string.agent_input_hint_real);
+                break;
+            case THINKING:
+                inputField.setEnabled(false);
+                sendButton.setEnabled(false);
+                inputField.setHint(R.string.agent_state_thinking);
+                break;
+            case WAITING_APPROVE:
+                inputField.setEnabled(false);
+                sendButton.setEnabled(false);
+                break;
+            case EXECUTING:
+                inputField.setEnabled(false);
+                sendButton.setEnabled(false);
+                break;
+            case RETRYING:
+                // Keep disabled during retry
+                break;
+            case ERROR:
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+                break;
+        }
+    }
+
+    /**
+     * Display a generated plan in the message list.
+     * Converts AgentPlan to AgentPlanStep for display.
+     */
+    private void showAgentPlan(@NonNull AgentPlan plan) {
+        List<AgentPlanStep> displaySteps = new ArrayList<>();
+        for (AgentPlan.Step step : plan.steps) {
+            AgentPlanStep.Kind kind;
+            String subtitle;
+            switch (step.kind) {
+                case "hid":
+                    kind = AgentPlanStep.Kind.HID;
+                    subtitle = step.keys;
+                    break;
+                case "macro":
+                    kind = AgentPlanStep.Kind.MACRO;
+                    subtitle = step.macroId;
+                    break;
+                case "terminal":
+                default:
+                    kind = AgentPlanStep.Kind.TERMINAL;
+                    subtitle = step.command;
+                    break;
+            }
+            displaySteps.add(new AgentPlanStep(step.index, step.title, subtitle, kind));
+        }
+
+        chatMessages.add(AgentMessage.plan(displaySteps));
+        chatMessages.add(AgentMessage.actBar());
+        adapter.submitList(new ArrayList<>(chatMessages));
+
+        messagesList.post(() -> {
+            if (adapter.getItemCount() > 0) {
+                messagesList.scrollToPosition(adapter.getItemCount() - 1);
+            }
+        });
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (agentController != null) {
+            agentController.shutdown();
+        }
     }
 }
