@@ -24,12 +24,13 @@ public interface ProviderAdapter {
     String name();
 
     /**
-     * Build the full API URL from the base endpoint.
+     * Build the full API URL from the base endpoint and model.
      *
      * @param endpoint base URL without trailing slash (e.g. "https://api.openai.com/v1")
+     * @param model    model name (some providers embed model in URL)
      * @return complete URL for chat completions
      */
-    String buildUrl(String endpoint);
+    String buildUrl(String endpoint, String model);
 
     /**
      * Set authentication headers on the connection.
@@ -38,6 +39,19 @@ public interface ProviderAdapter {
      * @param apiKey the API key (may be empty for local providers like Ollama)
      */
     void setAuthHeaders(HttpURLConnection conn, String apiKey);
+
+    /**
+     * Optionally append authentication info to the URL.
+     * Default implementation returns URL unchanged. Google Gemini overrides
+     * this to append {@code ?key=API_KEY} as a query parameter.
+     *
+     * @param url    the base URL from {@link #buildUrl}
+     * @param apiKey the API key
+     * @return the URL with auth appended if needed
+     */
+    default String appendAuthToUrl(String url, String apiKey) {
+        return url;
+    }
 
     /**
      * Build the JSON request body for the given LlmRequest.
@@ -58,6 +72,15 @@ public interface ProviderAdapter {
 
     /** Whether this provider supports SSE streaming */
     boolean supportsStreaming();
+
+    /**
+     * Create a provider-specific SSE parser for streaming responses.
+     * Each provider has a different SSE format; this factory method
+     * returns the appropriate parser.
+     *
+     * @return new SseParser instance for this provider
+     */
+    SseParser createSseParser();
 
     /**
      * Error message shown when this provider is not yet implemented.

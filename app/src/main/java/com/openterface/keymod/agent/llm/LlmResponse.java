@@ -46,6 +46,18 @@ public final class LlmResponse {
         return new LlmResponse("", finishReason, 0, 0, null, null);
     }
 
+    /** Terminal streaming chunk with token usage */
+    public static LlmResponse terminal(String finishReason,
+                                       int promptTokens, int completionTokens) {
+        return new LlmResponse("", finishReason, promptTokens, completionTokens, null, null);
+    }
+
+    /** Terminal streaming chunk with text content and token usage */
+    public static LlmResponse terminal(String content, String finishReason,
+                                       int promptTokens, int completionTokens) {
+        return new LlmResponse(content, finishReason, promptTokens, completionTokens, null, null);
+    }
+
     /** Response containing tool calls (no text content) */
     public static LlmResponse withToolCalls(List<LlmRequest.ToolCall> toolCalls,
                                             String finishReason) {

@@ -8,19 +8,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses Server-Sent Events (SSE) from OpenAI-compatible streaming responses.
+ * Base class for SSE (Server-Sent Events) stream parsers.
  *
- * Protocol:
- *   - Each event starts with "data: " prefix
- *   - "[DONE]" signals end of stream
- *   - Each data payload is JSON with choices[0].delta.content and/or delta.tool_calls
- *   - choices[0].finish_reason present on terminal event
+ * <p><b>Default implementation</b>: This class contains the OpenAI-compatible SSE
+ * parsing logic (data prefix, [DONE] marker, choices[0].delta.content, tool call
+ * fragment accumulation). Subclasses like {@link AnthropicSseParser} and
+ * {@link GeminiSseParser} override {@link #parseLine(String)} for provider-specific
+ * formats.
  *
- * Tool calls are streamed incrementally — multiple SSE events contribute fragments
+ * <p><b>Usage</b>: Call {@link ProviderAdapter#createSseParser()} to get the correct
+ * parser for each provider — do not instantiate {@code SseParser} directly.
+ *
+ * <p>Tool calls are streamed incrementally — multiple SSE events contribute fragments
  * to the same tool call. Use {@link #parseLine(String)} for per-event parsing
  * and {@link #collectToolCalls()} after the stream ends to get the assembled calls.
  */
-public final class SseParser {
+public class SseParser {
 
     private static final String DATA_PREFIX = "data: ";
     private static final String DONE_MARKER = "[DONE]";
@@ -142,6 +145,16 @@ public final class SseParser {
     /** Reset accumulated state (for parser reuse) */
     public void reset() {
         rawToolCalls.clear();
+    }
+
+    /** Accumulated prompt tokens from the stream (0 if not available) */
+    public int getPromptTokens() {
+        return 0;
+    }
+
+    /** Accumulated completion tokens from the stream (0 if not available) */
+    public int getCompletionTokens() {
+        return 0;
     }
 
     /** Thrown when [DONE] marker is received */
