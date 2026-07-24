@@ -9,11 +9,25 @@ import java.util.Map;
  * Usage:
  * <pre>
  *   ProviderAdapter adapter = ProviderAdapterFactory.get("OpenAI");
- *   // or
- *   ProviderAdapter adapter = ProviderAdapterFactory.get("Anthropic"); // returns stub
+ *   ProviderAdapter adapter = ProviderAdapterFactory.get("Anthropic");
+ *   ProviderAdapter adapter = ProviderAdapterFactory.get("Google");
  * </pre>
  */
 public final class ProviderAdapterFactory {
+
+    /**
+     * Canonical provider adapter names (English, locale-independent).
+     * These map to registered adapters and are used for SharedPreferences index → adapter lookup.
+     * <p>
+     * MUST match the order of {@code R.array.settings_ai_provider_names} in strings.xml:
+     * <pre>
+     *   0: OpenAI    1: Anthropic    2: Google    3: Mistral
+     *   4: Groq      5: DashScope   6: DeepSeek   7: Custom
+     * </pre>
+     */
+    public static final String[] ADAPTER_NAMES = {
+            "OpenAI", "Anthropic", "Google", "Mistral", "Groq", "DashScope", "DeepSeek", "Custom"
+    };
 
     private static final Map<String, ProviderAdapter> ADAPTERS = new LinkedHashMap<>();
 
@@ -27,7 +41,7 @@ public final class ProviderAdapterFactory {
         ADAPTERS.put("DeepSeek", openAI);
         ADAPTERS.put("Custom", openAI);
 
-        // Stub adapters — to be fully implemented in Day 4
+        // Provider-specific adapters
         ADAPTERS.put("Anthropic", new AnthropicAdapter());
         ADAPTERS.put("Google", new GoogleAdapter());
     }
@@ -43,8 +57,9 @@ public final class ProviderAdapterFactory {
     public static ProviderAdapter get(String providerName) {
         ProviderAdapter adapter = ADAPTERS.get(providerName);
         if (adapter == null) {
-            // Default to OpenAI-compatible for unknown providers
-            return new OpenAIAdapter();
+            throw new IllegalArgumentException(
+                    "Unknown provider: '" + providerName + "'. "
+                    + "Supported providers: " + ADAPTERS.keySet());
         }
         return adapter;
     }

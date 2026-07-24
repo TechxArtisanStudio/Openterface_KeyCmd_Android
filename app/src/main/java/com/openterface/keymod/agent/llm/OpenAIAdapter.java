@@ -22,7 +22,7 @@ public final class OpenAIAdapter implements ProviderAdapter {
     }
 
     @Override
-    public String buildUrl(String endpoint) {
+    public String buildUrl(String endpoint, String model) {
         return endpoint + "/chat/completions";
     }
 
@@ -89,6 +89,11 @@ public final class OpenAIAdapter implements ProviderAdapter {
     @Override
     public boolean supportsStreaming() {
         return true;
+    }
+
+    @Override
+    public SseParser createSseParser() {
+        return new OpenAISseParser();
     }
 
     @Override

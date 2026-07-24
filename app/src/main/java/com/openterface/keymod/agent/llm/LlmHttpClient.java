@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * HTTP client for LLM API calls.
@@ -29,32 +30,50 @@ import java.net.URL;
 public final class LlmHttpClient {
     private static final String TAG = "LlmHttpClient";
 
-    private static final int CONNECT_TIMEOUT_MS = 15_000;
-    private static final int READ_TIMEOUT_MS    = 30_000;
+    public static final int DEFAULT_CONNECT_TIMEOUT_MS = 15_000;
+    public static final int DEFAULT_READ_TIMEOUT_MS    = 30_000;
 
     private final String apiKey;
     private final String endpoint;
     private final ProviderAdapter adapter;
+    private final int connectTimeoutMs;
+    private final int readTimeoutMs;
 
     /**
      * @param apiKey  API key (may be empty for local/custom providers)
      * @param endpoint base URL without trailing slash, e.g. "https://api.openai.com/v1"
      */
     public LlmHttpClient(String apiKey, String endpoint) {
-        this(apiKey, endpoint, new OpenAIAdapter());
+        this(apiKey, endpoint, null);
     }
 
     /**
      * @param apiKey  API key (may be empty for local/custom providers)
      * @param endpoint base URL without trailing slash
-     * @param adapter  provider-specific adapter
+     * @param adapter  provider-specific adapter (null defaults to OpenAI)
      */
     public LlmHttpClient(String apiKey, String endpoint, ProviderAdapter adapter) {
+        this(apiKey, endpoint, adapter, DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_READ_TIMEOUT_MS);
+    }
+
+    /**
+     * Full constructor with configurable timeouts.
+     *
+     * @param apiKey           API key (may be empty for local/custom providers)
+     * @param endpoint         base URL without trailing slash
+     * @param adapter          provider-specific adapter (null defaults to OpenAI)
+     * @param connectTimeoutMs connection timeout in milliseconds
+     * @param readTimeoutMs    read timeout in milliseconds (use 60_000 for Agent scenarios)
+     */
+    public LlmHttpClient(String apiKey, String endpoint, ProviderAdapter adapter,
+                         int connectTimeoutMs, int readTimeoutMs) {
         this.apiKey = apiKey != null ? apiKey : "";
         this.endpoint = endpoint != null && endpoint.endsWith("/")
                 ? endpoint.substring(0, endpoint.length() - 1)
                 : endpoint;
-        this.adapter = adapter;
+        this.adapter = adapter != null ? adapter : new OpenAIAdapter();
+        this.connectTimeoutMs = connectTimeoutMs;
+        this.readTimeoutMs = readTimeoutMs;
     }
 
     // ── Connection Test ────────────────────────────────────────────────
@@ -88,7 +107,7 @@ public final class LlmHttpClient {
 
     /** Synchronous chat completion with explicit adapter. */
     public LlmResponse chatSync(LlmRequest request, ProviderAdapter adapter) throws Exception {
-        String url = adapter.buildUrl(endpoint);
+        String url = buildAuthUrl(adapter, request.model);
 
         HttpURLConnection conn = openConnection(url, adapter);
         try {
@@ -111,24 +130,31 @@ public final class LlmHttpClient {
 
     /**
      * Streaming chat completion — reads SSE events and invokes callback.
+     * Uses the default adapter.
      *
      * IMPORTANT: This method blocks the calling thread. Run it on ExecutorService.
      * The LlmResult callbacks are invoked on the SAME background thread.
      * Caller must post to main Handler for UI updates.
      */
     public void chatStream(LlmRequest request, LlmResult callback) {
-        chatStream(request, adapter, callback);
+        chatStream(request, adapter, callback, null);
     }
 
-    /** Streaming chat with explicit adapter. */
+    /** Streaming chat with explicit adapter (no cancel flag). */
     public void chatStream(LlmRequest request, ProviderAdapter adapter, LlmResult callback) {
+        chatStream(request, adapter, callback, null);
+    }
+
+    /** Streaming chat with explicit adapter and cancel flag. */
+    public void chatStream(LlmRequest request, ProviderAdapter adapter,
+                           LlmResult callback, AtomicBoolean cancelled) {
         if (!adapter.supportsStreaming()) {
             callback.onError(new UnsupportedOperationException(
                     adapter.name() + " does not support streaming."));
             return;
         }
 
-        String url = adapter.buildUrl(endpoint);
+        String url = buildAuthUrl(adapter, request.model);
 
         HttpURLConnection conn = null;
         try {
@@ -142,8 +168,8 @@ public final class LlmHttpClient {
                 return;
             }
 
-            // Read SSE stream line by line
-            SseParser parser = new SseParser();
+            // Use provider-specific SSE parser
+            SseParser parser = adapter.createSseParser();
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(conn.getInputStream(), "UTF-8"));
             StringBuilder fullContent = new StringBuilder();
@@ -151,6 +177,13 @@ public final class LlmHttpClient {
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // Check cancel flag before processing each line
+                    if (cancelled != null && cancelled.get()) {
+                        Log.d(TAG, "Stream cancelled by user");
+                        conn.disconnect();
+                        return;
+                    }
+
                     LlmResponse chunk = parser.parseLine(line);
                     if (chunk == null) continue;
 
@@ -174,12 +207,20 @@ public final class LlmHttpClient {
             java.util.List<LlmRequest.ToolCall> toolCalls = parser.collectToolCalls();
             String finishReason = toolCalls.isEmpty() ? "stop" : "tool_calls";
 
+            // Use token counts from parser (may be non-zero for Anthropic/Gemini)
             LlmResponse finalResponse = new LlmResponse(
-                    fullContent.toString(), finishReason, 0, 0, null,
+                    fullContent.toString(), finishReason,
+                    parser.getPromptTokens(), parser.getCompletionTokens(),
+                    null,
                     toolCalls.isEmpty() ? null : toolCalls);
             callback.onComplete(finalResponse);
 
         } catch (Exception e) {
+            // If cancelled, don't report as error
+            if (cancelled != null && cancelled.get()) {
+                Log.d(TAG, "Stream cancelled, suppressing error: " + e.getMessage());
+                return;
+            }
             Log.e(TAG, "Streaming chat error", e);
             callback.onError(e);
         } finally {
@@ -188,6 +229,12 @@ public final class LlmHttpClient {
     }
 
     // ── Internal Helpers ───────────────────────────────────────────────
+
+    /** Build URL with auth appended (for providers like Google that use query params) */
+    private String buildAuthUrl(ProviderAdapter adapter, String model) {
+        String url = adapter.buildUrl(endpoint, model);
+        return adapter.appendAuthToUrl(url, apiKey);
+    }
 
     /** Resolve adapter from provider name; falls back to OpenAI for unknown names. */
     private ProviderAdapter resolveAdapter(String providerName) {
@@ -210,8 +257,8 @@ public final class LlmHttpClient {
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
-        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        conn.setReadTimeout(READ_TIMEOUT_MS);
+        conn.setConnectTimeout(connectTimeoutMs);
+        conn.setReadTimeout(readTimeoutMs);
         adapter.setAuthHeaders(conn, apiKey);
         return conn;
     }
