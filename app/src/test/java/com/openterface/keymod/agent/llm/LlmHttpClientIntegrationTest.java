@@ -97,17 +97,12 @@ public class LlmHttpClientIntegrationTest {
     }
 
     @Test
-    public void testUnsupportedProvider() {
-        LlmHttpClient client = new LlmHttpClient("key", OLLAMA_ENDPOINT);
-        try {
-            client.testConnection(TEST_MODEL, "Anthropic");
-            fail("Expected UnsupportedProviderException");
-        } catch (LlmHttpClient.UnsupportedProviderException e) {
-            assertTrue(e.getMessage().contains("Anthropic"));
-            System.out.println("=== expected error: " + e.getMessage());
-        } catch (Exception e) {
-            fail("Wrong exception type: " + e);
-        }
+    public void testAnthropicNowSupported() {
+        // Anthropic adapter is now fully implemented (Day 4)
+        assertTrue("Anthropic should be supported",
+                ProviderAdapterFactory.isSupported("Anthropic"));
+        assertTrue("Google should be supported",
+                ProviderAdapterFactory.isSupported("Google"));
     }
 
     @Test
