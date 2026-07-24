@@ -50,12 +50,16 @@ public final class AgentPlanParser {
                 throw new PlanParseException("Failed to parse plan JSON: null result");
             }
 
-            if (root.summary == null || root.summary.isEmpty()) {
-                throw new PlanParseException("Missing 'summary' field in plan");
-            }
+            // Summary is optional — auto-generate if missing
+            String summary = (root.summary != null && !root.summary.isEmpty())
+                    ? root.summary
+                    : "Plan with " + (root.steps != null ? root.steps.size() : 0) + " steps";
 
             if (root.steps == null || root.steps.isEmpty()) {
-                throw new PlanParseException("Missing or empty 'steps' array in plan");
+                // LLM returned valid JSON but no actionable steps — provide helpful error
+                throw new PlanParseException(
+                        "The AI model did not return a valid execution plan. "
+                        + "Please try again or rephrase your request.");
             }
 
             List<AgentPlan.Step> steps = new ArrayList<>(root.steps.size());
@@ -63,7 +67,7 @@ public final class AgentPlanParser {
                 steps.add(parseStep(root.steps.get(i), i));
             }
 
-            return new AgentPlan(root.summary, steps);
+            return new AgentPlan(summary, steps);
 
         } catch (JsonSyntaxException e) {
             throw new PlanParseException("Failed to parse plan JSON: " + e.getMessage(), e);
@@ -148,18 +152,23 @@ public final class AgentPlanParser {
 
     // ── Gson DTOs ────────────────────────────────────────────────────────
 
-    /** Root plan JSON structure */
+    /** Root plan JSON structure — supports multiple LLM output formats */
     private static final class PlanJson {
         @SerializedName("summary") String summary;
-        @SerializedName("steps") List<StepJson> steps;
+        // "steps" is standard; "plan" and "actions" are common LLM alternatives
+        @SerializedName(value = "steps", alternate = {"plan", "actions"})
+        List<StepJson> steps;
     }
 
-    /** Single step JSON structure */
+    /** Single step JSON structure — supports multiple field naming conventions */
     private static final class StepJson {
         @SerializedName("title") String title;
-        @SerializedName("command") String command;
+        // "command" is standard; "payload" and "shell" are common LLM alternatives
+        @SerializedName(value = "command", alternate = {"payload", "shell", "cmd"})
+        String command;
         @SerializedName("keys") String keys;
-        @SerializedName("macroId") String macroId;
+        @SerializedName(value = "macroId", alternate = {"macro_id", "macro"})
+        String macroId;
         @SerializedName("kind") String kind;
     }
 

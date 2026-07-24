@@ -1,6 +1,7 @@
 package com.openterface.keymod.agent.core;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.openterface.keymod.agent.llm.LlmRequest;
 
@@ -13,6 +14,10 @@ import com.openterface.keymod.agent.llm.LlmRequest;
  *   <li>{@code hid} — wireless keyboard control</li>
  *   <li>{@code macro} — macro playback</li>
  * </ul>
+ *
+ * <p>Custom prompts: when a non-empty custom prompt is provided to
+ * {@link #buildRequest}, it overrides the default mode-specific template.
+ * This allows users to configure prompts via AgentSettingsBottomSheet.
  *
  * <p>TODO: Move prompt strings to string resources for localization (Day 7+).</p>
  */
@@ -57,6 +62,7 @@ public final class AgentPromptBuilder {
 
     /**
      * Build a complete {@link LlmRequest} ready to send to the LLM.
+     * Uses the default mode-specific system prompt.
      *
      * @param model    model name (e.g. "gpt-4o-mini")
      * @param userInput the user's natural language request
@@ -64,8 +70,34 @@ public final class AgentPromptBuilder {
      */
     @NonNull
     public LlmRequest buildRequest(@NonNull String model, @NonNull String userInput) {
+        return buildRequest(model, userInput, null);
+    }
+
+    /**
+     * Build a complete {@link LlmRequest} with optional custom system prompt.
+     *
+     * <p>When {@code customPrompt} is non-null and non-empty, it replaces
+     * the default mode-specific system prompt entirely.
+     *
+     * @param model        model name (e.g. "gpt-4o-mini")
+     * @param userInput    the user's natural language request
+     * @param customPrompt custom system prompt (null or empty to use default)
+     * @return request with system + user messages
+     */
+    @NonNull
+    public LlmRequest buildRequest(@NonNull String model, @NonNull String userInput,
+                                   @Nullable String customPrompt) {
         LlmRequest request = new LlmRequest(model);
-        request.addSystemMessage(buildSystemPrompt());
+
+        // Use custom prompt if provided, otherwise use default
+        String systemPrompt;
+        if (customPrompt != null && !customPrompt.isEmpty()) {
+            systemPrompt = customPrompt;
+        } else {
+            systemPrompt = buildSystemPrompt();
+        }
+
+        request.addSystemMessage(systemPrompt);
         request.addUserMessage(buildUserPrompt(userInput));
         request.temperature = 0.3;  // Lower temperature for structured output
         request.maxTokens = 2048;

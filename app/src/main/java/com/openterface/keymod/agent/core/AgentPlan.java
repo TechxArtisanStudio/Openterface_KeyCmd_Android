@@ -37,6 +37,28 @@ public final class AgentPlan {
         return steps.size();
     }
 
+    /**
+     * Return a new plan with at most {@code maxSteps} steps.
+     * If this plan already has fewer steps, returns this plan unchanged.
+     *
+     * @param maxSteps maximum number of steps to keep
+     * @return truncated plan (re-indexed from 0)
+     */
+    @NonNull
+    public AgentPlan truncateTo(int maxSteps) {
+        if (steps.size() <= maxSteps) {
+            return this;
+        }
+        List<Step> truncated = steps.subList(0, maxSteps);
+        // Re-index steps
+        List<Step> reindexed = new ArrayList<>(maxSteps);
+        for (int i = 0; i < truncated.size(); i++) {
+            Step old = truncated.get(i);
+            reindexed.add(new Step(i, old.title, old.command, old.keys, old.macroId, old.kind));
+        }
+        return new AgentPlan(summary, reindexed);
+    }
+
     // ── Step ─────────────────────────────────────────────────────────────
 
     /**

@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Core Agent state machine and flow orchestrator.
@@ -47,13 +48,14 @@ public final class AgentController {
     /** Timeout for waiting on a single step's execution callback */
     private static final long STEP_TIMEOUT_SECONDS = 300; // 5 minutes
 
+    /** Agent-specific read timeout for LLM HTTP calls */
+    private static final int AGENT_READ_TIMEOUT_MS = 60_000;
+
     /**
      * Provider name lookup — maps SharedPreferences index to ProviderAdapter name.
-     * Must match {@code R.array.settings_ai_provider_names} order.
+     * Delegates to {@link ProviderAdapterFactory#ADAPTER_NAMES} as single source of truth.
      */
-    private static final String[] PROVIDER_NAMES = {
-            "OpenAI", "Anthropic", "Google", "Mistral", "Groq", "DashScope", "DeepSeek"
-    };
+    private static final String[] PROVIDER_NAMES = ProviderAdapterFactory.ADAPTER_NAMES;
 
     // ── State (volatile for cross-thread visibility) ─────────────────────
 
@@ -73,9 +75,16 @@ public final class AgentController {
 
     // ── Config ───────────────────────────────────────────────────────────
 
+    private int maxSteps = 10;
     private int maxRetries = 3;
+    private String customTerminalPrompt = "";
+    private String customHidPrompt = "";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // ── Cancel flag for LLM streaming ────────────────────────────────────
+
+    private final AtomicBoolean cancelFlag = new AtomicBoolean(false);
 
     // ── Listener ─────────────────────────────────────────────────────────
 
@@ -86,6 +95,21 @@ public final class AgentController {
         this.promptBuilder = new AgentPromptBuilder();
         this.planParser = new AgentPlanParser();
         this.session = new AgentSession(this.context);
+
+        // Load settings from SharedPreferences
+        loadSettings();
+    }
+
+    /**
+     * Load Agent settings from SharedPreferences.
+     * Called on construction and can be called again to pick up changes.
+     */
+    private void loadSettings() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        maxSteps = prefs.getInt("agent_max_steps", 10);
+        maxRetries = prefs.getInt("agent_max_retries", 3);
+        customTerminalPrompt = prefs.getString("agent_prompt_terminal", "");
+        customHidPrompt = prefs.getString("agent_prompt_hid", "");
     }
 
     // ── Public API ───────────────────────────────────────────────────────
@@ -129,6 +153,11 @@ public final class AgentController {
         this.maxRetries = maxRetries;
     }
 
+    /** Set max steps for plan truncation */
+    public void setMaxSteps(int maxSteps) {
+        this.maxSteps = maxSteps;
+    }
+
     /**
      * Shut down the background executor. Call from Fragment's onDestroy()
      * to prevent leaked threads.
@@ -152,6 +181,12 @@ public final class AgentController {
             Log.w(TAG, "submit() called with empty prompt");
             return;
         }
+
+        // Reset cancel flag for new submission
+        cancelFlag.set(false);
+
+        // Reload settings to pick up any changes from AgentSettingsBottomSheet
+        loadSettings();
 
         // Record user message
         session.addUserMessage(userPrompt);
@@ -187,6 +222,9 @@ public final class AgentController {
      * Transitions: any → IDLE
      */
     public void cancel() {
+        // Set cancel flag to stop any in-progress LLM streaming
+        cancelFlag.set(true);
+
         if (runningTask != null && !runningTask.isDone()) {
             runningTask.cancel(true);
         }
@@ -224,11 +262,15 @@ public final class AgentController {
         String providerName = getProviderName(providerIdx);
         ProviderAdapter adapter = ProviderAdapterFactory.get(providerName);
 
-        // Build HTTP client
-        LlmHttpClient httpClient = new LlmHttpClient(apiKey, endpoint, adapter);
+        // Build HTTP client with Agent-appropriate timeout (60s read)
+        LlmHttpClient httpClient = new LlmHttpClient(
+                apiKey, endpoint, adapter,
+                LlmHttpClient.DEFAULT_CONNECT_TIMEOUT_MS,
+                AGENT_READ_TIMEOUT_MS);
 
-        // Build request
-        LlmRequest request = promptBuilder.buildRequest(model, userPrompt);
+        // Build request with custom prompt support
+        String customPrompt = getCustomPromptForMode(promptBuilder.getExecutionMode());
+        LlmRequest request = promptBuilder.buildRequest(model, userPrompt, customPrompt);
 
         try {
             // Call LLM synchronously (we're on background thread)
@@ -237,16 +279,29 @@ public final class AgentController {
             // Parse plan from response
             AgentPlan plan = planParser.parseFromResponse(response);
 
+            // Truncate plan if it exceeds maxSteps
+            if (plan.steps.size() > maxSteps) {
+                plan = plan.truncateTo(maxSteps);
+                final int truncatedTo = maxSteps;
+                postToMain(() -> notifyPlanTruncated(truncatedTo));
+            }
+
             // Store plan and record assistant message
-            currentPlan = plan;
-            session.addAssistantMessage(plan.summary);
+            final AgentPlan finalPlan = plan;
+            currentPlan = finalPlan;
+            session.addAssistantMessage(finalPlan.summary);
 
             // Transition to WAITING_APPROVE on main thread
             postToMain(() -> {
                 transitionTo(AgentState.WAITING_APPROVE);
-                notifyPlanReady(plan);
+                notifyPlanReady(finalPlan);
             });
         } catch (Exception e) {
+            // Don't report error if cancelled
+            if (cancelFlag.get()) {
+                Log.d(TAG, "Plan generation cancelled");
+                return;
+            }
             Log.e(TAG, "Plan generation failed", e);
             postError(e.getMessage() != null ? e.getMessage() : "Failed to generate plan");
         }
@@ -347,6 +402,22 @@ public final class AgentController {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     /**
+     * Get the custom prompt for the given execution mode.
+     * Returns empty string if no custom prompt is configured.
+     */
+    @NonNull
+    private String getCustomPromptForMode(@NonNull String mode) {
+        switch (mode) {
+            case "hid":
+                return customHidPrompt != null ? customHidPrompt : "";
+            case "terminal":
+                return customTerminalPrompt != null ? customTerminalPrompt : "";
+            default:
+                return "";
+        }
+    }
+
+    /**
      * Transition to a new state and notify listener.
      * If called on the main thread, fires synchronously; otherwise posts.
      */
@@ -412,6 +483,10 @@ public final class AgentController {
         if (listener != null) listener.onError(message);
     }
 
+    private void notifyPlanTruncated(int maxSteps) {
+        if (listener != null) listener.onPlanTruncated(maxSteps);
+    }
+
     @NonNull
     private static String getProviderName(int index) {
         if (index >= 0 && index < PROVIDER_NAMES.length) {
@@ -442,5 +517,8 @@ public final class AgentController {
 
         /** An error occurred */
         void onError(@NonNull String message);
+
+        /** Plan was truncated to fit maxSteps limit */
+        default void onPlanTruncated(int maxSteps) {}
     }
 }
