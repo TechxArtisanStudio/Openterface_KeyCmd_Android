@@ -2327,6 +2327,19 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return connectionManager;
     }
 
+    /**
+     * Get the current TerminalFragment instance (for cross-fragment access).
+     * Returns null if the Terminal tab is not currently visible.
+     */
+    @Nullable
+    public TerminalFragment getTerminalFragment() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof TerminalFragment) {
+            return (TerminalFragment) f;
+        }
+        return null;
+    }
+
     public BluetoothService getBluetoothService() {
         return bluetoothService;
     }

@@ -23,6 +23,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Core Agent state machine and flow orchestrator.
  *
@@ -354,11 +357,26 @@ public final class AgentController {
                 toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
                     @Override
                     public void onSuccess(@NonNull String output) {
+                        // Build display lines: "$ <command>" + output lines
+                        List<String> lines = new ArrayList<>();
+                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                        if (output != null && !output.isEmpty()) {
+                            for (String line : output.split("\n")) {
+                                lines.add(line);
+                            }
+                        }
+                        session.addExecutionCliMessage(lines);
+                        postToMain(() -> notifyStepOutput(stepIndex, lines));
                         latch.countDown();
                     }
 
                     @Override
                     public void onFailure(@NonNull String error) {
+                        List<String> lines = new ArrayList<>();
+                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                        lines.add("Error: " + error);
+                        session.addExecutionCliMessage(lines);
+                        postToMain(() -> notifyStepOutput(stepIndex, lines));
                         stepError[0] = error;
                         latch.countDown();
                     }
@@ -487,6 +505,10 @@ public final class AgentController {
         if (listener != null) listener.onPlanTruncated(maxSteps);
     }
 
+    private void notifyStepOutput(int stepIndex, @NonNull List<String> lines) {
+        if (listener != null) listener.onStepOutput(stepIndex, lines);
+    }
+
     @NonNull
     private static String getProviderName(int index) {
         if (index >= 0 && index < PROVIDER_NAMES.length) {
@@ -520,5 +542,8 @@ public final class AgentController {
 
         /** Plan was truncated to fit maxSteps limit */
         default void onPlanTruncated(int maxSteps) {}
+
+        /** A step produced output (for EXECUTION_CLI display) */
+        default void onStepOutput(int stepIndex, @NonNull List<String> lines) {}
     }
 }

@@ -1270,6 +1270,20 @@ public class TerminalFragment extends Fragment {
         return isSshConnected;
     }
 
+    /**
+     * Get the current SshClient instance (for cross-fragment access, e.g. Agent executor).
+     * Returns null if SSH is not connected.
+     */
+    @Nullable
+    public SshClient getSshClient() {
+        return isSshConnected ? sshClient : null;
+    }
+
+    /** Check if SSH session is active (for cross-fragment access). */
+    public boolean isSshSessionActive() {
+        return isSshConnected;
+    }
+
     private void resetTerminalSession() {
         terminalSession = new TerminalSession(
                 prefs.getTerminalRows(),

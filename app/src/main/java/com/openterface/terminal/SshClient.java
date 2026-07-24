@@ -3,6 +3,7 @@ package com.openterface.terminal;
 import android.util.Log;
 
 import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
@@ -27,6 +28,21 @@ public class SshClient {
         void onConnected();
         void onDisconnected();
         void onDataReceived(byte[] data, int len);
+        void onError(String message);
+    }
+
+    /**
+     * Callback for async command execution via {@link #executeCommand}.
+     *
+     * <p>All callbacks fire on the exec thread (background). The consumer
+     * is responsible for dispatching to the main thread if UI updates are needed.</p>
+     */
+    public interface ExecCallback {
+        /** A line of output was received (stdout or stderr). */
+        void onOutput(String line);
+        /** Command completed. {@code exitCode} is the remote process exit status. */
+        void onComplete(int exitCode, String output);
+        /** A fatal error occurred (timeout, channel failure, SSH disconnected). */
         void onError(String message);
     }
 
@@ -340,13 +356,139 @@ public class SshClient {
         }
     }
 
+    // ── Command execution (ChannelExec) for Agent ───────────────────────
+
+    /**
+     * Check if the underlying SSH session is connected.
+     * Safe to call from any thread — reads the volatile {@code connected} flag
+     * and the JSch session state.
+     */
+    public boolean isSessionConnected() {
+        return connected && session != null && session.isConnected();
+    }
+
+    /**
+     * Execute a command via JSch {@code ChannelExec} (non-interactive) and
+     * capture stdout + stderr asynchronously.
+     *
+     * <p>The command runs on a dedicated background thread. Callbacks fire
+     * on that same thread — the caller must marshal to the main thread if
+     * it needs to update the UI. The shell channel owned by this client is
+     * <b>not</b> affected; the user's interactive session keeps working.</p>
+     *
+     * @param command   shell command to run on the remote host
+     * @param timeoutMs maximum wall-clock time to wait (0 = no timeout)
+     * @param callback  result callback (never null)
+     */
+    public void executeCommand(final String command, int timeoutMs,
+                               final ExecCallback callback) {
+        if (session == null || !session.isConnected()) {
+            callback.onError("SSH not connected");
+            return;
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ChannelExec execChannel = null;
+                try {
+                    execChannel = (ChannelExec) session.openChannel("exec");
+                    execChannel.setCommand(command);
+                    // No PTY — avoids ANSI escape codes and shell prompts in output
+                    execChannel.setPty(false);
+
+                    InputStream stdout = execChannel.getInputStream();
+                    InputStream stderr = execChannel.getErrStream();
+                    execChannel.connect(10_000); // 10s channel-open timeout
+
+                    long startTime = System.currentTimeMillis();
+                    StringBuilder output = new StringBuilder();
+                    byte[] buffer = new byte[1024];
+                    StringBuilder lineAccum = new StringBuilder();
+
+                    while (true) {
+                        // Timeout check
+                        if (timeoutMs > 0
+                                && (System.currentTimeMillis() - startTime) > timeoutMs) {
+                            callback.onError("Command timed out after " + timeoutMs + "ms");
+                            break;
+                        }
+
+                        // Drain stdout
+                        int available = stdout.available();
+                        if (available > 0) {
+                            int len = stdout.read(buffer, 0, Math.min(available, buffer.length));
+                            if (len > 0) {
+                                String chunk = new String(buffer, 0, len);
+                                output.append(chunk);
+                                // Emit per-line callbacks
+                                for (int i = 0; i < chunk.length(); i++) {
+                                    char c = chunk.charAt(i);
+                                    if (c == '\n') {
+                                        String line = lineAccum.toString();
+                                        lineAccum.setLength(0);
+                                        if (!line.isEmpty()) {
+                                            callback.onOutput(line);
+                                        }
+                                    } else if (c != '\r') {
+                                        lineAccum.append(c);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Drain stderr (merged into output, no per-line callback)
+                        available = stderr.available();
+                        if (available > 0) {
+                            int len = stderr.read(buffer, 0, Math.min(available, buffer.length));
+                            if (len > 0) {
+                                output.append(new String(buffer, 0, len));
+                            }
+                        }
+
+                        if (execChannel.isClosed()) {
+                            // Flush any remaining partial line
+                            if (lineAccum.length() > 0) {
+                                callback.onOutput(lineAccum.toString());
+                                lineAccum.setLength(0);
+                            }
+                            break;
+                        }
+
+                        Thread.sleep(50); // avoid busy-wait
+                    }
+
+                    int exitCode = execChannel.getExitStatus();
+                    callback.onComplete(exitCode, output.toString());
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Exec failed: " + e.getMessage(), e);
+                    callback.onError("Exec failed: " + e.getMessage());
+                } finally {
+                    if (execChannel != null) {
+                        execChannel.disconnect();
+                    }
+                }
+            }
+        }, "SshExec-" + Math.abs(command.hashCode())).start();
+    }
+
+    /**
+     * Convenience overload with the default 60-second timeout.
+     *
+     * @see #executeCommand(String, int, ExecCallback)
+     */
+    public void executeCommand(String command, ExecCallback callback) {
+        executeCommand(command, 60_000, callback);
+    }
+
     /** Disconnect SSH session. */
     public void disconnect() {
         Log.v(TAG, "SSH disconnect requested");
         connected = false;
 
         // Clear send callbacks first — prevents writes to a closing channel
-        // if a key press races with disconnect (Day 5 §3.2).
+        // if a key press races with disconnect.
         if (terminalSession != null) {
             terminalSession.setKeySender(null);
             terminalSession.setResponseSender(null);

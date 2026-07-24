@@ -38,6 +38,7 @@ import com.openterface.keymod.agent.AgentPlanStep;
 import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
+import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
 
@@ -80,6 +81,7 @@ public class AgentFragment extends Fragment {
 
     // Day 3: Real Agent engine
     @Nullable private AgentController agentController;
+    @Nullable private TerminalToolExecutor terminalExecutor;
     private boolean realEngineEnabled = false;
     private final List<AgentMessage> chatMessages = new ArrayList<>();
     @Nullable private ExecutorService verifyExecutor;
@@ -134,6 +136,23 @@ public class AgentFragment extends Fragment {
         super.onResume();
         // Re-check API config when returning from settings
         refreshEngineState();
+        // Update SSH client reference (user may have connected/disconnected)
+        updateTerminalExecutorSshClient();
+    }
+
+    /**
+     * Update the TerminalToolExecutor with the current SshClient from TerminalFragment.
+     */
+    private void updateTerminalExecutorSshClient() {
+        if (terminalExecutor == null || !isAdded()) return;
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
+        com.openterface.keymod.MainActivity mainActivity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+        com.openterface.terminal.TerminalFragment terminalFragment =
+                mainActivity.getTerminalFragment();
+        com.openterface.terminal.SshClient sshClient =
+                (terminalFragment != null) ? terminalFragment.getSshClient() : null;
+        terminalExecutor.setSshClient(sshClient);
     }
 
     /**
@@ -208,6 +227,12 @@ public class AgentFragment extends Fragment {
         if (!realEngineEnabled) {
             realEngineEnabled = true;
             agentController = new AgentController(requireContext());
+
+            // Set up TerminalToolExecutor for SSH command execution
+            terminalExecutor = new TerminalToolExecutor();
+            updateTerminalExecutorSshClient();
+            agentController.setToolExecutor(terminalExecutor);
+
             setupAgentController();
         }
         inputField.setEnabled(true);
@@ -533,8 +558,8 @@ public class AgentFragment extends Fragment {
 
             @Override
             public void onExecutionProgress(int currentStep, int totalSteps) {
-                // Day 5: update execution UI
-                Log.d(TAG, "Execution progress: " + currentStep + "/" + totalSteps);
+                if (!isAdded()) return;
+                inputField.setHint("Executing step " + (currentStep + 1) + "/" + totalSteps + "...");
             }
 
             @Override
@@ -546,6 +571,13 @@ public class AgentFragment extends Fragment {
             @Override
             public void onExecutionComplete() {
                 if (!isAdded()) return;
+                chatMessages.add(AgentMessage.assistant("✅ All steps completed."));
+                adapter.submitList(new ArrayList<>(chatMessages));
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
                 showEmptyState(false);
@@ -554,7 +586,19 @@ public class AgentFragment extends Fragment {
             @Override
             public void onError(@NonNull String message) {
                 if (!isAdded()) return;
-                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                if (message.contains("SSH not connected")) {
+                    chatMessages.add(AgentMessage.assistant(
+                            "⚠️ " + message + "\n\n"
+                            + "Go to Terminal tab → connect to a host → come back here."));
+                    adapter.submitList(new ArrayList<>(chatMessages));
+                    messagesList.post(() -> {
+                        if (adapter.getItemCount() > 0) {
+                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                        }
+                    });
+                } else {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                }
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
             }
@@ -564,6 +608,18 @@ public class AgentFragment extends Fragment {
                 if (!isAdded()) return;
                 chatMessages.add(AgentMessage.assistant(
                         "⚠️ Plan truncated to " + maxSteps + " steps (exceeds limit)."));
+                adapter.submitList(new ArrayList<>(chatMessages));
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
+            }
+
+            @Override
+            public void onStepOutput(int stepIndex, @NonNull List<String> lines) {
+                if (!isAdded()) return;
+                chatMessages.add(AgentMessage.executionCli(lines));
                 adapter.submitList(new ArrayList<>(chatMessages));
                 messagesList.post(() -> {
                     if (adapter.getItemCount() > 0) {
