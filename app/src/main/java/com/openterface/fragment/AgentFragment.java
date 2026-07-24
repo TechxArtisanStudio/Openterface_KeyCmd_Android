@@ -39,6 +39,7 @@ import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
+import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -196,7 +197,9 @@ public class AgentFragment extends Fragment {
 
     @NonNull
     private String getProviderNameFromIndex(int index) {
-        String[] names = getResources().getStringArray(R.array.settings_ai_provider_names);
+        // Use canonical adapter names (English, locale-independent)
+        // instead of localized display names from R.array
+        String[] names = ProviderAdapterFactory.ADAPTER_NAMES;
         if (index >= 0 && index < names.length) return names[index];
         return "OpenAI";
     }
@@ -554,6 +557,19 @@ public class AgentFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
+            }
+
+            @Override
+            public void onPlanTruncated(int maxSteps) {
+                if (!isAdded()) return;
+                chatMessages.add(AgentMessage.assistant(
+                        "⚠️ Plan truncated to " + maxSteps + " steps (exceeds limit)."));
+                adapter.submitList(new ArrayList<>(chatMessages));
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
             }
         });
     }

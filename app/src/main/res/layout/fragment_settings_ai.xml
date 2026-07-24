@@ -287,6 +287,16 @@
                         android:layout_height="wrap_content"
                         android:spinnerMode="dropdown" />
 
+                    <!-- Custom model input — shown only for Custom provider -->
+                    <EditText
+                        android:id="@+id/ai_model_edittext"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/settings_ai_custom_model_hint"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:visibility="gone" />
+
                     <Button
                         android:id="@+id/ai_test_button"
                         android:layout_width="wrap_content"

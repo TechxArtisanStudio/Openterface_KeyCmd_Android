@@ -49,6 +49,12 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     private static final String PREF_PROMPT_HID       = "agent_prompt_hid";
 
     // ── Provider definitions ─────────────────────────────────────────────
+    //
+    // TODO(Day 5+): Unify this list with R.array.settings_ai_provider_names in strings.xml.
+    //  Currently this list uses different indices than AgentController.PROVIDER_NAMES
+    //  and the canonical resource array, causing provider index mismatch when the same
+    //  SharedPreferences keys (ai_provider, ai_model, ai_endpoint) are read by different
+    //  components. See code review F9/F10.
 
     private static final String[] PROVIDER_NAMES = {
             "OpenAI", "Ollama (Local)", "DeepSeek", "Qwen (Alibaba)",

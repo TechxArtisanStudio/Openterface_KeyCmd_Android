@@ -282,6 +282,7 @@ public class AISettingsFragment extends Fragment {
     private EditText apiKeyEditText;
     private TextInputLayout apiKeyInputLayout;
     private Spinner  modelSpinner;
+    private EditText modelEditText;
     private Button   testConnectionButton;
 
     private SharedPreferences prefs;
@@ -330,6 +331,7 @@ public class AISettingsFragment extends Fragment {
         apiKeyEditText        = view.findViewById(R.id.ai_api_key_edittext);
         apiKeyInputLayout     = view.findViewById(R.id.ai_api_key_input_layout);
         modelSpinner          = view.findViewById(R.id.ai_model_spinner);
+        modelEditText         = view.findViewById(R.id.ai_model_edittext);
         testConnectionButton  = view.findViewById(R.id.ai_test_button);
 
         // Role spinner
@@ -505,11 +507,24 @@ public class AISettingsFragment extends Fragment {
         endpointEditText.setEnabled(isCustom);
         endpointEditText.setAlpha(isCustom ? 1.0f : 0.55f);
 
-        String[] models = PROVIDER_MODELS[providerIndex];
-        ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, models);
-        modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        modelSpinner.setAdapter(modelAdapter);
+        // Toggle Spinner vs EditText for model input
+        if (isCustom) {
+            // Custom: hide dropdown, show free-text input
+            modelSpinner.setVisibility(View.GONE);
+            modelEditText.setVisibility(View.VISIBLE);
+            // Restore saved custom model name
+            String savedModel = prefs.getString(PREF_AI_MODEL, "");
+            modelEditText.setText(savedModel);
+        } else {
+            // Standard: show dropdown, hide free-text input
+            modelSpinner.setVisibility(View.VISIBLE);
+            modelEditText.setVisibility(View.GONE);
+            String[] models = PROVIDER_MODELS[providerIndex];
+            ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_spinner_item, models);
+            modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            modelSpinner.setAdapter(modelAdapter);
+        }
     }
 
     private void restoreModelSelection(int providerIndex, String savedModel) {
@@ -646,6 +661,20 @@ public class AISettingsFragment extends Fragment {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
+        // Custom model EditText — save on text change
+        modelEditText.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (isLoadingSettings) return;
+                String model = s.toString().trim();
+                if (!model.isEmpty()) {
+                    prefs.edit().putString(PREF_AI_MODEL, model).apply();
+                }
+            }
+        });
+
         // Test button
         testConnectionButton.setOnClickListener(v -> {
             String endpoint = endpointEditText.getText().toString().trim();
@@ -657,7 +686,10 @@ public class AISettingsFragment extends Fragment {
 
             // Get current provider and model selections
             int providerIndex = providerSpinner.getSelectedItemPosition();
-            String providerName = providerDisplayName(providerIndex);
+            // Use canonical adapter name (English, locale-independent) for API calls
+            String[] adapterNames = com.openterface.keymod.agent.llm.ProviderAdapterFactory.ADAPTER_NAMES;
+            String providerName = (providerIndex >= 0 && providerIndex < adapterNames.length)
+                    ? adapterNames[providerIndex] : "Custom";
 
             // API key is optional for Custom provider (local services like Ollama don't need it)
             boolean isCustomProvider = (providerIndex == PROVIDER_CUSTOM_INDEX);
@@ -666,10 +698,22 @@ public class AISettingsFragment extends Fragment {
                 return;
             }
 
-            String[] models = PROVIDER_MODELS[providerIndex];
-            int modelPos = modelSpinner.getSelectedItemPosition();
-            String model = (modelPos >= 0 && modelPos < models.length)
-                    ? models[modelPos] : "gpt-4o-mini";
+            // Get model — EditText for Custom, Spinner otherwise
+            String model;
+            if (isCustomProvider) {
+                model = modelEditText.getText().toString().trim();
+                if (TextUtils.isEmpty(model)) {
+                    Toast.makeText(getContext(), R.string.settings_ai_custom_model_hint, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // Save custom model name
+                prefs.edit().putString(PREF_AI_MODEL, model).apply();
+            } else {
+                String[] models = PROVIDER_MODELS[providerIndex];
+                int modelPos = modelSpinner.getSelectedItemPosition();
+                model = (modelPos >= 0 && modelPos < models.length)
+                        ? models[modelPos] : "gpt-4o-mini";
+            }
 
             // UI: disable button, show testing toast
             testConnectionButton.setEnabled(false);

@@ -188,6 +188,7 @@
     <string name="settings_ai_api_key_hint">Enter API key</string>
     <string name="settings_ai_api_key_hint_for_provider">Enter API key for %1$s</string>
     <string name="settings_ai_model">Model</string>
+    <string name="settings_ai_custom_model_hint">Enter model name (e.g. qwen2.5:7b, llama3)</string>
     <string name="settings_ai_test_connection">Test connection</string>
     <string name="settings_ai_supported_providers_title">ℹ️ Supported providers</string>
     <string name="settings_ai_supported_providers_body">• OpenAI (GPT-4o, GPT-4, GPT-3.5)\n• Anthropic (Claude 3.5, Claude 3)\n• Google Gemini (2.0, 1.5)\n• Mistral AI\n• Groq (Llama 3, Mixtral)\n• Alibaba Qwen\n• DeepSeek\n• Custom (any OpenAI-compatible API)</string>
