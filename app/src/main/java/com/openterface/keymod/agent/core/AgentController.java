@@ -95,7 +95,7 @@ public final class AgentController {
 
     public AgentController(@NonNull Context context) {
         this.context = context.getApplicationContext();
-        this.promptBuilder = new AgentPromptBuilder();
+        this.promptBuilder = new AgentPromptBuilder(this.context);
         this.planParser = new AgentPlanParser();
         this.session = new AgentSession(this.context);
 

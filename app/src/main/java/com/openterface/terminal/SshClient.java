@@ -54,6 +54,9 @@ public class SshClient {
     private final com.jcraft.jsch.SocketFactory socketFactory;
     private volatile Listener listener;
 
+    /** Profile used for (re)connection — stored for auto-reconnect. */
+    private CredentialProfile connectProfile;
+
     private Session session;
     private Channel shellChannel;
     private TerminalSession terminalSession;
@@ -87,6 +90,7 @@ public class SshClient {
         this.password = profile.getPassword();
         this.transport = transport;
         this.socketFactory = null;
+        this.connectProfile = profile;
     }
 
     public SshClient(CredentialProfile profile, TransportAdapter transport,
@@ -97,6 +101,7 @@ public class SshClient {
         this.password = profile.getPassword();
         this.transport = transport;
         this.socketFactory = socketFactory;
+        this.connectProfile = profile;
     }
 
     public void setListener(Listener listener) {
@@ -368,10 +373,40 @@ public class SshClient {
     }
 
     /**
+     * Re-establish the SSH session using the original connection parameters.
+     * The transport layer (USB/BLE) is reused — only the JSch session is recreated.
+     * Blocks until reconnection succeeds or fails.
+     *
+     * @return true if reconnection succeeded
+     */
+    public boolean reconnect() {
+        CredentialProfile profile = connectProfile;
+        if (profile == null) {
+            Log.e(TAG, "reconnect: no profile stored");
+            return false;
+        }
+        Log.i(TAG, "Reconnecting SSH session...");
+
+        // Disconnect old session if still alive
+        if (session != null && session.isConnected()) {
+            session.disconnect();
+        }
+
+        try {
+            connect(profile);
+            return connected;
+        } catch (Exception e) {
+            Log.e(TAG, "Reconnect failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Execute a command via JSch {@code ChannelExec} (non-interactive) and
      * capture stdout + stderr asynchronously.
      *
-     * <p>The command runs on a dedicated background thread. Callbacks fire
+     * <p>Runs on a dedicated background thread. If the SSH session is dead
+     * (e.g. after a tab switch), attempts one automatic reconnect before failing.</p>
      * on that same thread — the caller must marshal to the main thread if
      * it needs to update the UI. The shell channel owned by this client is
      * <b>not</b> affected; the user's interactive session keeps working.</p>
@@ -382,24 +417,51 @@ public class SshClient {
      */
     public void executeCommand(final String command, int timeoutMs,
                                final ExecCallback callback) {
-        if (session == null || !session.isConnected()) {
-            callback.onError("SSH not connected");
-            return;
-        }
-
         new Thread(new Runnable() {
             @Override
             public void run() {
+                boolean retried = false;
                 ChannelExec execChannel = null;
                 try {
-                    execChannel = (ChannelExec) session.openChannel("exec");
-                    execChannel.setCommand(command);
-                    // No PTY — avoids ANSI escape codes and shell prompts in output
-                    execChannel.setPty(false);
+                    // First attempt — may fail if session socket is stale
+                    execChannel = openExecChannel(command);
+                } catch (Exception firstErr) {
+                    Log.w(TAG, "First exec attempt failed: " + firstErr.getMessage()
+                            + ", attempting reconnect...");
+                    // Try reconnect once
+                    if (!retried && connectProfile != null) {
+                        retried = true;
+                        // Disconnect dead session
+                        if (session != null && session.isConnected()) {
+                            session.disconnect();
+                        }
+                        connected = false;
+                        if (reconnect()) {
+                            Log.i(TAG, "Reconnect succeeded, retrying command");
+                            try {
+                                execChannel = openExecChannel(command);
+                            } catch (Exception retryErr) {
+                                callback.onError("Exec failed after reconnect: " + retryErr.getMessage());
+                                return;
+                            }
+                        } else {
+                            callback.onError("SSH reconnect failed. Please reconnect in Terminal tab.");
+                            return;
+                        }
+                    } else {
+                        callback.onError("Exec failed: " + firstErr.getMessage());
+                        return;
+                    }
+                }
 
+                if (execChannel == null) {
+                    callback.onError("Exec failed: channel is not opened.");
+                    return;
+                }
+
+                try {
                     InputStream stdout = execChannel.getInputStream();
                     InputStream stderr = execChannel.getErrStream();
-                    execChannel.connect(10_000); // 10s channel-open timeout
 
                     long startTime = System.currentTimeMillis();
                     StringBuilder output = new StringBuilder();
@@ -480,6 +542,21 @@ public class SshClient {
      */
     public void executeCommand(String command, ExecCallback callback) {
         executeCommand(command, 60_000, callback);
+    }
+
+    /**
+     * Open a ChannelExec, set the command, and connect.
+     * Throws if the channel cannot be opened (e.g. session socket is stale).
+     */
+    private ChannelExec openExecChannel(String command) throws Exception {
+        if (session == null || !session.isConnected()) {
+            throw new Exception("Session not connected");
+        }
+        ChannelExec ch = (ChannelExec) session.openChannel("exec");
+        ch.setCommand(command);
+        ch.setPty(false);
+        ch.connect(10_000);
+        return ch;
     }
 
     /** Disconnect SSH session. */

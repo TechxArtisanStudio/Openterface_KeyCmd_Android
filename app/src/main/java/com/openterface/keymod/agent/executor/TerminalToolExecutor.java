@@ -1,19 +1,29 @@
 package com.openterface.keymod.agent.executor;
 
+import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.BluetoothService;
+import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
+import com.openterface.terminal.BleEthSocketFactory;
+import com.openterface.terminal.BleEthTransport;
+import com.openterface.terminal.CredentialProfile;
 import com.openterface.terminal.SshClient;
+import com.openterface.terminal.TransportAdapter;
+import com.openterface.terminal.UsbEcmTransport;
 
 /**
  * Executes terminal steps via SSH ChannelExec.
  *
- * <p>Implements {@link AgentToolExecutor} for {@code kind="terminal"} steps.
- * Delegates to {@link SshClient#executeCommand} for actual command execution.</p>
+ * <p>If no SSH session is alive, attempts to auto-connect using the
+ * {@link CredentialProfile} stored in {@link MainActivity} (selected via
+ * TargetSettingsSheet). Falls back to an error message if no profile
+ * is configured.</p>
  */
 public final class TerminalToolExecutor implements AgentToolExecutor {
 
@@ -22,8 +32,15 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     private static final int MAX_OUTPUT_CHARS = 2000;
     private static final int MAX_OUTPUT_LINES = 50;
 
+    private final Context context;
     @Nullable private SshClient sshClient;
     @Nullable private volatile Thread currentThread;
+
+    public TerminalToolExecutor(@NonNull Context context) {
+        // Keep the original context (not getApplicationContext) so that
+        // tryAutoConnect() can cast it to MainActivity via instanceof.
+        this.context = context;
+    }
 
     /** Set the SSH client to use for command execution. */
     public void setSshClient(@Nullable SshClient client) {
@@ -51,9 +68,16 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
 
         SshClient client = this.sshClient;
+
+        // Auto-connect if no live session but we have a profile
         if (client == null || !client.isSessionConnected()) {
-            callback.onFailure("SSH not connected. Please connect in Terminal tab first.");
-            return;
+            client = tryAutoConnect();
+            if (client == null) {
+                callback.onFailure("SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.");
+                return;
+            }
+            // Update the stored reference for future calls
+            this.sshClient = client;
         }
 
         Log.i(TAG, "Executing: " + command);
@@ -104,9 +128,100 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     }
 
     /**
+     * Try to auto-connect SSH using the profile stored in MainActivity.
+     * This lets the Agent work even when the Terminal tab's SSH session died.
+     */
+    @Nullable
+    private SshClient tryAutoConnect() {
+        if (!(context instanceof MainActivity)) {
+            Log.w(TAG, "Auto-connect skipped: context is not MainActivity (type="
+                    + (context != null ? context.getClass().getSimpleName() : "null") + ")");
+            return null;
+        }
+        MainActivity activity = (MainActivity) context;
+        CredentialProfile profile = activity.getActiveSshProfile();
+        if (profile == null) {
+            Log.i(TAG, "Auto-connect skipped: no active SSH profile");
+            return null;
+        }
+
+        Log.i(TAG, "Auto-connecting SSH via profile: " + profile.getDisplayLabel());
+
+        // Determine transport type: BLE if BluetoothService is connected, else USB
+        BluetoothService btService = activity.getBluetoothService();
+        boolean useBle = btService != null && btService.isConnected();
+        Log.i(TAG, "Auto-connect transport: " + (useBle ? "BLE" : "USB"));
+
+        try {
+            SshClient client;
+            if (useBle) {
+                // BLE-Eth transport: requires cleanup + callback registration
+                BleEthTransport transport = new BleEthTransport(btService::writeBleEthData);
+
+                // Cleanup stale firmware state
+                for (int cid = 0; cid <= 5; cid++) {
+                    btService.writeBleEthData(buildBleDisconnectFrame(cid));
+                    Thread.sleep(50);
+                }
+                Thread.sleep(500);
+
+                // Register callback
+                BluetoothService.BleEthDataCallback callback = data -> {
+                    if (transport != null) {
+                        transport.handleIncomingData(data);
+                    }
+                };
+                btService.addBleEthCallback(callback);
+
+                String host = profile.getHost();
+                int port = profile.getPort();
+                BleEthSocketFactory socketFactory = new BleEthSocketFactory(transport, host, port);
+
+                client = new SshClient(profile, transport, socketFactory);
+            } else {
+                client = new SshClient(profile, new UsbEcmTransport());
+            }
+
+            client.setListener(new SshClient.Listener() {
+                @Override public void onConnected() {}
+                @Override public void onDisconnected() {}
+                @Override public void onDataReceived(byte[] data, int len) {}
+                @Override public void onError(String message) {
+                    Log.w(TAG, "Auto-connect SSH error: " + message);
+                }
+            });
+            client.connect(profile);
+
+            if (client.isSessionConnected()) {
+                Log.i(TAG, "Auto-connect SSH succeeded via " + (useBle ? "BLE" : "USB"));
+                activity.setSshClient(client);
+                return client;
+            } else {
+                Log.w(TAG, "Auto-connect SSH failed: session not connected");
+                return null;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Auto-connect SSH exception: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /** Build a BLE DISCONNECT frame for the given connection ID (matches TerminalFragment pattern). */
+    private byte[] buildBleDisconnectFrame(int connId) {
+        byte[] frame = new byte[7];
+        frame[0] = (byte) 0x55; // header
+        frame[1] = (byte) (connId & 0xFF);
+        frame[2] = (byte) ((connId >> 8) & 0xFF);
+        frame[3] = 0x02; // DISCONNECT command
+        frame[4] = 0;
+        frame[5] = 0;
+        frame[6] = 0;
+        return frame;
+    }
+
+    /**
      * Truncate output to prevent UI overflow.
-     * Caps at {@value #MAX_OUTPUT_CHARS} chars or {@value #MAX_OUTPUT_LINES} lines,
-     * whichever is hit first.
+     * Max 2000 chars or 50 lines, whichever is hit first.
      */
     @NonNull
     String truncateOutput(@NonNull String output) {

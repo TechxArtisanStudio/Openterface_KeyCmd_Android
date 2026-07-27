@@ -1416,6 +1416,12 @@ by TechxArtisan</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
 
+    <!-- Target Settings Sheet -->
+    <string name="target_settings_title">Target Settings</string>
+    <string name="target_settings_section_os">Target OS</string>
+    <string name="target_settings_section_profile">Terminal Profile</string>
+    <string name="target_settings_no_profile">No profiles — add one in Terminal</string>
+
     <!-- Rows 2–3 strip slot editor (single HID key) -->
     <string name="rows23_slot_editor_title_new">New key</string>
     <string name="rows23_slot_editor_title_edit">Edit key</string>

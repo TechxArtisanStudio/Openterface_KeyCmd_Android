@@ -141,17 +141,15 @@ public class AgentFragment extends Fragment {
     }
 
     /**
-     * Update the TerminalToolExecutor with the current SshClient from TerminalFragment.
+     * Update the TerminalToolExecutor with the current SshClient from MainActivity.
+     * SshClient is stored at the Activity level so it survives tab switches.
      */
     private void updateTerminalExecutorSshClient() {
         if (terminalExecutor == null || !isAdded()) return;
         if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
         com.openterface.keymod.MainActivity mainActivity =
                 (com.openterface.keymod.MainActivity) requireActivity();
-        com.openterface.terminal.TerminalFragment terminalFragment =
-                mainActivity.getTerminalFragment();
-        com.openterface.terminal.SshClient sshClient =
-                (terminalFragment != null) ? terminalFragment.getSshClient() : null;
+        com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
         terminalExecutor.setSshClient(sshClient);
     }
 
@@ -229,7 +227,7 @@ public class AgentFragment extends Fragment {
             agentController = new AgentController(requireContext());
 
             // Set up TerminalToolExecutor for SSH command execution
-            terminalExecutor = new TerminalToolExecutor();
+            terminalExecutor = new TerminalToolExecutor(requireContext());
             updateTerminalExecutorSshClient();
             agentController.setToolExecutor(terminalExecutor);
 

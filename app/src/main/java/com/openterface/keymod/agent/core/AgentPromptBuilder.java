@@ -1,16 +1,19 @@
 package com.openterface.keymod.agent.core;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.openterface.keymod.agent.llm.LlmRequest;
 
 /**
- * Builds LLM prompts for the Agent based on execution mode and user input.
+ * Builds LLM prompts for the Agent based on execution mode, target OS and user input.
  *
  * <p>Supports three modes:
  * <ul>
- *   <li>{@code terminal} — SSH command execution</li>
+ *   <li>{@code terminal} — SSH command execution (OS-aware)</li>
  *   <li>{@code hid} — wireless keyboard control</li>
  *   <li>{@code macro} — macro playback</li>
  * </ul>
@@ -18,16 +21,19 @@ import com.openterface.keymod.agent.llm.LlmRequest;
  * <p>Custom prompts: when a non-empty custom prompt is provided to
  * {@link #buildRequest}, it overrides the default mode-specific template.
  * This allows users to configure prompts via AgentSettingsBottomSheet.
- *
- * <p>TODO: Move prompt strings to string resources for localization (Day 7+).</p>
  */
 public final class AgentPromptBuilder {
 
+    /** SharedPreferences name for Agent-specific preferences. */
+    private static final String AGENT_PREFS_NAME = "agent_prefs";
+    /** Agent-specific target OS (independent from global PREF_TARGET_OS). */
+    private static final String PREF_AGENT_TARGET_OS = "agent_target_os";
+
+    private final Context context;
     private String executionMode = "terminal";
 
-    public AgentPromptBuilder() {
-        // No dependencies — prompts are hardcoded for now.
-        // Day 7+: accept Context to load localized strings from resources.
+    public AgentPromptBuilder(@NonNull Context context) {
+        this.context = context.getApplicationContext();
     }
 
     /** Set the execution mode: {@code "terminal"} | {@code "hid"} | {@code "macro"} */
@@ -63,10 +69,6 @@ public final class AgentPromptBuilder {
     /**
      * Build a complete {@link LlmRequest} ready to send to the LLM.
      * Uses the default mode-specific system prompt.
-     *
-     * @param model    model name (e.g. "gpt-4o-mini")
-     * @param userInput the user's natural language request
-     * @return request with system + user messages
      */
     @NonNull
     public LlmRequest buildRequest(@NonNull String model, @NonNull String userInput) {
@@ -78,18 +80,12 @@ public final class AgentPromptBuilder {
      *
      * <p>When {@code customPrompt} is non-null and non-empty, it replaces
      * the default mode-specific system prompt entirely.
-     *
-     * @param model        model name (e.g. "gpt-4o-mini")
-     * @param userInput    the user's natural language request
-     * @param customPrompt custom system prompt (null or empty to use default)
-     * @return request with system + user messages
      */
     @NonNull
     public LlmRequest buildRequest(@NonNull String model, @NonNull String userInput,
                                    @Nullable String customPrompt) {
         LlmRequest request = new LlmRequest(model);
 
-        // Use custom prompt if provided, otherwise use default
         String systemPrompt;
         if (customPrompt != null && !customPrompt.isEmpty()) {
             systemPrompt = customPrompt;
@@ -104,12 +100,33 @@ public final class AgentPromptBuilder {
         return request;
     }
 
+    // ── Target OS ────────────────────────────────────────────────────────
+
+    /** Read the global target OS (mirrored from the active profile or picked in sheet). */
+    @NonNull
+    private String getTargetOs() {
+        SharedPreferences prefs = context.getSharedPreferences(AGENT_PREFS_NAME, Context.MODE_PRIVATE);
+        String os = prefs.getString(PREF_AGENT_TARGET_OS, "macos");
+        return os != null ? os : "macos";
+    }
+
+    @NonNull
+    private String osDisplayName(@NonNull String os) {
+        switch (os) {
+            case "windows": return "Windows";
+            case "linux":   return "Linux";
+            default:        return "macOS";
+        }
+    }
+
     // ── Mode-specific prompts ────────────────────────────────────────────
 
     @NonNull
     private String buildTerminalSystemPrompt() {
-        return "You are a system administration assistant. The user will execute commands "
-                + "on a remote computer via SSH.\n\n"
+        String osName = osDisplayName(getTargetOs());
+        return "You are a system administration assistant. "
+                + "The target system is " + osName + ". "
+                + "Use commands appropriate for " + osName + ".\n\n"
                 + "Generate an execution plan based on the user's request.\n\n"
                 + "## Output Format\n"
                 + "Return JSON:\n"

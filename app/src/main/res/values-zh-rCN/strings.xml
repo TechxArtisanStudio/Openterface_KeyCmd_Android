@@ -799,6 +799,12 @@
     <string name="target_os_macos">macOS</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
+
+    <!-- Target Settings Sheet -->
+    <string name="target_settings_title">目标设置</string>
+    <string name="target_settings_section_os">目标系统</string>
+    <string name="target_settings_section_profile">终端配置</string>
+    <string name="target_settings_no_profile">暂无配置 — 请在终端中添加</string>
     <string name="touch_pad_title">触控板</string>
     <string name="touch_pad_status_buttons_up">按键：抬起（未拖动）</string>
     <string name="touch_pad_status_buttons_drag">按键：左键按住（拖动中）</string>

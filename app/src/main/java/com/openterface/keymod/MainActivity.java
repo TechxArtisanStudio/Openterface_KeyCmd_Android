@@ -69,6 +69,8 @@ import com.openterface.fragment.KmProSettingsFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
+import com.openterface.terminal.CredentialProfile;
+import com.openterface.terminal.SshClient;
 import com.openterface.terminal.TerminalFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
@@ -636,7 +638,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         headerRightCluster = findViewById(R.id.header_right_cluster);
         headerEndPullSpacer = findViewById(R.id.header_end_pull_spacer);
         if (targetOsHeaderButton != null) {
-            targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
+            targetOsHeaderButton.setOnClickListener(v -> {
+                if (LaunchPanelActivity.MODE_AGENT.equals(currentNavMode)) {
+                    showTargetSettingsSheet();
+                } else {
+                    showTargetOsPickerDialog();
+                }
+            });
             updateTargetOsHeaderIcon();
         }
         if (credentialHeaderButton != null) {
@@ -1882,6 +1890,14 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         targetOsHeaderButton.setColorFilter(headerNeutralActionTint(), PorterDuff.Mode.SRC_IN);
     }
 
+    /**
+     * Show the unified Target Settings bottom sheet (OS + Terminal Profile).
+     * Triggered by the header's target OS button.
+     */
+    private void showTargetSettingsSheet() {
+        new TargetSettingsSheet().show(getSupportFragmentManager(), "target_settings");
+    }
+
     private void showTargetOsPickerDialog() {
         View content = LayoutInflater.from(this).inflate(R.layout.dialog_target_os_picker, null);
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -2327,8 +2343,34 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return connectionManager;
     }
 
-    /**
-     * Get the current TerminalFragment instance (for cross-fragment access).
+    // ── Day 5: SshClient shared across tabs ─────────────────────────────
+
+    @Nullable private SshClient sharedSshClient;
+    @Nullable private CredentialProfile activeProfile;
+
+    /** Get the active SshClient (survives tab switches). */
+    @Nullable
+    public SshClient getSshClient() {
+        return sharedSshClient;
+    }
+
+    /** Get the active SSH profile (for Agent auto-connect). */
+    @Nullable
+    public CredentialProfile getActiveSshProfile() {
+        return activeProfile;
+    }
+
+    /** Called by TargetSettingsSheet when user selects a profile. */
+    public void setActiveSshProfile(@Nullable CredentialProfile profile) {
+        this.activeProfile = profile;
+    }
+
+    /** Called by TerminalFragment when SSH connects. */
+    public void setSshClient(@Nullable SshClient client) {
+        this.sharedSshClient = client;
+    }
+
+    /** Get the current TerminalFragment instance (for cross-fragment access).
      * Returns null if the Terminal tab is not currently visible.
      */
     @Nullable
