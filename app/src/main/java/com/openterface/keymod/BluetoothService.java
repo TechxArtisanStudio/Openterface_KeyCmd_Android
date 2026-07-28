@@ -273,9 +273,11 @@ public class BluetoothService extends Service {
                                      BluetoothGattCharacteristic characteristic,
                                      byte[] data,
                                      boolean acknowledgedWrite) {
-        characteristic.setWriteType(acknowledgedWrite
-                ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        // Always use acknowledged writes (WRITE_TYPE_DEFAULT) to ensure reliable
+        // delivery to the firmware. The iOS version uses acknowledged writes for
+        // all BLE-Eth data, which is why it works reliably. WRITE_TYPE_NO_RESPONSE
+        // can silently drop packets if the firmware's BLE reception is busy.
+        characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
 
         CountDownLatch writeLatch = new CountDownLatch(1);
         final boolean[] writeSucceeded = new boolean[1];

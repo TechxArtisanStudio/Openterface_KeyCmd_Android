@@ -3,6 +3,7 @@ package com.openterface.terminal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +33,7 @@ public class QueuePipe {
     private final PipeInputStream inputStream;
     private final PipeOutputStream outputStream;
     private volatile boolean closed = false;
+    private volatile int readTimeoutMs = 0;
 
     public QueuePipe(int capacity) {
         this.queue = new LinkedBlockingQueue<>(capacity);
@@ -55,6 +57,15 @@ public class QueuePipe {
 
     public boolean isClosed() {
         return closed;
+    }
+
+    /**
+     * Set the read timeout for the input stream. 0 means block indefinitely.
+     * When non-zero, reads that block longer than the timeout throw
+     * {@link SocketTimeoutException}, matching java.net.Socket behavior.
+     */
+    public void setReadTimeout(int timeoutMs) {
+        this.readTimeoutMs = timeoutMs;
     }
 
     /**
@@ -100,10 +111,18 @@ public class QueuePipe {
                 return toCopy;
             }
 
-            // 2) Block waiting for data.
+            // 2) Block waiting for data (with optional timeout).
             byte[] data;
             try {
-                data = queue.take();
+                int timeout = readTimeoutMs;
+                if (timeout > 0) {
+                    data = queue.poll(timeout, TimeUnit.MILLISECONDS);
+                    if (data == null) {
+                        throw new SocketTimeoutException("Read timed out after " + timeout + "ms");
+                    }
+                } else {
+                    data = queue.take();
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Read interrupted", e);

@@ -10,10 +10,12 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -50,6 +52,7 @@ public class BluetoothDialogFragment extends DialogFragment {
     private static final String LOG_PREFIX = "[Bluetooth] ";
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1001;
     private static final int REQUEST_ENABLE_BLUETOOTH = 1002;
+    private static final int REQUEST_CHECK_LOCATION_SETTINGS = 1003;
     private static final int SCAN_DURATION_MS = 12000;
 
     private BluetoothAdapter bluetoothAdapter;
@@ -699,6 +702,40 @@ public class BluetoothDialogFragment extends DialogFragment {
         scanButton.setEnabled(enabled);
     }
 
+    /**
+     * Returns true if location services are enabled, or if running on Android 12+
+     * (where the BLUETOOTH_SCAN permission with neverForLocation makes location
+     * services unnecessary for BLE scanning).
+     */
+    private boolean isLocationServicesEnabled() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            return true;
+        }
+        LocationManager locationManager =
+                (LocationManager) requireContext().getSystemService(Context.LOCATION_SERVICE);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    }
+
+    private void promptEnableLocationServices() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.bt_location_dialog_title)
+                .setMessage(R.string.bt_location_dialog_message)
+                .setPositiveButton(
+                        R.string.bt_enable_location,
+                        (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                            try {
+                                startActivityForResult(intent, REQUEST_CHECK_LOCATION_SETTINGS);
+                            } catch (android.content.ActivityNotFoundException e) {
+                                Log.e(TAG, LOG_PREFIX + "Location settings activity not found", e);
+                                showToast(getString(R.string.bt_toast_location_required));
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void startBleScan() {
         if (rxBleClient == null) {
             Log.e(TAG, LOG_PREFIX + "RxBleClient is not initialized");
@@ -720,6 +757,12 @@ public class BluetoothDialogFragment extends DialogFragment {
         if (!hasPermission) {
             Log.w(TAG, LOG_PREFIX + "Required permission not granted for BLE scanning");
             checkPermissions();
+            return;
+        }
+
+        if (!isLocationServicesEnabled()) {
+            Log.w(TAG, LOG_PREFIX + "Location services disabled, prompting user to enable");
+            promptEnableLocationServices();
             return;
         }
 
@@ -921,6 +964,16 @@ public class BluetoothDialogFragment extends DialogFragment {
             } else {
                 updateBluetoothState();
                 showToast(getString(R.string.bt_toast_bt_not_enabled));
+            }
+        } else if (requestCode == REQUEST_CHECK_LOCATION_SETTINGS) {
+            if (isLocationServicesEnabled()) {
+                Log.v(TAG, LOG_PREFIX + "Location services enabled, starting BLE scan");
+                if (isServiceBound && bluetoothAdapter.isEnabled() && !isScanning) {
+                    startBleScan();
+                }
+            } else {
+                Log.w(TAG, LOG_PREFIX + "Location services still disabled after settings return");
+                showToast(getString(R.string.bt_toast_location_required));
             }
         }
     }
