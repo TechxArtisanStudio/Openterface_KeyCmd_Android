@@ -5,8 +5,8 @@ import android.content.SharedPreferences;
 
 import androidx.annotation.NonNull;
 
-import com.openterface.keymod.agent.AgentMessage;
-import com.openterface.keymod.agent.AgentPlanStep;
+import com.openterface.keymod.agent.ui.AgentMessage;
+import com.openterface.keymod.agent.ui.AgentPlanStep;
 
 import org.json.JSONArray;
 import org.json.JSONException;

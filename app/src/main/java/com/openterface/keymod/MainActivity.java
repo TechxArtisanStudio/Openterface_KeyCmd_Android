@@ -76,6 +76,8 @@ import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
 import com.openterface.fragment.AgentFragment;
+import com.openterface.keymod.agent.ui.AgentSettingsBottomSheet;
+import com.openterface.keymod.agent.ui.TargetSettingsSheet;
 import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.help.HelpImageConfig;

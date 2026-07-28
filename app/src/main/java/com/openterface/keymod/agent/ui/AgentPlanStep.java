@@ -1,4 +1,4 @@
-package com.openterface.keymod.agent;
+package com.openterface.keymod.agent.ui;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

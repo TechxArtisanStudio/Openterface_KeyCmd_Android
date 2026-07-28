@@ -29,12 +29,13 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.R;
 import com.openterface.keymod.SettingsActivity;
-import com.openterface.keymod.agent.AgentDemoPlayer;
-import com.openterface.keymod.agent.AgentDemoScript;
-import com.openterface.keymod.agent.AgentDemoScriptRegistry;
-import com.openterface.keymod.agent.AgentMessage;
-import com.openterface.keymod.agent.AgentMessageAdapter;
-import com.openterface.keymod.agent.AgentPlanStep;
+import com.openterface.keymod.agent.demo.AgentDemoPlayer;
+import com.openterface.keymod.agent.demo.AgentDemoScript;
+import com.openterface.keymod.agent.demo.AgentDemoScriptRegistry;
+import com.openterface.keymod.agent.ui.AgentMessage;
+import com.openterface.keymod.agent.ui.AgentMessageAdapter;
+import com.openterface.keymod.agent.ui.AgentPlanStep;
+import com.openterface.keymod.agent.ui.EditPlanSheet;
 import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
@@ -298,7 +299,16 @@ public class AgentFragment extends Fragment {
 
             @Override
             public void onEditPlan() {
-                Toast.makeText(requireContext(), R.string.agent_edit_plan_coming_soon, Toast.LENGTH_SHORT).show();
+                if (!realEngineEnabled || agentController == null) return;
+                AgentPlan plan = agentController.getCurrentPlan();
+                if (plan == null) return;
+
+                EditPlanSheet sheet = EditPlanSheet.forPlan(plan, editedPlan -> {
+                    agentController.updatePlan(editedPlan);
+                    // Re-display the updated plan in the chat
+                    showAgentPlan(editedPlan);
+                });
+                sheet.show(getChildFragmentManager(), "edit_plan");
             }
 
             @Override

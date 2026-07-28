@@ -1,4 +1,4 @@
-package com.openterface.keymod;
+package com.openterface.keymod.agent.ui;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -24,6 +24,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
+import com.openterface.keymod.R;
 
 /**
  * BottomSheet dialog for Agent Settings.

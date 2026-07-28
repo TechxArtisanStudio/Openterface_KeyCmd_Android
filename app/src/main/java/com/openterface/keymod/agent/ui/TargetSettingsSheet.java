@@ -1,4 +1,4 @@
-package com.openterface.keymod;
+package com.openterface.keymod.agent.ui;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -20,6 +20,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
+import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.R;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
 
@@ -228,14 +230,8 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
             holder.name.setText(profile.getDisplayLabel());
             holder.host.setText(profile.getShortDescription());
 
-            // OS icon
-            int osIcon;
-            switch (profile.getTargetOs()) {
-                case "windows": osIcon = R.drawable.ic_os_windows; break;
-                case "linux":   osIcon = R.drawable.ic_os_linux;   break;
-                default:        osIcon = R.drawable.ic_os_macos;   break;
-            }
-            holder.osIcon.setImageResource(osIcon);
+            // Show checkmark for active profile
+            holder.checkIcon.setVisibility(isActive ? View.VISIBLE : View.GONE);
 
             // Active state — highlight card border
             MaterialCardView card = holder.card;
@@ -260,14 +256,14 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
             final MaterialCardView card;
             final TextView name;
             final TextView host;
-            final ImageView osIcon;
+            final ImageView checkIcon;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                card   = itemView.findViewById(R.id.profile_card);
-                name   = itemView.findViewById(R.id.profile_name);
-                host   = itemView.findViewById(R.id.profile_host);
-                osIcon = itemView.findViewById(R.id.profile_os_icon);
+                card      = itemView.findViewById(R.id.profile_card);
+                name      = itemView.findViewById(R.id.profile_name);
+                host      = itemView.findViewById(R.id.profile_host);
+                checkIcon = itemView.findViewById(R.id.profile_check_icon);
             }
         }
     }

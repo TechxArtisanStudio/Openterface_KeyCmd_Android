@@ -139,6 +139,19 @@ public final class AgentController {
         return currentPlan;
     }
 
+    /**
+     * Replace the current plan with an edited version (e.g. from EditPlanSheet).
+     * Only allowed in {@link AgentState#WAITING_APPROVE} state.
+     */
+    public void updatePlan(@NonNull AgentPlan editedPlan) {
+        if (state != AgentState.WAITING_APPROVE) {
+            Log.w(TAG, "updatePlan() called in state " + state + ", ignoring");
+            return;
+        }
+        currentPlan = editedPlan;
+        Log.i(TAG, "Plan updated: " + editedPlan.steps.size() + " steps");
+    }
+
     /** Get the prompt builder for configuring execution mode */
     @NonNull
     public AgentPromptBuilder getPromptBuilder() {

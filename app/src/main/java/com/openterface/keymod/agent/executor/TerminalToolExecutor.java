@@ -35,6 +35,8 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     private final Context context;
     @Nullable private SshClient sshClient;
     @Nullable private volatile Thread currentThread;
+    /** Stores the reason the last auto-connect attempt failed, for surfacing to the user. */
+    @Nullable private String lastAutoConnectError;
 
     public TerminalToolExecutor(@NonNull Context context) {
         // Keep the original context (not getApplicationContext) so that
@@ -71,9 +73,14 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         // Auto-connect if no live session but we have a profile
         if (client == null || !client.isSessionConnected()) {
+            lastAutoConnectError = null;
             client = tryAutoConnect();
             if (client == null) {
-                callback.onFailure("SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.");
+                String reason = lastAutoConnectError != null
+                        ? "SSH auto-connect failed: " + lastAutoConnectError
+                          + "\n\nOpen Target Settings → check your profile, or connect in Terminal tab first."
+                        : "SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.";
+                callback.onFailure(reason);
                 return;
             }
             // Update the stored reference for future calls
@@ -130,10 +137,14 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     /**
      * Try to auto-connect SSH using the profile stored in MainActivity.
      * This lets the Agent work even when the Terminal tab's SSH session died.
+     *
+     * <p>On failure, stores the reason in {@link #lastAutoConnectError} so
+     * the caller can surface a specific error to the user.</p>
      */
     @Nullable
     private SshClient tryAutoConnect() {
         if (!(context instanceof MainActivity)) {
+            lastAutoConnectError = "not running in MainActivity";
             Log.w(TAG, "Auto-connect skipped: context is not MainActivity (type="
                     + (context != null ? context.getClass().getSimpleName() : "null") + ")");
             return null;
@@ -141,6 +152,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         MainActivity activity = (MainActivity) context;
         CredentialProfile profile = activity.getActiveSshProfile();
         if (profile == null) {
+            lastAutoConnectError = "no SSH profile selected";
             Log.i(TAG, "Auto-connect skipped: no active SSH profile");
             return null;
         }
@@ -158,12 +170,17 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 // BLE-Eth transport: requires cleanup + callback registration
                 BleEthTransport transport = new BleEthTransport(btService::writeBleEthData);
 
-                // Cleanup stale firmware state
+                // Cleanup stale firmware state: send DISCONNECT frames for all connection IDs
+                // Uses the same frame format as TerminalFragment.buildDisconnectFrame()
+                Log.i(TAG, "BLE cleanup: sending DISCONNECT frames for connId 0-5");
                 for (int cid = 0; cid <= 5; cid++) {
                     btService.writeBleEthData(buildBleDisconnectFrame(cid));
                     Thread.sleep(50);
                 }
-                Thread.sleep(500);
+                // Wait for firmware to process disconnects (TerminalFragment uses 3000ms)
+                Log.i(TAG, "BLE cleanup: waiting 3000ms for firmware...");
+                Thread.sleep(3000);
+                Log.i(TAG, "BLE cleanup: complete");
 
                 // Register callback
                 BluetoothService.BleEthDataCallback callback = data -> {
@@ -182,12 +199,15 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 client = new SshClient(profile, new UsbEcmTransport());
             }
 
+            // Capture SSH-level errors (auth failure, tunnel failure, etc.)
+            final String[] sshError = {null};
             client.setListener(new SshClient.Listener() {
                 @Override public void onConnected() {}
                 @Override public void onDisconnected() {}
                 @Override public void onDataReceived(byte[] data, int len) {}
                 @Override public void onError(String message) {
-                    Log.w(TAG, "Auto-connect SSH error: " + message);
+                    sshError[0] = message;
+                    Log.w(TAG, "Auto-connect SSH listener error: " + message);
                 }
             });
             client.connect(profile);
@@ -197,25 +217,34 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 activity.setSshClient(client);
                 return client;
             } else {
-                Log.w(TAG, "Auto-connect SSH failed: session not connected");
+                // Connect returned without exception but session is not alive
+                lastAutoConnectError = sshError[0] != null
+                        ? sshError[0]
+                        : "SSH session not connected (check host/port/credentials)";
+                Log.w(TAG, "Auto-connect SSH failed: " + lastAutoConnectError);
                 return null;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Auto-connect SSH exception: " + e.getMessage(), e);
+            lastAutoConnectError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            Log.e(TAG, "Auto-connect SSH exception: " + lastAutoConnectError, e);
             return null;
         }
     }
 
-    /** Build a BLE DISCONNECT frame for the given connection ID (matches TerminalFragment pattern). */
+    /** Build a BLE DISCONNECT frame (matches TerminalFragment.buildDisconnectFrame format). */
     private byte[] buildBleDisconnectFrame(int connId) {
         byte[] frame = new byte[7];
-        frame[0] = (byte) 0x55; // header
-        frame[1] = (byte) (connId & 0xFF);
-        frame[2] = (byte) ((connId >> 8) & 0xFF);
-        frame[3] = 0x02; // DISCONNECT command
-        frame[4] = 0;
-        frame[5] = 0;
-        frame[6] = 0;
+        frame[0] = (byte) 0x57; // header byte 1
+        frame[1] = (byte) 0xAB; // header byte 2
+        frame[2] = 0x00;        // addr
+        frame[3] = 0x12;        // CMD_DISCONNECT
+        frame[4] = 0x01;        // payload length
+        frame[5] = (byte) connId;
+        int checksum = 0;
+        for (int i = 0; i < 6; i++) {
+            checksum += frame[i] & 0xFF;
+        }
+        frame[6] = (byte) (checksum & 0xFF);
         return frame;
     }
 

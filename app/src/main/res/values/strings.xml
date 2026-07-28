@@ -1705,4 +1705,17 @@ by TechxArtisan</string>
     <string name="credential_key_collapse">Hide</string>
     <string name="credential_key_hide">Hide</string>
     <string name="credential_private_key_hint">Private Key (PEM)</string>
+
+    <!-- Edit Plan Sheet -->
+    <string name="edit_plan_title">Edit Plan</string>
+    <string name="edit_plan_subtitle">Modify steps before execution</string>
+    <string name="edit_plan_empty">No steps — add one below</string>
+    <string name="edit_plan_add_step">+ Add Step</string>
+    <string name="edit_plan_cancel">Cancel</string>
+    <string name="edit_plan_confirm">Confirm</string>
+    <string name="edit_plan_delete_step">Delete step</string>
+    <string name="edit_plan_hint_title">Step title</string>
+    <string name="edit_plan_hint_command">Command (e.g. ls -la)</string>
+    <string name="edit_plan_hint_keys">Keys (e.g. &lt;CMD&gt;s&lt;/CMD&gt;)</string>
+    <string name="edit_plan_hint_macro">Macro ID or name</string>
 </resources>
