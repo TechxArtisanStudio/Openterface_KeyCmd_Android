@@ -69,22 +69,41 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             return;
         }
 
-        SshClient client = this.sshClient;
+        SshClient client = null;
 
-        // Auto-connect if no live session but we have a profile
+        // Priority: Target Settings profile > Terminal's connection
+        if (context instanceof MainActivity) {
+            MainActivity activity = (MainActivity) context;
+            CredentialProfile activeProfile = activity.getActiveSshProfile();
+
+            if (activeProfile != null) {
+                // Target Settings has a profile — always use it (may reconnect)
+                lastAutoConnectError = null;
+                client = tryAutoConnectWithProfile(activeProfile);
+            }
+        }
+
+        // Fallback: use Terminal's existing connection if no profile selected
         if (client == null || !client.isSessionConnected()) {
+            client = this.sshClient;
+            if (client != null && !client.isSessionConnected()) {
+                client = null; // Terminal's connection is dead
+            }
+        }
+
+        // Last resort: try auto-connect with any available profile
+        if (client == null) {
             lastAutoConnectError = null;
             client = tryAutoConnect();
-            if (client == null) {
-                String reason = lastAutoConnectError != null
-                        ? "SSH auto-connect failed: " + lastAutoConnectError
-                          + "\n\nOpen Target Settings → check your profile, or connect in Terminal tab first."
-                        : "SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.";
-                callback.onFailure(reason);
-                return;
-            }
-            // Update the stored reference for future calls
-            this.sshClient = client;
+        }
+
+        if (client == null || !client.isSessionConnected()) {
+            String reason = lastAutoConnectError != null
+                    ? "SSH auto-connect failed: " + lastAutoConnectError
+                      + "\n\nOpen Target Settings → check your profile, or connect in Terminal tab first."
+                    : "SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.";
+            callback.onFailure(reason);
+            return;
         }
 
         Log.i(TAG, "Executing: " + command);
@@ -131,6 +150,95 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         if (t != null) {
             t.interrupt();
             currentThread = null;
+        }
+    }
+
+    /**
+     * Try to auto-connect SSH using a specific profile.
+     * This is called when Target Settings has a profile selected — it takes priority
+     * over Terminal's existing connection.
+     *
+     * <p>On failure, stores the reason in {@link #lastAutoConnectError} so
+     * the caller can surface a specific error to the user.</p>
+     */
+    @Nullable
+    private SshClient tryAutoConnectWithProfile(@NonNull CredentialProfile profile) {
+        if (!(context instanceof MainActivity)) {
+            lastAutoConnectError = "not running in MainActivity";
+            Log.w(TAG, "Auto-connect skipped: context is not MainActivity (type="
+                    + (context != null ? context.getClass().getSimpleName() : "null") + ")");
+            return null;
+        }
+        MainActivity activity = (MainActivity) context;
+
+        Log.i(TAG, "Connecting SSH via Target Settings profile: " + profile.getDisplayLabel());
+
+        // Determine transport type: BLE if BluetoothService is connected, else USB
+        BluetoothService btService = activity.getBluetoothService();
+        boolean useBle = btService != null && btService.isConnected();
+        Log.i(TAG, "Auto-connect transport: " + (useBle ? "BLE" : "USB"));
+
+        try {
+            SshClient client;
+            if (useBle) {
+                // BLE-Eth transport: requires cleanup + callback registration
+                BleEthTransport transport = new BleEthTransport(btService::writeBleEthData);
+
+                // Cleanup stale firmware state: send DISCONNECT frames for all connection IDs
+                Log.i(TAG, "BLE cleanup: sending DISCONNECT frames for connId 0-5");
+                for (int cid = 0; cid <= 5; cid++) {
+                    btService.writeBleEthData(buildBleDisconnectFrame(cid));
+                    Thread.sleep(50);
+                }
+                Log.i(TAG, "BLE cleanup: waiting 3000ms for firmware...");
+                Thread.sleep(3000);
+                Log.i(TAG, "BLE cleanup: complete");
+
+                // Register callback
+                BluetoothService.BleEthDataCallback callback = data -> {
+                    if (transport != null) {
+                        transport.handleIncomingData(data);
+                    }
+                };
+                btService.addBleEthCallback(callback);
+
+                String host = profile.getHost();
+                int port = profile.getPort();
+                BleEthSocketFactory socketFactory = new BleEthSocketFactory(transport, host, port);
+
+                client = new SshClient(profile, transport, socketFactory);
+            } else {
+                client = new SshClient(profile, new UsbEcmTransport());
+            }
+
+            // Capture SSH-level errors
+            final String[] sshError = {null};
+            client.setListener(new SshClient.Listener() {
+                @Override public void onConnected() {}
+                @Override public void onDisconnected() {}
+                @Override public void onDataReceived(byte[] data, int len) {}
+                @Override public void onError(String message) {
+                    sshError[0] = message;
+                    Log.w(TAG, "Auto-connect SSH listener error: " + message);
+                }
+            });
+            client.connect(profile);
+
+            if (client.isSessionConnected()) {
+                Log.i(TAG, "SSH connected via Target Settings profile: " + profile.getDisplayLabel());
+                activity.setSshClient(client);
+                return client;
+            } else {
+                lastAutoConnectError = sshError[0] != null
+                        ? sshError[0]
+                        : "SSH session not connected (check host/port/credentials)";
+                Log.w(TAG, "SSH connect failed: " + lastAutoConnectError);
+                return null;
+            }
+        } catch (Exception e) {
+            lastAutoConnectError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            Log.e(TAG, "SSH connect exception: " + lastAutoConnectError, e);
+            return null;
         }
     }
 
