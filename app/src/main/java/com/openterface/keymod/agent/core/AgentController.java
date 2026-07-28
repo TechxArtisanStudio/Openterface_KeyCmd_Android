@@ -370,9 +370,15 @@ public final class AgentController {
                 toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
                     @Override
                     public void onSuccess(@NonNull String output) {
-                        // Build display lines: "$ <command>" + output lines
+                        // Build display lines based on step kind
                         List<String> lines = new ArrayList<>();
-                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                        if ("terminal".equals(step.kind)) {
+                            // Terminal: show "$ command" + output
+                            lines.add("$ " + (step.command != null ? step.command : step.title));
+                        } else {
+                            // HID / Macro: show "🔑 title" + output
+                            lines.add("🔑 " + step.title);
+                        }
                         if (output != null && !output.isEmpty()) {
                             for (String line : output.split("\n")) {
                                 lines.add(line);
@@ -386,7 +392,11 @@ public final class AgentController {
                     @Override
                     public void onFailure(@NonNull String error) {
                         List<String> lines = new ArrayList<>();
-                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                        if ("terminal".equals(step.kind)) {
+                            lines.add("$ " + (step.command != null ? step.command : step.title));
+                        } else {
+                            lines.add("🔑 " + step.title);
+                        }
                         lines.add("Error: " + error);
                         session.addExecutionCliMessage(lines);
                         postToMain(() -> notifyStepOutput(stepIndex, lines));

@@ -39,6 +39,9 @@ import com.openterface.keymod.agent.ui.EditPlanSheet;
 import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
+import com.openterface.keymod.agent.executor.CompositeToolExecutor;
+import com.openterface.keymod.agent.executor.HidToolExecutor;
+import com.openterface.keymod.agent.executor.MacroToolExecutor;
 import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
@@ -80,9 +83,12 @@ public class AgentFragment extends Fragment {
     private AgentDemoPlayer demoPlayer;
     @Nullable private AgentDemoScript pendingAutoScript;
 
-    // Day 3: Real Agent engine
+    // Real Agent engine
     @Nullable private AgentController agentController;
     @Nullable private TerminalToolExecutor terminalExecutor;
+    @Nullable private HidToolExecutor hidExecutor;
+    @Nullable private MacroToolExecutor macroExecutor;
+    @Nullable private CompositeToolExecutor compositeExecutor;
     private boolean realEngineEnabled = false;
     private final List<AgentMessage> chatMessages = new ArrayList<>();
     @Nullable private ExecutorService verifyExecutor;
@@ -137,8 +143,10 @@ public class AgentFragment extends Fragment {
         super.onResume();
         // Re-check API config when returning from settings
         refreshEngineState();
-        // Update SSH client reference (user may have connected/disconnected)
+        // Update executor connections (user may have connected/disconnected)
         updateTerminalExecutorSshClient();
+        updateHidExecutorConnection();
+        updateMacroExecutorConnection();
     }
 
     /**
@@ -152,6 +160,49 @@ public class AgentFragment extends Fragment {
                 (com.openterface.keymod.MainActivity) requireActivity();
         com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
         terminalExecutor.setSshClient(sshClient);
+    }
+
+    /**
+     * Update the HidToolExecutor with the current ConnectionManager and target OS.
+     * ConnectionManager is obtained from MainActivity.
+     */
+    private void updateHidExecutorConnection() {
+        if (hidExecutor == null || !isAdded()) return;
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
+        com.openterface.keymod.MainActivity mainActivity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+        hidExecutor.setConnectionManager(mainActivity.getConnectionManager());
+        hidExecutor.setTargetOs(getTargetOs());
+    }
+
+    /**
+     * Update the MacroToolExecutor with the current ConnectionManager.
+     */
+    private void updateMacroExecutorConnection() {
+        if (macroExecutor == null || !isAdded()) return;
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
+        com.openterface.keymod.MainActivity mainActivity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+        macroExecutor.setConnectionManager(mainActivity.getConnectionManager());
+    }
+
+    /**
+     * Get the target OS for HID Unicode input method.
+     * Priority: active SSH profile's targetOs > default "linux".
+     */
+    @androidx.annotation.NonNull
+    private String getTargetOs() {
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return "linux";
+        com.openterface.keymod.MainActivity mainActivity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+        com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+        if (profile != null) {
+            String os = profile.getTargetOs();
+            if (os != null && !os.isEmpty()) {
+                return os;
+            }
+        }
+        return "linux";
     }
 
     /**
@@ -227,10 +278,25 @@ public class AgentFragment extends Fragment {
             realEngineEnabled = true;
             agentController = new AgentController(requireContext());
 
-            // Set up TerminalToolExecutor for SSH command execution
+            // TerminalToolExecutor for SSH command execution
             terminalExecutor = new TerminalToolExecutor(requireContext());
             updateTerminalExecutorSshClient();
-            agentController.setToolExecutor(terminalExecutor);
+
+            // HidToolExecutor for wireless keyboard control
+            hidExecutor = new HidToolExecutor();
+            updateHidExecutorConnection();
+
+            // MacroToolExecutor for macro playback
+            macroExecutor = new MacroToolExecutor(requireContext());
+            updateMacroExecutorConnection();
+
+            // CompositeToolExecutor routes steps to terminal/hid/macro
+            compositeExecutor = new CompositeToolExecutor();
+            compositeExecutor.register(terminalExecutor);
+            compositeExecutor.register(hidExecutor);
+            compositeExecutor.register(macroExecutor);
+
+            agentController.setToolExecutor(compositeExecutor);
 
             setupAgentController();
         }
@@ -515,7 +581,7 @@ public class AgentFragment extends Fragment {
         return AgentDemoPlayer.PauseAt.ACT;
     }
 
-    // ── Day 3: Real Agent Engine ─────────────────────────────────────────
+    // ── Real Agent Engine ─────────────────────────────────────────────
 
     /**
      * Check if the active provider is configured.
@@ -594,10 +660,32 @@ public class AgentFragment extends Fragment {
             @Override
             public void onError(@NonNull String message) {
                 if (!isAdded()) return;
-                if (message.contains("SSH not connected")) {
+                if (message.contains("SSH not connected")
+                        || message.contains("SSH auto-connect")
+                        || message.contains("SSH profile")) {
                     chatMessages.add(AgentMessage.assistant(
                             "⚠️ " + message + "\n\n"
                             + "Go to Terminal tab → connect to a host → come back here."));
+                    adapter.submitList(new ArrayList<>(chatMessages));
+                    messagesList.post(() -> {
+                        if (adapter.getItemCount() > 0) {
+                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                        }
+                    });
+                } else if (message.contains("HID device not connected")) {
+                    chatMessages.add(AgentMessage.assistant(
+                            "⚠️ " + message + "\n\n"
+                            + "Connect via USB or Bluetooth to use HID/Macro features."));
+                    adapter.submitList(new ArrayList<>(chatMessages));
+                    messagesList.post(() -> {
+                        if (adapter.getItemCount() > 0) {
+                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                        }
+                    });
+                } else if (message.contains("Macro not found")) {
+                    chatMessages.add(AgentMessage.assistant(
+                            "⚠️ " + message + "\n\n"
+                            + "Available macros: " + getAvailableMacroNames()));
                     adapter.submitList(new ArrayList<>(chatMessages));
                     messagesList.post(() -> {
                         if (adapter.getItemCount() > 0) {
@@ -636,6 +724,25 @@ public class AgentFragment extends Fragment {
                 });
             }
         });
+    }
+
+    /**
+     * Get a comma-separated list of all available macro names.
+     * Used for error messages when a macro is not found.
+     */
+    @NonNull
+    private String getAvailableMacroNames() {
+        if (!isAdded()) return "(unknown)";
+        com.openterface.keymod.MacrosManager mm =
+                com.openterface.keymod.MacrosManager.getInstance(requireContext());
+        java.util.List<com.openterface.keymod.MacrosManager.Macro> macros = mm.getAllMacros();
+        if (macros == null || macros.isEmpty()) return "(none)";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < macros.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(macros.get(i).name);
+        }
+        return sb.toString();
     }
 
     /**

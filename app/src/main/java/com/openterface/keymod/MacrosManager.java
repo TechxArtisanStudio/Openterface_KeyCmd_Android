@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -426,6 +428,15 @@ public class MacrosManager {
      */
     public void setListener(MacrosListener listener) {
         this.listener = listener;
+    }
+
+    /**
+     * Get the current listener for macro events.
+     * Used by Agent executor to save/restore listener during playback.
+     */
+    @Nullable
+    public MacrosListener getListener() {
+        return listener;
     }
 
     /**

@@ -2,6 +2,8 @@ package com.openterface.keymod.agent.executor;
 
 import static org.junit.Assert.*;
 
+import android.content.Context;
+
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
 
@@ -9,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +29,8 @@ public class TerminalToolExecutorTest {
 
     @Before
     public void setUp() {
-        executor = new TerminalToolExecutor();
+        Context context = RuntimeEnvironment.getApplication();
+        executor = new TerminalToolExecutor(context);
     }
 
     // ── getType ──────────────────────────────────────────────────────────
@@ -73,14 +77,17 @@ public class TerminalToolExecutorTest {
 
     @Test
     public void testExecuteSshNotConnectedFails() throws Exception {
-        // No SSH client set → should fail with "not connected"
+        // No SSH client set → should fail with "not connected" or auto-connect failure
         AgentPlan.Step step = AgentPlan.Step.terminal(0, "List", "ls");
         RecordingCallback cb = new RecordingCallback();
 
         executor.execute(step, cb);
         assertTrue(cb.awaitCompletion(1, TimeUnit.SECONDS));
         assertNotNull(cb.failure);
-        assertTrue(cb.failure.contains("SSH not connected"));
+        assertTrue("Expected SSH-related error, got: " + cb.failure,
+                cb.failure.contains("SSH not connected")
+                || cb.failure.contains("SSH auto-connect")
+                || cb.failure.contains("not running in MainActivity"));
     }
 
     // ── truncateOutput ───────────────────────────────────────────────────

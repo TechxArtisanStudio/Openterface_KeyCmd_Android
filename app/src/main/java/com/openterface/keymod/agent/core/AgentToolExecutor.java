@@ -5,12 +5,12 @@ import androidx.annotation.NonNull;
 /**
  * Tool executor interface — abstraction for executing Agent plan steps.
  *
- * <p>Day 3 defines the interface only. Concrete implementations
- * arrive in Day 5-6:
+ * <p>Concrete implementations:
  * <ul>
  *   <li>{@code TerminalToolExecutor} — SSH command execution</li>
  *   <li>{@code HidToolExecutor} — wireless keyboard control</li>
  *   <li>{@code MacroToolExecutor} — macro playback</li>
+ *   <li>{@code CompositeToolExecutor} — routes steps to the above by kind</li>
  * </ul>
  */
 public interface AgentToolExecutor {

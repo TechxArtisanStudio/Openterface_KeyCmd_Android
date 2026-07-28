@@ -1,6 +1,7 @@
 package com.openterface.keymod.agent.core;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -8,28 +9,47 @@ import com.google.gson.annotations.SerializedName;
 import com.openterface.keymod.agent.llm.LlmResponse;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses LLM JSON responses into structured {@link AgentPlan} objects.
  *
- * <p>The expected JSON format is:
- * <pre>{@code
- * {
- *   "summary": "one-line summary",
- *   "steps": [
- *     {"title": "step title", "command": "ls -la", "kind": "terminal"},
- *     {"title": "press save", "keys": "<CMD>s</CMD>", "kind": "hid"},
- *     {"title": "run cleanup", "macroId": "cleanup_1", "kind": "macro"}
- *   ]
- * }
- * }</pre>
+ * <p>Implements a 5-level degradation strategy for extracting JSON from LLM output:
+ * <ol>
+ *   <li>Pre-pass: strip {@code <think>...<\/think>} reasoning blocks</li>
+ *   <li>Level 1: extract from {@code ```json ... ```} fenced block</li>
+ *   <li>Level 2: extract from any {@code ``` ... ```} fenced block</li>
+ *   <li>Level 3: parse entire cleaned string as JSON</li>
+ *   <li>Level 4: extract text between first {@code {} and last {@code }}</li>
+ *   <li>Level 5: throw PlanParseException</li>
+ * </ol>
  *
- * <p>Uses Gson for JSON parsing to avoid org.json stub issues in unit tests.</p>
+ * <p>Accepted JSON field names:
+ * <ul>
+ *   <li>Summary: {@code summary} or {@code intro}</li>
+ *   <li>Steps array: {@code steps}, {@code plan}, or {@code actions}</li>
+ *   <li>Command: {@code command}, {@code payload}, {@code shell}, or {@code cmd}</li>
+ *   <li>Macro ID: {@code macroId}, {@code macro_id}, or {@code macro}</li>
+ * </ul>
  */
 public final class AgentPlanParser {
 
     private final Gson gson = new Gson();
+
+    /** Pre-compiled regex for <think>...</think> blocks (reasoning models). */
+    private static final Pattern THINK_PATTERN =
+            Pattern.compile("<think>.*?</think>", Pattern.DOTALL);
+
+    /** Pre-compiled regex for ```json ... ``` fences. */
+    private static final Pattern JSON_FENCE_PATTERN =
+            Pattern.compile("```json\\s*\\n(.*?)\\n```", Pattern.DOTALL);
+
+    /** Pre-compiled regex for any ``` ... ``` fences. */
+    private static final Pattern ANY_FENCE_PATTERN =
+            Pattern.compile("```\\s*\\n(.*?)\\n```", Pattern.DOTALL);
 
     /**
      * Parse an LLM JSON response string into an AgentPlan.
@@ -40,38 +60,40 @@ public final class AgentPlanParser {
      */
     @NonNull
     public AgentPlan parse(@NonNull String jsonResponse) throws PlanParseException {
-        // Strip markdown code fences if present (LLMs sometimes wrap JSON in ```json...```)
-        String cleaned = stripCodeFences(jsonResponse);
+        // Pre-pass: strip <think>...</think> reasoning blocks (DeepSeek R1, etc.)
+        String cleaned = stripThinkingBlocks(jsonResponse);
 
-        try {
-            PlanJson root = gson.fromJson(cleaned, PlanJson.class);
-
-            if (root == null) {
-                throw new PlanParseException("Failed to parse plan JSON: null result");
-            }
-
-            // Summary is optional — auto-generate if missing
-            String summary = (root.summary != null && !root.summary.isEmpty())
-                    ? root.summary
-                    : "Plan with " + (root.steps != null ? root.steps.size() : 0) + " steps";
-
-            if (root.steps == null || root.steps.isEmpty()) {
-                // LLM returned valid JSON but no actionable steps — provide helpful error
-                throw new PlanParseException(
-                        "The AI model did not return a valid execution plan. "
-                        + "Please try again or rephrase your request.");
-            }
-
-            List<AgentPlan.Step> steps = new ArrayList<>(root.steps.size());
-            for (int i = 0; i < root.steps.size(); i++) {
-                steps.add(parseStep(root.steps.get(i), i));
-            }
-
-            return new AgentPlan(summary, steps);
-
-        } catch (JsonSyntaxException e) {
-            throw new PlanParseException("Failed to parse plan JSON: " + e.getMessage(), e);
+        // Level 1: try ```json ... ``` fence
+        String extracted = extractFence(cleaned, JSON_FENCE_PATTERN);
+        if (extracted != null) {
+            AgentPlan plan = tryParseJson(extracted);
+            if (plan != null) return plan;
         }
+
+        // Level 2: try any ``` ... ``` fence
+        extracted = extractFence(cleaned, ANY_FENCE_PATTERN);
+        if (extracted != null) {
+            AgentPlan plan = tryParseJson(extracted);
+            if (plan != null) return plan;
+        }
+
+        // Level 3: try parsing the entire cleaned string
+        AgentPlan plan = tryParseJson(cleaned);
+        if (plan != null) return plan;
+
+        // Level 4: extract between first { and last }
+        int firstBrace = cleaned.indexOf('{');
+        int lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace != -1 && lastBrace > firstBrace) {
+            String slice = cleaned.substring(firstBrace, lastBrace + 1);
+            plan = tryParseJson(slice);
+            if (plan != null) return plan;
+        }
+
+        // Level 5: complete failure
+        throw new PlanParseException(
+                "Failed to parse plan from LLM response after 5 fallback attempts. "
+                + "Raw response length: " + jsonResponse.length() + " chars.");
     }
 
     /**
@@ -89,7 +111,65 @@ public final class AgentPlanParser {
         return parse(response.content);
     }
 
-    // ── Internal ─────────────────────────────────────────────────────────
+    // ── Internal parsing helpers ─────────────────────────────────────────
+
+    /**
+     * Strip <think>...</think> reasoning blocks from the response.
+     * Some reasoning models (DeepSeek R1, etc.) wrap their chain-of-thought
+     * in these tags before the actual JSON response.
+     */
+    @NonNull
+    private String stripThinkingBlocks(@NonNull String text) {
+        Matcher matcher = THINK_PATTERN.matcher(text);
+        return matcher.replaceAll("").trim();
+    }
+
+    /**
+     * Extract content matching a fence pattern.
+     * Returns null if no match found.
+     */
+    @Nullable
+    private String extractFence(@NonNull String text, @NonNull Pattern pattern) {
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
+    }
+
+    /**
+     * Attempt to parse a JSON string into an AgentPlan.
+     * Returns null on any parsing failure (Gson is lenient by default).
+     */
+    @Nullable
+    private AgentPlan tryParseJson(@NonNull String json) {
+        try {
+            PlanJson root = gson.fromJson(json, PlanJson.class);
+
+            if (root == null) {
+                return null;
+            }
+
+            // Summary/intro is optional — auto-generate if missing
+            String summary = (root.summary != null && !root.summary.isEmpty())
+                    ? root.summary
+                    : "Plan with " + (root.steps != null ? root.steps.size() : 0) + " steps";
+
+            if (root.steps == null || root.steps.isEmpty()) {
+                // LLM returned valid JSON but no actionable steps
+                return null;
+            }
+
+            List<AgentPlan.Step> steps = new ArrayList<>(root.steps.size());
+            for (int i = 0; i < root.steps.size(); i++) {
+                steps.add(parseStep(root.steps.get(i), i));
+            }
+
+            return new AgentPlan(summary, steps);
+        } catch (JsonSyntaxException | IllegalArgumentException | PlanParseException e) {
+            return null;
+        }
+    }
 
     @NonNull
     private AgentPlan.Step parseStep(@NonNull StepJson obj, int index) throws PlanParseException {
@@ -132,7 +212,8 @@ public final class AgentPlanParser {
 
     /**
      * Strip markdown code fences ({@code ```json ... ```}) that LLMs sometimes
-     * wrap around JSON output.
+     * wrap around JSON output. Used only as a simple pre-cleanup — the main
+     * parser uses the 5-level fallback strategy instead.
      */
     @NonNull
     static String stripCodeFences(@NonNull String text) {
@@ -154,7 +235,9 @@ public final class AgentPlanParser {
 
     /** Root plan JSON structure — supports multiple LLM output formats */
     private static final class PlanJson {
-        @SerializedName("summary") String summary;
+        // "summary" is standard; "intro" is used by the iOS spec
+        @SerializedName(value = "summary", alternate = {"intro"})
+        String summary;
         // "steps" is standard; "plan" and "actions" are common LLM alternatives
         @SerializedName(value = "steps", alternate = {"plan", "actions"})
         List<StepJson> steps;

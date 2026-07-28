@@ -2345,7 +2345,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         return connectionManager;
     }
 
-    // ── Day 5: SshClient shared across tabs ─────────────────────────────
+    // ── SshClient shared across tabs ──────────────────────────────────
 
     @Nullable private SshClient sharedSshClient;
     @Nullable private CredentialProfile activeProfile;
