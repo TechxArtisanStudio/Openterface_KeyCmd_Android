@@ -1,5 +1,7 @@
 package com.openterface.terminal;
 
+import android.util.Log;
+
 import java.io.ByteArrayOutputStream;
 
 /**
@@ -16,12 +18,14 @@ import java.io.ByteArrayOutputStream;
  */
 public class DataReassembler {
 
+    private static final String TAG = "DataReassembler";
+
     private static final int FRAG_HEADER_LEN = 3;
     private static final byte FRAG_MORE = (byte) 0x80;
     private static final byte FRAG_FIRST = 0x40;
     private static final int FRAG_COUNT_MASK = 0x0F;
 
-    private boolean active = false;
+    private volatile boolean active = false;
     private int connId = 0;
     private int totalFrags = 0;
     private int nextSeq = 0;
@@ -42,18 +46,74 @@ public class DataReassembler {
         int total = flags & FRAG_COUNT_MASK;
         if (total == 0) total = 1; // single fragment
 
+        boolean isFirst = (flags & FRAG_FIRST) != 0;
+        boolean hasMore = (flags & FRAG_MORE) != 0;
+
+        // Sanity check: seq must be within [0, total-1].
+        // If seq >= total, the firmware's fragment metadata is inconsistent.
+        // This catches cases like total=1,seq=2 where a middle fragment is
+        // mislabeled as a single-fragment message.
+        if (seq >= total) {
+            Log.w(TAG, "Fragment rejected: seq=" + seq + " >= total=" + total
+                    + " connId=" + connId + " isFirst=" + isFirst
+                    + " hasMore=" + hasMore + " fragDataLen=" + fragDataLen
+                    + " — inconsistent fragment metadata, discarding");
+            active = false; // reset any in-progress reassembly
+            return null;
+        }
+
         // Check if this is the first fragment
-        if ((flags & FRAG_FIRST) != 0) {
+        if (isFirst) {
+            if (active) {
+                // Previous reassembly was incomplete — log the abandonment
+                Log.w(TAG, "FRAG_FIRST received while reassembly active: "
+                        + "discarding " + nextSeq + "/" + totalFrags
+                        + " fragments (" + buf.size() + " bytes buffered) for connId=" + connId);
+            }
             active = true;
             this.totalFrags = total;
             nextSeq = 0;
             buf = new ByteArrayOutputStream();
+            Log.v(TAG, "Reassembly started: connId=" + connId
+                    + " totalFrags=" + total + " fragDataLen=" + fragDataLen);
         }
 
-        if (!active) return null;
+        if (!active) {
+            if (seq > 0 && total > 1) {
+                // Orphan fragment: FRAG_FIRST (and possibly earlier fragments)
+                // were lost but we have a continuation. Start reassembly from
+                // this fragment so the remaining data is not silently discarded.
+                Log.w(TAG, "Orphan fragment received (seq=" + seq + "/" + total
+                        + " connId=" + connId + "). Starting reassembly from seq=" + seq
+                        + " — first " + seq + " fragment(s) were lost, data will be truncated");
+                active = true;
+                this.totalFrags = total;
+                nextSeq = seq;
+                buf = new ByteArrayOutputStream();
+            } else if (!isFirst && !hasMore && seq > 0 && total == 1) {
+                // Firmware bug: middle fragment labeled as single-fragment.
+                // Discard to prevent garbage data delivery.
+                Log.w(TAG, "Fragment rejected: orphan with seq=" + seq
+                        + " total=1 connId=" + connId
+                        + " — inconsistent metadata, discarding");
+                return null;
+            } else {
+                Log.w(TAG, "Fragment dropped: reassembly not active. "
+                        + "seq=" + seq + " connId=" + connId
+                        + " isFirst=" + isFirst + " hasMore=" + hasMore
+                        + " total=" + total + " fragDataLen=" + fragDataLen
+                        + " — waiting for FRAG_FIRST");
+                return null;
+            }
+        }
 
         // Check sequence number
         if (seq != nextSeq) {
+            Log.e(TAG, "SEQUENCE MISMATCH: expected seq=" + nextSeq
+                    + " but got seq=" + seq + " connId=" + connId
+                    + " totalFrags=" + totalFrags
+                    + " buffered=" + buf.size() + " bytes"
+                    + " — ABORTING reassembly (data lost!)");
             active = false;
             return null; // out of order, discard
         }
@@ -63,8 +123,11 @@ public class DataReassembler {
         nextSeq++;
 
         // Check if this is the last fragment
-        if ((flags & FRAG_MORE) == 0) {
+        if (!hasMore) {
             active = false;
+            Log.i(TAG, "Reassembly complete: connId=" + connId
+                    + " fragments=" + nextSeq + "/" + totalFrags
+                    + " totalBytes=" + buf.size());
             return new ReassembledData(connId, buf.toByteArray());
         }
         return null;
