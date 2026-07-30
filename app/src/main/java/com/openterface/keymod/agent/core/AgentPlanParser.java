@@ -8,8 +8,6 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.SerializedName;
 import com.openterface.keymod.agent.llm.LlmResponse;
 
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -161,8 +159,6 @@ public final class AgentPlanParser {
                     : "Plan with " + (root.steps != null ? root.steps.size() : 0) + " steps";
 
             if (root.steps == null || root.steps.isEmpty()) {
-                // LLM returned valid JSON but no actionable steps
-                Log.w("PlanParser", "No steps in parsed plan");
                 return null;
             }
 
@@ -172,17 +168,9 @@ public final class AgentPlanParser {
             }
 
             return new AgentPlan(summary, steps);
-        } catch (JsonSyntaxException e) {
-            Log.w("PlanParser", "JsonSyntaxException: " + e.getMessage());
-            return null;
-        } catch (IllegalArgumentException e) {
-            Log.w("PlanParser", "IllegalArgumentException: " + e.getMessage());
-            return null;
-        } catch (PlanParseException e) {
-            Log.w("PlanParser", "PlanParseException: " + e.getMessage());
+        } catch (JsonSyntaxException | IllegalArgumentException | PlanParseException e) {
             return null;
         } catch (Exception e) {
-            Log.w("PlanParser", "Unexpected exception: " + e.getClass().getName() + ": " + e.getMessage());
             return null;
         }
     }

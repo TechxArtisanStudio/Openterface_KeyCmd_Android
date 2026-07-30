@@ -75,13 +75,13 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     public void execute(@NonNull AgentPlan.Step step,
                         @NonNull ExecutionCallback callback) {
         if (!"terminal".equals(step.kind)) {
-            callback.onFailure("TerminalToolExecutor cannot handle kind=" + step.kind);
+            callback.onFailure("Error: TerminalToolExecutor cannot handle kind=" + step.kind);
             return;
         }
 
         String command = step.command;
         if (command == null || command.trim().isEmpty()) {
-            callback.onFailure("Step has no command");
+            callback.onFailure("Error: Step has no command");
             return;
         }
 
@@ -122,9 +122,9 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             }
 
             String reason = lastAutoConnectError != null
-                    ? "SSH auto-connect failed: " + lastAutoConnectError
+                    ? "Error: SSH auto-connect failed: " + lastAutoConnectError
                       + "\n\nOpen Target Settings → check your profile, or connect in Terminal tab first."
-                    : "SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.";
+                    : "Error: SSH not connected. Open Target Settings → select a profile, or connect in Terminal tab first.";
             callback.onFailure(reason);
             return;
         }
@@ -149,7 +149,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                     Log.i(TAG, "Command succeeded: " + command);
                     callback.onSuccess(truncated);
                 } else {
-                    String errorOutput = "Exit code: " + exitCode;
+                    String errorOutput = "Error: Exit code: " + exitCode;
                     if (!truncated.isEmpty()) {
                         errorOutput += "\n" + truncated;
                     }
@@ -179,7 +179,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 ConnectionManager cm = connectionManager;
                 if (cm == null || !cm.isConnected()) {
                     currentThread = null;
-                    callback.onFailure("HID device not connected for terminal fallback");
+                    callback.onFailure("Error: HID device not connected for terminal fallback");
                     return;
                 }
 
@@ -201,7 +201,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 currentThread = null;
 
                 if (result == HidTextKeystrokeSender.Result.CANCELLED) {
-                    callback.onFailure("HID fallback cancelled");
+                    callback.onFailure("Error: HID fallback cancelled");
                 } else {
                     Log.i(TAG, "HID fallback: command typed successfully: " + command);
                     callback.onSuccess("✅ Command typed: " + command
@@ -210,11 +210,11 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             } catch (InterruptedException e) {
                 currentThread = null;
                 Log.i(TAG, "HID fallback interrupted");
-                callback.onFailure("HID fallback interrupted");
+                callback.onFailure("Error: HID fallback interrupted");
             } catch (Exception e) {
                 currentThread = null;
                 Log.e(TAG, "HID fallback failed", e);
-                callback.onFailure("HID fallback failed: " + e.getMessage());
+                callback.onFailure("Error: HID fallback failed: " + e.getMessage());
             }
         }, "TerminalHidFallback").start();
     }

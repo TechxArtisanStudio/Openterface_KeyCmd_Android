@@ -120,6 +120,7 @@ public final class HidToolExecutor implements AgentToolExecutor {
                     }
                 } else {
                     Log.i(TAG, "HID step completed: " + keys);
+                    safeReleaseKeys(cm);
                     String display = "✅ Keystrokes sent: " + keys;
                     callback.onSuccess(display);
                 }
