@@ -99,6 +99,11 @@ public final class HidToolExecutor implements AgentToolExecutor {
                         cancelFlag,
                         (completed, total) -> {
                             Log.v(TAG, "HID progress: " + completed + "/" + total);
+                            // Check connection between keystrokes — abort if BLE/USB dropped
+                            if (!cm.isConnected()) {
+                                Log.w(TAG, "HID connection lost mid-execution");
+                                cancelFlag.set(true);
+                            }
                         }
                 );
 
@@ -106,7 +111,13 @@ public final class HidToolExecutor implements AgentToolExecutor {
 
                 if (result == HidTextKeystrokeSender.Result.CANCELLED) {
                     Log.i(TAG, "HID step cancelled");
-                    callback.onFailure("HID step cancelled");
+                    // Check if cancellation was due to disconnection
+                    if (!cm.isConnected()) {
+                        callback.onFailure("HID device disconnected. "
+                                + "Please reconnect via USB or Bluetooth and try again.");
+                    } else {
+                        callback.onFailure("HID step cancelled");
+                    }
                 } else {
                     Log.i(TAG, "HID step completed: " + keys);
                     String display = "✅ Keystrokes sent: " + keys;

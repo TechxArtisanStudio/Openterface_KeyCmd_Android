@@ -15,6 +15,7 @@ import com.openterface.keymod.agent.llm.LlmRequest;
 import com.openterface.keymod.agent.llm.LlmResponse;
 import com.openterface.keymod.agent.llm.ProviderAdapter;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
+import com.openterface.terminal.CredentialProfile;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -64,13 +66,14 @@ public final class AgentController {
 
     private volatile AgentState state = AgentState.IDLE;
     @Nullable private volatile AgentPlan currentPlan;
-    private int retryCount = 0;
     private int currentStepIndex = 0;
     @Nullable private Future<?> runningTask;
 
     // ── Dependencies ─────────────────────────────────────────────────────
 
-    private final Context context;
+    private final Context appContext;
+    /** Original context — may be Activity, used for getActiveSshProfile() lookup. */
+    private final Context originalContext;
     private final AgentPromptBuilder promptBuilder;
     private final AgentPlanParser planParser;
     private final AgentSession session;
@@ -94,10 +97,11 @@ public final class AgentController {
     @Nullable private AgentListener listener;
 
     public AgentController(@NonNull Context context) {
-        this.context = context.getApplicationContext();
-        this.promptBuilder = new AgentPromptBuilder(this.context);
+        this.originalContext = context;
+        this.appContext = context.getApplicationContext();
+        this.promptBuilder = new AgentPromptBuilder(this.appContext);
         this.planParser = new AgentPlanParser();
-        this.session = new AgentSession(this.context);
+        this.session = new AgentSession(this.appContext);
 
         // Load settings from SharedPreferences
         loadSettings();
@@ -108,7 +112,7 @@ public final class AgentController {
      * Called on construction and can be called again to pick up changes.
      */
     private void loadSettings() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
         maxSteps = prefs.getInt("agent_max_steps", 10);
         maxRetries = prefs.getInt("agent_max_retries", 3);
         customTerminalPrompt = prefs.getString("agent_prompt_terminal", "");
@@ -227,7 +231,6 @@ public final class AgentController {
 
         transitionTo(AgentState.EXECUTING);
         currentStepIndex = 0;
-        retryCount = 0;
 
         // Store Future so cancel() can interrupt execution
         runningTask = executor.submit(() -> executePlan());
@@ -249,7 +252,6 @@ public final class AgentController {
             toolExecutor.cancel();
         }
         currentPlan = null;
-        retryCount = 0;
         currentStepIndex = 0;
         transitionTo(AgentState.IDLE);
     }
@@ -265,10 +267,13 @@ public final class AgentController {
     /**
      * Call LLM to generate an execution plan from user prompt.
      * Runs on background thread.
+     *
+     * <p>Prompt routing: if an SSH profile is active, uses terminal mode prompt.
+     * Otherwise uses HID mode prompt (keyboard-only, no SSH).
      */
     private void generatePlan(@NonNull String userPrompt) {
         // Read AI settings from SharedPreferences
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
         String endpoint = prefs.getString("ai_endpoint", "https://api.openai.com/v1");
         String model = prefs.getString("ai_model", "gpt-4o-mini");
         int providerIdx = prefs.getInt("ai_provider", 0);
@@ -284,16 +289,50 @@ public final class AgentController {
                 LlmHttpClient.DEFAULT_CONNECT_TIMEOUT_MS,
                 AGENT_READ_TIMEOUT_MS);
 
+        // ─ Prompt routing: detect SSH profile to choose execution mode ──
+        CredentialProfile profile = getActiveSshProfile();
+        if (profile != null) {
+            promptBuilder.setExecutionMode("terminal");
+            promptBuilder.setActiveProfile(profile);
+            Log.i(TAG, "Prompt routing: terminal mode (SSH profile: "
+                    + profile.getDisplayLabel() + ")");
+        } else {
+            promptBuilder.setExecutionMode("hid");
+            promptBuilder.setActiveProfile(null);
+            Log.i(TAG, "Prompt routing: HID mode (no SSH profile)");
+        }
+
         // Build request with custom prompt support
         String customPrompt = getCustomPromptForMode(promptBuilder.getExecutionMode());
         LlmRequest request = promptBuilder.buildRequest(model, userPrompt, customPrompt);
 
+        Log.i(TAG, "generatePlan: mode=" + promptBuilder.getExecutionMode()
+                + ", model=" + model + ", messages=" + request.messages.size());
+
         try {
             // Call LLM synchronously (we're on background thread)
+            Log.i(TAG, "generatePlan: calling LLM...");
             LlmResponse response = httpClient.chatSync(request);
+            Log.i(TAG, "generatePlan: LLM response received, length=" + response.content.length());
 
             // Parse plan from response
-            AgentPlan plan = planParser.parseFromResponse(response);
+            AgentPlan plan;
+            try {
+                plan = planParser.parseFromResponse(response);
+            } catch (AgentPlanParser.PlanParseException e) {
+                // Log the raw response for debugging
+                Log.e(TAG, "Plan parse failed. Raw response: " + response.content);
+                throw e;
+            }
+
+            // Sanitize: inject terminal-launch HID step if in HID mode
+            if ("hid".equals(promptBuilder.getExecutionMode())) {
+                String targetOS = getTargetOs();
+                plan = PlanSanitizer.sanitizeForHid(plan, targetOS);
+                if (plan.steps.size() > 1) {
+                    Log.i(TAG, "sanitizeHIDPlan: injected terminal launch step (OS=" + targetOS + ")");
+                }
+            }
 
             // Truncate plan if it exceeds maxSteps
             if (plan.steps.size() > maxSteps) {
@@ -350,16 +389,20 @@ public final class AgentController {
             postToMain(() -> notifyProgress(stepIndex, currentPlan.steps.size()));
 
             // Execute with retry loop
+            // HID mode: no retry (no output to inform LLM alternatives)
+            boolean isHidMode = "hid".equals(promptBuilder.getExecutionMode());
+            int effectiveMaxRetries = isHidMode ? 0 : maxRetries;
+
             boolean stepSucceeded = false;
             int localRetries = 0;
 
-            while (!stepSucceeded && localRetries <= maxRetries) {
+            while (!stepSucceeded && localRetries <= effectiveMaxRetries) {
                 if (localRetries > 0) {
                     Log.w(TAG, "Retrying step " + stepIndex
-                            + " (" + localRetries + "/" + maxRetries + ")");
+                            + " (" + localRetries + "/" + effectiveMaxRetries + ")");
                     transitionTo(AgentState.RETRYING);
                     final int attempt = localRetries;
-                    postToMain(() -> notifyRetry(attempt, maxRetries));
+                    postToMain(() -> notifyRetry(attempt, effectiveMaxRetries));
                     transitionTo(AgentState.EXECUTING);
                 }
 
@@ -424,17 +467,37 @@ public final class AgentController {
                     stepSucceeded = true;
                 } else {
                     localRetries++;
-                    if (localRetries > maxRetries) {
+                    if (localRetries > effectiveMaxRetries) {
                         postError("Step " + (stepIndex + 1) + " failed after "
-                                + maxRetries + " retries: " + stepError[0]);
+                                + effectiveMaxRetries + " retries: " + stepError[0]);
                         return;
                     }
+                }
+            }
+
+            // Step interval: 0.5s delay between steps (spec requirement)
+            if (i < currentPlan.steps.size() - 1 && !cancelFlag.get()) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
                 }
             }
         }
 
         // All steps completed
+        final boolean isHidModeFinal = "hid".equals(promptBuilder.getExecutionMode());
+        final int totalSteps = currentPlan.steps.size();
         postToMain(() -> {
+            if (isHidModeFinal) {
+                // HID mode: no output to summarize → simple completion message
+                session.addAssistantMessage("✅ Completed " + totalSteps + " step(s).");
+                if (listener != null) {
+                    listener.onStepOutput(totalSteps,
+                            Collections.singletonList("✅ Completed " + totalSteps + " step(s)."));
+                }
+            }
             notifyExecutionComplete();
             transitionTo(AgentState.IDLE);
         });
@@ -456,6 +519,45 @@ public final class AgentController {
             default:
                 return "";
         }
+    }
+
+    /**
+     * Get the active SSH profile from MainActivity (Target Settings).
+     * Returns null if context is not MainActivity or no profile is selected.
+     */
+    @Nullable
+    private CredentialProfile getActiveSshProfile() {
+        try {
+            // Unwrap ContextWrapper chain to find the actual Activity
+            android.content.Context ctx = originalContext;
+            while (ctx instanceof android.content.ContextWrapper) {
+                if (ctx instanceof com.openterface.keymod.MainActivity) {
+                    return ((com.openterface.keymod.MainActivity) ctx).getActiveSshProfile();
+                }
+                ctx = ((android.content.ContextWrapper) ctx).getBaseContext();
+            }
+            Log.w(TAG, "Context is not MainActivity: " + originalContext.getClass().getName());
+            return null;
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get active SSH profile", e);
+            return null;
+        }
+    }
+
+    /**
+     * Get the target OS name. Uses active profile's targetOs if available,
+     * otherwise falls back to agent_prefs.
+     */
+    @NonNull
+    private String getTargetOs() {
+        CredentialProfile profile = getActiveSshProfile();
+        if (profile != null) {
+            String os = profile.getTargetOs();
+            if (os != null && !os.isEmpty()) return os;
+        }
+        SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
+        String os = prefs.getString("agent_target_os", "linux");
+        return os != null && !os.isEmpty() ? os : "linux";
     }
 
     /**

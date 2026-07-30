@@ -172,6 +172,37 @@ public class AgentPlanParserTest {
         assertEquals("Fenced", plan.summary);
     }
 
+    /**
+     * Regression test: some models (e.g. qwen2.5) output ```json { ... }```
+     * with no newline after the opening fence. Must still parse.
+     */
+    @Test
+    public void testJsonFenceNoNewlineAfterTag() throws Exception {
+        String json = "```json {"
+                + "\"intro\": \"Query hostname\","
+                + "\"steps\": [{\"kind\": \"terminal\", \"title\": \"Check\", \"payload\": \"hostname\"}]"
+                + "} ```";
+
+        AgentPlan plan = parser.parse(json);
+        assertEquals("Query hostname", plan.summary);
+        assertEquals(1, plan.steps.size());
+        assertEquals("hostname", plan.steps.get(0).command);
+    }
+
+    /**
+     * Regression test: model returns fenced JSON with extra whitespace
+     * and no trailing newline before closing fence.
+     */
+    @Test
+    public void testJsonFenceWithExtraWhitespace() throws Exception {
+        String json = "```json\n"
+                + "  {\"summary\": \"Test\", \"steps\": [{\"kind\": \"terminal\", \"title\": \"S\", \"command\": \"ls\"}]}  \n"
+                + "```";
+
+        AgentPlan plan = parser.parse(json);
+        assertEquals("Test", plan.summary);
+    }
+
     // ── LlmResponse parsing ──────────────────────────────────────────────
 
     @Test

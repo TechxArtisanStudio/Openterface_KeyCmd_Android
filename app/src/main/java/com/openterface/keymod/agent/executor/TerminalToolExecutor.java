@@ -7,23 +7,27 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.openterface.keymod.BluetoothService;
+import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
+import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.terminal.BleEthSocketFactory;
 import com.openterface.terminal.BleEthTransport;
 import com.openterface.terminal.CredentialProfile;
 import com.openterface.terminal.SshClient;
-import com.openterface.terminal.TransportAdapter;
 import com.openterface.terminal.UsbEcmTransport;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Executes terminal steps via SSH ChannelExec.
  *
  * <p>If no SSH session is alive, attempts to auto-connect using the
  * {@link CredentialProfile} stored in {@link MainActivity} (selected via
- * TargetSettingsSheet). Falls back to an error message if no profile
- * is configured.</p>
+ * TargetSettingsSheet). If SSH is unavailable and a HID device is connected,
+ * falls back to typing the command as HID keystrokes into the active terminal
+ * window (output cannot be captured in this mode).</p>
  */
 public final class TerminalToolExecutor implements AgentToolExecutor {
 
@@ -34,6 +38,8 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
     private final Context context;
     @Nullable private SshClient sshClient;
+    @Nullable private ConnectionManager connectionManager;
+    @NonNull private String targetOs = "linux";
     @Nullable private volatile Thread currentThread;
     /** Stores the reason the last auto-connect attempt failed, for surfacing to the user. */
     @Nullable private String lastAutoConnectError;
@@ -47,6 +53,16 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     /** Set the SSH client to use for command execution. */
     public void setSshClient(@Nullable SshClient client) {
         this.sshClient = client;
+    }
+
+    /** Set the HID ConnectionManager for fallback when SSH is unavailable. */
+    public void setConnectionManager(@Nullable ConnectionManager cm) {
+        this.connectionManager = cm;
+    }
+
+    /** Set the target OS for HID Unicode input method. */
+    public void setTargetOs(@NonNull String os) {
+        this.targetOs = os;
     }
 
     @NonNull
@@ -98,6 +114,13 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
 
         if (client == null || !client.isSessionConnected()) {
+            // SSH not available — fall back to HID keystroke input
+            if (connectionManager != null && connectionManager.isConnected()) {
+                Log.i(TAG, "SSH unavailable, falling back to HID keystroke input for: " + command);
+                executeViaHid(command, callback);
+                return;
+            }
+
             String reason = lastAutoConnectError != null
                     ? "SSH auto-connect failed: " + lastAutoConnectError
                       + "\n\nOpen Target Settings → check your profile, or connect in Terminal tab first."
@@ -142,6 +165,58 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 callback.onFailure(message);
             }
         });
+    }
+
+    /**
+     * HID fallback: type the command into the active terminal window via keystrokes.
+     * Used when SSH is unavailable (HID mode without SSH profile).
+     * Output cannot be captured — command is typed + Enter sent.
+     */
+    private void executeViaHid(@NonNull String command, @NonNull ExecutionCallback callback) {
+        new Thread(() -> {
+            currentThread = Thread.currentThread();
+            try {
+                ConnectionManager cm = connectionManager;
+                if (cm == null || !cm.isConnected()) {
+                    currentThread = null;
+                    callback.onFailure("HID device not connected for terminal fallback");
+                    return;
+                }
+
+                // Wait for terminal window to be ready after the previous HID step
+                // opened it. The HID step's internal <DELAY3S> only delays within
+                // its own keystroke stream — the next step fires immediately after.
+                Log.i(TAG, "HID fallback: waiting 2s for terminal window to be ready...");
+                Thread.sleep(2000);
+
+                // Type the command followed by Enter
+                String payload = command + "<ENTER>";
+                Log.i(TAG, "HID fallback: typing command via keystrokes: " + command);
+                callback.onProgress(-1, -1);
+
+                AtomicBoolean cancelFlag = new AtomicBoolean(false);
+                HidTextKeystrokeSender.Result result = HidTextKeystrokeSender.send(
+                        payload, cm, targetOs, true, cancelFlag, null);
+
+                currentThread = null;
+
+                if (result == HidTextKeystrokeSender.Result.CANCELLED) {
+                    callback.onFailure("HID fallback cancelled");
+                } else {
+                    Log.i(TAG, "HID fallback: command typed successfully: " + command);
+                    callback.onSuccess("✅ Command typed: " + command
+                            + "\n(Output not captured in HID mode)");
+                }
+            } catch (InterruptedException e) {
+                currentThread = null;
+                Log.i(TAG, "HID fallback interrupted");
+                callback.onFailure("HID fallback interrupted");
+            } catch (Exception e) {
+                currentThread = null;
+                Log.e(TAG, "HID fallback failed", e);
+                callback.onFailure("HID fallback failed: " + e.getMessage());
+            }
+        }, "TerminalHidFallback").start();
     }
 
     @Override

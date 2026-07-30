@@ -8,8 +8,9 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.SerializedName;
 import com.openterface.keymod.agent.llm.LlmResponse;
 
+import android.util.Log;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,11 +46,11 @@ public final class AgentPlanParser {
 
     /** Pre-compiled regex for ```json ... ``` fences. */
     private static final Pattern JSON_FENCE_PATTERN =
-            Pattern.compile("```json\\s*\\n(.*?)\\n```", Pattern.DOTALL);
+            Pattern.compile("```json\\s*\\n?(.*?)\\n?```", Pattern.DOTALL);
 
     /** Pre-compiled regex for any ``` ... ``` fences. */
     private static final Pattern ANY_FENCE_PATTERN =
-            Pattern.compile("```\\s*\\n(.*?)\\n```", Pattern.DOTALL);
+            Pattern.compile("```\\w*\\s*\\n?(.*?)\\n?```", Pattern.DOTALL);
 
     /**
      * Parse an LLM JSON response string into an AgentPlan.
@@ -63,7 +64,7 @@ public final class AgentPlanParser {
         // Pre-pass: strip <think>...</think> reasoning blocks (DeepSeek R1, etc.)
         String cleaned = stripThinkingBlocks(jsonResponse);
 
-        // Level 1: try ```json ... ``` fence
+        // Level 1: try fenced json block
         String extracted = extractFence(cleaned, JSON_FENCE_PATTERN);
         if (extracted != null) {
             AgentPlan plan = tryParseJson(extracted);
@@ -90,10 +91,14 @@ public final class AgentPlanParser {
             if (plan != null) return plan;
         }
 
-        // Level 5: complete failure
+        // Level 5: complete failure — include response preview for debugging
+        String preview = jsonResponse.length() > 200
+                ? jsonResponse.substring(0, 200) + "..."
+                : jsonResponse;
         throw new PlanParseException(
                 "Failed to parse plan from LLM response after 5 fallback attempts. "
-                + "Raw response length: " + jsonResponse.length() + " chars.");
+                + "Response length: " + jsonResponse.length() + " chars. "
+                + "Preview: " + preview.replace('\n', ' '));
     }
 
     /**
@@ -157,6 +162,7 @@ public final class AgentPlanParser {
 
             if (root.steps == null || root.steps.isEmpty()) {
                 // LLM returned valid JSON but no actionable steps
+                Log.w("PlanParser", "No steps in parsed plan");
                 return null;
             }
 
@@ -166,7 +172,17 @@ public final class AgentPlanParser {
             }
 
             return new AgentPlan(summary, steps);
-        } catch (JsonSyntaxException | IllegalArgumentException | PlanParseException e) {
+        } catch (JsonSyntaxException e) {
+            Log.w("PlanParser", "JsonSyntaxException: " + e.getMessage());
+            return null;
+        } catch (IllegalArgumentException e) {
+            Log.w("PlanParser", "IllegalArgumentException: " + e.getMessage());
+            return null;
+        } catch (PlanParseException e) {
+            Log.w("PlanParser", "PlanParseException: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            Log.w("PlanParser", "Unexpected exception: " + e.getClass().getName() + ": " + e.getMessage());
             return null;
         }
     }
@@ -176,6 +192,21 @@ public final class AgentPlanParser {
         String title = (obj.title != null && !obj.title.isEmpty())
                 ? obj.title : "Step " + (index + 1);
         String kind = (obj.kind != null && !obj.kind.isEmpty()) ? obj.kind : "terminal";
+
+        // LLM may use "payload" field for any step type.
+        // Gson's @SerializedName alternate maps "payload" → command,
+        // but for hid/macro steps the payload belongs to keys/macroId instead.
+        // Normalize: if a step has command but is hid/macro, move it to the right field.
+        if ("hid".equals(kind) && (obj.keys == null || obj.keys.isEmpty())
+                && obj.command != null && !obj.command.isEmpty()) {
+            obj.keys = obj.command;
+            obj.command = null;
+        }
+        if ("macro".equals(kind) && (obj.macroId == null || obj.macroId.isEmpty())
+                && obj.command != null && !obj.command.isEmpty()) {
+            obj.macroId = obj.command;
+            obj.command = null;
+        }
 
         // Validate: each step must have its required payload
         switch (kind) {

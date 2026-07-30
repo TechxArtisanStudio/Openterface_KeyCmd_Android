@@ -21,6 +21,8 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -93,7 +95,7 @@ public class AgentFragment extends Fragment {
     private final List<AgentMessage> chatMessages = new ArrayList<>();
     @Nullable private ExecutorService verifyExecutor;
     private volatile boolean verifyRunning = false;
-    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @NonNull
     public static AgentFragment newInstance(
@@ -152,6 +154,7 @@ public class AgentFragment extends Fragment {
     /**
      * Update the TerminalToolExecutor with the current SshClient from MainActivity.
      * SshClient is stored at the Activity level so it survives tab switches.
+     * Also sets HID ConnectionManager for fallback when SSH is unavailable.
      */
     private void updateTerminalExecutorSshClient() {
         if (terminalExecutor == null || !isAdded()) return;
@@ -160,6 +163,9 @@ public class AgentFragment extends Fragment {
                 (com.openterface.keymod.MainActivity) requireActivity();
         com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
         terminalExecutor.setSshClient(sshClient);
+        // Set HID fallback: ConnectionManager + targetOS for when SSH is unavailable
+        terminalExecutor.setConnectionManager(mainActivity.getConnectionManager());
+        terminalExecutor.setTargetOs(getTargetOs());
     }
 
     /**
@@ -190,7 +196,7 @@ public class AgentFragment extends Fragment {
      * Get the target OS for HID Unicode input method.
      * Priority: active SSH profile's targetOs > default "linux".
      */
-    @androidx.annotation.NonNull
+    @NonNull
     private String getTargetOs() {
         if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return "linux";
         com.openterface.keymod.MainActivity mainActivity =
@@ -276,7 +282,12 @@ public class AgentFragment extends Fragment {
     private void enableEngine() {
         if (!realEngineEnabled) {
             realEngineEnabled = true;
-            agentController = new AgentController(requireContext());
+            // Use getActivity() instead of requireContext() to ensure we pass
+            // the Activity (not Application) to AgentController.
+            // This is critical for getActiveSshProfile() to work correctly.
+            android.content.Context ctx = getActivity();
+            if (ctx == null) ctx = requireContext();
+            agentController = new AgentController(ctx);
 
             // TerminalToolExecutor for SSH command execution
             terminalExecutor = new TerminalToolExecutor(requireContext());
