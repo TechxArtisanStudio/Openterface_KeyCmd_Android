@@ -37,6 +37,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     private static final int MAX_OUTPUT_LINES = 50;
 
     private final Context context;
+    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     @Nullable private SshClient sshClient;
     @Nullable private ConnectionManager connectionManager;
     @NonNull private String targetOs = "linux";
@@ -69,6 +70,43 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     @Override
     public String getType() {
         return "terminal";
+    }
+
+    /**
+     * Pre-connect SSH so the session is ready before step execution begins.
+     * Called during THINKING phase (while LLM generates the plan) to avoid
+     * connection latency during EXECUTING. Safe to call multiple times —
+     * returns immediately if already connected.
+     * Runs the connection attempt on a background thread to avoid blocking UI.
+     *
+     * @param onConnected callback fired on main thread when connection succeeds
+     */
+    public void preConnectSsh(@Nullable Runnable onConnected) {
+        if (context instanceof MainActivity) {
+            MainActivity activity = (MainActivity) context;
+            CredentialProfile activeProfile = activity.getActiveSshProfile();
+            if (activeProfile != null) {
+                SshClient existing = activity.getSshClient();
+                if (existing != null && existing.isSessionConnected()) {
+                    return; // Already connected
+                }
+                new Thread(() -> {
+                    lastAutoConnectError = null;
+                    SshClient client = tryAutoConnectWithProfile(activeProfile);
+                    if (client != null) {
+                        this.sshClient = client;
+                        if (onConnected != null) {
+                            mainHandler.post(onConnected);
+                        }
+                    }
+                }, "AgentPreConnect").start();
+            }
+        }
+    }
+
+    /** Overload for callers that don't need a connection callback. */
+    public void preConnectSsh() {
+        preConnectSsh(null);
     }
 
     @Override

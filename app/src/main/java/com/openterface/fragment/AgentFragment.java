@@ -826,6 +826,10 @@ public class AgentFragment extends Fragment {
                 sendButton.setEnabled(false);
                 inputField.setHint(R.string.agent_state_thinking);
                 updateThinkingRow(true);
+                // SSH connects in parallel with LLM thinking
+                if (terminalExecutor != null) {
+                    terminalExecutor.preConnectSsh(this::updateSessionBar);
+                }
                 break;
             case WAITING_APPROVE:
                 inputField.setEnabled(false);
@@ -991,7 +995,8 @@ public class AgentFragment extends Fragment {
 
     /**
      * Update the session bar to reflect the current execution mode.
-     * SSH mode shows the profile label; HID mode shows the target OS.
+     * SSH mode shows the profile label, or "SSH connecting…" while connecting.
+     * HID mode shows the target OS.
      */
     private void updateSessionBar() {
         if (sessionHint == null) return;
@@ -1000,13 +1005,19 @@ public class AgentFragment extends Fragment {
 
         String mode = ctrl.getPromptBuilder().getExecutionMode();
         if ("terminal".equals(mode)) {
-            com.openterface.terminal.CredentialProfile profile = null;
-            if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
-                profile = ((com.openterface.keymod.MainActivity) requireActivity())
-                        .getActiveSshProfile();
+            com.openterface.keymod.MainActivity mainActivity =
+                    (com.openterface.keymod.MainActivity) requireActivity();
+            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+            com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
+
+            if (profile != null) {
+                boolean connected = sshClient != null && sshClient.isSessionConnected();
+                sessionHint.setText(connected
+                        ? "Target: " + profile.getDisplayLabel()
+                        : "SSH connecting…");
+            } else {
+                sessionHint.setText("Target: SSH");
             }
-            sessionHint.setText("Target: "
-                    + (profile != null ? profile.getDisplayLabel() : "SSH"));
         } else if ("hid".equals(mode)) {
             sessionHint.setText("Target: " + getTargetOs().toUpperCase());
         }
