@@ -35,6 +35,7 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
     private static final int VT_ACT = 3;
     private static final int VT_CLI = 4;
     private static final int VT_MACRO = 5;
+    private static final int VT_THINKING = 6;
 
     private final List<AgentMessage> messages = new ArrayList<>();
     @Nullable private ActBarListener actBarListener;
@@ -61,6 +62,22 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         return true;
     }
 
+    /**
+     * Find the THINKING message by type, update its text, and rebind only that position.
+     * Avoids notifyDataSetChanged() which would destroy the ProgressBar animation.
+     * Returns true if a thinking message was found and updated.
+     */
+    public boolean updateThinkingMessage(@NonNull String text) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i).type == AgentMessage.Type.THINKING) {
+                messages.set(i, AgentMessage.thinking(text));
+                notifyItemChanged(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public int getItemViewType(int position) {
         switch (messages.get(position).type) {
@@ -75,6 +92,9 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
             case EXECUTION_CLI:
                 return VT_CLI;
             case EXECUTION_MACRO:
+                return VT_MACRO;
+            case THINKING:
+                return VT_THINKING;
             default:
                 return VT_MACRO;
         }
@@ -98,6 +118,8 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
             case VT_MACRO:
             default:
                 return new MacroHolder(inflater.inflate(R.layout.item_agent_message_execution_macro, parent, false));
+            case VT_THINKING:
+                return new ThinkingHolder(inflater.inflate(R.layout.item_agent_thinking, parent, false));
         }
     }
 
@@ -122,6 +144,9 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                 break;
             case VT_MACRO:
                 ((MacroHolder) holder).bind(message);
+                break;
+            case VT_THINKING:
+                ((ThinkingHolder) holder).bind(message);
                 break;
             default:
                 break;
@@ -281,6 +306,19 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                         itemView.getContext().getTheme()));
                 stepsContainer.addView(row);
             }
+        }
+    }
+
+    private static final class ThinkingHolder extends RecyclerView.ViewHolder {
+        private final TextView textView;
+
+        ThinkingHolder(@NonNull View itemView) {
+            super(itemView);
+            textView = itemView.findViewById(R.id.agent_thinking_text);
+        }
+
+        void bind(@NonNull AgentMessage message) {
+            textView.setText(message.text);
         }
     }
 }

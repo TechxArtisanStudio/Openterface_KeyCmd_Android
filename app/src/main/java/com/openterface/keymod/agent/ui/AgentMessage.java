@@ -16,7 +16,8 @@ public final class AgentMessage {
         PLAN,
         ACT_BAR,
         EXECUTION_CLI,
-        EXECUTION_MACRO
+        EXECUTION_MACRO,
+        THINKING
     }
 
     @NonNull public final Type type;
@@ -107,6 +108,11 @@ public final class AgentMessage {
                 progress,
                 currentStep,
                 statusChip);
+    }
+
+    @NonNull
+    public static AgentMessage thinking(@NonNull String text) {
+        return new AgentMessage(Type.THINKING, text, emptySteps(), emptyLines(), emptyLines(), 0, 0, null);
     }
 
     @NonNull

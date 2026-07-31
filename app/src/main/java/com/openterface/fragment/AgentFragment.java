@@ -358,8 +358,6 @@ public class AgentFragment extends Fragment {
         sessionHint = view.findViewById(R.id.agent_session_hint);
         connectionPill = view.findViewById(R.id.agent_connection_pill);
         suggestedPromptsContainer = view.findViewById(R.id.agent_suggested_prompts_container);
-        thinkingRow = view.findViewById(R.id.thinking_row);
-        thinkingText = view.findViewById(R.id.thinking_text);
     }
 
     private void applySessionBarLayout() {
@@ -889,36 +887,60 @@ public class AgentFragment extends Fragment {
         });
     }
 
-    // ── Thinking Row ────────────────────────────────────────────────
+    // ─ Thinking Indicator ──────────────────────────────────────────
 
-    private View thinkingRow;
-    private TextView thinkingText;
     private int receivedTokens = 0;
     private boolean isThinking = false;
 
     /**
      * Called when a streaming token arrives during THINKING phase.
-     * Only updates the Thinking Row counter — does NOT append to messages.
-     * Plan JSON parsing waits for onComplete() with full content.
+     * Updates the last thinking message text.
      */
     private void onThinkingToken(@NonNull String token) {
         if (!isThinking) return;
         receivedTokens++;
-        if (thinkingText != null) {
-            thinkingText.setText("Receiving... " + receivedTokens + " tokens");
+        updateThinkingMessage("Receiving... " + receivedTokens + " tokens");
+    }
+
+    /** Add or remove the thinking indicator message in the chat list. */
+    private void updateThinkingRow(boolean thinking) {
+        isThinking = thinking;
+        if (thinking) {
+            receivedTokens = 0;
+            chatMessages.add(AgentMessage.thinking(getString(R.string.agent_state_thinking)));
+        } else {
+            removeThinkingMessage();
+        }
+        adapter.submitList(new ArrayList<>(chatMessages));
+        messagesList.post(() -> {
+            if (adapter.getItemCount() > 0) {
+                messagesList.scrollToPosition(adapter.getItemCount() - 1);
+            }
+        });
+    }
+
+    /** Update the text of the last thinking message. */
+    private void updateThinkingMessage(@NonNull String text) {
+        // Sync chatMessages copy
+        for (int i = chatMessages.size() - 1; i >= 0; i--) {
+            if (chatMessages.get(i).type == AgentMessage.Type.THINKING) {
+                chatMessages.set(i, AgentMessage.thinking(text));
+                break;
+            }
+        }
+        // Targeted update — falls back to full submitList if THINKING item
+        // isn't found in adapter (e.g. ViewHolder not yet created after submitList)
+        if (!adapter.updateThinkingMessage(text)) {
+            adapter.submitList(new ArrayList<>(chatMessages));
         }
     }
 
-    /** Show or hide the Thinking Row based on Agent state. */
-    private void updateThinkingRow(boolean thinking) {
-        isThinking = thinking;
-        if (thinkingRow != null) {
-            thinkingRow.setVisibility(thinking ? View.VISIBLE : View.GONE);
-        }
-        if (thinking) {
-            receivedTokens = 0;
-            if (thinkingText != null) {
-                thinkingText.setText("Thinking...");
+    /** Remove the thinking message from the chat list. */
+    private void removeThinkingMessage() {
+        for (int i = chatMessages.size() - 1; i >= 0; i--) {
+            if (chatMessages.get(i).type == AgentMessage.Type.THINKING) {
+                chatMessages.remove(i);
+                return;
             }
         }
     }
