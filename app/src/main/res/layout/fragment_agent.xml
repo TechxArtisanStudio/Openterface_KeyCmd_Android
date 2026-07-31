@@ -96,13 +96,13 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="15sp" />
 
-                <LinearLayout
+                <GridLayout
                     android:id="@+id/agent_suggested_prompts_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:gravity="center"
-                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp"
+                    android:columnCount="2"
+                    android:useDefaultMargins="false"
                     android:visibility="gone" />
             </LinearLayout>
         </FrameLayout>

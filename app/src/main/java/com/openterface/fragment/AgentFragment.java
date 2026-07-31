@@ -1,5 +1,6 @@
 package com.openterface.fragment;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
@@ -8,7 +9,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -80,7 +83,7 @@ public class AgentFragment extends Fragment {
     private View sessionBar;
     private TextView sessionHint;
     private TextView connectionPill;
-    private LinearLayout suggestedPromptsContainer;
+    private GridLayout suggestedPromptsContainer;
 
     private AgentMessageAdapter adapter;
     private AgentDemoPlayer demoPlayer;
@@ -984,48 +987,63 @@ public class AgentFragment extends Fragment {
 
     // ── Suggested Prompts (6 hardcoded FAQs, aligned with iOS) ──────
 
-    private static final int[] FAQ_TITLES = {
-            R.string.faq_os_version,
-            R.string.faq_disk_size,
-            R.string.faq_memory,
-            R.string.faq_uptime,
-            R.string.faq_ip,
-            R.string.faq_cpu,
-    };
-
-    private static final int[] FAQ_PROMPTS = {
-            R.string.faq_os_version_prompt,
-            R.string.faq_disk_size_prompt,
-            R.string.faq_memory_prompt,
-            R.string.faq_uptime_prompt,
-            R.string.faq_ip_prompt,
-            R.string.faq_cpu_prompt,
+    private static final int[][] FAQS = {
+            { R.drawable.ic_faq_info,    R.string.faq_os_version,      R.string.faq_os_version_prompt },
+            { R.drawable.ic_faq_storage, R.string.faq_disk_size,       R.string.faq_disk_size_prompt  },
+            { 0,                         R.string.faq_memory,          R.string.faq_memory_prompt     },
+            { R.drawable.ic_faq_clock,   R.string.faq_uptime,          R.string.faq_uptime_prompt     },
+            { R.drawable.ic_faq_network, R.string.faq_ip,              R.string.faq_ip_prompt         },
+            { R.drawable.ic_faq_cpu,     R.string.faq_cpu,             R.string.faq_cpu_prompt        },
     };
 
     /**
-     * Populate the suggested prompts strip with 6 hardcoded FAQ chips.
-     * Clicking a chip fills the input field and submits.
+     * Populate the suggested prompts grid with 6 hardcoded FAQ chips.
+     * Layout: 2 columns × 3 rows, 8dp spacing, icon + title per chip.
+     * Matches iOS faqChips LazyVGrid layout.
      */
     private void setupSuggestedPrompts() {
         if (suggestedPromptsContainer == null) return;
         suggestedPromptsContainer.removeAllViews();
 
-        for (int i = 0; i < FAQ_TITLES.length; i++) {
-            TextView chip = new TextView(requireContext());
-            chip.setText(FAQ_TITLES[i]);
-            chip.setTextSize(13f);
-            chip.setPadding(20, 8, 20, 8);
-            chip.setBackgroundResource(R.drawable.agent_suggested_chip_bg);
-            chip.setTextColor(getResources().getColor(R.color.text_primary, null));
-            chip.setGravity(android.view.Gravity.CENTER);
+        Context ctx = requireContext();
+        float density = ctx.getResources().getDisplayMetrics().density;
+        int chipSpacing = Math.round(density * 8);
+        int hPad = Math.round(density * 10);
+        int vPad = Math.round(density * 8);
+        int iconSize = Math.round(density * 16);
+        int iconMarginEnd = Math.round(density * 6);
+        int textPrimary = ctx.getResources().getColor(R.color.text_primary, null);
 
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(0, 0, 10, 0);
+        for (int[] faq : FAQS) {
+            LinearLayout chip = new LinearLayout(ctx);
+            chip.setOrientation(LinearLayout.HORIZONTAL);
+            chip.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            chip.setBackgroundResource(R.drawable.agent_suggested_chip_bg);
+            chip.setPadding(hPad, vPad, hPad, vPad);
+
+            if (faq[0] != 0) {
+                ImageView icon = new ImageView(ctx);
+                icon.setImageResource(faq[0]);
+                icon.setColorFilter(textPrimary);
+                LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(iconSize, iconSize);
+                iconLp.setMarginEnd(iconMarginEnd);
+                icon.setLayoutParams(iconLp);
+                chip.addView(icon);
+            }
+
+            TextView title = new TextView(ctx);
+            title.setText(faq[1]);
+            title.setTextSize(13f);
+            title.setTextColor(textPrimary);
+            chip.addView(title);
+
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.setMargins(0, 0, chipSpacing, chipSpacing);
+            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
             chip.setLayoutParams(lp);
 
-            final int promptRes = FAQ_PROMPTS[i];
+            final int promptRes = faq[2];
             chip.setOnClickListener(v -> {
                 if (inputField != null && agentController != null) {
                     inputField.setText(promptRes);
