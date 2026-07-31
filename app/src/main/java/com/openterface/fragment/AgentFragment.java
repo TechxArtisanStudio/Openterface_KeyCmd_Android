@@ -876,6 +876,11 @@ public class AgentFragment extends Fragment {
         }
 
         boolean isHidMode = "hid".equals(agentController.getPromptBuilder().getExecutionMode());
+
+        // Intro text: LLM-generated one-line summary of what the plan will do
+        if (!plan.summary.isEmpty()) {
+            chatMessages.add(AgentMessage.assistant(plan.summary));
+        }
         chatMessages.add(AgentMessage.plan(displaySteps, isHidMode));
         chatMessages.add(AgentMessage.actBar());
         adapter.submitList(new ArrayList<>(chatMessages));
