@@ -80,6 +80,7 @@ public class AgentFragment extends Fragment {
     private View sessionBar;
     private TextView sessionHint;
     private TextView connectionPill;
+    private LinearLayout suggestedPromptsContainer;
 
     private AgentMessageAdapter adapter;
     private AgentDemoPlayer demoPlayer;
@@ -136,6 +137,7 @@ public class AgentFragment extends Fragment {
         applySessionBarLayout();
         setupGate(view);
         setupDemoPicker();
+        setupSuggestedPrompts();
         applyLaunchArgs();
         refreshEngineState();
     }
@@ -316,6 +318,7 @@ public class AgentFragment extends Fragment {
         inputField.setHint(R.string.agent_input_hint_real);
         sendButton.setOnClickListener(v -> submitToAgent());
         showGate(false);
+        updateSessionBar();
     }
 
     private void disableEngine() {
@@ -346,6 +349,9 @@ public class AgentFragment extends Fragment {
         sessionBar = view.findViewById(R.id.agent_session_bar);
         sessionHint = view.findViewById(R.id.agent_session_hint);
         connectionPill = view.findViewById(R.id.agent_connection_pill);
+        suggestedPromptsContainer = view.findViewById(R.id.agent_suggested_prompts_container);
+        thinkingRow = view.findViewById(R.id.thinking_row);
+        thinkingText = view.findViewById(R.id.thinking_text);
     }
 
     private void applySessionBarLayout() {
@@ -546,6 +552,10 @@ public class AgentFragment extends Fragment {
         if (demoPickerScroll != null) {
             demoPickerScroll.setVisibility(empty ? View.VISIBLE : View.GONE);
         }
+        if (suggestedPromptsContainer != null) {
+            // Show suggested prompts only in empty state, below the demo picker
+            suggestedPromptsContainer.setVisibility(empty ? View.VISIBLE : View.GONE);
+        }
         emptyHint.setVisibility(empty ? View.VISIBLE : View.GONE);
         messagesList.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
@@ -633,6 +643,7 @@ public class AgentFragment extends Fragment {
             public void onStateChanged(@NonNull AgentState state) {
                 if (!isAdded()) return;
                 updateUiForState(state);
+                updateSessionBar();
             }
 
             @Override
@@ -655,17 +666,8 @@ public class AgentFragment extends Fragment {
 
             @Override
             public void onExecutionComplete() {
-                if (!isAdded()) return;
-                chatMessages.add(AgentMessage.assistant("✅ All steps completed."));
-                adapter.submitList(new ArrayList<>(chatMessages));
-                messagesList.post(() -> {
-                    if (adapter.getItemCount() > 0) {
-                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                    }
-                });
-                inputField.setEnabled(true);
-                sendButton.setEnabled(true);
-                showEmptyState(false);
+                // Summarize phase handles completion display via onSummaryToken/onSummaryComplete.
+                // This callback is kept for backward compatibility but no longer adds messages.
             }
 
             @Override
@@ -734,6 +736,27 @@ public class AgentFragment extends Fragment {
                     }
                 });
             }
+
+            @Override
+            public void onToken(@NonNull String token) {
+                if (!isAdded()) return;
+                onThinkingToken(token);
+            }
+
+            @Override
+            public void onSummaryToken(@NonNull String token) {
+                if (!isAdded()) return;
+                appendSummaryToken(token);
+            }
+
+            @Override
+            public void onSummaryComplete() {
+                if (!isAdded()) return;
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+                inputField.setHint(R.string.agent_input_hint_real);
+                showEmptyState(false);
+            }
         });
     }
 
@@ -764,6 +787,9 @@ public class AgentFragment extends Fragment {
         String prompt = inputField.getText().toString().trim();
         if (prompt.isEmpty()) return;
 
+        // Reset summary state
+        summaryContent.setLength(0);
+
         // Track user message in local list
         chatMessages.add(AgentMessage.user(prompt));
 
@@ -791,19 +817,23 @@ public class AgentFragment extends Fragment {
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
                 inputField.setHint(R.string.agent_input_hint_real);
+                updateThinkingRow(false);
                 break;
             case THINKING:
                 inputField.setEnabled(false);
                 sendButton.setEnabled(false);
                 inputField.setHint(R.string.agent_state_thinking);
+                updateThinkingRow(true);
                 break;
             case WAITING_APPROVE:
                 inputField.setEnabled(false);
                 sendButton.setEnabled(false);
+                updateThinkingRow(false);
                 break;
             case EXECUTING:
                 inputField.setEnabled(false);
                 sendButton.setEnabled(false);
+                updateThinkingRow(false);
                 break;
             case RETRYING:
                 // Keep disabled during retry
@@ -811,6 +841,7 @@ public class AgentFragment extends Fragment {
             case ERROR:
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
+                updateThinkingRow(false);
                 break;
         }
     }
@@ -842,7 +873,8 @@ public class AgentFragment extends Fragment {
             displaySteps.add(new AgentPlanStep(step.index, step.title, subtitle, kind));
         }
 
-        chatMessages.add(AgentMessage.plan(displaySteps));
+        boolean isHidMode = "hid".equals(agentController.getPromptBuilder().getExecutionMode());
+        chatMessages.add(AgentMessage.plan(displaySteps, isHidMode));
         chatMessages.add(AgentMessage.actBar());
         adapter.submitList(new ArrayList<>(chatMessages));
 
@@ -851,6 +883,158 @@ public class AgentFragment extends Fragment {
                 messagesList.scrollToPosition(adapter.getItemCount() - 1);
             }
         });
+    }
+
+    // ── Thinking Row ────────────────────────────────────────────────
+
+    private View thinkingRow;
+    private TextView thinkingText;
+    private int receivedTokens = 0;
+    private boolean isThinking = false;
+
+    /**
+     * Called when a streaming token arrives during THINKING phase.
+     * Only updates the Thinking Row counter — does NOT append to messages.
+     * Plan JSON parsing waits for onComplete() with full content.
+     */
+    private void onThinkingToken(@NonNull String token) {
+        if (!isThinking) return;
+        receivedTokens++;
+        if (thinkingText != null) {
+            thinkingText.setText("Receiving... " + receivedTokens + " tokens");
+        }
+    }
+
+    /** Show or hide the Thinking Row based on Agent state. */
+    private void updateThinkingRow(boolean thinking) {
+        isThinking = thinking;
+        if (thinkingRow != null) {
+            thinkingRow.setVisibility(thinking ? View.VISIBLE : View.GONE);
+        }
+        if (thinking) {
+            receivedTokens = 0;
+            if (thinkingText != null) {
+                thinkingText.setText("Thinking...");
+            }
+        }
+    }
+
+    // ─ Summarize Streaming ───────────────────────────────────────────
+
+    /** Accumulates streaming tokens during Summarize phase. */
+    private final StringBuilder summaryContent = new StringBuilder();
+
+    /**
+     * Append a streaming token to the last ASSISTANT message (or create one).
+     * Used during Summarize phase for per-character display.
+     */
+    private void appendSummaryToken(@NonNull String token) {
+        summaryContent.append(token);
+        String currentText = summaryContent.toString();
+
+        // Find or create the summary ASSISTANT message
+        boolean found = false;
+        for (int i = chatMessages.size() - 1; i >= 0; i--) {
+            if (chatMessages.get(i).type == AgentMessage.Type.ASSISTANT) {
+                chatMessages.set(i, AgentMessage.assistant(currentText));
+                found = true;
+                break;
+            }
+            AgentMessage.Type t = chatMessages.get(i).type;
+            if (t != AgentMessage.Type.ASSISTANT && t != AgentMessage.Type.USER) break;
+        }
+        if (!found) {
+            chatMessages.add(AgentMessage.assistant(currentText));
+        }
+
+        adapter.updateLastMessage(chatMessages.get(chatMessages.size() - 1));
+        messagesList.post(() -> {
+            if (adapter.getItemCount() > 0) {
+                messagesList.scrollToPosition(adapter.getItemCount() - 1);
+            }
+        });
+        showEmptyState(false);
+    }
+
+    // ── Session Bar ─────────────────────────────────────────────────
+
+    /**
+     * Update the session bar to reflect the current execution mode.
+     * SSH mode shows the profile label; HID mode shows the target OS.
+     */
+    private void updateSessionBar() {
+        if (sessionHint == null) return;
+        AgentController ctrl = agentController;
+        if (ctrl == null) return;
+
+        String mode = ctrl.getPromptBuilder().getExecutionMode();
+        if ("terminal".equals(mode)) {
+            com.openterface.terminal.CredentialProfile profile = null;
+            if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
+                profile = ((com.openterface.keymod.MainActivity) requireActivity())
+                        .getActiveSshProfile();
+            }
+            sessionHint.setText("Target: "
+                    + (profile != null ? profile.getDisplayLabel() : "SSH"));
+        } else if ("hid".equals(mode)) {
+            sessionHint.setText("Target: " + getTargetOs().toUpperCase());
+        }
+    }
+
+    // ── Suggested Prompts (6 hardcoded FAQs, aligned with iOS) ──────
+
+    private static final int[] FAQ_TITLES = {
+            R.string.faq_os_version,
+            R.string.faq_disk_size,
+            R.string.faq_memory,
+            R.string.faq_uptime,
+            R.string.faq_ip,
+            R.string.faq_cpu,
+    };
+
+    private static final int[] FAQ_PROMPTS = {
+            R.string.faq_os_version_prompt,
+            R.string.faq_disk_size_prompt,
+            R.string.faq_memory_prompt,
+            R.string.faq_uptime_prompt,
+            R.string.faq_ip_prompt,
+            R.string.faq_cpu_prompt,
+    };
+
+    /**
+     * Populate the suggested prompts strip with 6 hardcoded FAQ chips.
+     * Clicking a chip fills the input field and submits.
+     */
+    private void setupSuggestedPrompts() {
+        if (suggestedPromptsContainer == null) return;
+        suggestedPromptsContainer.removeAllViews();
+
+        for (int i = 0; i < FAQ_TITLES.length; i++) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(FAQ_TITLES[i]);
+            chip.setTextSize(13f);
+            chip.setPadding(20, 8, 20, 8);
+            chip.setBackgroundResource(R.drawable.agent_suggested_chip_bg);
+            chip.setTextColor(getResources().getColor(R.color.text_primary, null));
+            chip.setGravity(android.view.Gravity.CENTER);
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, 0, 10, 0);
+            chip.setLayoutParams(lp);
+
+            final int promptRes = FAQ_PROMPTS[i];
+            chip.setOnClickListener(v -> {
+                if (inputField != null && agentController != null) {
+                    inputField.setText(promptRes);
+                    inputField.setSelection(inputField.getText().length());
+                    inputField.requestFocus();
+                }
+            });
+
+            suggestedPromptsContainer.addView(chip);
+        }
     }
 
     @Override

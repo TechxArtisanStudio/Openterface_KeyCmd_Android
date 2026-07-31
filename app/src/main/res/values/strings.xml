@@ -1642,6 +1642,21 @@ by TechxArtisan</string>
     <string name="agent_settings_prompt_hint">Enter system prompt…</string>
     <string name="agent_settings_cancel">Cancel</string>
     <string name="agent_settings_save">Save</string>
+
+    <!-- Suggested Prompts / FAQ chips (Day 7) -->
+    <string name="faq_os_version">Check OS version</string>
+    <string name="faq_os_version_prompt">Check the OS version of the target machine</string>
+    <string name="faq_disk_size">Check free disk size</string>
+    <string name="faq_disk_size_prompt">Show free disk space on the target machine</string>
+    <string name="faq_memory">Check memory usage</string>
+    <string name="faq_memory_prompt">Show memory usage on the target machine</string>
+    <string name="faq_uptime">Check uptime</string>
+    <string name="faq_uptime_prompt">Show how long the target machine has been running</string>
+    <string name="faq_ip">Check IP address</string>
+    <string name="faq_ip_prompt">Show the IP address of the target machine</string>
+    <string name="faq_cpu">Check CPU load</string>
+    <string name="faq_cpu_prompt">Show current CPU load on the target machine</string>
+
     <string name="agent_settings_openai">OpenAI</string>
     <string name="agent_settings_ollama">Ollama (Local)</string>
     <string name="agent_settings_deepseek">DeepSeek</string>

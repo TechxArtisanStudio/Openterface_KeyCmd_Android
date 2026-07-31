@@ -13,8 +13,10 @@ import androidx.preference.PreferenceManager;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.LlmRequest;
 import com.openterface.keymod.agent.llm.LlmResponse;
+import com.openterface.keymod.agent.llm.LlmResult;
 import com.openterface.keymod.agent.llm.ProviderAdapter;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
+import com.openterface.keymod.agent.ui.AgentMessage;
 import com.openterface.terminal.CredentialProfile;
 
 import java.util.concurrent.CountDownLatch;
@@ -310,17 +312,100 @@ public final class AgentController {
                 + ", model=" + model + ", messages=" + request.messages.size());
 
         try {
-            // Call LLM synchronously (we're on background thread)
-            Log.i(TAG, "generatePlan: calling LLM...");
-            LlmResponse response = httpClient.chatSync(request);
-            Log.i(TAG, "generatePlan: LLM response received, length=" + response.content.length());
+            // Call LLM with streaming to show tokens in real-time.
+            // chatStream() blocks until the stream completes.
+            Log.i(TAG, "generatePlan: calling LLM (streaming)...");
+            final StringBuilder streamingContent = new StringBuilder();
+            final LlmResponse[] streamResult = {null};
 
-            // Parse plan from response
+            httpClient.chatStream(request, adapter, new LlmResult() {
+                private int chunkCount = 0;
+
+                @Override
+                public void onChunk(@NonNull LlmResponse chunk) {
+                    chunkCount++;
+                    Log.d(TAG, "onChunk #" + chunkCount
+                            + ": contentLen=" + chunk.content.length()
+                            + ", finishReason=" + chunk.finishReason
+                            + ", content=\"" + chunk.content + "\"");
+                    if (!chunk.content.isEmpty()) {
+                        streamingContent.append(chunk.content);
+                        postToMain(() -> notifyToken(chunk.content));
+                    }
+                }
+
+                @Override
+                public void onComplete(@NonNull LlmResponse fullResponse) {
+                    streamResult[0] = fullResponse;
+                    Log.i(TAG, "generatePlan: stream complete, chunks=" + chunkCount
+                            + ", content.length=" + fullResponse.content.length()
+                            + ", finishReason=" + fullResponse.finishReason);
+
+                    // Fallback: if streaming returned suspiciously short content
+                    // (e.g. Ollama/Qwen with stream:true returning only "```"),
+                    // retry with synchronous call.
+                    if (fullResponse.content.length() < 20) {
+                        Log.w(TAG, "generatePlan: streaming content too short ("
+                                + fullResponse.content.length() + " chars), "
+                                + "falling back to chatSync()...");
+                        try {
+                            LlmResponse syncResponse = httpClient.chatSync(request, adapter);
+                            Log.i(TAG, "generatePlan: chatSync fallback, length="
+                                    + syncResponse.content.length());
+                            onStreamFinished(syncResponse);
+                        } catch (Exception syncErr) {
+                            Log.e(TAG, "generatePlan: chatSync fallback also failed", syncErr);
+                            postError("LLM response too short and fallback failed: "
+                                    + syncErr.getMessage());
+                        }
+                        return;
+                    }
+
+                    onStreamFinished(fullResponse);
+                }
+
+                @Override
+                public void onError(@NonNull Exception e) {
+                    if (cancelFlag.get()) {
+                        Log.d(TAG, "Plan generation cancelled");
+                        return;
+                    }
+                    Log.e(TAG, "Plan generation stream error", e);
+                    postError(e.getMessage() != null ? e.getMessage()
+                            : "Failed to generate plan");
+                }
+            }, cancelFlag);
+
+        } catch (Exception e) {
+            // Don't report error if cancelled
+            if (cancelFlag.get()) {
+                Log.d(TAG, "Plan generation cancelled");
+                return;
+            }
+            Log.e(TAG, "Plan generation failed", e);
+            postError(e.getMessage() != null ? e.getMessage() : "Failed to generate plan");
+        }
+    }
+
+    /**
+     * Called when the streaming LLM response has completed.
+     * Parses the plan and transitions to WAITING_APPROVE.
+     * Runs on the background thread.
+     */
+    private void onStreamFinished(@NonNull LlmResponse response) {
+        try {
+            // Log full response for debugging parsing issues
+            Log.i(TAG, "onStreamFinished: content length=" + response.content.length()
+                    + ", finishReason=" + response.finishReason);
+            if (response.content.length() <= 2000) {
+                Log.d(TAG, "onStreamFinished: content=" + response.content);
+            }
+
+            // Parse plan from full response
             AgentPlan plan;
             try {
                 plan = planParser.parseFromResponse(response);
             } catch (AgentPlanParser.PlanParseException e) {
-                // Log the raw response for debugging
                 Log.e(TAG, "Plan parse failed. Raw response: " + response.content);
                 throw e;
             }
@@ -330,7 +415,8 @@ public final class AgentController {
                 String targetOS = getTargetOs();
                 plan = PlanSanitizer.sanitizeForHid(plan, targetOS);
                 if (plan.steps.size() > 1) {
-                    Log.i(TAG, "sanitizeHIDPlan: injected terminal launch step (OS=" + targetOS + ")");
+                    Log.i(TAG, "sanitizeHIDPlan: injected terminal launch step (OS="
+                            + targetOS + ")");
                 }
             }
 
@@ -352,13 +438,12 @@ public final class AgentController {
                 notifyPlanReady(finalPlan);
             });
         } catch (Exception e) {
-            // Don't report error if cancelled
             if (cancelFlag.get()) {
-                Log.d(TAG, "Plan generation cancelled");
+                Log.d(TAG, "Plan generation cancelled during parse");
                 return;
             }
-            Log.e(TAG, "Plan generation failed", e);
-            postError(e.getMessage() != null ? e.getMessage() : "Failed to generate plan");
+            Log.e(TAG, "Plan parsing failed", e);
+            postError(e.getMessage() != null ? e.getMessage() : "Failed to parse plan");
         }
     }
 
@@ -486,21 +571,124 @@ public final class AgentController {
             }
         }
 
-        // All steps completed
+        // All steps completed — trigger summarize phase
+        summarize();
+    }
+
+    /**
+     * Summarize execution results via LLM with streaming.
+     * Runs on background thread. Streams tokens to Fragment for per-char display.
+     */
+    private void summarize() {
+        // Read AI settings
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
+        String endpoint = prefs.getString("ai_endpoint", "https://api.openai.com/v1");
+        String model = prefs.getString("ai_model", "gpt-4o-mini");
+        int providerIdx = prefs.getInt("ai_provider", 0);
+        String apiKey = prefs.getString("ai_api_key_" + providerIdx, "");
+
+        String providerName = getProviderName(providerIdx);
+        ProviderAdapter adapter = ProviderAdapterFactory.get(providerName);
+
+        LlmHttpClient httpClient = new LlmHttpClient(
+                apiKey, endpoint, adapter,
+                LlmHttpClient.DEFAULT_CONNECT_TIMEOUT_MS,
+                AGENT_READ_TIMEOUT_MS);
+
+        // Build summarize request
+        String originalPrompt = session.getMessages().isEmpty() ? ""
+                : session.getMessages().get(0).text;
+        List<String[]> results = new ArrayList<>();
+        for (AgentMessage msg : session.getMessages()) {
+            if (msg.type == AgentMessage.Type.EXECUTION_CLI && !msg.terminalLines.isEmpty()) {
+                String cmd = msg.terminalLines.get(0);
+                String output = msg.terminalLines.size() > 1
+                        ? msg.terminalLines.get(1) : "";
+                results.add(new String[]{cmd, output});
+            }
+        }
+
+        String summarizePrompt = promptBuilder.buildSummarizePrompt(
+                originalPrompt, results);
+        LlmRequest request = new LlmRequest(model);
+        request.addSystemMessage(summarizePrompt);
+        request.addUserMessage("Summarize the results.");
+        request.temperature = 0.3;
+        request.maxTokens = 1024;
+
+        Log.i(TAG, "summarize: calling LLM (streaming)...");
+
+        // For HID mode: no output to summarize, skip LLM call
         final boolean isHidModeFinal = "hid".equals(promptBuilder.getExecutionMode());
-        final int totalSteps = currentPlan.steps.size();
-        postToMain(() -> {
-            if (isHidModeFinal) {
-                // HID mode: no output to summarize → simple completion message
+        if (isHidModeFinal || results.isEmpty()) {
+            final int totalSteps = currentPlan != null ? currentPlan.steps.size() : 0;
+            postToMain(() -> {
+                notifySummaryToken("✅ Completed " + totalSteps + " step(s).");
+                notifySummaryComplete();
                 session.addAssistantMessage("✅ Completed " + totalSteps + " step(s).");
-                if (listener != null) {
-                    listener.onStepOutput(totalSteps,
-                            Collections.singletonList("✅ Completed " + totalSteps + " step(s)."));
+                transitionTo(AgentState.IDLE);
+            });
+            return;
+        }
+
+        httpClient.chatStream(request, adapter, new LlmResult() {
+            @Override
+            public void onChunk(@NonNull LlmResponse chunk) {
+                if (!chunk.content.isEmpty()) {
+                    postToMain(() -> notifySummaryToken(chunk.content));
                 }
             }
-            notifyExecutionComplete();
-            transitionTo(AgentState.IDLE);
-        });
+
+            @Override
+            public void onComplete(@NonNull LlmResponse fullResponse) {
+                Log.i(TAG, "summarize: stream complete, length=" + fullResponse.content.length());
+
+                // Same fallback as generatePlan: if streaming returned suspiciously
+                // short content (Ollama/Qwen with stream:true), retry with chatSync().
+                if (fullResponse.content.length() < 20) {
+                    Log.w(TAG, "summarize: streaming content too short ("
+                            + fullResponse.content.length() + " chars), "
+                            + "falling back to chatSync()...");
+                    try {
+                        LlmResponse syncResponse = httpClient.chatSync(request, adapter);
+                        Log.i(TAG, "summarize: chatSync fallback, length="
+                                + syncResponse.content.length());
+                        session.addAssistantMessage(syncResponse.content);
+                        // Send full content to Fragment for display
+                        postToMain(() -> {
+                            notifySummaryToken(syncResponse.content);
+                            notifySummaryComplete();
+                            transitionTo(AgentState.IDLE);
+                        });
+                    } catch (Exception syncErr) {
+                        Log.e(TAG, "summarize: chatSync fallback also failed", syncErr);
+                        postToMain(() -> {
+                            notifySummaryToken("️ Summarize failed: " + syncErr.getMessage());
+                            notifySummaryComplete();
+                            transitionTo(AgentState.IDLE);
+                        });
+                    }
+                    return;
+                }
+
+                session.addAssistantMessage(fullResponse.content);
+                postToMain(() -> {
+                    notifySummaryComplete();
+                    transitionTo(AgentState.IDLE);
+                });
+            }
+
+            @Override
+            public void onError(@NonNull Exception e) {
+                if (cancelFlag.get()) return;
+                Log.e(TAG, "summarize: error", e);
+                postToMain(() -> {
+                    notifySummaryToken("⚠️ Failed to summarize: " + e.getMessage());
+                    notifySummaryComplete();
+                    transitionTo(AgentState.IDLE);
+                });
+            }
+        }, cancelFlag);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
@@ -634,12 +822,40 @@ public final class AgentController {
         if (listener != null) listener.onStepOutput(stepIndex, lines);
     }
 
+    private void notifyToken(@NonNull String token) {
+        if (listener != null) listener.onToken(token);
+    }
+
+    private void notifySummaryToken(@NonNull String token) {
+        if (listener != null) listener.onSummaryToken(token);
+    }
+
+    private void notifySummaryComplete() {
+        if (listener != null) listener.onSummaryComplete();
+    }
+
     @NonNull
     private static String getProviderName(int index) {
         if (index >= 0 && index < PROVIDER_NAMES.length) {
             return PROVIDER_NAMES[index];
         }
         return "OpenAI";
+    }
+
+    /**
+     * Check if the endpoint is a local provider (Ollama, etc.) that does not
+     * support streaming reliably. Local providers return very short content via
+     * SSE and cause stutter UX when combined with fallback logic.
+     * For local providers we skip streaming and use chatSync() directly.
+     */
+    private static boolean isLocalEndpoint(@NonNull String endpoint) {
+        String lower = endpoint.toLowerCase();
+        return lower.contains("localhost")
+                || lower.contains("127.0.0.1")
+                || lower.contains(":11434")
+                || lower.startsWith("http://192.168.")
+                || lower.startsWith("http://10.")
+                || lower.contains("host.docker.internal");
     }
 
     // ── Listener interface ───────────────────────────────────────────────
@@ -670,5 +886,14 @@ public final class AgentController {
 
         /** A step produced output (for EXECUTION_CLI display) */
         default void onStepOutput(int stepIndex, @NonNull List<String> lines) {}
+
+        /** LLM streaming token received during THINKING phase */
+        default void onToken(@NonNull String token) {}
+
+        /** LLM streaming token during Summarize phase — append to Assistant message */
+        default void onSummaryToken(@NonNull String token) {}
+
+        /** Summarize phase complete */
+        default void onSummaryComplete() {}
     }
 }

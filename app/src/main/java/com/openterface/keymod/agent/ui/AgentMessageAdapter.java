@@ -49,6 +49,18 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         notifyDataSetChanged();
     }
 
+    /**
+     * Replace the last message in the list and rebind that position.
+     * Used for streaming token updates to avoid a full notifyDataSetChanged().
+     * Returns true if a message was replaced.
+     */
+    public boolean updateLastMessage(@NonNull AgentMessage updated) {
+        if (messages.isEmpty()) return false;
+        messages.set(messages.size() - 1, updated);
+        notifyItemChanged(messages.size() - 1);
+        return true;
+    }
+
     @Override
     public int getItemViewType(int position) {
         switch (messages.get(position).type) {
@@ -136,13 +148,24 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
     private static final class PlanHolder extends RecyclerView.ViewHolder {
         private final LinearLayout container;
+        private final View hidBadge;
 
         PlanHolder(@NonNull View itemView) {
             super(itemView);
             container = itemView.findViewById(R.id.agent_plan_steps_container);
+            hidBadge = itemView.findViewById(R.id.agent_plan_hid_badge);
         }
 
         void bind(@NonNull AgentMessage message) {
+            // HID mode badge
+            hidBadge.setVisibility(message.isHidMode ? View.VISIBLE : View.GONE);
+
+            // HID mode: orange border via stroke
+            if (message.isHidMode && itemView instanceof com.google.android.material.card.MaterialCardView) {
+                ((com.google.android.material.card.MaterialCardView) itemView)
+                        .setStrokeColor(0xFFFF9500);
+            }
+
             container.removeAllViews();
             LayoutInflater inflater = LayoutInflater.from(itemView.getContext());
             for (AgentPlanStep step : message.planSteps) {

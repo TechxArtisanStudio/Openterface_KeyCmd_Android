@@ -34,88 +34,111 @@ public class SseParser {
     /**
      * Parse a single SSE data line into an LlmResponse.
      *
-     * @param line raw line from the SSE stream (e.g. "data: {...}")
+     * <p>Supports two formats:
+     * <ol>
+     *   <li>Standard SSE: lines prefixed with {@code "data: "} (OpenAI, Anthropic, etc.)</li>
+     *   <li>Raw NDJSON: bare JSON lines without prefix (Ollama, some proxies)</li>
+     * </ol>
+     *
+     * @param line raw line from the SSE stream
      * @return parsed response, or null if the line should be skipped
-     *         (blank lines, comments, keep-alive pings)
-     * @throws StreamDoneException if stream is complete ([DONE] received)
+     * @throws StreamDoneException if stream is complete
      */
     public LlmResponse parseLine(String line) {
         if (line == null || line.isEmpty()) {
             return null;
         }
 
-        if (!line.startsWith(DATA_PREFIX)) {
+        String payload;
+
+        if (line.startsWith(DATA_PREFIX)) {
+            // Standard SSE format — strip "data: " prefix
+            payload = line.substring(DATA_PREFIX.length()).trim();
+        } else if (DONE_MARKER.equals(line.trim())) {
+            // [DONE] marker without data: prefix (some providers)
+            throw new StreamDoneException();
+        } else if (line.trim().startsWith("{")) {
+            // Raw NDJSON fallback (Ollama, some proxies) — parse directly
+            payload = line.trim();
+        } else {
+            // Comment, blank, keep-alive, or other non-JSON line — skip
             return null;
         }
-
-        String payload = line.substring(DATA_PREFIX.length()).trim();
 
         if (DONE_MARKER.equals(payload)) {
             throw new StreamDoneException();
         }
 
         try {
-            JSONObject json = new JSONObject(payload);
-            JSONObject choice = json.getJSONArray("choices").getJSONObject(0);
-            JSONObject delta = choice.optJSONObject("delta");
-
-            // --- Handle tool call fragments ---
-            if (delta != null && delta.has("tool_calls")) {
-                JSONArray toolCallDeltas = delta.getJSONArray("tool_calls");
-                for (int i = 0; i < toolCallDeltas.length(); i++) {
-                    JSONObject fragment = toolCallDeltas.getJSONObject(i);
-                    int index = fragment.optInt("index", -1);
-
-                    // Expand the accumulator if needed
-                    while (rawToolCalls.size() <= index) {
-                        rawToolCalls.add(new JSONObject());
-                    }
-
-                    JSONObject existing = rawToolCalls.get(index);
-
-                    if (fragment.has("id")) {
-                        existing.put("id", fragment.getString("id"));
-                    }
-                    if (fragment.has("type")) {
-                        existing.put("type", fragment.getString("type"));
-                    }
-                    if (fragment.has("function")) {
-                        JSONObject fnFragment = fragment.getJSONObject("function");
-                        JSONObject existingFn = existing.optJSONObject("function");
-                        if (existingFn == null) {
-                            existingFn = new JSONObject();
-                            existing.put("function", existingFn);
-                        }
-                        if (fnFragment.has("name")) {
-                            existingFn.put("name", fnFragment.getString("name"));
-                        }
-                        if (fnFragment.has("arguments")) {
-                            // Arguments are streamed incrementally — concatenate
-                            String existingArgs = existingFn.optString("arguments", "");
-                            existingFn.put("arguments", existingArgs + fnFragment.getString("arguments"));
-                        }
-                    }
-                }
-            }
-
-            if (delta == null) {
-                // Terminal event without delta
-                String finishReason = choice.optString("finish_reason", null);
-                if (finishReason != null) {
-                    return LlmResponse.terminal(finishReason);
-                }
-                return null;
-            }
-
-            // --- Handle text content ---
-            String content = delta.optString("content", "");
-            String finishReason = choice.optString("finish_reason", null);
-
-            return new LlmResponse(content, finishReason, 0, 0);
+            return parseJsonPayload(payload);
         } catch (JSONException e) {
             // Malformed JSON — skip the line
             return null;
         }
+    }
+
+    /**
+     * Parse a JSON payload string (already stripped of SSE prefix) into an LlmResponse.
+     * Handles content deltas, tool call fragments, and terminal events.
+     */
+    private LlmResponse parseJsonPayload(String payload) throws JSONException {
+        JSONObject json = new JSONObject(payload);
+        JSONObject choice = json.getJSONArray("choices").getJSONObject(0);
+        JSONObject delta = choice.optJSONObject("delta");
+
+        // --- Handle tool call fragments ---
+        if (delta != null && delta.has("tool_calls")) {
+            JSONArray toolCallDeltas = delta.getJSONArray("tool_calls");
+            for (int i = 0; i < toolCallDeltas.length(); i++) {
+                JSONObject fragment = toolCallDeltas.getJSONObject(i);
+                int index = fragment.optInt("index", -1);
+
+                // Expand the accumulator if needed
+                while (rawToolCalls.size() <= index) {
+                    rawToolCalls.add(new JSONObject());
+                }
+
+                JSONObject existing = rawToolCalls.get(index);
+
+                if (fragment.has("id")) {
+                    existing.put("id", fragment.getString("id"));
+                }
+                if (fragment.has("type")) {
+                    existing.put("type", fragment.getString("type"));
+                }
+                if (fragment.has("function")) {
+                    JSONObject fnFragment = fragment.getJSONObject("function");
+                    JSONObject existingFn = existing.optJSONObject("function");
+                    if (existingFn == null) {
+                        existingFn = new JSONObject();
+                        existing.put("function", existingFn);
+                    }
+                    if (fnFragment.has("name")) {
+                        existingFn.put("name", fnFragment.getString("name"));
+                    }
+                    if (fnFragment.has("arguments")) {
+                        // Arguments are streamed incrementally — concatenate
+                        String existingArgs = existingFn.optString("arguments", "");
+                        existingFn.put("arguments", existingArgs + fnFragment.getString("arguments"));
+                    }
+                }
+            }
+        }
+
+        if (delta == null) {
+            // Terminal event without delta
+            String finishReason = choice.optString("finish_reason", null);
+            if (finishReason != null) {
+                return LlmResponse.terminal(finishReason);
+            }
+            return null;
+        }
+
+        // --- Handle text content ---
+        String content = delta.optString("content", "");
+        String finishReason = choice.optString("finish_reason", null);
+
+        return new LlmResponse(content, finishReason, 0, 0);
     }
 
     /**
