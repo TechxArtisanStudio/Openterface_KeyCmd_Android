@@ -318,6 +318,11 @@ public class AgentFragment extends Fragment {
         inputField.setHint(R.string.agent_input_hint_real);
         sendButton.setOnClickListener(v -> submitToAgent());
         showGate(false);
+        // Demo Picker only visible during Gate phase (AI not configured).
+        // Once AI is configured, hide it permanently — FAQ Chips serve as suggestions.
+        if (demoPickerScroll != null) {
+            demoPickerScroll.setVisibility(View.GONE);
+        }
         updateSessionBar();
     }
 
@@ -549,11 +554,7 @@ public class AgentFragment extends Fragment {
     }
 
     private void showEmptyState(boolean empty) {
-        if (demoPickerScroll != null) {
-            demoPickerScroll.setVisibility(empty ? View.VISIBLE : View.GONE);
-        }
         if (suggestedPromptsContainer != null) {
-            // Show suggested prompts only in empty state, below the demo picker
             suggestedPromptsContainer.setVisibility(empty ? View.VISIBLE : View.GONE);
         }
         emptyHint.setVisibility(empty ? View.VISIBLE : View.GONE);
