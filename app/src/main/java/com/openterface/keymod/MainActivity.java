@@ -1869,10 +1869,22 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             boolean showAgent = LaunchPanelActivity.MODE_AGENT.equals(currentNavMode);
             agentSettingsHeaderButton.setVisibility(showAgent ? View.VISIBLE : View.GONE);
         }
+        // Update target OS / terminal icon when mode changes
+        updateTargetOsHeaderIcon();
     }
 
     private void updateTargetOsHeaderIcon() {
         if (targetOsHeaderButton == null) return;
+
+        // In Agent mode, show terminal icon instead of OS icon
+        if (LaunchPanelActivity.MODE_AGENT.equals(currentNavMode)) {
+            targetOsHeaderButton.setImageResource(R.drawable.ic_terminal);
+            targetOsHeaderButton.setContentDescription(
+                    getString(R.string.target_os_header_cd));
+            targetOsHeaderButton.setColorFilter(headerNeutralActionTint(), PorterDuff.Mode.SRC_IN);
+            return;
+        }
+
         String targetOs = getTargetOs();
         int iconRes;
         int nameRes;
