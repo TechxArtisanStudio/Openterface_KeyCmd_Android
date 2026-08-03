@@ -7276,10 +7276,10 @@ public class CustomKeyboardView extends LinearLayout {
             }
             return;
         }
-        // setLayerGravity/setLayerWidth/setLayerHeight/setForeground require API 23+
+        icon = icon.mutate();
+        icon.setTint(resolveThemeTextColor());
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            icon = icon.mutate();
-            icon.setTint(resolveThemeTextColor());
+            // API 23+: use foreground overlay with precise centering
             int sizePx = dpToPx(iconSizeDp);
             LayerDrawable layers = new LayerDrawable(new Drawable[]{
                     new ColorDrawable(Color.TRANSPARENT),
@@ -7289,6 +7289,14 @@ public class CustomKeyboardView extends LinearLayout {
             layers.setLayerWidth(1, sizePx);
             layers.setLayerHeight(1, sizePx);
             b.setForeground(layers);
+        } else {
+            // API 21-22: use compound drawable (centered via gravity)
+            b.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+            b.setCompoundDrawablePadding(0);
+            // Use a wrapper drawable to control size
+            int sizePx = dpToPx(iconSizeDp);
+            icon.setBounds(0, 0, sizePx, sizePx);
+            b.setCompoundDrawables(icon, null, null, null);
         }
         b.setTextColor(resolveThemeTextColor());
         b.setTypeface(b.getTypeface(), android.graphics.Typeface.NORMAL);
