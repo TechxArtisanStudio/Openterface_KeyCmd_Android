@@ -29,6 +29,8 @@ public final class AgentMessage {
     public final int macroCurrentStep;
     @Nullable public final String macroStatusChip;
     public final boolean isHidMode;
+    /** True when an EXECUTION_CLI command has finished (success or failure). */
+    public final boolean isComplete;
 
     private AgentMessage(
             @NonNull Type type,
@@ -39,7 +41,8 @@ public final class AgentMessage {
             int macroProgress,
             int macroCurrentStep,
             @Nullable String macroStatusChip,
-            boolean isHidMode) {
+            boolean isHidMode,
+            boolean isComplete) {
         this.type = type;
         this.text = text;
         this.planSteps = planSteps;
@@ -49,6 +52,7 @@ public final class AgentMessage {
         this.macroCurrentStep = macroCurrentStep;
         this.macroStatusChip = macroStatusChip;
         this.isHidMode = isHidMode;
+        this.isComplete = isComplete;
     }
 
     private AgentMessage(
@@ -60,7 +64,7 @@ public final class AgentMessage {
             int macroProgress,
             int macroCurrentStep,
             @Nullable String macroStatusChip) {
-        this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep, macroStatusChip, false);
+        this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep, macroStatusChip, false, false);
     }
 
     @NonNull
@@ -75,12 +79,12 @@ public final class AgentMessage {
 
     @NonNull
     public static AgentMessage plan(@NonNull List<AgentPlanStep> steps) {
-        return new AgentMessage(Type.PLAN, null, new ArrayList<>(steps), emptyLines(), emptyLines(), 0, 0, null, false);
+        return new AgentMessage(Type.PLAN, null, new ArrayList<>(steps), emptyLines(), emptyLines(), 0, 0, null, false, false);
     }
 
     @NonNull
     public static AgentMessage plan(@NonNull List<AgentPlanStep> steps, boolean isHidMode) {
-        return new AgentMessage(Type.PLAN, null, new ArrayList<>(steps), emptyLines(), emptyLines(), 0, 0, null, isHidMode);
+        return new AgentMessage(Type.PLAN, null, new ArrayList<>(steps), emptyLines(), emptyLines(), 0, 0, null, isHidMode, false);
     }
 
     @NonNull
@@ -90,7 +94,13 @@ public final class AgentMessage {
 
     @NonNull
     public static AgentMessage executionCli(@NonNull List<String> lines) {
-        return new AgentMessage(Type.EXECUTION_CLI, null, emptySteps(), new ArrayList<>(lines), emptyLines(), 0, 0, null);
+        return new AgentMessage(Type.EXECUTION_CLI, null, emptySteps(), new ArrayList<>(lines), emptyLines(), 0, 0, null, false, false);
+    }
+
+    /** Create a completed EXECUTION_CLI message (status shows "完成" instead of "Running…"). */
+    @NonNull
+    public static AgentMessage executionCliComplete(@NonNull List<String> lines) {
+        return new AgentMessage(Type.EXECUTION_CLI, null, emptySteps(), new ArrayList<>(lines), emptyLines(), 0, 0, null, false, true);
     }
 
     @NonNull

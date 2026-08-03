@@ -53,7 +53,7 @@ public final class AgentController {
     private static final String TAG = "AgentController";
 
     /** Timeout for waiting on a single step's execution callback */
-    private static final long STEP_TIMEOUT_SECONDS = 300; // 5 minutes
+    private static final long STEP_TIMEOUT_SECONDS = 30; // 30 seconds per step
 
     /** Agent-specific read timeout for LLM HTTP calls */
     private static final int AGENT_READ_TIMEOUT_MS = 60_000;
@@ -495,6 +495,22 @@ public final class AgentController {
                 final CountDownLatch latch = new CountDownLatch(1);
                 final String[] stepError = {null};
 
+                // Notify fragment to show Running state before execution starts
+                String displayCommand = "terminal".equals(step.kind)
+                        ? "$ " + (step.command != null ? step.command : step.title)
+                        : " " + step.title;
+                postToMain(() -> notifyStepStart(stepIndex, displayCommand));
+
+                // Brief pause on background thread — gives the main thread time
+                // to process notifyStepStart and render the "Running…" card
+                // before the SSH command completes and fires notifyStepOutput.
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+
                 toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
                     @Override
                     public void onSuccess(@NonNull String output) {
@@ -512,8 +528,10 @@ public final class AgentController {
                                 lines.add(line);
                             }
                         }
+                        // Mark as complete so the UI shows "完成" instead of "Running…"
+                        // even when the command produced no output.
                         session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines));
+                        postToMain(() -> notifyStepOutput(stepIndex, lines, true));
                         latch.countDown();
                     }
 
@@ -527,7 +545,7 @@ public final class AgentController {
                         }
                         lines.add("Error: " + error);
                         session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines));
+                        postToMain(() -> notifyStepOutput(stepIndex, lines, true));
                         stepError[0] = error;
                         latch.countDown();
                     }
@@ -538,12 +556,32 @@ public final class AgentController {
                     }
                 });
 
+                // Elapsed-time progress: show "(waiting… Xs)" every 3s so user
+                // sees the card is alive during long commands.
+                final java.util.concurrent.ScheduledExecutorService progressScheduler =
+                        Executors.newSingleThreadScheduledExecutor();
+                final long[] elapsedSec = {0};
+                progressScheduler.scheduleAtFixedRate(() -> {
+                    elapsedSec[0]++;
+                    final List<String> progressLines = new ArrayList<>();
+                    progressLines.add(displayCommand);
+                    progressLines.add("(waiting... " + elapsedSec[0] + "s)");
+                    postToMain(() -> notifyStepOutput(stepIndex, progressLines, false));
+                }, 3, 3, TimeUnit.SECONDS);
+
                 try {
                     boolean completed = latch.await(STEP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    progressScheduler.shutdownNow();
                     if (!completed) {
                         stepError[0] = "Step timed out after " + STEP_TIMEOUT_SECONDS + "s";
+                        // Update CLI card to show timeout instead of stuck on "Running…"
+                        final List<String> timeoutLines = new ArrayList<>();
+                        timeoutLines.add(displayCommand);
+                        timeoutLines.add("⚠️ " + stepError[0]);
+                        postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true));
                     }
                 } catch (InterruptedException e) {
+                    progressScheduler.shutdownNow();
                     Thread.currentThread().interrupt();
                     return; // cancelled
                 }
@@ -556,6 +594,11 @@ public final class AgentController {
                         postError("Step " + (stepIndex + 1) + " failed after "
                                 + effectiveMaxRetries + " retries: " + stepError[0]);
                         return;
+                    }
+                    // Retry: re-notify step start so the card shows "Running…" again
+                    postToMain(() -> notifyStepStart(stepIndex, displayCommand));
+                    try { Thread.sleep(500); } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt(); return;
                     }
                 }
             }
@@ -571,8 +614,20 @@ public final class AgentController {
             }
         }
 
-        // All steps completed — trigger summarize phase
-        summarize();
+        // All steps completed — notify completion.
+        // Fragment's onExecutionComplete will trigger summarize with a delay
+        // measured from after the terminal card layout pass, not from here.
+        postToMain(this::notifyExecutionComplete);
+    }
+
+    /**
+     * Public entry point for Fragment to trigger summarize phase.
+     * Spawns a background thread so the LLM network call never blocks the UI.
+     * Called after terminal card layout pass completes.
+     */
+    public void startSummarize() {
+        if (cancelFlag.get()) return;
+        new Thread(this::summarize, "AgentSummarize").start();
     }
 
     /**
@@ -654,8 +709,11 @@ public final class AgentController {
                         Log.i(TAG, "summarize: chatSync fallback, length="
                                 + syncResponse.content.length());
                         session.addAssistantMessage(syncResponse.content);
-                        // Send full content to Fragment for display
+                        // Reset Fragment's summary buffer state before delivering full content,
+                        // because earlier streaming onChunk calls may have set summaryDelayScheduled=true
+                        // which would cause appendSummaryToken to drop the full response.
                         postToMain(() -> {
+                            notifySummaryReset();
                             notifySummaryToken(syncResponse.content);
                             notifySummaryComplete();
                             transitionTo(AgentState.IDLE);
@@ -663,6 +721,7 @@ public final class AgentController {
                     } catch (Exception syncErr) {
                         Log.e(TAG, "summarize: chatSync fallback also failed", syncErr);
                         postToMain(() -> {
+                            notifySummaryReset();
                             notifySummaryToken("️ Summarize failed: " + syncErr.getMessage());
                             notifySummaryComplete();
                             transitionTo(AgentState.IDLE);
@@ -818,8 +877,12 @@ public final class AgentController {
         if (listener != null) listener.onPlanTruncated(maxSteps);
     }
 
-    private void notifyStepOutput(int stepIndex, @NonNull List<String> lines) {
-        if (listener != null) listener.onStepOutput(stepIndex, lines);
+    private void notifyStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {
+        if (listener != null) listener.onStepOutput(stepIndex, lines, isComplete);
+    }
+
+    private void notifyStepStart(int stepIndex, @NonNull String command) {
+        if (listener != null) listener.onStepStart(stepIndex, command);
     }
 
     private void notifyToken(@NonNull String token) {
@@ -832,6 +895,10 @@ public final class AgentController {
 
     private void notifySummaryComplete() {
         if (listener != null) listener.onSummaryComplete();
+    }
+
+    private void notifySummaryReset() {
+        if (listener != null) listener.onSummaryReset();
     }
 
     @NonNull
@@ -884,14 +951,20 @@ public final class AgentController {
         /** Plan was truncated to fit maxSteps limit */
         default void onPlanTruncated(int maxSteps) {}
 
-        /** A step produced output (for EXECUTION_CLI display) */
-        default void onStepOutput(int stepIndex, @NonNull List<String> lines) {}
+        /** A step produced output (for EXECUTION_CLI display). isComplete=true when the step finished. */
+        default void onStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {}
+
+        /** A step is about to start executing — show Running state */
+        default void onStepStart(int stepIndex, @NonNull String command) {}
 
         /** LLM streaming token received during THINKING phase */
         default void onToken(@NonNull String token) {}
 
         /** LLM streaming token during Summarize phase — append to Assistant message */
         default void onSummaryToken(@NonNull String token) {}
+
+        /** Reset summary buffer state — called before chatSync fallback delivers full content */
+        default void onSummaryReset() {}
 
         /** Summarize phase complete */
         default void onSummaryComplete() {}

@@ -1603,6 +1603,8 @@ by TechxArtisan</string>
     <string name="agent_act_edit_plan">Edit plan</string>
     <string name="agent_act_prompt">Review the plan before KeyCmd acts on your host.</string>
     <string name="agent_execution_terminal_label">TERMINAL · EXECUTING</string>
+    <string name="agent_cli_running">Running…</string>
+    <string name="agent_cli_done">完成</string>
     <string name="agent_execution_macro_label">MACRO · EXECUTING</string>
     <string name="agent_plan_title">PLAN</string>
     <string name="agent_edit_plan_coming_soon">Edit plan is coming soon.</string>

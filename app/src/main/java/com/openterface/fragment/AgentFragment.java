@@ -663,13 +663,62 @@ public class AgentFragment extends Fragment {
             @Override
             public void onRetry(int attempt, int maxAttempts) {
                 if (!isAdded()) return;
-                Log.d(TAG, "Retrying step: " + attempt + "/" + maxAttempts);
+                // Insert retry status message and thinking indicator
+                chatMessages.add(AgentMessage.assistant(
+                        "🔄 Retry " + attempt + "/" + maxAttempts
+                        + ": 1 command(s) failed. Asking for alternatives..."));
+                chatMessages.add(AgentMessage.thinking(getString(R.string.agent_state_thinking)));
+                adapter.submitList(new ArrayList<>(chatMessages));
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
             }
 
             @Override
             public void onExecutionComplete() {
-                // Summarize phase handles completion display via onSummaryToken/onSummaryComplete.
-                // This callback is kept for backward compatibility but no longer adds messages.
+                if (!isAdded()) return;
+                // Mark execution complete BEFORE summaryPending — protects the THINKING
+                // indicator from being removed when onStateChanged(IDLE) fires later
+                // (from summarize()'s transitionTo(IDLE)).
+                executionJustCompleted = true;
+                summaryPending = true;
+                summaryMessagePosition = -1;
+
+                // Reuse existing THINKING message (e.g. from a retry phase) if present,
+                // otherwise insert a new one. This avoids duplicate THINKING items.
+                boolean updated = false;
+                for (int i = chatMessages.size() - 1; i >= 0; i--) {
+                    if (chatMessages.get(i).type == AgentMessage.Type.THINKING) {
+                        AgentMessage thinkingMsg = AgentMessage.thinking(
+                                getString(R.string.agent_state_thinking));
+                        chatMessages.set(i, thinkingMsg);
+                        adapter.setItem(i, thinkingMsg);
+                        updated = true;
+                        break;
+                    }
+                }
+                if (!updated) {
+                    AgentMessage thinkingMsg = AgentMessage.thinking(
+                            getString(R.string.agent_state_thinking));
+                    chatMessages.add(thinkingMsg);
+                    adapter.addItem(thinkingMsg);
+                }
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
+                // Use View.post() — schedules after RecyclerView layout pass completes.
+                // This guarantees the thinking message is rendered before summarize starts.
+                if (agentController != null) {
+                    messagesList.post(() -> {
+                        if (isAdded() && agentController != null) {
+                            agentController.startSummarize();
+                        }
+                    });
+                }
             }
 
             @Override
@@ -712,6 +761,7 @@ public class AgentFragment extends Fragment {
                 }
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
+                executionJustCompleted = false;
             }
 
             @Override
@@ -728,10 +778,49 @@ public class AgentFragment extends Fragment {
             }
 
             @Override
-            public void onStepOutput(int stepIndex, @NonNull List<String> lines) {
+            public void onStepStart(int stepIndex, @NonNull String command) {
                 if (!isAdded()) return;
-                chatMessages.add(AgentMessage.executionCli(lines));
-                adapter.submitList(new ArrayList<>(chatMessages));
+                // Remove thinking indicator and insert Running CLI card
+                removeThinkingMessage();
+                chatMessages.add(AgentMessage.executionCli(
+                        java.util.Collections.singletonList(command)));
+                // Use adapter.addItem() to sync the adapter's internal messages list
+                // AND notify the RecyclerView in one step — prevents stale-data bugs
+                // where the EXECUTION_CLI card wouldn't render.
+                adapter.addItem(chatMessages.get(chatMessages.size() - 1));
+                messagesList.post(() -> {
+                    if (adapter.getItemCount() > 0) {
+                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                    }
+                });
+            }
+
+            @Override
+            public void onStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {
+                if (!isAdded()) return;
+                // Find the existing Running CLI card and update it with output,
+                // instead of adding a duplicate card.
+                boolean updated = false;
+                for (int i = chatMessages.size() - 1; i >= 0; i--) {
+                    if (chatMessages.get(i).type == AgentMessage.Type.EXECUTION_CLI) {
+                        AgentMessage msg = isComplete
+                                ? AgentMessage.executionCliComplete(lines)
+                                : AgentMessage.executionCli(lines);
+                        chatMessages.set(i, msg);
+                        // Use adapter.setItem() to sync internal data AND rebind.
+                        adapter.setItem(i, msg);
+                        updated = true;
+                        break;
+                    }
+                }
+                if (!updated) {
+                    // Fallback: no Running card found, add new one
+                    AgentMessage msg = isComplete
+                            ? AgentMessage.executionCliComplete(lines)
+                            : AgentMessage.executionCli(lines);
+                    chatMessages.add(msg);
+                    adapter.addItem(msg);
+                }
                 messagesList.post(() -> {
                     if (adapter.getItemCount() > 0) {
                         messagesList.scrollToPosition(adapter.getItemCount() - 1);
@@ -752,8 +841,20 @@ public class AgentFragment extends Fragment {
             }
 
             @Override
+            public void onSummaryReset() {
+                // Reset buffer state so chatSync fallback content is treated as first token.
+                // Keep summaryMessagePosition intact — the fallback content should replace
+                // the orphaned message (e.g. "```") at that position, not append a new one.
+                summaryContent.setLength(0);
+                summaryStarted = false;
+            }
+
+            @Override
             public void onSummaryComplete() {
                 if (!isAdded()) return;
+                summaryPending = false;
+                executionJustCompleted = false;
+                summaryMessagePosition = -1;
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
                 inputField.setHint(R.string.agent_input_hint_real);
@@ -791,6 +892,10 @@ public class AgentFragment extends Fragment {
 
         // Reset summary state
         summaryContent.setLength(0);
+        summaryStarted = false;
+        summaryPending = false;
+        summaryMessagePosition = -1;
+        executionJustCompleted = false;
 
         // Track user message in local list
         chatMessages.add(AgentMessage.user(prompt));
@@ -913,6 +1018,11 @@ public class AgentFragment extends Fragment {
 
     /** Add or remove the thinking indicator message in the chat list. */
     private void updateThinkingRow(boolean thinking) {
+        // Protect the THINKING indicator from being removed when:
+        // - A summary is pending (summaryPending=true), OR
+        // - Execution just completed and we're waiting for summarize to start
+        //   (executionJustCompleted=true — set before onStateChanged(IDLE) fires).
+        if (!thinking && (summaryPending || executionJustCompleted)) return;
         isThinking = thinking;
         if (thinking) {
             receivedTokens = 0;
@@ -958,31 +1068,86 @@ public class AgentFragment extends Fragment {
 
     /** Accumulates streaming tokens during Summarize phase. */
     private final StringBuilder summaryContent = new StringBuilder();
+    private boolean summaryStarted = false;
+    private int summaryMessagePosition = -1;
+    private boolean summaryPending = false;
+    private int summaryReceivedTokens = 0;
+    /**
+     * Set true in onExecutionComplete() — protects the THINKING indicator from being
+     * removed by the IDLE state transition that fires before the summary phase starts.
+     * Reset in onSummaryComplete() / submitToAgent() / onError().
+     */
+    private boolean executionJustCompleted = false;
 
     /**
-     * Append a streaming token to the last ASSISTANT message (or create one).
-     * Used during Summarize phase for per-character display.
+     * Append a streaming token to the summary.
+     * While tokens stream in: updates THINKING message to "Receiving… X tokens".
+     * Once enough content accumulates (>100 chars): replaces THINKING with ASSISTANT summary.
+     * chatSync fallback (single token >50 chars): skips "Receiving…" and shows summary directly.
      */
     private void appendSummaryToken(@NonNull String token) {
         summaryContent.append(token);
-        String currentText = summaryContent.toString();
+        summaryReceivedTokens++;
 
-        // Find or create the summary ASSISTANT message
-        boolean found = false;
-        for (int i = chatMessages.size() - 1; i >= 0; i--) {
-            if (chatMessages.get(i).type == AgentMessage.Type.ASSISTANT) {
-                chatMessages.set(i, AgentMessage.assistant(currentText));
-                found = true;
-                break;
+        // chatSync fallback: large single token → show summary immediately
+        if (!summaryStarted && token.length() > 50) {
+            summaryStarted = true;
+            doAppendSummaryToken(summaryContent.toString());
+            return;
+        }
+
+        if (!summaryStarted) {
+            // Still accumulating: update THINKING message to show token count
+            summaryStarted = true; // prevent re-entering this branch
+            updateThinkingMessage("Receiving… " + summaryReceivedTokens + " tokens");
+            return;
+        }
+
+        // Check if enough content to replace THINKING with summary
+        if (summaryContent.length() > 100) {
+            doAppendSummaryToken(summaryContent.toString());
+        } else {
+            // Not enough yet: keep showing "Receiving… X tokens"
+            updateThinkingMessage("Receiving… " + summaryReceivedTokens + " tokens");
+        }
+    }
+
+    private void doAppendSummaryToken(@NonNull String text) {
+        if (summaryMessagePosition < 0) {
+            // First display: find and replace the THINKING message with ASSISTANT summary
+            for (int i = chatMessages.size() - 1; i >= 0; i--) {
+                if (chatMessages.get(i).type == AgentMessage.Type.THINKING) {
+                    summaryMessagePosition = i;
+                    AgentMessage summaryMsg = AgentMessage.assistant(text);
+                    chatMessages.set(i, summaryMsg);
+                    adapter.setItem(i, summaryMsg);
+                    break;
+                }
             }
-            AgentMessage.Type t = chatMessages.get(i).type;
-            if (t != AgentMessage.Type.ASSISTANT && t != AgentMessage.Type.USER) break;
-        }
-        if (!found) {
-            chatMessages.add(AgentMessage.assistant(currentText));
+            if (summaryMessagePosition < 0) {
+                // THINKING already replaced or not found: update existing summary or append
+                for (int i = chatMessages.size() - 1; i >= 0; i--) {
+                    if (chatMessages.get(i).type == AgentMessage.Type.ASSISTANT) {
+                        summaryMessagePosition = i;
+                        AgentMessage summaryMsg = AgentMessage.assistant(text);
+                        chatMessages.set(i, summaryMsg);
+                        adapter.setItem(i, summaryMsg);
+                        return;
+                    }
+                }
+                // Fallback: no ASSISTANT found, append new one
+                AgentMessage summaryMsg = AgentMessage.assistant(text);
+                chatMessages.add(summaryMsg);
+                summaryMessagePosition = chatMessages.size() - 1;
+                adapter.addItem(summaryMsg);
+            }
+        } else {
+            // Subsequent tokens: update existing ASSISTANT summary in place
+            AgentMessage summaryMsg = AgentMessage.assistant(text);
+            chatMessages.set(summaryMessagePosition, summaryMsg);
+            adapter.setItem(summaryMessagePosition, summaryMsg);
         }
 
-        adapter.updateLastMessage(chatMessages.get(chatMessages.size() - 1));
         messagesList.post(() -> {
             if (adapter.getItemCount() > 0) {
                 messagesList.scrollToPosition(adapter.getItemCount() - 1);

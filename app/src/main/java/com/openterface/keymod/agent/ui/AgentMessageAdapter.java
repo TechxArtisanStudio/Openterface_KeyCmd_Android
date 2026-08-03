@@ -37,6 +37,9 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
     private static final int VT_MACRO = 5;
     private static final int VT_THINKING = 6;
 
+    /** Payload for partial rebind of THINKING items — updates text without resetting the ProgressBar animation. */
+    private static final Object PAYLOAD_THINKING_TEXT = new Object();
+
     private final List<AgentMessage> messages = new ArrayList<>();
     @Nullable private ActBarListener actBarListener;
 
@@ -48,6 +51,27 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         messages.clear();
         messages.addAll(next);
         notifyDataSetChanged();
+    }
+
+    /**
+     * Append a message to the internal list AND notify the RecyclerView.
+     * Use this instead of modifying an external list + notifyItemInserted()
+     * to keep adapter state in sync.
+     */
+    public void addItem(@NonNull AgentMessage message) {
+        messages.add(message);
+        notifyItemInserted(messages.size() - 1);
+    }
+
+    /**
+     * Replace the message at the given position AND notify the RecyclerView.
+     * Use this instead of modifying an external list + notifyItemChanged()
+     * to keep adapter state in sync.
+     */
+    public void setItem(int position, @NonNull AgentMessage message) {
+        if (position < 0 || position >= messages.size()) return;
+        messages.set(position, message);
+        notifyItemChanged(position);
     }
 
     /**
@@ -71,7 +95,7 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i).type == AgentMessage.Type.THINKING) {
                 messages.set(i, AgentMessage.thinking(text));
-                notifyItemChanged(i);
+                notifyItemChanged(i, PAYLOAD_THINKING_TEXT);
                 return true;
             }
         }
@@ -151,6 +175,19 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
             default:
                 break;
         }
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
+                                  @NonNull java.util.List<Object> payloads) {
+        if (!payloads.isEmpty() && PAYLOAD_THINKING_TEXT.equals(payloads.get(0))
+                && holder instanceof ThinkingHolder) {
+            // Partial rebind: update text only — keeps the ProgressBar animation running.
+            ((ThinkingHolder) holder).textView.setText(messages.get(position).text);
+            return;
+        }
+        // No matching payload — fall back to full bind.
+        onBindViewHolder(holder, position);
     }
 
     @Override
@@ -253,22 +290,47 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
     }
 
     private static final class CliHolder extends RecyclerView.ViewHolder {
-        private final TextView output;
+        private final TextView statusBadge;
+        private final TextView commandText;
+        private final TextView outputText;
 
         CliHolder(@NonNull View itemView) {
             super(itemView);
-            output = itemView.findViewById(R.id.agent_terminal_output);
+            statusBadge = itemView.findViewById(R.id.agent_cli_status);
+            commandText = itemView.findViewById(R.id.agent_cli_command);
+            outputText = itemView.findViewById(R.id.agent_cli_output);
         }
 
         void bind(@NonNull AgentMessage message) {
-            StringBuilder builder = new StringBuilder();
-            for (String line : message.terminalLines) {
-                if (builder.length() > 0) {
-                    builder.append('\n');
+            List<String> lines = message.terminalLines;
+            if (lines.isEmpty()) return;
+
+            // First line is the command (e.g. "$ hostname")
+            String cmd = lines.get(0);
+            commandText.setText(cmd);
+
+            // Remaining lines are output
+            boolean hasOutput = lines.size() > 1;
+            if (hasOutput) {
+                StringBuilder builder = new StringBuilder();
+                for (int i = 1; i < lines.size(); i++) {
+                    if (builder.length() > 0) builder.append('\n');
+                    builder.append(lines.get(i));
                 }
-                builder.append(line);
+                outputText.setText(builder.toString());
+                outputText.setVisibility(View.VISIBLE);
+            } else {
+                outputText.setVisibility(View.GONE);
             }
-            output.setText(builder.toString());
+
+            // Use explicit isComplete flag — works even when command produced no output.
+            if (message.isComplete) {
+                statusBadge.setText(R.string.agent_cli_done);
+                statusBadge.setTextColor(0xFF4CAF50); // green
+            } else {
+                statusBadge.setText(R.string.agent_cli_running);
+                statusBadge.setTextColor(0xFFF57C00); // orange
+            }
         }
     }
 
@@ -310,7 +372,7 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
     }
 
     private static final class ThinkingHolder extends RecyclerView.ViewHolder {
-        private final TextView textView;
+        final TextView textView;  // package-private: accessible from payload partial bind
 
         ThinkingHolder(@NonNull View itemView) {
             super(itemView);
