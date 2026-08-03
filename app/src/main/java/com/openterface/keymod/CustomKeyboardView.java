@@ -7276,17 +7276,18 @@ public class CustomKeyboardView extends LinearLayout {
             }
             return;
         }
-        icon = icon.mutate();
-        icon.setTint(resolveThemeTextColor());
-        int sizePx = dpToPx(iconSizeDp);
-        LayerDrawable layers = new LayerDrawable(new Drawable[]{
-                new ColorDrawable(Color.TRANSPARENT),
-                icon
-        });
-        layers.setLayerGravity(1, Gravity.CENTER);
-        layers.setLayerWidth(1, sizePx);
-        layers.setLayerHeight(1, sizePx);
+        // setLayerGravity/setLayerWidth/setLayerHeight/setForeground require API 23+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            icon = icon.mutate();
+            icon.setTint(resolveThemeTextColor());
+            int sizePx = dpToPx(iconSizeDp);
+            LayerDrawable layers = new LayerDrawable(new Drawable[]{
+                    new ColorDrawable(Color.TRANSPARENT),
+                    icon
+            });
+            layers.setLayerGravity(1, Gravity.CENTER);
+            layers.setLayerWidth(1, sizePx);
+            layers.setLayerHeight(1, sizePx);
             b.setForeground(layers);
         }
         b.setTextColor(resolveThemeTextColor());
