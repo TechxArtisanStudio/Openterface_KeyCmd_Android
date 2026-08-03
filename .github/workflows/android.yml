@@ -3,6 +3,9 @@ name: Build APK
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      # Ignore commits made by the Bump Version / Create Release workflows.
+      - 'app/build.gradle'
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -32,38 +35,6 @@ jobs:
           gradle-version: '8.9'
           # PRs from forks cannot write the Gradle cache; non-PRs may update it.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
-
-      - name: Bump version (push to main only)
-        if: github.event_name == 'push'
-        run: |
-          # Extract current version
-          current_name=$(grep 'versionName' app/build.gradle | sed 's/.*"\(.*\)".*/\1/' | head -1)
-          current_code=$(grep 'versionCode' app/build.gradle | grep -oE '[0-9]+' | head -1)
-
-          # Increment patch and code
-          IFS='.' read -ra parts <<< "$current_name"
-          last_idx=$(( ${#parts[@]} - 1 ))
-          parts[$last_idx]=$(( ${parts[$last_idx]} + 1 ))
-          new_name=$(IFS='.'; echo "${parts[*]}")
-          new_code=$(( current_code + 1 ))
-
-          echo "Bumping: $current_name -> $new_name (code: $current_code -> $new_code)"
-
-          # Update build.gradle
-          sed -i -E "s/versionCode [0-9]+/versionCode $new_code/" app/build.gradle
-          sed -i -E "s/versionName \"[^\"]+\"/versionName \"$new_name\"/" app/build.gradle
-
-          # Commit and tag
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/build.gradle
-          git commit -m "chore: bump version to $new_name ($new_code)"
-          git tag "v$new_name"
-          git push
-          git push origin "v$new_name"
-
-          echo "VERSION_NAME=$new_name" >> $GITHUB_ENV
-          echo "VERSION_CODE=$new_code" >> $GITHUB_ENV
 
       - name: Prepare signing keystore
         if: github.event_name != 'pull_request'
@@ -113,12 +84,3 @@ jobs:
             **/build/reports/
             **/*.log
           retention-days: 7
-
-      - name: Create GitHub Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.VERSION_NAME }}
-          name: KeyCmd v${{ env.VERSION_NAME }}
-          files: app/build/outputs/apk/release/*.apk
-          generate_release_notes: true

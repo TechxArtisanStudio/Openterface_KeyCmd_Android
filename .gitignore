@@ -28,3 +28,5 @@ __pycache__/
 
 # Screenshot / action-test automation output (scripts/capture_*.sh)
 /artifacts/
+
+.codegraph/*

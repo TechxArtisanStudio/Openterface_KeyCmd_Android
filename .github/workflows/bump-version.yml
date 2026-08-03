@@ -1,0 +1,161 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (patch / minor / major / custom)'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+      custom_version:
+        description: 'Custom version (e.g. 1.2.3 or 1.2.3-beta.1+build.5). Only used when bump_type = custom.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # --- Read current versionName and versionCode from app/build.gradle ---
+          CURRENT_NAME=$(grep 'versionName' app/build.gradle | sed -E 's/.*versionName[[:space:]]+"([^"]+)".*/\1/' | head -1)
+          CURRENT_CODE=$(grep 'versionCode' app/build.gradle | grep -Eo '[0-9]+' | head -1)
+
+          echo "Current versionName : $CURRENT_NAME"
+          echo "Current versionCode : $CURRENT_CODE"
+
+          BUMP_TYPE="${{ inputs.bump_type }}"
+          CUSTOM="${{ inputs.custom_version }}"
+
+          # --- Parse versionName into major.minor.patch ---
+          IFS='.' read -r -a parts <<< "$CURRENT_NAME"
+          MAJOR="${parts[0]:-0}"
+          MINOR="${parts[1]:-0}"
+          PATCH="${parts[2]:-0}"
+
+          # --- Compute new versionName ---
+          case "$BUMP_TYPE" in
+            patch)
+              PATCH=$(( PATCH + 1 ))
+              ;;
+            minor)
+              MINOR=$(( MINOR + 1 ))
+              PATCH=0
+              ;;
+            major)
+              MAJOR=$(( MAJOR + 1 ))
+              MINOR=0
+              PATCH=0
+              ;;
+            custom)
+              if [[ -z "$CUSTOM" ]]; then
+                echo "::error::bump_type is 'custom' but custom_version is empty."
+                exit 1
+              fi
+              # Validate semver-like pattern (allows optional -pre and +build suffixes).
+              if [[ ! "$CUSTOM" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9A-Za-z.+-]+)?(\+[0-9A-Za-z.+-]+)?$ ]]; then
+                echo "::error::custom_version '$CUSTOM' is not a valid semver string."
+                exit 1
+              fi
+              # Extract only the numeric parts to compute versionCode floor.
+              NUMERIC=$(echo "$CUSTOM" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/')
+              IFS='.' read -r -a cparts <<< "$NUMERIC"
+              MAJOR="${cparts[0]:-0}"
+              MINOR="${cparts[1]:-0}"
+              PATCH="${cparts[2]:-0}"
+              ;;
+            *)
+              echo "::error::Unknown bump_type '$BUMP_TYPE'"
+              exit 1
+              ;;
+          esac
+
+          # Reconstruct versionName, preserving whether it had 2 or 3 numeric segments
+          if [[ "$BUMP_TYPE" == "custom" ]]; then
+            NEW_NAME="$CUSTOM"
+          elif [[ "${#parts[@]}" -le 2 ]]; then
+            NEW_NAME="$MAJOR.$MINOR"
+          else
+            NEW_NAME="$MAJOR.$MINOR.$PATCH"
+          fi
+
+          # --- Compute new versionCode ---
+          # Encode as MAJOR*1_000_000 + MINOR*1_000 + PATCH, and ensure it is > current.
+          NUMERIC_CODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
+          if (( NUMERIC_CODE > CURRENT_CODE )); then
+            NEW_CODE=$NUMERIC_CODE
+          else
+            NEW_CODE=$(( CURRENT_CODE + 1 ))
+          fi
+
+          echo ""
+          echo "Bumping: versionName  $CURRENT_NAME -> $NEW_NAME"
+          echo "Bumping: versionCode  $CURRENT_CODE -> $NEW_CODE"
+
+          # --- Update app/build.gradle ---
+          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode $NEW_CODE/" app/build.gradle
+          sed -i -E "s/versionName[[:space:]]+\"[^\"]+\"/versionName \"$NEW_NAME\"/" app/build.gradle
+
+          # Sanity check: make sure the file was actually updated.
+          VERIFY_NAME=$(grep 'versionName' app/build.gradle | sed -E 's/.*versionName[[:space:]]+"([^"]+)".*/\1/' | head -1)
+          VERIFY_CODE=$(grep 'versionCode' app/build.gradle | grep -Eo '[0-9]+' | head -1)
+          if [[ "$VERIFY_NAME" != "$NEW_NAME" || "$VERIFY_CODE" != "$NEW_CODE" ]]; then
+            echo "::error::build.gradle update failed (name=$VERIFY_NAME, code=$VERIFY_CODE)"
+            exit 1
+          fi
+
+          # --- Commit, tag, and push ---
+          git add app/build.gradle
+          git commit -m "chore: bump version to $NEW_NAME ($NEW_CODE)"
+          git tag "v$NEW_NAME"
+          git push
+          git push origin "v$NEW_NAME"
+
+          echo "new_name=$NEW_NAME" >> "$GITHUB_OUTPUT"
+          echo "new_code=$NEW_CODE" >> "$GITHUB_OUTPUT"
+          echo "old_name=$CURRENT_NAME" >> "$GITHUB_OUTPUT"
+          echo "old_code=$CURRENT_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          {
+            echo "## 🔖 Version bumped"
+            echo ""
+            echo "| Field        | Old           | New            |"
+            echo "|--------------|---------------|----------------|"
+            echo "| versionName  | ${{ steps.bump.outputs.old_name }} | ${{ steps.bump.outputs.new_name }} |"
+            echo "| versionCode  | ${{ steps.bump.outputs.old_code }} | ${{ steps.bump.outputs.new_code }} |"
+            echo ""
+            echo "Tag **v${{ steps.bump.outputs.new_name }}** has been pushed to \`${{ github.ref_name }}\`."
+            echo ""
+            if [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "master" ]]; then
+              echo "> The **Create Release** workflow will now build the APK and publish a GitHub Release automatically."
+            else
+              echo "> To publish a GitHub Release, run the **Create Release** workflow (or push the tag on main)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
