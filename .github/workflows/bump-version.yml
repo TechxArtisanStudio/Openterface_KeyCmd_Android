@@ -105,13 +105,11 @@ jobs:
           fi
 
           # --- Compute new versionCode ---
-          # Encode as MAJOR*1_000_000 + MINOR*1_000 + PATCH, and ensure it is > current.
-          NUMERIC_CODE=$(( MAJOR * 1000000 + MINOR * 1000 + PATCH ))
-          if (( NUMERIC_CODE > CURRENT_CODE )); then
-            NEW_CODE=$NUMERIC_CODE
-          else
-            NEW_CODE=$(( CURRENT_CODE + 1 ))
-          fi
+          # versionCode is a simple release counter that always increments by 1,
+          # matching scripts/bump_version.sh and the project's versionCode history
+          # (e.g. 0.34 -> 35, NOT the MAJOR*1e6+MINOR*1e3+PATCH encoding which would
+          # yield 35000 and break the monotonic counter).
+          NEW_CODE=$(( CURRENT_CODE + 1 ))
 
           echo ""
           echo "Bumping: versionName  $CURRENT_NAME -> $NEW_NAME"
