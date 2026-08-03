@@ -83,7 +83,7 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.openterface.keymod"
+        applicationId "com.openterface.KeyCmd"
         minSdk 26
         targetSdk 35
         versionCode 35

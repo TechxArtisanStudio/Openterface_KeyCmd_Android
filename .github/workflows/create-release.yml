@@ -103,16 +103,18 @@ jobs:
         if: steps.existing.outputs.exists == 'false'
         run: ./gradlew clean --info
 
-      - name: Build Release APK
+      - name: Build Release APK + AAB
         if: steps.existing.outputs.exists == 'false'
-        run: ./gradlew assembleRelease --stacktrace --info --warning-mode all
+        run: ./gradlew assembleRelease bundleRelease --stacktrace --info --warning-mode all
 
-      - name: Upload APK artifact
+      - name: Upload APK + AAB artifacts
         if: steps.existing.outputs.exists == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: KeyCmd-release-${{ steps.tag.outputs.version }}
-          path: app/build/outputs/apk/release/*.apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
           retention-days: 90
           if-no-files-found: error
 
@@ -122,7 +124,9 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: KeyCmd ${{ steps.tag.outputs.tag }}
-          files: app/build/outputs/apk/release/*.apk
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
           generate_release_notes: true
           make_latest: true
 
@@ -137,6 +141,6 @@ jobs:
               echo ""
               echo "> Release for this tag already exists — skipped build and creation."
             else
-              echo "- **Status**: GitHub Release created with attached APK."
+              echo "- **Status**: GitHub Release created with attached APK + AAB."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
