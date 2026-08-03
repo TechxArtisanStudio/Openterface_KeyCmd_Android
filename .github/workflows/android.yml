@@ -1,4 +1,4 @@
-name: Build APK
+name: Build
 
 on:
   push:
@@ -49,30 +49,32 @@ jobs:
         run: ./gradlew clean --info
 
       # Release signing uses repo secrets + keystore only on push; PRs have no secrets file.
-      - name: Build Release APK
+      - name: Build Release APK + AAB
         if: github.event_name != 'pull_request'
-        run: ./gradlew assembleRelease --stacktrace --info --warning-mode all
+        run: ./gradlew assembleRelease bundleRelease --stacktrace --info --warning-mode all
 
-      - name: Build Debug APK (pull requests)
+      - name: Build Debug APK + AAB (pull requests)
         if: github.event_name == 'pull_request'
-        run: ./gradlew assembleDebug --stacktrace --info --warning-mode all
+        run: ./gradlew assembleDebug bundleDebug --stacktrace --info --warning-mode all
 
-      - name: Upload Release APK
+      - name: Upload Release APK + AAB
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: KeyCmd-release
           path: |
             app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
           retention-days: 90
 
-      - name: Upload Debug APK (pull requests)
+      - name: Upload Debug APK + AAB (pull requests)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: KeyCmd-debug
           path: |
             app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/debug/*.aab
           retention-days: 14
 
       - name: Upload Build Failure Logs
