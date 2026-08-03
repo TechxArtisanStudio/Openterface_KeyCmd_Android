@@ -3,6 +3,7 @@ package com.openterface.fragment;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.Editable;
@@ -645,7 +646,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                         }
                         if (sendProgressBar != null) {
                             sendProgressBar.setIndeterminate(false);
-                            sendProgressBar.setProgress(0, false);
+                            setSendProgress(0, false);
                         }
                         if (sendProgressLabel != null) {
                             sendProgressLabel.setText(
@@ -769,7 +770,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                             p = Math.min(999, Math.round(1000f * done / (float) totalClamped));
                         }
                         // Same animation mode throughout so the last segment does not snap after motion.
-                        sendProgressBar.setProgress(p, true);
+                        setSendProgress(p, true);
                     }
                     if (sendProgressLabel != null) {
                         sendProgressLabel.setText(
@@ -784,6 +785,15 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
                 });
     }
 
+    private void setSendProgress(int progress, boolean animate) {
+        // setProgress(int, boolean) requires API 26+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            sendProgressBar.setProgress(progress, animate);
+        } else {
+            sendProgressBar.setProgress(progress);
+        }
+    }
+
     private void hideSendProgressUi() {
         sendProgressUiActive = false;
         lastComposeSendRemainingForA11y = -1;
@@ -792,7 +802,7 @@ public class BasicComposeFragment extends Fragment implements ImeSavedTextFragme
         }
         if (sendProgressBar != null) {
             sendProgressBar.setIndeterminate(false);
-            sendProgressBar.setProgress(0, false);
+            setSendProgress(0, false);
         }
         if (sendProgressLabel != null) {
             sendProgressLabel.setText("");
