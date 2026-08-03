@@ -7271,7 +7271,9 @@ public class CustomKeyboardView extends LinearLayout {
         b.setCompoundDrawablePadding(0);
         Drawable icon = ContextCompat.getDrawable(getContext(), iconResId);
         if (icon == null) {
-            b.setForeground(null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                b.setForeground(null);
+            }
             return;
         }
         icon = icon.mutate();
@@ -7284,13 +7286,15 @@ public class CustomKeyboardView extends LinearLayout {
         layers.setLayerGravity(1, Gravity.CENTER);
         layers.setLayerWidth(1, sizePx);
         layers.setLayerHeight(1, sizePx);
-        b.setForeground(layers);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            b.setForeground(layers);
+        }
         b.setTextColor(resolveThemeTextColor());
         b.setTypeface(b.getTypeface(), android.graphics.Typeface.NORMAL);
     }
 
     private void clearExtraNumpadArrowIconOverlay(Button b) {
-        if (b != null) {
+        if (b != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             b.setForeground(null);
         }
     }
