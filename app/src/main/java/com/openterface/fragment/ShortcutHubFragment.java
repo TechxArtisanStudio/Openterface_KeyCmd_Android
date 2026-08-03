@@ -9,9 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
-import android.graphics.drawable.Drawable;
+import android.os.Build;import android.os.VibrationEffect;
+import android.os.Build;import android.os.Vibrator;
+import android.os.Build;import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -593,7 +593,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                         selectedProfile = refreshed;
                     }
                     if (vibrator != null && vibrator.hasVibrator()) {
-                        vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(18); };
                     }
                     return true;
                 }
@@ -845,7 +845,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 myShortcutsList.clear();
                 myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
                 if (vibrator != null && vibrator.hasVibrator()) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE));
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(18); };
                 }
                 return true;
             }
@@ -904,7 +904,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     }
                     profileManager.updateMyShortcuts(selectedProfile.id, new ArrayList<>(myShortcutsList));
                     if (vibrator != null && vibrator.hasVibrator()) {
-                        vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
                     }
                     Toast.makeText(getContext(),
                             getString(R.string.shortcut_hub_added_to_favorites_toast, shortcut.name),
@@ -1079,7 +1079,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         // Haptic feedback
         if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(20); };
         }
 
         Log.v(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
@@ -1113,7 +1113,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }, "ShortcutHubUnicodeSend").start();
 
         if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(20); };
         }
 
         Log.v(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"
