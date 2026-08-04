@@ -85,16 +85,33 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         return inflater.inflate(R.layout.dialog_target_settings, container, false);
     }
 
+    private static final String PREF_AGENT_PROFILE_ID = "agent_active_profile_id";
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         credentialManager = new CredentialManager(requireContext());
 
-        // Restore Agent's active profile from Activity (survives sheet dismiss/recreate)
+        // Restore Agent's active profile:
+        // 1. Try Activity memory (survives sheet dismiss while app is alive)
+        // 2. Fall back to SharedPreferences (survives app restart)
         MainActivity activity = (MainActivity) requireActivity();
         CredentialProfile agentProfile = activity.getActiveSshProfile();
         if (agentProfile != null) {
             agentActiveProfileId = agentProfile.getId();
+        } else {
+            agentActiveProfileId = requireContext()
+                    .getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                    .getString(PREF_AGENT_PROFILE_ID, null);
+            // Also restore to Activity so AgentController can find it
+            if (agentActiveProfileId != null) {
+                for (CredentialProfile p : credentialManager.getAllProfiles()) {
+                    if (p.getId().equals(agentActiveProfileId)) {
+                        activity.setActiveSshProfile(p);
+                        break;
+                    }
+                }
+            }
         }
 
         bindViews(view);
@@ -150,6 +167,8 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         MainActivity activity = (MainActivity) requireActivity();
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;
+        requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .edit().remove(PREF_AGENT_PROFILE_ID).apply();
 
         refreshUi();
         notifyTargetChanged();
@@ -202,8 +221,9 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         activity.setActiveSshProfile(profile);
         agentActiveProfileId = profile.getId();
 
-        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
-        // Do NOT dismiss — user may want to continue adjusting settings.
+        // Persist so selection survives app restart
+        requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .edit().putString(PREF_AGENT_PROFILE_ID, profile.getId()).apply();
 
         refreshUi();
         notifyTargetChanged();
@@ -216,7 +236,9 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;
 
-        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
+        // Clear persisted profile ID
+        requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .edit().remove(PREF_AGENT_PROFILE_ID).apply();
 
         refreshUi();
         notifyTargetChanged();
