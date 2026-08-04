@@ -107,9 +107,39 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
         dialog.setOnShowListener(d -> {
             BottomSheetDialog bsd = (BottomSheetDialog) d;
             BottomSheetBehavior<?> behavior = bsd.getBehavior();
+
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            boolean isPortrait = dm.heightPixels > dm.widthPixels;
+            // Portrait: show ~10% of screen  →  sheet = 90%
+            // Landscape: show ~4% of screen  →  sheet = 96%
+            int maxHeight = (int) (dm.heightPixels * (isPortrait ? 0.90 : 0.96));
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, maxHeight);
+            }
+
             behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             behavior.setSkipCollapsed(true);
             behavior.setHideable(true);
+
+            // ─ Rounded top corners (16dp) via ViewOutlineProvider ──
+            View bottomSheet = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            if (bottomSheet != null) {
+                final float cornerRadius = 16 * dm.density;
+                bottomSheet.setClipToOutline(true);
+                bottomSheet.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(),
+                                (int) (view.getHeight() + cornerRadius), cornerRadius);
+                    }
+                });
+
+                android.view.View parent = (android.view.View) bottomSheet.getParent();
+                if (parent instanceof ViewGroup) {
+                    ((ViewGroup) parent).setClipChildren(false);
+                    parent.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                }
+            }
         });
 
         return dialog;
