@@ -1909,7 +1909,16 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      * Triggered by the header's target OS button.
      */
     private void showTargetSettingsSheet() {
-        new TargetSettingsSheet().show(getSupportFragmentManager(), "target_settings");
+        TargetSettingsSheet sheet = new TargetSettingsSheet();
+        sheet.setTargetChangedListener(() -> {
+            // Refresh Agent session bar when target changes
+            AgentFragment agentFragment = (AgentFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.fragment_container);
+            if (agentFragment != null) {
+                agentFragment.updateSessionBar();
+            }
+        });
+        sheet.show(getSupportFragmentManager(), "target_settings");
     }
 
     private void showTargetOsPickerDialog() {

@@ -31,14 +31,20 @@ import java.util.List;
 /**
  * BottomSheet with two sections: Target OS picker + Terminal Profile list.
  *
- * <p>Shared by the main header button and the Agent top bar. Selecting a profile
- * mirrors its {@code targetOs} to the global {@code PREF_TARGET_OS} so that HID,
- * Compose, Help and other features follow the switch. Selecting an OS directly
- * does NOT write back to the active profile (one-way mirror).</p>
+ * <p>The two sections are mutually exclusive (aligned with iOS):</p>
+ * <ul>
+ *   <li>Selecting an OS clears the active SSH profile → HID mode</li>
+ *   <li>Selecting a profile clears the OS highlight → Terminal (SSH) mode</li>
+ * </ul>
  */
 public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
     private static final String TAG = "TargetSettingsSheet";
+
+    /** Called when the user changes the target (OS or profile). */
+    public interface OnTargetChangedListener {
+        void onTargetChanged();
+    }
 
     // OS button views
     private ImageButton osButtonMacos;
@@ -52,6 +58,9 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
     private CredentialManager credentialManager;
     private String currentOs = "macos";
+    /** Agent's own active profile ID — independent from CredentialManager's global state. */
+    @Nullable private String agentActiveProfileId;
+    @Nullable private OnTargetChangedListener targetChangedListener;
 
     // ── Lifecycle ────────────────────────────────────────────────────────
 
@@ -81,10 +90,28 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
         credentialManager = new CredentialManager(requireContext());
 
+        // Restore Agent's active profile from Activity (survives sheet dismiss/recreate)
+        MainActivity activity = (MainActivity) requireActivity();
+        CredentialProfile agentProfile = activity.getActiveSshProfile();
+        if (agentProfile != null) {
+            agentActiveProfileId = agentProfile.getId();
+        }
+
         bindViews(view);
         setupOsButtons();
         setupProfileList();
         refreshUi();
+    }
+
+    /** Set a listener to be notified when the user changes the target (OS or profile). */
+    public void setTargetChangedListener(@Nullable OnTargetChangedListener listener) {
+        this.targetChangedListener = listener;
+    }
+
+    private void notifyTargetChanged() {
+        if (targetChangedListener != null) {
+            targetChangedListener.onTargetChanged();
+        }
     }
 
     // ── View binding ─────────────────────────────────────────────────────
@@ -106,22 +133,39 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     }
 
     private void onOsSelected(@NonNull String os) {
-        // Store OS in Agent-specific preference — does NOT affect KM Pro / KM Basic / Terminal
-        requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                .edit().putString("agent_target_os", os).apply();
-        currentOs = os;
-        refreshOsButtonStyles();
-        // Do NOT close the sheet — user may still want to pick a profile.
+        if (os.equals(currentOs)) {
+            // Toggle off: deselect this OS (stay in HID mode with default OS)
+            requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                    .edit().remove("agent_target_os").apply();
+            currentOs = "";
+        } else {
+            // Select this OS
+            requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                    .edit().putString("agent_target_os", os).apply();
+            currentOs = os;
+        }
+
+        // Agent only: clear Agent's own SSH profile reference → HID mode.
+        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
+        MainActivity activity = (MainActivity) requireActivity();
+        activity.setActiveSshProfile(null);
+        agentActiveProfileId = null;
+
+        refreshUi();
+        notifyTargetChanged();
     }
 
-    private void refreshOsButtonStyles() {
+    /**
+     * Refresh OS button styles.
+     * @param highlightOs OS to highlight, or null to clear all highlights (Terminal mode).
+     */
+    private void refreshOsButtonStyles(@Nullable String highlightOs) {
         int selectedStroke = MaterialColors.getColor(
                 requireView(), com.google.android.material.R.attr.colorPrimary);
-        int neutralStroke = 0;
 
-        setButtonStroke(osButtonMacos,   "macos".equals(currentOs)   ? selectedStroke : neutralStroke);
-        setButtonStroke(osButtonWindows, "windows".equals(currentOs) ? selectedStroke : neutralStroke);
-        setButtonStroke(osButtonLinux,   "linux".equals(currentOs)   ? selectedStroke : neutralStroke);
+        setButtonStroke(osButtonMacos,   "macos".equals(highlightOs)   ? selectedStroke : 0);
+        setButtonStroke(osButtonWindows, "windows".equals(highlightOs) ? selectedStroke : 0);
+        setButtonStroke(osButtonLinux,   "linux".equals(highlightOs)   ? selectedStroke : 0);
     }
 
     private void setButtonStroke(@NonNull ImageButton button, int color) {
@@ -139,8 +183,13 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     private void setupProfileList() {
         profileAdapter = new ProfileAdapter(new ProfileAdapter.OnItemClickListener() {
             @Override
-            public void onProfileClick(@NonNull CredentialProfile profile) {
-                onProfileSelected(profile);
+            public void onProfileClick(@NonNull CredentialProfile profile, boolean wasActive) {
+                if (wasActive) {
+                    // Toggle off: deselect this profile → enter HID mode
+                    onProfileDeselected();
+                } else {
+                    onProfileSelected(profile);
+                }
             }
         });
         profileList.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -148,33 +197,46 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     }
 
     private void onProfileSelected(@NonNull CredentialProfile profile) {
-        // 1. Activate this profile
-        credentialManager.setActiveProfileId(profile.getId());
-
-        // 2. Mirror profile.targetOs → Agent-specific preference (NOT global)
-        String os = profile.getTargetOs();
-        requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                .edit().putString("agent_target_os", os).apply();
-
-        // 3. Store profile for Agent auto-connect
+        // Agent only: store profile for Agent auto-connect (does NOT affect Terminal tab)
         MainActivity activity = (MainActivity) requireActivity();
         activity.setActiveSshProfile(profile);
+        agentActiveProfileId = profile.getId();
 
-        currentOs = os;
+        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
+        // Do NOT dismiss — user may want to continue adjusting settings.
 
-        // 4. Refresh and close
         refreshUi();
-        dismiss();
+        notifyTargetChanged();
+    }
+
+    /** Deselect the active profile — clears Agent's SSH mode and returns to HID mode. */
+    private void onProfileDeselected() {
+        // Agent only: clear SSH profile reference → enter HID mode
+        MainActivity activity = (MainActivity) requireActivity();
+        activity.setActiveSshProfile(null);
+        agentActiveProfileId = null;
+
+        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
+
+        refreshUi();
+        notifyTargetChanged();
     }
 
     // ── Refresh ──────────────────────────────────────────────────────────
 
     private void refreshUi() {
-        // Read Agent-specific OS (not global)
-        currentOs = requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                .getString("agent_target_os", "macos");
-        refreshOsButtonStyles();
+        // Check current mode: Terminal (Agent SSH profile active) or HID
+        MainActivity activity = (MainActivity) requireActivity();
+        boolean isTerminalMode = activity.getActiveSshProfile() != null;
 
+        // Read OS from prefs
+        currentOs = requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .getString("agent_target_os", "");
+
+        // OS buttons: highlight only in HID mode
+        refreshOsButtonStyles(isTerminalMode ? null : (currentOs.isEmpty() ? null : currentOs));
+
+        // Profile list
         List<CredentialProfile> profiles = credentialManager.getAllProfiles();
         if (profiles.isEmpty()) {
             profileList.setVisibility(View.GONE);
@@ -182,7 +244,8 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         } else {
             profileList.setVisibility(View.VISIBLE);
             profileEmpty.setVisibility(View.GONE);
-            profileAdapter.submitList(new ArrayList<>(profiles));
+            // Use Agent's own activeProfileId for highlighting (independent from CredentialManager)
+            profileAdapter.submitList(new ArrayList<>(profiles), agentActiveProfileId);
         }
     }
 
@@ -191,7 +254,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     static class ProfileAdapter extends RecyclerView.Adapter<ProfileAdapter.ViewHolder> {
 
         interface OnItemClickListener {
-            void onProfileClick(@NonNull CredentialProfile profile);
+            void onProfileClick(@NonNull CredentialProfile profile, boolean wasActive);
         }
 
         private List<CredentialProfile> profiles = new ArrayList<>();
@@ -202,15 +265,13 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
             this.listener = listener;
         }
 
-        void submitList(@NonNull List<CredentialProfile> newList) {
+        /**
+         * @param newList profiles to display
+         * @param agentActiveId Agent's own active profile ID, or null for no highlight
+         */
+        void submitList(@NonNull List<CredentialProfile> newList, @Nullable String agentActiveId) {
             this.profiles = newList;
-            // Find active profile id
-            for (CredentialProfile p : newList) {
-                if (p.isActive()) {
-                    activeProfileId = p.getId();
-                    break;
-                }
-            }
+            this.activeProfileId = agentActiveId;
             notifyDataSetChanged();
         }
 
@@ -225,7 +286,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             CredentialProfile profile = profiles.get(position);
-            boolean isActive = profile.getId().equals(activeProfileId);
+            boolean isActive = activeProfileId != null && profile.getId().equals(activeProfileId);
 
             holder.name.setText(profile.getDisplayLabel());
             holder.host.setText(profile.getShortDescription());
@@ -244,7 +305,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
                 card.setStrokeWidth(0);
             }
 
-            card.setOnClickListener(v -> listener.onProfileClick(profile));
+            card.setOnClickListener(v -> listener.onProfileClick(profile, isActive));
         }
 
         @Override

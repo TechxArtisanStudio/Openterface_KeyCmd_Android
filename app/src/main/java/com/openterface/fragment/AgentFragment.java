@@ -1163,7 +1163,7 @@ public class AgentFragment extends Fragment {
      * SSH mode shows the profile label, or "SSH connecting…" while connecting.
      * HID mode shows the target OS.
      */
-    private void updateSessionBar() {
+    public void updateSessionBar() {
         if (sessionHint == null) return;
         AgentController ctrl = agentController;
         if (ctrl == null) return;
