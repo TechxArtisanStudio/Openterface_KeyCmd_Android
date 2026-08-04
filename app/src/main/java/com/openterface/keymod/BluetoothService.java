@@ -72,7 +72,11 @@ public class BluetoothService extends Service {
     private static final int BLE_ETH_TARGET_MTU = 247;
     private static final int BLE_ETH_WRITE_TIMEOUT_MS = 5000;
     private static final int BLE_ETH_INTER_CHUNK_DELAY_MS = 10;
-    private static final int SAFE_BLE_STREAM_CHUNK = 128;
+    // Firmware negotiates MTU=60 (ATT payload = 57 bytes).
+    // Each BLE write must fit within ATT payload to avoid GATT timeout.
+    // Chunks are sent with write-without-response for speed; the firmware
+    // reassembles chunks into complete protocol frames using 57 AB headers.
+    private static final int SAFE_BLE_STREAM_CHUNK = 57;
     private static final int BLE_ETH_FRAME_CMD_INDEX = 3;
     private static final int BLE_ETH_CMD_CONNECT = 0x10;
     private static final int BLE_ETH_CMD_DISCONNECT = 0x12;

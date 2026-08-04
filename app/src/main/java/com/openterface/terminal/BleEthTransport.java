@@ -67,6 +67,15 @@ public class BleEthTransport implements TransportAdapter {
     private QueuePipe outboundPipe;  // JSch writes here -> reader thread sends via BLE
     private Thread jschOutputReaderThread;
 
+    // SSH handshake watchdog
+    private static final long HANDSHAKE_WATCHDOG_TIMEOUT_MS = 15000;
+    private java.util.concurrent.ScheduledExecutorService watchdogExecutor;
+    private java.util.concurrent.ScheduledFuture<?> watchdogFuture;
+    private final java.util.concurrent.atomic.AtomicLong lastDataReceivedTime = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong tunnelConnectedTime = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong totalBytesReceived = new java.util.concurrent.atomic.AtomicLong(0);
+    private final java.util.concurrent.atomic.AtomicLong totalBytesSent = new java.util.concurrent.atomic.AtomicLong(0);
+
     /** Callback for writing data to the BLE characteristic. */
     public interface WriteCallback {
         void write(byte[] data);
@@ -82,94 +91,192 @@ public class BleEthTransport implements TransportAdapter {
     public void connect(String host, int port, long timeoutMs) {
         try {
             Log.i(TAG, "BLE-Eth connect start: timeout=" + timeoutMs + "ms");
-            synchronized (stateLock) {
-                closePipesLocked();
-                inputPipeClosed = false;
-                running = false;
-                connId = -1;
-                inboundPipe = new QueuePipe(256);   // BLE-Eth -> JSch
-                outboundPipe = new QueuePipe(256);   // JSch -> BLE-Eth
-            }
-            Log.v(TAG, "BLE-Eth piped streams created");
 
-            // Start thread to read JSch output and send via BLE
-            jschOutputReaderThread = new Thread(() -> {
-                byte[] buffer = new byte[4096];
-                InputStream outReader = outboundPipe != null ? outboundPipe.getInputStream() : null;
-                if (outReader == null) {
-                    Log.e(TAG, "JSch→BLE output reader thread: outbound pipe is null, aborting");
+            // Build CONNECT frame (same for all attempts)
+            byte[] frame = buildConnect(host, port);
+
+            // Send CONNECT with retry logic for transient firmware failures (e.g. status=0xe7)
+            final int MAX_CONNECT_RETRIES = 3;
+            final long RETRY_DELAY_MS = 2000;
+            boolean connected = false;
+
+            for (int attempt = 1; attempt <= MAX_CONNECT_RETRIES; attempt++) {
+                // Clean up previous attempt's watchdog (if any)
+                stopHandshakeWatchdog();
+                // Create fresh pipes for each attempt (old reader thread references old pipe)
+                synchronized (stateLock) {
+                    closePipesLocked();
+                    inputPipeClosed = false;
+                    running = false;
+                    connId = -1;
+                    inboundPipe = new QueuePipe(256);   // BLE-Eth -> JSch
+                    outboundPipe = new QueuePipe(256);   // JSch -> BLE-Eth
+                }
+                Log.v(TAG, "BLE-Eth piped streams created (attempt " + attempt + ")");
+
+                // Interrupt old reader thread if any
+                if (jschOutputReaderThread != null && jschOutputReaderThread.isAlive()) {
+                    jschOutputReaderThread.interrupt();
+                }
+
+                // Start thread to read JSch output and send via BLE
+                // IMPORTANT: must be inside retry loop so it captures the correct outboundPipe
+                jschOutputReaderThread = new Thread(() -> {
+                    // iOS uses MAX_FRAG_DATA (246) as the reader buffer size.
+                    // Larger buffers (4096) produce multi-fragment DATA frames
+                    // that the firmware ACKs but silently drops client→server.
+                    byte[] buffer = new byte[246];
+                    QueuePipe pipe;
+                    synchronized (stateLock) {
+                        pipe = outboundPipe;
+                    }
+                    InputStream outReader = pipe != null ? pipe.getInputStream() : null;
+                    if (outReader == null) {
+                        Log.e(TAG, "JSch→BLE output reader thread: outbound pipe is null, aborting");
+                        return;
+                    }
+                    try {
+                        Log.v(TAG, "JSch→BLE output reader thread started, waiting for tunnel connection...");
+                        while (!Thread.currentThread().isInterrupted()) {
+                            // Wait for tunnel to be connected
+                            while (!running || connId < 0) {
+                                Thread.sleep(50);
+                            }
+                            Log.v(TAG, "JSch→BLE: tunnel is connected (connId=" + connId + "), reading from pipe...");
+                            int len = outReader.read(buffer);
+                            if (len > 0) {
+                                Log.i(TAG, "JSch→BLE: sending " + len + " bytes");
+                                send(buffer, 0, len);
+                            } else if (len < 0) {
+                                Log.w(TAG, "JSch→BLE: EOF reached, reader exiting");
+                                break;
+                            }
+                        }
+                    } catch (IOException e) {
+                        if (running) {
+                            Log.e(TAG, "JSch output reader thread ended with IOException: " + e.getMessage());
+                        } else {
+                            Log.v(TAG, "JSch output reader thread exiting after disconnect: " + e.getMessage());
+                        }
+                    } catch (InterruptedException e) {
+                        Log.w(TAG, "JSch output reader thread interrupted");
+                    }
+                }, "BleEth-JSchOutputReader");
+                jschOutputReaderThread.start();
+                Log.v(TAG, "JSch→BLE output reader thread launched (attempt " + attempt + ")");
+
+                connectLatch = new java.util.concurrent.CountDownLatch(1);
+                pendingConnId = -1;
+                pendingConnStatus = -1;
+
+                Log.v(TAG, "BLE-Eth sending CONNECT frame (attempt " + attempt + ")");
+                if (writeCallback != null) {
+                    writeCallback.write(frame);
+                }
+
+                boolean resp = connectLatch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                Log.v(TAG, "BLE-Eth connect attempt " + attempt + "/" + MAX_CONNECT_RETRIES
+                        + " resp=" + resp
+                        + " pendingConnId=" + pendingConnId
+                        + " pendingConnStatus=0x" + Integer.toHexString(pendingConnStatus));
+
+                if (!resp) {
+                    Log.e(TAG, "BLE-Eth CONNECT timed out on attempt " + attempt);
+                    if (attempt < MAX_CONNECT_RETRIES) {
+                        Log.v(TAG, "BLE-Eth retrying in " + RETRY_DELAY_MS + "ms...");
+                        Thread.sleep(RETRY_DELAY_MS);
+                        continue;
+                    }
+                    if (listener != null) {
+                        listener.onError("BLE-Eth CONNECT timed out after " + MAX_CONNECT_RETRIES + " attempts");
+                    }
                     return;
                 }
-                try {
-                    Log.v(TAG, "JSch→BLE output reader thread started, waiting for tunnel connection...");
-                    while (!Thread.currentThread().isInterrupted()) {
-                        // Wait for tunnel to be connected
-                        while (!running || connId < 0) {
-                            Thread.sleep(50);
-                        }
-                        Log.v(TAG, "JSch→BLE: tunnel is connected (connId=" + connId + "), reading from pipe...");
-                        int len = outReader.read(buffer);
-                        if (len > 0) {
-                            Log.i(TAG, "JSch→BLE: sending " + len + " bytes");
-                            send(buffer, 0, len);
-                        } else if (len < 0) {
-                            Log.w(TAG, "JSch→BLE: EOF reached, reader exiting");
-                            break;
-                        }
+
+                if (pendingConnStatus != 0x00) {
+                    Log.w(TAG, "BLE-Eth CONNECT rejected: status=0x" + Integer.toHexString(pendingConnStatus)
+                            + " on attempt " + attempt);
+                    if (attempt < MAX_CONNECT_RETRIES) {
+                        Log.v(TAG, "BLE-Eth retrying in " + RETRY_DELAY_MS + "ms...");
+                        Thread.sleep(RETRY_DELAY_MS);
+                        continue;
                     }
-                } catch (IOException e) {
-                    if (running) {
-                        Log.e(TAG, "JSch output reader thread ended with IOException: " + e.getMessage());
-                    } else {
-                        Log.v(TAG, "JSch output reader thread exiting after disconnect: " + e.getMessage());
+                    if (listener != null) {
+                        listener.onError("BLE-Eth CONNECT failed: status=0x"
+                                + Integer.toHexString(pendingConnStatus)
+                                + " after " + MAX_CONNECT_RETRIES + " attempts");
                     }
-                } catch (InterruptedException e) {
-                    Log.w(TAG, "JSch output reader thread interrupted");
+                    return;
                 }
-            }, "BleEth-JSchOutputReader");
-            jschOutputReaderThread.start();
-            Log.v(TAG, "JSch→BLE output reader thread launched");
 
-            // Build CONNECT frame
-            byte[] frame = buildConnect(host, port);
-            Log.v(TAG, "BLE-Eth sending CONNECT frame");
-
-            // Set up response listener
-            connectLatch = new java.util.concurrent.CountDownLatch(1);
-
-            // Send CONNECT
-            if (writeCallback != null) {
-                writeCallback.write(frame);
+                connected = true;
+                break;
             }
 
-            // Wait for response
-            boolean success = connectLatch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-            Log.v(TAG, "BLE-Eth connect latch result: success=" + success
-                    + " pendingConnId=" + pendingConnId
-                    + " pendingConnStatus=0x" + Integer.toHexString(pendingConnStatus));
-            if (!success) {
-                if (listener != null) {
-                    listener.onError("BLE-Eth CONNECT timed out");
-                }
-                return;
-            }
-            if (pendingConnStatus != 0x00) {
-                if (listener != null) {
-                    listener.onError("BLE-Eth CONNECT failed: status=0x"
-                            + Integer.toHexString(pendingConnStatus));
-                }
+            if (!connected) {
                 return;
             }
 
             connId = pendingConnId;
             running = true;
-            Log.v(TAG, "BLE-Eth connect success: connId=" + connId);
+            tunnelConnectedTime.set(System.currentTimeMillis());
+            lastDataReceivedTime.set(System.currentTimeMillis());
+            totalBytesReceived.set(0);
+            totalBytesSent.set(0);
+            Log.i(TAG, "BLE-Eth connect success: connId=" + connId);
+
+            // Start SSH handshake watchdog
+            startHandshakeWatchdog();
 
         } catch (Exception e) {
             Log.e(TAG, "BLE-Eth connect exception: " + e.getMessage());
+            stopHandshakeWatchdog();
             if (listener != null) {
                 listener.onError("BLE-Eth connect failed: " + e.getMessage());
             }
+        }
+    }
+
+    private void startHandshakeWatchdog() {
+        stopHandshakeWatchdog();
+        watchdogExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "BleEth-Watchdog");
+            t.setDaemon(true);
+            return t;
+        });
+        watchdogFuture = watchdogExecutor.schedule(() -> {
+            long elapsed = System.currentTimeMillis() - tunnelConnectedTime.get();
+            long sinceLastRx = System.currentTimeMillis() - lastDataReceivedTime.get();
+            Log.e(TAG, "BLE-Eth HANDSHAKE WATCHDOG: No SSH data received in "
+                    + HANDSHAKE_WATCHDOG_TIMEOUT_MS + "ms!"
+                    + " tunnelElapsed=" + elapsed + "ms"
+                    + " sinceLastRx=" + sinceLastRx + "ms"
+                    + " totalBytesSent=" + totalBytesSent.get()
+                    + " totalBytesReceived=" + totalBytesReceived.get()
+                    + " connId=" + connId
+                    + " running=" + running);
+            Log.e(TAG, "BLE-Eth WATCHDOG DIAGNOSTICS:"
+                    + " FrameParser state: check logcat for FrameParser entries"
+                    + " — if no 'BLE-Eth RX' after tunnel connect, firmware is not sending data"
+                    + " — if 'RX' present but no 'reassembled', DataReassembler is stuck"
+                    + " — if 'reassembled' present but no 'wrote to pipe', pipe is closed");
+            if (listener != null) {
+                listener.onError("SSH handshake timed out: no data from firmware for "
+                        + HANDSHAKE_WATCHDOG_TIMEOUT_MS + "ms"
+                        + " (sent=" + totalBytesSent.get() + " recv=" + totalBytesReceived.get() + ")");
+            }
+        }, HANDSHAKE_WATCHDOG_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        Log.v(TAG, "BLE-Eth handshake watchdog started: timeout=" + HANDSHAKE_WATCHDOG_TIMEOUT_MS + "ms");
+    }
+
+    private void stopHandshakeWatchdog() {
+        if (watchdogFuture != null) {
+            watchdogFuture.cancel(false);
+            watchdogFuture = null;
+        }
+        if (watchdogExecutor != null) {
+            watchdogExecutor.shutdownNow();
+            watchdogExecutor = null;
         }
     }
 
@@ -180,6 +287,7 @@ public class BleEthTransport implements TransportAdapter {
             return;
         }
 
+        totalBytesSent.addAndGet(len);
         byte[] payload = new byte[len];
         System.arraycopy(data, offset, payload, 0, len);
 
@@ -222,6 +330,7 @@ public class BleEthTransport implements TransportAdapter {
     @Override
     public void disconnect() {
         int disconnectConnId;
+        stopHandshakeWatchdog();
         synchronized (stateLock) {
             if (!running && connId < 0 && inputPipeClosed) {
                 return;
@@ -335,17 +444,25 @@ public class BleEthTransport implements TransportAdapter {
                 break;
 
             case CMD_DATA_RESP: // 0x91 — shared with DATA_PUSH
-                Log.v(TAG, "BLE-Eth DATA_RESP/PUSH: payloadLen=" + frame.payload.length);
+                Log.v(TAG, "BLE-Eth DATA_RESP/PUSH: payloadLen=" + frame.payload.length
+                        + " firstByte=0x" + Integer.toHexString(frame.payload[0] & 0xFF));
                 if (looksLikeDataAck(frame.payload)) {
                     // ACK from firmware — can be ignored for basic operation
-                    Log.v(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF));
+                    Log.i(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF)
+                            + " payloadLen=" + frame.payload.length);
                 } else {
                     // Incoming data push
                     Log.i(TAG, "BLE-Eth DATA push: payloadLen=" + frame.payload.length);
                     DataReassembler.ReassembledData reassembled = dataReassembler.feed(frame.payload);
                     if (reassembled != null) {
+                        totalBytesReceived.addAndGet(reassembled.data.length);
+                        lastDataReceivedTime.set(System.currentTimeMillis());
+                        // Stop watchdog once we start receiving data from the tunnel
+                        stopHandshakeWatchdog();
                         Log.i(TAG, "BLE-Eth reassembled: connId=" + reassembled.connId
-                                + " bytes=" + reassembled.data.length);
+                                + " bytes=" + reassembled.data.length
+                                + " totalRecv=" + totalBytesReceived.get()
+                                + " totalSent=" + totalBytesSent.get());
                         QueuePipe inbound;
                         synchronized (stateLock) {
                             inbound = inboundPipe;
@@ -451,7 +568,9 @@ public class BleEthTransport implements TransportAdapter {
 
     private static byte[] buildDataSingle(int connId, byte[] data) {
         byte[] payload = new byte[3 + data.length];
-        payload[0] = FRAG_FIRST;
+        // Firmware expects FRAG_FIRST | count=1 (0x41) for single-fragment frames.
+        // Using count=0 (0x40) causes the firmware to ACK but silently drop the payload.
+        payload[0] = (byte) (FRAG_FIRST | 0x01);
         payload[1] = 0x00; // seq
         payload[2] = (byte) connId;
         System.arraycopy(data, 0, payload, 3, data.length);
@@ -478,10 +597,21 @@ public class BleEthTransport implements TransportAdapter {
         return frames;
     }
 
+    /**
+     * Check if a DATA_RESP payload is a firmware ACK (no data) rather than a data push.
+     *
+     * DATA_RESP payload format: [connId(1)][seq(1)][flags(1)][data...]
+     * The fragment header is 3 bytes. A real data push always has at least 1 byte
+     * of actual data after the header (payload.length > 3). An ACK has no data
+     * (payload.length <= 3).
+     *
+     * BUG FIX: The previous implementation checked payload[0] (connId) against
+     * 0x00/0xE0-0xFF, which incorrectly classified ALL data for connId=0 as ACK
+     * because the first byte of the payload IS the connId, not a status byte.
+     */
     private static boolean looksLikeDataAck(byte[] payload) {
-        if (payload == null || payload.length == 0) return false;
-        int status = payload[0] & 0xFF;
-        return status == 0x00 || (status & 0xF0) == 0xE0;
+        if (payload == null || payload.length <= FRAG_HEADER_LEN) return true; // too short = no data
+        return false; // has data beyond the 3-byte fragment header
     }
 
     private void closePipesLocked() {
