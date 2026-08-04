@@ -52,7 +52,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.GridLayout;
+import androidx.gridlayout.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -7271,26 +7271,39 @@ public class CustomKeyboardView extends LinearLayout {
         b.setCompoundDrawablePadding(0);
         Drawable icon = ContextCompat.getDrawable(getContext(), iconResId);
         if (icon == null) {
-            b.setForeground(null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                b.setForeground(null);
+            }
             return;
         }
         icon = icon.mutate();
         icon.setTint(resolveThemeTextColor());
-        int sizePx = dpToPx(iconSizeDp);
-        LayerDrawable layers = new LayerDrawable(new Drawable[]{
-                new ColorDrawable(Color.TRANSPARENT),
-                icon
-        });
-        layers.setLayerGravity(1, Gravity.CENTER);
-        layers.setLayerWidth(1, sizePx);
-        layers.setLayerHeight(1, sizePx);
-        b.setForeground(layers);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // API 23+: use foreground overlay with precise centering
+            int sizePx = dpToPx(iconSizeDp);
+            LayerDrawable layers = new LayerDrawable(new Drawable[]{
+                    new ColorDrawable(Color.TRANSPARENT),
+                    icon
+            });
+            layers.setLayerGravity(1, Gravity.CENTER);
+            layers.setLayerWidth(1, sizePx);
+            layers.setLayerHeight(1, sizePx);
+            b.setForeground(layers);
+        } else {
+            // API 21-22: use compound drawable (centered via gravity)
+            b.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+            b.setCompoundDrawablePadding(0);
+            // Use a wrapper drawable to control size
+            int sizePx = dpToPx(iconSizeDp);
+            icon.setBounds(0, 0, sizePx, sizePx);
+            b.setCompoundDrawables(icon, null, null, null);
+        }
         b.setTextColor(resolveThemeTextColor());
         b.setTypeface(b.getTypeface(), android.graphics.Typeface.NORMAL);
     }
 
     private void clearExtraNumpadArrowIconOverlay(Button b) {
-        if (b != null) {
+        if (b != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             b.setForeground(null);
         }
     }

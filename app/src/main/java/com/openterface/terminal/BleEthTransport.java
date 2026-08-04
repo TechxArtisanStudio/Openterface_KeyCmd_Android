@@ -272,6 +272,19 @@ public class BleEthTransport implements TransportAdapter {
     }
 
     /**
+     * Set read timeout on the inbound pipe (BLE-Eth -> JSch direction).
+     * When non-zero, reads that block longer than the timeout throw
+     * {@link java.net.SocketTimeoutException}, matching java.net.Socket behavior.
+     * Called by {@link BleEthSocket#setSoTimeout(int)}.
+     */
+    public void setReadTimeout(int timeoutMs) {
+        QueuePipe pipe = inboundPipe;
+        if (pipe != null) {
+            pipe.setReadTimeout(timeoutMs);
+        }
+    }
+
+    /**
      * Call this method with data received from BLE notifications.
      * This feeds the frame parser and dispatches parsed frames.
      */

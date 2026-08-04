@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true" android:color="?attr/colorOnPrimaryContainer" />
-    <item android:state_selected="true" android:color="?attr/colorOnPrimaryContainer" />
-    <item android:color="?attr/colorOnSurface" />
+    <!-- Match pro mode: text_primary for idle, on-primary-container for pressed/selected. -->
+    <item android:state_pressed="true" android:color="@color/theme_accent_orange_on_container" />
+    <item android:state_selected="true" android:color="@color/theme_accent_orange_on_container" />
+    <item android:color="@color/text_primary" />
 </selector>

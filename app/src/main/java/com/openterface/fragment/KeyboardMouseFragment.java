@@ -341,9 +341,12 @@ public final class KeyboardMouseFragment extends Fragment {
     }
 
     private static int displayRotationCompat(@NonNull Activity activity) {
-        Display display = activity.getDisplay();
-        if (display != null) {
-            return display.getRotation();
+        // getDisplay() requires API 30+, use getDefaultDisplay() for older versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            Display display = activity.getDisplay();
+            if (display != null) {
+                return display.getRotation();
+            }
         }
         return activity.getWindowManager().getDefaultDisplay().getRotation();
     }
