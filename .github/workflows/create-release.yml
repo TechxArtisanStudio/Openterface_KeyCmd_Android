@@ -1,0 +1,146 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.26.1). Defaults to the tag that triggered the run.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+            if [[ -z "$TAG" ]]; then
+              # Fall back to the latest v* tag on the default branch.
+              TAG=$(git ls-remote --tags --refs --sort=-v:refname origin 'v*' \
+                    | head -1 | sed -E 's|.*/(v[^[:space:]]+)$|\1|')
+            fi
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -z "$TAG" || ! "$TAG" =~ ^v.+ ]]; then
+            echo "::error::Could not resolve a valid tag (got '$TAG')."
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG"
+
+      - name: Check for existing release
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release for $TAG already exists — will skip creation."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No existing release for $TAG."
+          fi
+
+      - name: Checkout
+        if: steps.existing.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Make gradlew executable
+        if: steps.existing.outputs.exists == 'false'
+        run: chmod +x ./gradlew
+
+      - name: Set up JDK 21
+        if: steps.existing.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Gradle
+        if: steps.existing.outputs.exists == 'false'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-read-only: true
+
+      - name: Prepare signing keystore
+        if: steps.existing.outputs.exists == 'false'
+        run: |
+          if [[ -z "${{ secrets.KEYSTORE_BASE64 }}" ]]; then
+            echo "::warning::KEYSTORE_BASE64 secret is not set — skipping keystore setup (release build will likely fail)."
+          else
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+            {
+              echo "RELEASE_STORE_FILE=keystore.jks"
+              echo "RELEASE_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}"
+              echo "RELEASE_KEY_ALIAS=${{ secrets.ALIAS }}"
+              echo "RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
+            } >> gradle.properties
+          fi
+
+      - name: Clean Gradle
+        if: steps.existing.outputs.exists == 'false'
+        run: ./gradlew clean --info
+
+      - name: Build Release APK + AAB
+        if: steps.existing.outputs.exists == 'false'
+        run: ./gradlew assembleRelease bundleRelease --stacktrace --info --warning-mode all
+
+      - name: Upload APK + AAB artifacts
+        if: steps.existing.outputs.exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyCmd-release-${{ steps.tag.outputs.version }}
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: steps.existing.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: KeyCmd ${{ steps.tag.outputs.tag }}
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          generate_release_notes: true
+          make_latest: true
+
+      - name: Summary
+        run: |
+          {
+            echo "## 🚀 Create Release"
+            echo ""
+            echo "- **Tag**: \`${{ steps.tag.outputs.tag }}\`"
+            echo "- **Already existed**: ${{ steps.existing.outputs.exists }}"
+            if [[ "${{ steps.existing.outputs.exists }}" == "true" ]]; then
+              echo ""
+              echo "> Release for this tag already exists — skipped build and creation."
+            else
+              echo "- **Status**: GitHub Release created with attached APK + AAB."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
