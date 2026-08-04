@@ -48,6 +48,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KeyCmd"
+        android:vmSafeMode="true"
         tools:targetApi="34">
         
         <!-- Launch Panel Activity (Entry Point) -->

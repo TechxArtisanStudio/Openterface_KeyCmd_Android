@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -1049,7 +1050,7 @@ public class PresentationFragment extends Fragment {
         if (timerTargetAlerted) return;
         timerTargetAlerted = true;
         if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(220); };
         }
     }
 
@@ -1124,7 +1125,7 @@ public class PresentationFragment extends Fragment {
 
     private void vibrate() {
         if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
         }
     }
 
@@ -1184,9 +1185,12 @@ public class PresentationFragment extends Fragment {
     }
 
     private static int displayRotationCompat(@NonNull Activity activity) {
-        Display display = activity.getDisplay();
-        if (display != null) {
-            return display.getRotation();
+        // getDisplay() requires API 30+, use getDefaultDisplay() for older versions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            Display display = activity.getDisplay();
+            if (display != null) {
+                return display.getRotation();
+            }
         }
         return activity.getWindowManager().getDefaultDisplay().getRotation();
     }
