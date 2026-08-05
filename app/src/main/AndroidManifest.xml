@@ -49,6 +49,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KeyCmd"
         android:usesCleartextTraffic="true"
+        android:vmSafeMode="true"
         tools:targetApi="34">
         
         <!-- Launch Panel Activity (Entry Point) -->

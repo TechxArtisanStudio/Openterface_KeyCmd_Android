@@ -592,6 +592,10 @@ by TechxArtisan</string>
     <string name="bt_permission_dialog_title">Permissions required</string>
     <string name="bt_permission_dialog_message">Bluetooth permissions are needed to scan and connect to devices. Please grant them in Settings.</string>
     <string name="bt_open_system_settings">Open settings</string>
+    <string name="bt_location_dialog_title">Location required</string>
+    <string name="bt_location_dialog_message">Location services must be enabled to scan for Bluetooth devices. Please enable Location in system settings.</string>
+    <string name="bt_enable_location">Enable location</string>
+    <string name="bt_toast_location_required">Location services required for BLE scanning</string>
     <string name="bt_toast_bt_enabled">Bluetooth enabled</string>
     <string name="bt_toast_bt_not_enabled">Bluetooth not enabled</string>
     <string name="bt_distance_cm">%1$d cm</string>

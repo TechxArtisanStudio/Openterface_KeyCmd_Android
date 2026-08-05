@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icon-only KM Basic keys (e.g. Win / App): follows parent pressed/selected (duplicateParentState). -->
+<!-- Icon-only KM Basic keys (e.g. Win / App): follows parent pressed/selected (duplicateParentState).
+     Use direct color refs instead of theme attributes so colors match pro mode on all API levels
+     including Android 5 (API 21) where Material3 attributes may not resolve correctly. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_pressed="true" android:color="?attr/colorOnPrimaryContainer" />
-    <item android:state_selected="true" android:color="?attr/colorPrimary" />
-    <item android:color="?attr/colorOnSurface" />
+    <item android:state_pressed="true" android:color="@color/theme_accent_orange_on_container" />
+    <item android:state_selected="true" android:color="@color/theme_accent_orange" />
+    <item android:color="@color/text_primary" />
 </selector>

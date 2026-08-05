@@ -1423,6 +1423,16 @@ public class TerminalFragment extends Fragment {
 
         // Run cleanup and connection on background thread to avoid ANR
         new Thread(() -> {
+            // Clear the SSH client listener BEFORE tearing down the old session.
+            // This prevents the old session's "End of IO Stream Read" error from
+            // being displayed to the user when we're about to start a new session.
+            if (sshClient != null) {
+                sshClient.setListener(null);
+                sshClient.disconnect();
+                sshClient = null;
+                Log.v(TAG, "connectBleEth: old SSH session silently cleaned up");
+            }
+
             // Clean up any previous BLE-Eth connection
             if (bleEthCallback != null) {
                 bluetoothService.removeBleEthCallback(bleEthCallback);
@@ -1451,6 +1461,13 @@ public class TerminalFragment extends Fragment {
             Log.v(TAG, "connectBleEth: waiting 3000ms for firmware cleanup");
             try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
             Log.v(TAG, "connectBleEth: cleanup complete, creating new BleEthTransport");
+
+            // Show "Connecting..." status on UI
+            mainHandler.post(() -> {
+                if (!viewDestroyed && statusText != null) {
+                    statusText.setText(R.string.terminal_connecting);
+                }
+            });
 
             bleEthTransport = new BleEthTransport(bluetoothService::writeBleEthData);
             Log.v(TAG, "connectBleEth: BleEthTransport created");
