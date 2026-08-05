@@ -65,10 +65,22 @@ public class AIProvider {
         return new AIProvider("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", false);
     }
 
+    public static AIProvider createOllamaLocal() {
+        return new AIProvider("Ollama (Local)", "http://localhost:11434/v1", "llama3", true);
+    }
+
+    public static AIProvider createLocalQwen06B() {
+        return new AIProvider("Local Qwen 0.6B", "local://qwen3-0.6b", "Qwen3-0.6B-4bit", true);
+    }
+
+    public static AIProvider createLocalQwen17B() {
+        return new AIProvider("Local Qwen 1.7B", "local://qwen3-1.7b", "Qwen3-1.7B-4bit", true);
+    }
+
     // ========== Utility Methods ==========
 
     /**
-     * Returns the default list of 7 preset providers.
+     * Returns the default list of preset providers.
      */
     public static java.util.List<AIProvider> getDefaultProviders() {
         java.util.List<AIProvider> list = new java.util.ArrayList<>();
@@ -79,7 +91,17 @@ public class AIProvider {
         list.add(createGroq());
         list.add(createDashScope());
         list.add(createDeepSeek());
+        list.add(createOllamaLocal());
+        list.add(createLocalQwen06B());
+        list.add(createLocalQwen17B());
         return list;
+    }
+
+    /**
+     * Checks whether this provider is a local model (URL starts with "local://").
+     */
+    public boolean isLocalModel() {
+        return apiBaseURL != null && apiBaseURL.startsWith("local://");
     }
 
     /**
@@ -89,6 +111,19 @@ public class AIProvider {
         return name != null && !name.trim().isEmpty() &&
                apiBaseURL != null && !apiBaseURL.trim().isEmpty() &&
                modelName != null && !modelName.trim().isEmpty();
+    }
+
+    /**
+     * Creates a copy of this provider with a new ID (for creating new providers from presets).
+     */
+    public AIProvider copy() {
+        AIProvider copy = new AIProvider();
+        copy.id = UUID.randomUUID().toString();
+        copy.name = this.name;
+        copy.apiBaseURL = this.apiBaseURL;
+        copy.modelName = this.modelName;
+        copy.apiKeyOptional = this.apiKeyOptional;
+        return copy;
     }
 
     @Override

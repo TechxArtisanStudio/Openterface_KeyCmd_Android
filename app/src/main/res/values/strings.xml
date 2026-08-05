@@ -198,6 +198,56 @@
     <string name="settings_ai_toast_success">AI connection successful!</string>
     <string name="settings_ai_toast_connection_failed">Connection failed</string>
     <string name="settings_ai_toast_unsupported_provider">This provider is not yet supported</string>
+
+    <!-- AI Provider Setting Section -->
+    <string name="settings_ai_section_provider">AI Provider Setting</string>
+    <string name="settings_ai_provider_description">Select or manage AI providers</string>
+    <string name="settings_ai_active_provider">Active Provider</string>
+    <string name="settings_ai_add_provider">+ Add New Provider</string>
+    <string name="settings_ai_delete_provider">Delete This Provider</string>
+    <string name="settings_ai_provider_name">Name</string>
+    <string name="settings_ai_provider_url">API Base URL</string>
+    <string name="settings_ai_provider_model">Model Name</string>
+    <string name="settings_ai_api_key_optional">API Key Optional</string>
+    <string name="settings_ai_provider_name_hint">Enter provider name</string>
+    <string name="settings_ai_provider_url_hint">https://api.example.com/v1</string>
+    <string name="settings_ai_provider_model_hint">Enter model name</string>
+
+    <!-- API Key Management Section -->
+    <string name="settings_ai_section_api_key">API Key Management</string>
+    <string name="settings_ai_save_key">Save Key</string>
+    <string name="settings_ai_clear_key">Clear Key</string>
+    <string name="settings_ai_key_status_configured">✓ Configured</string>
+    <string name="settings_ai_key_status_not_required">✓ Not Required</string>
+    <string name="settings_ai_key_status_not_configured">✗ Not Configured</string>
+
+    <!-- Confirmation Dialogs -->
+    <string name="settings_ai_dialog_add_title">Add New Provider?</string>
+    <string name="settings_ai_dialog_add_message">This will create a new AI provider configuration.</string>
+    <string name="settings_ai_dialog_delete_title">Delete This Provider?</string>
+    <string name="settings_ai_dialog_delete_message">This will permanently remove the selected provider.</string>
+    <string name="settings_ai_dialog_clear_key_title">Clear API Key?</string>
+    <string name="settings_ai_dialog_clear_key_message">This will permanently remove the saved API key.</string>
+    <string name="settings_ai_dialog_cancel">Cancel</string>
+    <string name="settings_ai_dialog_add">Add Provider</string>
+    <string name="settings_ai_dialog_delete">Delete Provider</string>
+    <string name="settings_ai_dialog_clear">Clear</string>
+
+    <!-- Test Connection Result -->
+    <string name="settings_ai_test_result_title">Test Result:</string>
+    <string name="settings_ai_test_success">✓ Connection successful</string>
+    <string name="settings_ai_test_failed">✗ Connection failed</string>
+    <string name="settings_ai_test_response_time">Response time: %1$s</string>
+
+    <!-- Validation Messages -->
+    <string name="settings_ai_cannot_delete_last">Cannot delete the last provider</string>
+    <string name="settings_ai_validation_no_provider">No provider selected</string>
+    <string name="settings_ai_validation_name_empty">Provider name is empty</string>
+    <string name="settings_ai_validation_url_empty">API base URL is empty</string>
+    <string name="settings_ai_validation_model_empty">Model name is empty</string>
+    <string name="settings_ai_validation_key_not_configured">API key not configured</string>
+    <string name="settings_ai_unnamed_provider">Unnamed Provider</string>
+
     <string-array name="settings_ai_role_names">
         <item>Text refinement</item>
         <item>Command assistant</item>

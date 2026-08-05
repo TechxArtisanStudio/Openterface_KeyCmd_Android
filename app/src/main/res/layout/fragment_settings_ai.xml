@@ -11,7 +11,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- ── AI Features Enable Toggle ── -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- Section 1: API Configuration                                    -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -75,7 +77,9 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- ── Group shown when AI is enabled ── -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- Group shown when AI is enabled                                    -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
         <LinearLayout
             android:id="@+id/ai_features_group"
             android:layout_width="match_parent"
@@ -83,7 +87,9 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <!-- ── AI Mode (Role) ── -->
+            <!-- ═════════════════════════════════════════════════════════ -->
+            <!-- Section 2: AI Mode                                          -->
+            <!-- ═════════════════════════════════════════════════════════ -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -192,11 +198,220 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- ── AI API Configuration ── -->
+            <!-- ═════════════════════════════════════════════════════════ -->
+            <!-- Section 3: AI Provider Setting                              -->
+            <!-- ═════════════════════════════════════════════════════════ -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_ai_section_api"
+                android:text="@string/settings_ai_section_provider"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_ai_provider_description"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="12dp" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Active Provider Label -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_ai_active_provider"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- Provider Picker Spinner -->
+                    <Spinner
+                        android:id="@+id/ai_provider_spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:spinnerMode="dropdown"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Add New Provider Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/ai_add_provider_btn"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_ai_add_provider"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/theme_accent_green"
+                        android:layout_marginBottom="16dp" />
+
+                    <!-- Divider -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/text_secondary"
+                        android:alpha="0.3"
+                        android:layout_marginBottom="16dp" />
+
+                    <!-- Provider Details Section -->
+                    <LinearLayout
+                        android:id="@+id/provider_details_group"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <!-- Provider Name -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ai_provider_name"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginBottom="4dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            android:layout_marginBottom="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/provider_name_edit"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/settings_ai_provider_name_hint"
+                                android:inputType="text"
+                                android:maxLines="1" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- API Base URL -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ai_provider_url"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginBottom="4dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            android:layout_marginBottom="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/provider_url_edit"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/settings_ai_provider_url_hint"
+                                android:inputType="textUri"
+                                android:maxLines="1" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Model Name -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_ai_provider_model"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_secondary"
+                            android:layout_marginBottom="4dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            android:layout_marginBottom="12dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/provider_model_edit"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="@string/settings_ai_provider_model_hint"
+                                android:inputType="text"
+                                android:maxLines="1" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- API Key Optional Toggle -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/settings_ai_api_key_optional"
+                                android:textSize="14sp"
+                                android:textColor="@color/text_primary" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/api_key_optional_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <!-- Delete Provider Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/ai_delete_provider_btn"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_ai_delete_provider"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/theme_accent_red"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Test Connection Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/ai_test_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_ai_test_connection"
+                        android:textAllCaps="false"
+                        style="@style/Widget.MaterialComponents.Button" />
+
+                    <!-- Test Result Text -->
+                    <TextView
+                        android:id="@+id/test_result_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
+            <!-- ═════════════════════════════════════════════════════════ -->
+            <!-- Section 4: API Key Management                               -->
+            <!-- ═════════════════════════════════════════════════════════ -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_ai_section_api_key"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
@@ -215,44 +430,13 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_provider"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginBottom="8dp" />
-
-                    <Spinner
-                        android:id="@+id/ai_provider_spinner"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:spinnerMode="dropdown"
-                        android:layout_marginBottom="16dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_endpoint_url"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginBottom="8dp" />
-
-                    <EditText
-                        android:id="@+id/ai_endpoint_edittext"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/settings_ai_endpoint_hint"
-                        android:inputType="textUri"
-                        android:maxLines="1" />
-
+                    <!-- API Key Input -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_ai_api_key"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
-                        android:layout_marginTop="16dp"
                         android:layout_marginBottom="8dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -260,7 +444,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         app:endIconMode="password_toggle"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_marginBottom="12dp">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/ai_api_key_edittext"
@@ -272,72 +457,40 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_model"
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="16dp"
-                        android:layout_marginBottom="8dp" />
-
-                    <Spinner
-                        android:id="@+id/ai_model_spinner"
+                    <!-- Save / Clear Buttons -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:spinnerMode="dropdown" />
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
 
-                    <!-- Custom model input — shown only for Custom provider -->
-                    <EditText
-                        android:id="@+id/ai_model_edittext"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/settings_ai_custom_model_hint"
-                        android:inputType="text"
-                        android:maxLines="1"
-                        android:visibility="gone" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/ai_save_key_btn"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/settings_ai_save_key"
+                            android:textAllCaps="false"
+                            android:layout_marginEnd="8dp" />
 
-                    <Button
-                        android:id="@+id/ai_test_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_test_connection"
-                        android:layout_marginTop="16dp"
-                        style="@style/Widget.MaterialComponents.Button" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/ai_clear_key_btn"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/settings_ai_clear_key"
+                            android:textAllCaps="false"
+                            android:layout_marginStart="8dp"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                </LinearLayout>
+                    </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
-
-            <!-- Info Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
+                    <!-- Status Indicator -->
                     <TextView
+                        android:id="@+id/api_key_status_text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_supported_providers_title"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_ai_supported_providers_body"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_secondary"
-                        android:lineSpacingExtra="4dp" />
+                        android:textSize="13sp" />
 
                 </LinearLayout>
 
