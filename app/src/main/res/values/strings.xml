@@ -1636,9 +1636,12 @@ by TechxArtisan</string>
     <string name="agent_settings_provider_title">AI Provider</string>
     <string name="agent_settings_limits_title">Execution Limits</string>
     <string name="agent_settings_max_steps">Max steps per plan</string>
+    <string name="agent_settings_decrease">Decrease</string>
+    <string name="agent_settings_increase">Increase</string>
     <string name="agent_settings_max_retries">Max retries on failure</string>
     <string name="agent_settings_limits_description">Max steps caps how many commands the planner can include in one plan. Max retries sets how many times the agent will re-plan with alternative commands if the first attempt fails.</string>
     <string name="agent_settings_prompts_title">System Prompts</string>
+    <string name="agent_settings_prompts_description">Terminal prompt is used when SSH is connected. HID prompt is used when controlling via BLE keyboard.</string>
     <string name="agent_settings_prompt_terminal">Terminal (SSH)</string>
     <string name="agent_settings_prompt_hid">HID (BLE Keyboard)</string>
     <string name="agent_settings_prompt_hint">Enter system prompt…</string>

@@ -10,6 +10,8 @@
     <color name="card_selected_bg">#FFF57C00</color>
     <color name="text_primary">#FF212121</color>
     <color name="text_secondary">#FF757575</color>
+    <!-- Agent Settings: dividers between provider rows and stepper rows (12% black). -->
+    <color name="agent_settings_divider">#1F000000</color>
     <!-- Touchpad vertical scroll strip: decorative chevrons (Basic + KM Pro). Night override in values-night. -->
     <color name="km_touchpad_scroll_strip_chevron">#FFB0B0B0</color>
     <!-- @deprecated Use {@code km_touchpad_scroll_strip_chevron}; kept as alias for compatibility. -->
@@ -45,6 +47,8 @@
     <color name="sidebar_item_selected">#FFF57C00</color>
     <color name="primary">#FFF57C00</color>
     <color name="card_background">#FFFFFFFF</color>
+    <!-- BottomSheet dialog background — slightly off-white to separate from app background. -->
+    <color name="bottom_sheet_background">#FFF8F8F8</color>
     <color name="divider">#FFBDBDBD</color>
     <color name="holo_red_light">#FFFF4444</color>
     <color name="button_text">#FF212121</color>

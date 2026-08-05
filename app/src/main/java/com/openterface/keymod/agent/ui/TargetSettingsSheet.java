@@ -68,11 +68,42 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+
+        // Full window + stronger dim behind sheet
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT);
+            dialog.getWindow().setDimAmount(0.5f);
+        }
+
         dialog.setOnShowListener(d -> {
-            BottomSheetBehavior<?> behavior = ((BottomSheetDialog) d).getBehavior();
+            BottomSheetDialog bsd = (BottomSheetDialog) d;
+            BottomSheetBehavior<?> behavior = bsd.getBehavior();
             behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             behavior.setSkipCollapsed(true);
             behavior.setHideable(true);
+
+            //  Rounded top corners (16dp) via ViewOutlineProvider ──
+            float density = getResources().getDisplayMetrics().density;
+            View bottomSheet = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            if (bottomSheet != null) {
+                final float cornerRadius = 16 * density;
+                bottomSheet.setClipToOutline(true);
+                bottomSheet.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                        outline.setRoundRect(0, 0, view.getWidth(),
+                                (int) (view.getHeight() + cornerRadius), cornerRadius);
+                    }
+                });
+
+                android.view.View parent = (android.view.View) bottomSheet.getParent();
+                if (parent instanceof ViewGroup) {
+                    ((ViewGroup) parent).setClipChildren(false);
+                    parent.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                }
+            }
         });
         return dialog;
     }
