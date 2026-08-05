@@ -308,6 +308,8 @@
                 android:layout_height="wrap_content"
                 android:text="@string/agent_settings_cancel"
                 android:textColor="?attr/colorPrimary"
+                android:backgroundTint="@color/bottom_sheet_background"
+                android:backgroundTintMode="src_over"
                 app:strokeColor="?attr/colorPrimary"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
 
@@ -326,6 +328,8 @@
                 android:layout_height="wrap_content"
                 android:text="@string/agent_settings_save"
                 android:textColor="?attr/colorPrimary"
+                android:backgroundTint="@color/bottom_sheet_background"
+                android:backgroundTintMode="src_over"
                 app:strokeColor="?attr/colorPrimary"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
 
