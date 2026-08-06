@@ -661,7 +661,7 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 AgentSettingsBottomSheet.setOnDismissCallback(() -> {
                     Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
                     if (f instanceof AgentFragment) {
-                        ((AgentFragment) f).updateConnectionPill();
+                        ((AgentFragment) f).onSettingsDismissed();
                     }
                 });
                 new AgentSettingsBottomSheet().show(getSupportFragmentManager(), "agent_settings");

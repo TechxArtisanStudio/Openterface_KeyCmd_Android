@@ -230,7 +230,6 @@ public class AgentFragment extends Fragment {
             disableEngine();
             return;
         }
-
         // API field is non-empty — verify it actually works
         verifyRunning = true;
         if (verifyExecutor == null) {
@@ -556,6 +555,17 @@ public class AgentFragment extends Fragment {
         } else {
             connectionPill.setText(R.string.agent_connection_ready);
         }
+    }
+
+    /**
+     * Called from MainActivity when AgentSettingsBottomSheet is dismissed.
+     * Resets any in-flight verification so the new provider is evaluated immediately,
+     * then refreshes both the connection pill and the engine gate/conversation state.
+     */
+    public void onSettingsDismissed() {
+        updateConnectionPill();
+        verifyRunning = false;
+        refreshEngineState();
     }
 
     private void showGate(boolean visible) {
