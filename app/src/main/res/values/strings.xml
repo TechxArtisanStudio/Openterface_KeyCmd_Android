@@ -1643,7 +1643,8 @@ by TechxArtisan</string>
     <string name="top_mode_label_macros_summary">Record and replay steps</string>
     <string name="top_mode_label_shortcuts_summary">Keyboard shortcuts on tap</string>
     <string name="agent_connection_ready">KeyMod · Ready</string>
-    <string name="agent_empty_hint">Pick a demo above to preview how Agent plans and acts on your target device.</string>
+    <string name="agent_empty_title">Describe a workflow</string>
+    <string name="agent_empty_hint">Type what you want done. The agent plans it, asks for approval, then runs it.</string>
     <string name="agent_gate_byok">Use my API key</string>
     <string name="agent_gate_github">Sign in with GitHub (free tier)</string>
     <string name="agent_gate_skip_demo">Skip — preview demo</string>
