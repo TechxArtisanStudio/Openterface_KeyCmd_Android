@@ -26,6 +26,7 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.agent.settings.AIConfigProvider;
 import com.openterface.keymod.agent.settings.AIProvider;
 import com.openterface.keymod.agent.settings.AIProviderManager;
+import com.openterface.keymod.util.BottomSheetBlurHelper;
 
 /**
  * BottomSheet dialog for Agent Settings.
@@ -97,12 +98,12 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
 
-        // Full window, no ratio calculation — consistent portrait/landscape
+        // Full window + enhanced dim behind sheet (blur not supported by BottomSheetDialog)
         if (dialog.getWindow() != null) {
             dialog.getWindow().setLayout(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT);
-            dialog.getWindow().setDimAmount(0.5f);
+            dialog.getWindow().setDimAmount(0.55f);
         }
 
         dialog.setOnShowListener(d -> {
@@ -136,6 +137,20 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
         });
 
         return dialog;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Apply background blur effect (API 31+) — paired with removeBlur() in onStop()
+        BottomSheetBlurHelper.applyBlur(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // Remove background blur effect
+        BottomSheetBlurHelper.removeBlur(this);
     }
 
     @Nullable

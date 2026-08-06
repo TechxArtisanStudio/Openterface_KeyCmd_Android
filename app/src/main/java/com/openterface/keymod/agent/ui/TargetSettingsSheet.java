@@ -22,6 +22,7 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.BottomSheetBlurHelper;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
 
@@ -69,12 +70,12 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
 
-        // Full window + stronger dim behind sheet
+        // Full window + enhanced dim behind sheet (blur not supported by BottomSheetDialog)
         if (dialog.getWindow() != null) {
             dialog.getWindow().setLayout(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT);
-            dialog.getWindow().setDimAmount(0.5f);
+            dialog.getWindow().setDimAmount(0.55f);
         }
 
         dialog.setOnShowListener(d -> {
@@ -108,6 +109,20 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         return dialog;
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Apply background blur effect (API 31+) — paired with removeBlur() in onStop()
+        BottomSheetBlurHelper.applyBlur(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // Remove background blur effect
+        BottomSheetBlurHelper.removeBlur(this);
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -117,6 +132,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     }
 
     private static final String PREF_AGENT_PROFILE_ID = "agent_active_profile_id";
+    private static final String PREF_AGENT_TARGET_OS  = "agent_target_os";
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -184,12 +200,12 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         if (os.equals(currentOs)) {
             // Toggle off: deselect this OS (stay in HID mode with default OS)
             requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                    .edit().remove("agent_target_os").apply();
+                    .edit().remove(PREF_AGENT_TARGET_OS).apply();
             currentOs = "";
         } else {
             // Select this OS
             requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                    .edit().putString("agent_target_os", os).apply();
+                    .edit().putString(PREF_AGENT_TARGET_OS, os).apply();
             currentOs = os;
         }
 
@@ -284,7 +300,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
         // Read OS from prefs
         currentOs = requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                .getString("agent_target_os", "");
+                .getString(PREF_AGENT_TARGET_OS, "");
 
         // OS buttons: highlight only in HID mode
         refreshOsButtonStyles(isTerminalMode ? null : (currentOs.isEmpty() ? null : currentOs));
