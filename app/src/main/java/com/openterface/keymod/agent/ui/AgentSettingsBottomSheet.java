@@ -23,6 +23,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.openterface.keymod.R;
+import com.openterface.keymod.agent.settings.AIConfigProvider;
+import com.openterface.keymod.agent.settings.AIProvider;
+import com.openterface.keymod.agent.settings.AIProviderManager;
 
 /**
  * BottomSheet dialog for Agent Settings.
@@ -38,43 +41,14 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
 
     // ── SharedPreferences keys ───────────────────────────────────────────
 
-    private static final String PREF_AI_PROVIDER      = "ai_provider";
-    private static final String PREF_AI_ENDPOINT      = "ai_endpoint";
-    private static final String PREF_AI_MODEL         = "ai_model";
     private static final String PREF_MAX_STEPS        = "agent_max_steps";
     private static final String PREF_MAX_RETRIES      = "agent_max_retries";
     private static final String PREF_PROMPT_TERMINAL  = "agent_prompt_terminal";
     private static final String PREF_PROMPT_HID       = "agent_prompt_hid";
 
     // ── Provider definitions ─────────────────────────────────────────────
-    //
-    // MUST match ProviderAdapterFactory.ADAPTER_NAMES order and
-    // R.array.settings_ai_provider_names in strings.xml:
-    //   0: OpenAI  1: Anthropic  2: Google  3: Mistral
-    //   4: Groq    5: DashScope  6: DeepSeek  7: Custom
-
-    private static final String[] PROVIDER_NAMES = {
-            "OpenAI", "Anthropic", "Google", "Mistral",
-            "Groq", "DashScope", "DeepSeek", "Custom"
-    };
-
-    private static final String[] PROVIDER_MODELS = {
-            "gpt-4o", "claude-3-5-sonnet-20241022", "gemini-2.0-flash", "mistral-large-latest",
-            "llama-3.3-70b-versatile", "qwen-plus", "deepseek-chat", ""
-    };
-
-    private static final String[] PROVIDER_ENDPOINTS = {
-            "https://api.openai.com/v1",
-            "https://api.anthropic.com/v1",
-            "https://generativelanguage.googleapis.com/v1beta",
-            "https://api.mistral.ai/v1",
-            "https://api.groq.com/openai/v1",
-            "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            "https://api.deepseek.com/v1",
-            ""
-    };
-
-    private static final int PROVIDER_CUSTOM_INDEX = PROVIDER_NAMES.length - 1;
+    // Provider list is now managed by AIProviderManager
+    // This class uses the unified AIConfigProvider for all AI settings
 
     private static final int DEFAULT_MAX_STEPS   = 10;
     private static final int DEFAULT_MAX_RETRIES = 3;
@@ -108,10 +82,12 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
 
     /**
      * Check if a provider at the given index requires an API key.
-     * Only the Custom provider (local services like Ollama) does not need one.
+     * Uses AIProviderManager to check the provider's apiKeyOptional field.
      */
     private static boolean providerNeedsApiKey(int index) {
-        return index != PROVIDER_CUSTOM_INDEX;
+        // This method is no longer needed since we use AIProvider.apiKeyOptional
+        // Keep for backward compatibility, but it's not used anymore
+        return true;
     }
 
     // ── Lifecycle ────────────────────────────────────────────────────────
@@ -185,8 +161,10 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     // ── Settings I/O ────────────────────────────────────────────────────
 
     private void loadSettings() {
-        selectedProviderIndex = prefs.getInt(PREF_AI_PROVIDER, 0);
-        if (selectedProviderIndex < 0 || selectedProviderIndex >= PROVIDER_NAMES.length) {
+        // Use AIProviderManager for provider selection
+        AIProviderManager providerManager = AIProviderManager.getInstance(requireContext());
+        selectedProviderIndex = providerManager.getSelectedProviderIndex();
+        if (selectedProviderIndex < 0 || selectedProviderIndex >= providerManager.getProviderCount()) {
             selectedProviderIndex = 0;
         }
         maxSteps = prefs.getInt(PREF_MAX_STEPS, DEFAULT_MAX_STEPS);
@@ -214,15 +192,9 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
 
     /** Save provider selection immediately (instant-effect per iOS spec). */
     private void saveProviderInstant(int index) {
-        prefs.edit()
-                .putInt(PREF_AI_PROVIDER, index)
-                .putString(PREF_AI_MODEL, PROVIDER_MODELS[index])
-                .putString(PREF_AI_ENDPOINT, PROVIDER_ENDPOINTS[index])
-                .apply();
-        // Clear API key for providers that don't need one (Custom / local)
-        if (!providerNeedsApiKey(index)) {
-            prefs.edit().putString("ai_api_key_" + index, "").apply();
-        }
+        // Use AIProviderManager for provider selection
+        AIProviderManager providerManager = AIProviderManager.getInstance(requireContext());
+        providerManager.setSelectedProviderIndex(index);
     }
 
     /** Save execution limits immediately (instant-effect per iOS spec). */
@@ -297,8 +269,13 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
         requireContext().getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true);
         int accentColor = tv.data;
 
-        for (int i = 0; i < PROVIDER_NAMES.length; i++) {
+        // Use AIProviderManager to get provider list
+        AIProviderManager providerManager = AIProviderManager.getInstance(requireContext());
+        java.util.List<AIProvider> providers = providerManager.getProviders();
+
+        for (int i = 0; i < providers.size(); i++) {
             final int idx = i;
+            AIProvider provider = providers.get(i);
 
             // ── Row: HStack { name + model, Spacer, checkmark } ──
             LinearLayout row = new LinearLayout(requireContext());
@@ -321,14 +298,14 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
 
             // Provider Name → .primary (always primary text color)
             TextView nameView = new TextView(requireContext());
-            nameView.setText(PROVIDER_NAMES[i]);
+            nameView.setText(provider.name != null ? provider.name : "Unknown");
             nameView.setTextSize(16);
             nameView.setTextColor(textPrimary);
             nameView.setTypeface(nameView.getTypeface(), android.graphics.Typeface.BOLD);
 
             // Model Name → .secondary (always secondary text color)
             TextView modelView = new TextView(requireContext());
-            modelView.setText(PROVIDER_MODELS[i]);
+            modelView.setText(provider.modelName != null ? provider.modelName : "");
             modelView.setTextSize(13);
             modelView.setTextColor(textSecondary);
 
@@ -361,7 +338,7 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
                     ViewGroup.LayoutParams.WRAP_CONTENT));
 
             // Divider between rows (not after last)
-            if (i < PROVIDER_NAMES.length - 1) {
+            if (i < providers.size() - 1) {
                 View divider = new View(requireContext());
                 divider.setBackgroundColor(getResources().getColor(R.color.agent_settings_divider, null));
                 int marginH = (int) (12 * density);

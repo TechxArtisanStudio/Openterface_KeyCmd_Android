@@ -16,6 +16,7 @@ import com.openterface.keymod.agent.llm.LlmResponse;
 import com.openterface.keymod.agent.llm.LlmResult;
 import com.openterface.keymod.agent.llm.ProviderAdapter;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
+import com.openterface.keymod.agent.settings.AIConfigProvider;
 import com.openterface.keymod.agent.ui.AgentMessage;
 import com.openterface.terminal.CredentialProfile;
 
@@ -274,16 +275,12 @@ public final class AgentController {
      * Otherwise uses HID mode prompt (keyboard-only, no SSH).
      */
     private void generatePlan(@NonNull String userPrompt) {
-        // Read AI settings from SharedPreferences
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
-        String endpoint = prefs.getString("ai_endpoint", "https://api.openai.com/v1");
-        String model = prefs.getString("ai_model", "gpt-4o-mini");
-        int providerIdx = prefs.getInt("ai_provider", 0);
-        String apiKey = prefs.getString("ai_api_key_" + providerIdx, "");
-
-        // Build provider adapter
-        String providerName = getProviderName(providerIdx);
-        ProviderAdapter adapter = ProviderAdapterFactory.get(providerName);
+        // Read AI settings from unified config provider
+        AIConfigProvider config = AIConfigProvider.getInstance(appContext);
+        String endpoint = config.getEndpoint();
+        String model = config.getModel();
+        String apiKey = config.getApiKey();
+        ProviderAdapter adapter = config.getAdapter();
 
         // Build HTTP client with Agent-appropriate timeout (60s read)
         LlmHttpClient httpClient = new LlmHttpClient(
@@ -635,15 +632,12 @@ public final class AgentController {
      * Runs on background thread. Streams tokens to Fragment for per-char display.
      */
     private void summarize() {
-        // Read AI settings
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
-        String endpoint = prefs.getString("ai_endpoint", "https://api.openai.com/v1");
-        String model = prefs.getString("ai_model", "gpt-4o-mini");
-        int providerIdx = prefs.getInt("ai_provider", 0);
-        String apiKey = prefs.getString("ai_api_key_" + providerIdx, "");
-
-        String providerName = getProviderName(providerIdx);
-        ProviderAdapter adapter = ProviderAdapterFactory.get(providerName);
+        // Read AI settings from unified config provider
+        AIConfigProvider config = AIConfigProvider.getInstance(appContext);
+        String endpoint = config.getEndpoint();
+        String model = config.getModel();
+        String apiKey = config.getApiKey();
+        ProviderAdapter adapter = config.getAdapter();
 
         LlmHttpClient httpClient = new LlmHttpClient(
                 apiKey, endpoint, adapter,

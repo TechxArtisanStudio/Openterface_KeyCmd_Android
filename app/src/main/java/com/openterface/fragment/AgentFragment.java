@@ -50,6 +50,10 @@ import com.openterface.keymod.agent.executor.MacroToolExecutor;
 import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
+import com.openterface.keymod.agent.settings.AIConfigProvider;
+import com.openterface.keymod.agent.settings.AIKeyManager;
+import com.openterface.keymod.agent.settings.AIProvider;
+import com.openterface.keymod.agent.settings.AIProviderManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,10 +64,6 @@ import java.util.concurrent.Executors;
 public class AgentFragment extends Fragment {
 
     private static final String TAG = "AgentFragment";
-    private static final String PREF_AI_API_KEY = "ai_api_key";
-    private static final String PREF_AI_ENDPOINT = "ai_endpoint";
-    private static final String PREF_AI_MODEL = "ai_model";
-    private static final String PREF_AI_PROVIDER = "ai_provider";
 
     public static final String ARG_DEMO_SCRIPT = "agent_demo_script";
     public static final String ARG_AUTO_PLAY = "agent_demo_auto_play";
@@ -259,13 +259,12 @@ public class AgentFragment extends Fragment {
     /** Test API connection using LlmHttpClient.testConnection() */
     private boolean testApiConnection() {
         try {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-            String endpoint = prefs.getString(PREF_AI_ENDPOINT, "https://api.openai.com/v1");
-            String model = prefs.getString(PREF_AI_MODEL, "gpt-4o-mini");
-            int providerIdx = prefs.getInt(PREF_AI_PROVIDER, 0);
-            String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIdx, "");
+            AIConfigProvider config = AIConfigProvider.getInstance(requireContext());
+            String endpoint = config.getEndpoint();
+            String model = config.getModel();
+            String apiKey = config.getApiKey();
+            String providerName = config.getProviderName();
 
-            String providerName = getProviderNameFromIndex(providerIdx);
             LlmHttpClient client = new LlmHttpClient(apiKey, endpoint);
             client.testConnection(model, providerName);
             return true;
@@ -273,15 +272,6 @@ public class AgentFragment extends Fragment {
             Log.w(TAG, "API verification failed", e);
             return false;
         }
-    }
-
-    @NonNull
-    private String getProviderNameFromIndex(int index) {
-        // Use canonical adapter names (English, locale-independent)
-        // instead of localized display names from R.array
-        String[] names = ProviderAdapterFactory.ADAPTER_NAMES;
-        if (index >= 0 && index < names.length) return names[index];
-        return "OpenAI";
     }
 
     private void enableEngine() {
@@ -608,30 +598,13 @@ public class AgentFragment extends Fragment {
 
     /**
      * Check if the active provider is configured.
-     * Uses the same provider list as AgentSettingsBottomSheet.
+     * Uses AIConfigProvider for unified access.
      * For providers that don't need an API key (Ollama, Local Qwen),
      * only checks that an endpoint is configured.
      */
     private boolean isApiKeyConfigured() {
         if (!isAdded()) return false;
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-
-        // Use the same provider list as AISettingsFragment
-        String[] providerNames = getResources().getStringArray(R.array.settings_ai_provider_names);
-        int providerIdx = prefs.getInt(PREF_AI_PROVIDER, 0);
-
-        if (providerIdx < 0 || providerIdx >= providerNames.length) {
-            return false;
-        }
-
-        // Custom provider (last index) — only endpoint is required
-        if (providerIdx == providerNames.length - 1) {
-            String endpoint = prefs.getString(PREF_AI_ENDPOINT, "");
-            return !TextUtils.isEmpty(endpoint);
-        }
-
-        String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIdx, "");
-        return !TextUtils.isEmpty(apiKey);
+        return AIConfigProvider.getInstance(requireContext()).isConfigured();
     }
 
     /**
