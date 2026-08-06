@@ -150,6 +150,8 @@ public class AgentFragment extends Fragment {
         super.onResume();
         // Re-check API config when returning from settings
         refreshEngineState();
+        // Refresh connection pill to reflect current AI Provider selection
+        updateConnectionPill();
         // Update executor connections (user may have connected/disconnected)
         updateTerminalExecutorSshClient();
         updateHidExecutorConnection();
@@ -317,6 +319,7 @@ public class AgentFragment extends Fragment {
             demoPickerScroll.setVisibility(View.GONE);
         }
         updateSessionBar();
+        updateConnectionPill();
     }
 
     private void disableEngine() {
@@ -536,8 +539,23 @@ public class AgentFragment extends Fragment {
 
     private void showConnectedUi() {
         showGate(false);
-        connectionPill.setText(R.string.agent_connection_ready);
+        updateConnectionPill();
         showEmptyState(true);
+    }
+
+    /**
+     * Update the connection pill text to reflect the currently selected AI Provider
+     * and its model name, replacing the hardcoded "KeyMod · Ready" string.
+     */
+    public void updateConnectionPill() {
+        if (connectionPill == null || !isAdded()) return;
+        AIConfigProvider config = AIConfigProvider.getInstance(requireContext());
+        AIProvider provider = config.getSelectedProvider();
+        if (provider != null && provider.modelName != null) {
+            connectionPill.setText(provider.modelName);
+        } else {
+            connectionPill.setText(R.string.agent_connection_ready);
+        }
     }
 
     private void showGate(boolean visible) {

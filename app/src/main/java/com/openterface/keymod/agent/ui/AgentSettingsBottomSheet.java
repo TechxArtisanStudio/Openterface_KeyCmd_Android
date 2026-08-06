@@ -1,6 +1,7 @@
 package com.openterface.keymod.agent.ui;
 
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
@@ -55,6 +56,18 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final int MIN_STEPS = 3,  MAX_STEPS = 30;
     private static final int MIN_RETRIES = 0, MAX_RETRIES = 5;
+
+    /** Callback invoked when the settings sheet is dismissed. */
+    public interface OnDismissCallback {
+        void onSheetDismissed();
+    }
+
+    private static OnDismissCallback sDismissCallback;
+
+    /** Set a callback to be invoked when any AgentSettingsBottomSheet is dismissed. */
+    public static void setOnDismissCallback(OnDismissCallback callback) {
+        sDismissCallback = callback;
+    }
 
     // ── Views ───────────────────────────────────────────────────────────
 
@@ -171,6 +184,14 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
         setupProviderList();
         updateLimitDisplay();
         setupPromptTabs();
+    }
+
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (sDismissCallback != null) {
+            sDismissCallback.onSheetDismissed();
+        }
     }
 
     // ── Settings I/O ────────────────────────────────────────────────────

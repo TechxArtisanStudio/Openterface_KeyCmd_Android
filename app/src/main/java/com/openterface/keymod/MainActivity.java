@@ -658,6 +658,12 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         agentSettingsHeaderButton = findViewById(R.id.agent_settings_header_button);
         if (agentSettingsHeaderButton != null) {
             agentSettingsHeaderButton.setOnClickListener(v -> {
+                AgentSettingsBottomSheet.setOnDismissCallback(() -> {
+                    Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                    if (f instanceof AgentFragment) {
+                        ((AgentFragment) f).updateConnectionPill();
+                    }
+                });
                 new AgentSettingsBottomSheet().show(getSupportFragmentManager(), "agent_settings");
             });
         }
