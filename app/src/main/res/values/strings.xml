@@ -1652,6 +1652,7 @@ by TechxArtisan</string>
     <string name="agent_input_hint">Try a demo above — free chat coming soon</string>
     <string name="agent_send_cd">Send message</string>
     <string name="agent_subtitle">Approve before KeyCmd acts on your host.</string>
+    <string name="agent_target_none_hint">Tap %s to select a target</string>
     <string name="agent_act_approve">Approve &amp; Run</string>
     <string name="agent_act_cancel">Cancel</string>
     <string name="agent_act_edit_plan">Edit plan</string>

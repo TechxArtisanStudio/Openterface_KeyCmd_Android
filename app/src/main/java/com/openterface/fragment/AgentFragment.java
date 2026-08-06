@@ -200,21 +200,33 @@ public class AgentFragment extends Fragment {
     }
 
     /**
-     * Get the target OS for HID Unicode input method.
-     * Priority: active SSH profile's targetOs > default "linux".
+     * Get the target OS for HID execution mode.
+     * Priority: Agent-specific target OS (from TargetSettingsSheet)
+     *         > active SSH profile's targetOs
+     *         > default "linux".
      */
     @NonNull
     private String getTargetOs() {
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return "linux";
-        com.openterface.keymod.MainActivity mainActivity =
-                (com.openterface.keymod.MainActivity) requireActivity();
-        com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
-        if (profile != null) {
-            String os = profile.getTargetOs();
-            if (os != null && !os.isEmpty()) {
-                return os;
+        // 1. Agent-specific HID target OS (set via TargetSettingsSheet)
+        String agentOs = requireContext()
+                .getSharedPreferences("agent_prefs", android.content.Context.MODE_PRIVATE)
+                .getString("agent_target_os", "");
+        if (agentOs != null && !agentOs.isEmpty()) {
+            return agentOs;
+        }
+        // 2. SSH profile's target OS
+        if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
+            com.openterface.keymod.MainActivity mainActivity =
+                    (com.openterface.keymod.MainActivity) requireActivity();
+            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+            if (profile != null) {
+                String os = profile.getTargetOs();
+                if (os != null && !os.isEmpty()) {
+                    return os;
+                }
             }
         }
+        // 3. Fallback
         return "linux";
     }
 
@@ -1161,31 +1173,56 @@ public class AgentFragment extends Fragment {
 
     /**
      * Update the session bar to reflect the current execution mode.
+     * Checks the live active SSH profile state (not the controller's
+     * executionMode, which is only set at controller creation time).
      * SSH mode shows the profile label, or "SSH connecting…" while connecting.
      * HID mode shows the target OS.
      */
     public void updateSessionBar() {
-        if (sessionHint == null) return;
-        AgentController ctrl = agentController;
-        if (ctrl == null) return;
+        if (sessionHint == null || !isAdded()) return;
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
+        com.openterface.keymod.MainActivity mainActivity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+        com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
 
-        String mode = ctrl.getPromptBuilder().getExecutionMode();
-        if ("terminal".equals(mode)) {
-            com.openterface.keymod.MainActivity mainActivity =
-                    (com.openterface.keymod.MainActivity) requireActivity();
-            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+        if (profile != null) {
+            // Terminal (SSH) mode
             com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
-
-            if (profile != null) {
-                boolean connected = sshClient != null && sshClient.isSessionConnected();
-                sessionHint.setText(connected
-                        ? "Target: " + profile.getDisplayLabel()
-                        : "SSH connecting…");
+            if (sshClient != null && sshClient.isSessionConnected()) {
+                // SSH connected — show profile label
+                sessionHint.setText("Target: " + profile.getDisplayLabel());
+            } else if (sshClient != null) {
+                // SSH client exists but not yet connected — connecting
+                sessionHint.setText("SSH connecting…");
             } else {
+                // Profile selected but SSH not started yet
                 sessionHint.setText("Target: SSH");
             }
-        } else if ("hid".equals(mode)) {
-            sessionHint.setText("Target: " + getTargetOs().toUpperCase());
+        } else {
+            // HID mode — check if a target OS is actually selected
+            String agentOs = requireContext()
+                    .getSharedPreferences("agent_prefs", android.content.Context.MODE_PRIVATE)
+                    .getString("agent_target_os", "");
+            if (agentOs != null && !agentOs.isEmpty()) {
+                sessionHint.setText("Target: " + agentOs.toUpperCase());
+            } else {
+                // Neither SSH profile nor target OS selected — show hint with terminal icon
+                String hintTemplate = getString(R.string.agent_target_none_hint);
+                android.graphics.drawable.Drawable icon = getResources()
+                        .getDrawable(R.drawable.ic_terminal, requireContext().getTheme());
+                int iconSize = (int) (16 * getResources().getDisplayMetrics().density);
+                icon.setBounds(0, 0, iconSize, iconSize);
+                icon.setTintList(android.content.res.ColorStateList.valueOf(
+                        getResources().getColor(R.color.text_secondary, requireContext().getTheme())));
+                String placeholder = "￼";
+                String fullText = hintTemplate.replace("%s", placeholder);
+                android.text.SpannableString spannable = new android.text.SpannableString(fullText);
+                int start = fullText.indexOf(placeholder);
+                spannable.setSpan(new android.text.style.ImageSpan(icon),
+                        start, start + placeholder.length(),
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sessionHint.setText(spannable);
+            }
         }
     }
 
