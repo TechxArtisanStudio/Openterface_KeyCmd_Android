@@ -26,7 +26,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.material.button.MaterialButton;
@@ -49,11 +48,8 @@ import com.openterface.keymod.agent.executor.HidToolExecutor;
 import com.openterface.keymod.agent.executor.MacroToolExecutor;
 import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
-import com.openterface.keymod.agent.llm.ProviderAdapterFactory;
 import com.openterface.keymod.agent.settings.AIConfigProvider;
-import com.openterface.keymod.agent.settings.AIKeyManager;
 import com.openterface.keymod.agent.settings.AIProvider;
-import com.openterface.keymod.agent.settings.AIProviderManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,7 +73,7 @@ public class AgentFragment extends Fragment {
     private View demoPickerScroll;
     private LinearLayout demoPickerContainer;
     private RecyclerView messagesList;
-    private TextView emptyHint;
+    private View emptyState;
     private EditText inputField;
     private ImageButton sendButton;
     private View sessionBar;
@@ -355,7 +351,7 @@ public class AgentFragment extends Fragment {
         demoPickerScroll = view.findViewById(R.id.agent_demo_picker_scroll);
         demoPickerContainer = view.findViewById(R.id.agent_demo_picker_container);
         messagesList = view.findViewById(R.id.agent_messages_list);
-        emptyHint = view.findViewById(R.id.agent_empty_hint);
+        emptyState = view.findViewById(R.id.agent_empty_state);
         inputField = view.findViewById(R.id.agent_input);
         sendButton = view.findViewById(R.id.agent_send_button);
         sessionBar = view.findViewById(R.id.agent_session_bar);
@@ -585,10 +581,7 @@ public class AgentFragment extends Fragment {
     }
 
     private void showEmptyState(boolean empty) {
-        if (suggestedPromptsContainer != null) {
-            suggestedPromptsContainer.setVisibility(empty ? View.VISIBLE : View.GONE);
-        }
-        emptyHint.setVisibility(empty ? View.VISIBLE : View.GONE);
+        emptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
         messagesList.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 
