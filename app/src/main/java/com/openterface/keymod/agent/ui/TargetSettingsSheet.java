@@ -197,8 +197,13 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     }
 
     private void onOsSelected(@NonNull String os) {
-        if (os.equals(currentOs)) {
-            // Toggle off: deselect this OS (stay in HID mode with default OS)
+        // Check if we're currently in terminal mode (SSH profile active)
+        // If so, clicking any OS should SELECT it (not toggle off)
+        MainActivity activity = (MainActivity) requireActivity();
+        boolean wasInTerminalMode = activity.getActiveSshProfile() != null;
+
+        if (!wasInTerminalMode && os.equals(currentOs)) {
+            // Toggle off: deselect this OS (only when already in HID mode)
             requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
                     .edit().remove(PREF_AGENT_TARGET_OS).apply();
             currentOs = "";
@@ -211,7 +216,6 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
         // Agent only: clear Agent's own SSH profile reference → HID mode.
         // Do NOT touch credentialManager — Terminal tab's active profile is independent.
-        MainActivity activity = (MainActivity) requireActivity();
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;
         requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)

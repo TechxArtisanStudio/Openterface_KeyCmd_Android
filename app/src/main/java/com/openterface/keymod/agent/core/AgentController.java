@@ -265,6 +265,44 @@ public final class AgentController {
         session.clear();
     }
 
+    /**
+     * Re-submit the last user prompt to regenerate the plan.
+     * Called when the user taps the Retry button on an error message.
+     * Finds the most recent USER message in the session and calls {@link #submit(String)}.
+     */
+    public void regeneratePlan() {
+        if (state != AgentState.ERROR && state != AgentState.IDLE) {
+            Log.w(TAG, "regeneratePlan() called in state " + state + ", ignoring");
+            return;
+        }
+
+        // Find the last user message from session
+        String lastUserPrompt = null;
+        List<AgentMessage> msgs = session.getMessages();
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            if (msgs.get(i).type == AgentMessage.Type.USER) {
+                CharSequence text = msgs.get(i).text;
+                lastUserPrompt = text != null ? text.toString() : null;
+                break;
+            }
+        }
+
+        if (lastUserPrompt == null || lastUserPrompt.trim().isEmpty()) {
+            Log.w(TAG, "regeneratePlan(): no user prompt found");
+            // Notify listener so UI can show feedback to user
+            if (listener != null) {
+                mainHandler.post(() -> listener.onError("No previous prompt to retry"));
+            }
+            return;
+        }
+
+        // Reset to IDLE if needed, then re-submit
+        if (state == AgentState.ERROR) {
+            state = AgentState.IDLE;
+        }
+        submit(lastUserPrompt);
+    }
+
     // ── Internal flow ────────────────────────────────────────────────────
 
     /**
@@ -528,7 +566,7 @@ public final class AgentController {
                         // Mark as complete so the UI shows "完成" instead of "Running…"
                         // even when the command produced no output.
                         session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines, true));
+                        postToMain(() -> notifyStepOutput(stepIndex, lines, true, true));
                         latch.countDown();
                     }
 
@@ -542,7 +580,7 @@ public final class AgentController {
                         }
                         lines.add("Error: " + error);
                         session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines, true));
+                        postToMain(() -> notifyStepOutput(stepIndex, lines, true, false));
                         stepError[0] = error;
                         latch.countDown();
                     }
@@ -563,7 +601,7 @@ public final class AgentController {
                     final List<String> progressLines = new ArrayList<>();
                     progressLines.add(displayCommand);
                     progressLines.add("(waiting... " + elapsedSec[0] + "s)");
-                    postToMain(() -> notifyStepOutput(stepIndex, progressLines, false));
+                    postToMain(() -> notifyStepOutput(stepIndex, progressLines, false, null));
                 }, 3, 3, TimeUnit.SECONDS);
 
                 try {
@@ -575,7 +613,7 @@ public final class AgentController {
                         final List<String> timeoutLines = new ArrayList<>();
                         timeoutLines.add(displayCommand);
                         timeoutLines.add("⚠️ " + stepError[0]);
-                        postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true));
+                        postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true, false));
                     }
                 } catch (InterruptedException e) {
                     progressScheduler.shutdownNow();
@@ -645,8 +683,9 @@ public final class AgentController {
                 AGENT_READ_TIMEOUT_MS);
 
         // Build summarize request
-        String originalPrompt = session.getMessages().isEmpty() ? ""
+        CharSequence firstMsgText = session.getMessages().isEmpty() ? null
                 : session.getMessages().get(0).text;
+        String originalPrompt = firstMsgText != null ? firstMsgText.toString() : "";
         List<String[]> results = new ArrayList<>();
         for (AgentMessage msg : session.getMessages()) {
             if (msg.type == AgentMessage.Type.EXECUTION_CLI && !msg.terminalLines.isEmpty()) {
@@ -871,8 +910,9 @@ public final class AgentController {
         if (listener != null) listener.onPlanTruncated(maxSteps);
     }
 
-    private void notifyStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {
-        if (listener != null) listener.onStepOutput(stepIndex, lines, isComplete);
+    private void notifyStepOutput(int stepIndex, @NonNull List<String> lines,
+                                   boolean isComplete, @Nullable Boolean success) {
+        if (listener != null) listener.onStepOutput(stepIndex, lines, isComplete, success);
     }
 
     private void notifyStepStart(int stepIndex, @NonNull String command) {
@@ -946,7 +986,8 @@ public final class AgentController {
         default void onPlanTruncated(int maxSteps) {}
 
         /** A step produced output (for EXECUTION_CLI display). isComplete=true when the step finished. */
-        default void onStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {}
+        default void onStepOutput(int stepIndex, @NonNull List<String> lines,
+                                   boolean isComplete, @Nullable Boolean success) {}
 
         /** A step is about to start executing — show Running state */
         default void onStepStart(int stepIndex, @NonNull String command) {}

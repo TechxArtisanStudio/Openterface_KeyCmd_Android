@@ -28,6 +28,7 @@
             android:orientation="horizontal">
 
             <ImageView
+                android:id="@+id/agent_cli_icon"
                 android:layout_width="14dp"
                 android:layout_height="14dp"
                 android:src="@drawable/ic_terminal"
@@ -35,6 +36,7 @@
                 android:contentDescription="@string/agent_execution_terminal_label" />
 
             <TextView
+                android:id="@+id/agent_cli_header_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"

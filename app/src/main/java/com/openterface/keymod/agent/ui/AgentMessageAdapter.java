@@ -29,6 +29,10 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         void onCancel();
     }
 
+    public interface RetryListener {
+        void onRetry();
+    }
+
     private static final int VT_USER = 0;
     private static final int VT_ASSISTANT = 1;
     private static final int VT_PLAN = 2;
@@ -42,9 +46,14 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
     private final List<AgentMessage> messages = new ArrayList<>();
     @Nullable private ActBarListener actBarListener;
+    @Nullable private RetryListener retryListener;
 
     public void setActBarListener(@Nullable ActBarListener listener) {
         this.actBarListener = listener;
+    }
+
+    public void setRetryListener(@Nullable RetryListener listener) {
+        this.retryListener = listener;
     }
 
     public void submitList(@NonNull List<AgentMessage> next) {
@@ -155,7 +164,7 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                 ((SimpleTextHolder) holder).bind(message.text);
                 break;
             case VT_ASSISTANT:
-                ((SimpleTextHolder) holder).bind(message.text);
+                ((SimpleTextHolder) holder).bind(message, retryListener);
                 break;
             case VT_PLAN:
                 ((PlanHolder) holder).bind(message);
@@ -197,14 +206,65 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
     private static final class SimpleTextHolder extends RecyclerView.ViewHolder {
         private final TextView textView;
+        private final ImageView errorIcon;
+        private final MaterialButton retryButton;
+        private final View contentRow;
+        private final boolean isUser;
 
         SimpleTextHolder(@NonNull View itemView, boolean user) {
             super(itemView);
+            this.isUser = user;
             textView = itemView.findViewById(user ? R.id.agent_user_text : R.id.agent_assistant_text);
+
+            if (user) {
+                errorIcon = null;
+                retryButton = null;
+                contentRow = null;
+            } else {
+                errorIcon = itemView.findViewById(R.id.agent_error_icon);
+                retryButton = itemView.findViewById(R.id.agent_retry_button);
+                contentRow = itemView.findViewById(R.id.agent_assistant_content_row);
+            }
         }
 
-        void bind(@Nullable String text) {
+        void bind(@Nullable CharSequence text) {
             textView.setText(text);
+        }
+
+        /** Bind with full message state — sets error background, icon visibility, retry button. */
+        void bind(@NonNull AgentMessage message, @Nullable RetryListener retryListener) {
+            textView.setText(message.text);
+
+            if (isUser) return;  // User bubbles never have error state
+
+            if (message.isError) {
+                // Error state: red background + warning icon + optional retry button
+                if (contentRow != null) {
+                    contentRow.setBackgroundResource(R.drawable.agent_bubble_error);
+                }
+                if (errorIcon != null) {
+                    errorIcon.setVisibility(View.VISIBLE);
+                    errorIcon.setColorFilter(0xFFEF4444); // presentation_red
+                }
+                if (retryButton != null) {
+                    retryButton.setVisibility(message.canRetry ? View.VISIBLE : View.GONE);
+                    retryButton.setOnClickListener(v -> {
+                        if (retryListener != null) retryListener.onRetry();
+                    });
+                }
+            } else {
+                // Normal state
+                if (contentRow != null) {
+                    contentRow.setBackgroundResource(R.drawable.agent_bubble_assistant);
+                }
+                if (errorIcon != null) {
+                    errorIcon.setVisibility(View.GONE);
+                }
+                if (retryButton != null) {
+                    retryButton.setVisibility(View.GONE);
+                    retryButton.setOnClickListener(null);
+                }
+            }
         }
     }
 
@@ -293,12 +353,18 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         private final TextView statusBadge;
         private final TextView commandText;
         private final TextView outputText;
+        private final ImageView headerIcon;
+        private final TextView headerLabel;
+        private final com.google.android.material.card.MaterialCardView cardView;
 
         CliHolder(@NonNull View itemView) {
             super(itemView);
             statusBadge = itemView.findViewById(R.id.agent_cli_status);
             commandText = itemView.findViewById(R.id.agent_cli_command);
             outputText = itemView.findViewById(R.id.agent_cli_output);
+            headerIcon = itemView.findViewById(R.id.agent_cli_icon);
+            headerLabel = itemView.findViewById(R.id.agent_cli_header_label);
+            cardView = (com.google.android.material.card.MaterialCardView) itemView;
         }
 
         void bind(@NonNull AgentMessage message) {
@@ -323,13 +389,35 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                 outputText.setVisibility(View.GONE);
             }
 
-            // Use explicit isComplete flag — works even when command produced no output.
-            if (message.isComplete) {
-                statusBadge.setText(R.string.agent_cli_done);
-                statusBadge.setTextColor(0xFF4CAF50); // green
-            } else {
+            // Use explicit cliSuccess field from AgentController (not string matching)
+            // cliSuccess: null = running, true = success, false = failed
+            if (message.cliSuccess == null) {
+                // Running state: orange badge, no border, terminal icon
                 statusBadge.setText(R.string.agent_cli_running);
                 statusBadge.setTextColor(0xFFF57C00); // orange
+                cardView.setStrokeColor(android.content.res.ColorStateList.valueOf(0x00000000).getDefaultColor());
+                cardView.setStrokeWidth(0);
+                headerIcon.setImageResource(R.drawable.ic_terminal);
+                headerIcon.setColorFilter(0xFF81C784);
+                headerLabel.setTextColor(0xFF81C784);
+            } else if (message.cliSuccess) {
+                // Success state: green badge, no border, terminal icon
+                statusBadge.setText(R.string.agent_cli_done);
+                statusBadge.setTextColor(0xFF4CAF50); // green
+                cardView.setStrokeColor(android.content.res.ColorStateList.valueOf(0x00000000).getDefaultColor());
+                cardView.setStrokeWidth(0);
+                headerIcon.setImageResource(R.drawable.ic_terminal);
+                headerIcon.setColorFilter(0xFF81C784);
+                headerLabel.setTextColor(0xFF81C784);
+            } else {
+                // Failed state: red badge, red card border, warning icon
+                statusBadge.setText(R.string.agent_cli_failed);
+                statusBadge.setTextColor(0xFFEF4444); // red
+                cardView.setStrokeColor(0xFFEF4444);
+                cardView.setStrokeWidth(Math.round(1.5f * itemView.getResources().getDisplayMetrics().density));
+                headerIcon.setImageResource(R.drawable.ic_warning);
+                headerIcon.setColorFilter(0xFFEF4444);
+                headerLabel.setTextColor(0xFFEF4444);
             }
         }
     }

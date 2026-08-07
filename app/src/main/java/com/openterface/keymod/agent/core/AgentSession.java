@@ -129,9 +129,10 @@ public final class AgentSession {
     private static JSONObject serializeMessage(@NonNull AgentMessage msg) throws JSONException {
         JSONObject obj = new JSONObject();
         obj.put("type", msg.type.name());
-        obj.put("text", msg.text);
+        obj.put("text", msg.text != null ? msg.text.toString() : null);
         // Note: planSteps, terminalLines, macroSteps etc. are not persisted
         // across restarts — they represent transient execution state.
+        // Note: CharSequence styling (e.g. ImageSpan) is lost on serialization.
         return obj;
     }
 

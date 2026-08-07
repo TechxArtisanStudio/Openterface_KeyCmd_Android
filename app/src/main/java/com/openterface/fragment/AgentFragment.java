@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Agent mode marketing MVP — curated demo scripts with Plan/Act UI. */
 public class AgentFragment extends Fragment {
@@ -94,7 +95,7 @@ public class AgentFragment extends Fragment {
     private boolean realEngineEnabled = false;
     private final List<AgentMessage> chatMessages = new ArrayList<>();
     @Nullable private ExecutorService verifyExecutor;
-    private volatile boolean verifyRunning = false;
+    private final AtomicBoolean verifyRunning = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @NonNull
@@ -229,37 +230,64 @@ public class AgentFragment extends Fragment {
     /**
      * Re-evaluate engine state and gate visibility.
      * Called on resume to pick up settings changes.
+     *
+     * <p>Logic:
+     * <ul>
+     *   <li>No API key configured → show gate (Connect AI screen)</li>
+     *   <li>API key configured but invalid → show chat interface with error bubble</li>
+     *   <li>API key valid → show chat interface normally</li>
+     * </ul>
      */
     private void refreshEngineState() {
         if (inputField == null) return; // views not bound yet
-        if (verifyRunning) return;      // verification already in progress
+        if (!verifyRunning.compareAndSet(false, true)) {
+            return; // verification already in progress
+        }
 
         if (!isApiKeyConfigured()) {
+            // No API key at all → show gate
+            verifyRunning.set(false);
             disableEngine();
             return;
         }
-        // API field is non-empty — verify it actually works
-        verifyRunning = true;
+
+        // API key is configured — hide gate and show chat interface
+        // (verification happens async, but we show the UI immediately)
+        showGate(false);
+        if (demoPickerScroll != null) {
+            demoPickerScroll.setVisibility(View.GONE);
+        }
+
+        // Verify API key works
         if (verifyExecutor == null) {
             verifyExecutor = Executors.newSingleThreadExecutor();
         }
-        inputField.setHint(R.string.agent_state_thinking);
+        inputField.setHint(R.string.agent_verifying_api);
         inputField.setEnabled(false);
         sendButton.setEnabled(false);
 
         verifyExecutor.submit(() -> {
-            boolean valid = testApiConnection();
-            verifyRunning = false;
+            boolean valid = false;
+            try {
+                valid = testApiConnection();
+            } catch (Exception e) {
+                Log.w(TAG, "API verification exception", e);
+            } finally {
+                verifyRunning.set(false);
+            }
 
             if (!isAdded()) return;
+            final boolean finalValid = valid;
             mainHandler.post(() -> {
-                if (valid) {
-                    enableEngine();
-                } else {
-                    disableEngine();
-                    Toast.makeText(requireContext(),
-                            "API connection failed. Please check your settings.",
-                            Toast.LENGTH_LONG).show();
+                // Enable engine (this also hides gate)
+                enableEngine();
+
+                if (!finalValid) {
+                    // Show error bubble in chat for invalid API key
+                    chatMessages.add(AgentMessage.assistantError(
+                            getString(R.string.agent_error_api_connection_failed), false));
+                    adapter.submitList(new ArrayList<>(chatMessages));
+                    showEmptyState(false);
                 }
             });
         });
@@ -408,6 +436,11 @@ public class AgentFragment extends Fragment {
                     demoPlayer.reset();
                 }
                 showEmptyState(true);
+            }
+        });
+        adapter.setRetryListener(() -> {
+            if (agentController != null) {
+                agentController.regeneratePlan();
             }
         });
         messagesList.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -572,7 +605,7 @@ public class AgentFragment extends Fragment {
      */
     public void onSettingsDismissed() {
         updateConnectionPill();
-        verifyRunning = false;
+        verifyRunning.set(false);
         refreshEngineState();
     }
 
@@ -730,41 +763,32 @@ public class AgentFragment extends Fragment {
             @Override
             public void onError(@NonNull String message) {
                 if (!isAdded()) return;
+
+                boolean canRetry;
+                String displayText;
+
                 if (message.contains("SSH not connected")
                         || message.contains("SSH auto-connect")
                         || message.contains("SSH profile")) {
-                    chatMessages.add(AgentMessage.assistant(
-                            "⚠️ " + message + "\n\n"
-                            + "Go to Terminal tab → connect to a host → come back here."));
-                    adapter.submitList(new ArrayList<>(chatMessages));
-                    messagesList.post(() -> {
-                        if (adapter.getItemCount() > 0) {
-                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                        }
-                    });
+                    displayText = getString(R.string.agent_error_ssh_not_connected, message);
+                    canRetry = false;  // SSH not connected, retry is meaningless
                 } else if (message.contains("HID device not connected")) {
-                    chatMessages.add(AgentMessage.assistant(
-                            "⚠️ " + message + "\n\n"
-                            + "Connect via USB or Bluetooth to use HID/Macro features."));
-                    adapter.submitList(new ArrayList<>(chatMessages));
-                    messagesList.post(() -> {
-                        if (adapter.getItemCount() > 0) {
-                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                        }
-                    });
+                    displayText = getString(R.string.agent_error_hid_not_connected, message);
+                    canRetry = false;  // HID not connected, retry is meaningless
                 } else if (message.contains("Macro not found")) {
-                    chatMessages.add(AgentMessage.assistant(
-                            "⚠️ " + message + "\n\n"
-                            + "Available macros: " + getAvailableMacroNames()));
-                    adapter.submitList(new ArrayList<>(chatMessages));
-                    messagesList.post(() -> {
-                        if (adapter.getItemCount() > 0) {
-                            messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                        }
-                    });
+                    displayText = getString(R.string.agent_error_macro_not_found,
+                            message, getAvailableMacroNames());
+                    canRetry = false;  // Macro doesn't exist, retry is meaningless
                 } else {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                    // LLM call failure, plan parse failure, step timeout, etc. → retryable
+                    displayText = "⚠️ " + message;
+                    canRetry = true;
                 }
+
+                chatMessages.add(AgentMessage.assistantError(displayText, canRetry));
+                adapter.submitList(new ArrayList<>(chatMessages));
+                scrollToBottom();
+
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
                 executionJustCompleted = false;
@@ -776,11 +800,7 @@ public class AgentFragment extends Fragment {
                 chatMessages.add(AgentMessage.assistant(
                         "⚠️ Plan truncated to " + maxSteps + " steps (exceeds limit)."));
                 adapter.submitList(new ArrayList<>(chatMessages));
-                messagesList.post(() -> {
-                    if (adapter.getItemCount() > 0) {
-                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                    }
-                });
+                scrollToBottom();
             }
 
             @Override
@@ -794,15 +814,12 @@ public class AgentFragment extends Fragment {
                 // AND notify the RecyclerView in one step — prevents stale-data bugs
                 // where the EXECUTION_CLI card wouldn't render.
                 adapter.addItem(chatMessages.get(chatMessages.size() - 1));
-                messagesList.post(() -> {
-                    if (adapter.getItemCount() > 0) {
-                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                    }
-                });
+                scrollToBottom();
             }
 
             @Override
-            public void onStepOutput(int stepIndex, @NonNull List<String> lines, boolean isComplete) {
+            public void onStepOutput(int stepIndex, @NonNull List<String> lines,
+                                      boolean isComplete, @Nullable Boolean success) {
                 if (!isAdded()) return;
                 // Find the existing Running CLI card and update it with output,
                 // instead of adding a duplicate card.
@@ -810,7 +827,7 @@ public class AgentFragment extends Fragment {
                 for (int i = chatMessages.size() - 1; i >= 0; i--) {
                     if (chatMessages.get(i).type == AgentMessage.Type.EXECUTION_CLI) {
                         AgentMessage msg = isComplete
-                                ? AgentMessage.executionCliComplete(lines)
+                                ? AgentMessage.executionCliComplete(lines, success != null ? success : true)
                                 : AgentMessage.executionCli(lines);
                         chatMessages.set(i, msg);
                         // Use adapter.setItem() to sync internal data AND rebind.
@@ -822,16 +839,12 @@ public class AgentFragment extends Fragment {
                 if (!updated) {
                     // Fallback: no Running card found, add new one
                     AgentMessage msg = isComplete
-                            ? AgentMessage.executionCliComplete(lines)
+                            ? AgentMessage.executionCliComplete(lines, success != null ? success : true)
                             : AgentMessage.executionCli(lines);
                     chatMessages.add(msg);
                     adapter.addItem(msg);
                 }
-                messagesList.post(() -> {
-                    if (adapter.getItemCount() > 0) {
-                        messagesList.scrollToPosition(adapter.getItemCount() - 1);
-                    }
-                });
+                scrollToBottom();
             }
 
             @Override
@@ -896,6 +909,43 @@ public class AgentFragment extends Fragment {
         String prompt = inputField.getText().toString().trim();
         if (prompt.isEmpty()) return;
 
+        // Check if at least one execution mode is configured:
+        // - Terminal mode: requires an active SSH profile
+        // - HID mode: requires a target OS to be explicitly set
+        if (!isExecutionModeConfigured()) {
+            // Show the chat list (in case it was hidden by empty state)
+            showEmptyState(false);
+
+            // Build error message with inline terminal icon
+            String placeholder = "[]";
+            String template = "⚠️ No target configured.\n\n"
+                    + "Tap the target icon " + placeholder + " in the top bar to set up:\n"
+                    + "• Target OS for HID mode\n"
+                    + "• Or connect an SSH host in Terminal tab";
+
+            android.graphics.drawable.Drawable icon = getResources()
+                    .getDrawable(R.drawable.ic_terminal, requireContext().getTheme());
+            int iconSize = (int) (16 * getResources().getDisplayMetrics().density);
+            icon.setBounds(0, 0, iconSize, iconSize);
+            icon.setTintList(android.content.res.ColorStateList.valueOf(
+                    getResources().getColor(R.color.text_primary, requireContext().getTheme())));
+
+            android.text.SpannableString spannable = new android.text.SpannableString(template);
+            int start = template.indexOf(placeholder);
+            spannable.setSpan(new android.text.style.ImageSpan(icon),
+                    start, start + placeholder.length(),
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            chatMessages.add(AgentMessage.assistantError(spannable, false));
+            adapter.submitList(new ArrayList<>(chatMessages));
+            messagesList.post(() -> {
+                if (adapter.getItemCount() > 0) {
+                    messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                }
+            });
+            return;
+        }
+
         // Reset summary state
         summaryContent.setLength(0);
         summaryStarted = false;
@@ -919,6 +969,35 @@ public class AgentFragment extends Fragment {
         });
 
         agentController.submit(prompt);
+    }
+
+    /**
+     * Check if at least one execution mode is properly configured.
+     * - Terminal mode: requires an active SSH profile
+     * - HID mode: requires a target OS to be explicitly set in agent_prefs
+     */
+    private boolean isExecutionModeConfigured() {
+        if (!isAdded()) return false;
+
+        // Check for active SSH profile
+        if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
+            com.openterface.keymod.MainActivity mainActivity =
+                    (com.openterface.keymod.MainActivity) requireActivity();
+            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+            if (profile != null) {
+                return true;  // Terminal mode is configured
+            }
+        }
+
+        // Check for explicitly configured target OS (HID mode)
+        String agentOs = requireContext()
+                .getSharedPreferences("agent_prefs", android.content.Context.MODE_PRIVATE)
+                .getString("agent_target_os", "");
+        if (agentOs != null && !agentOs.isEmpty()) {
+            return true;  // HID mode is configured
+        }
+
+        return false;
     }
 
     /**
@@ -1219,6 +1298,20 @@ public class AgentFragment extends Fragment {
         }
     }
 
+    /**
+     * Scroll the messages list to the bottom.
+     * Use after adding/updating messages to ensure the latest content is visible.
+     */
+    private void scrollToBottom() {
+        if (messagesList != null && adapter != null && adapter.getItemCount() > 0) {
+            messagesList.post(() -> {
+                if (adapter.getItemCount() > 0) {
+                    messagesList.scrollToPosition(adapter.getItemCount() - 1);
+                }
+            });
+        }
+    }
+
     // ── Suggested Prompts (6 hardcoded FAQs, aligned with iOS) ──────
 
     private static final int[][] FAQS = {
@@ -1295,9 +1388,11 @@ public class AgentFragment extends Fragment {
         super.onDestroy();
         if (agentController != null) {
             agentController.shutdown();
+            agentController = null;
         }
         if (verifyExecutor != null) {
             verifyExecutor.shutdownNow();
+            verifyExecutor = null;
         }
     }
 }
