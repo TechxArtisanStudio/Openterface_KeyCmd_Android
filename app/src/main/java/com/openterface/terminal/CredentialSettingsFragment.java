@@ -319,6 +319,7 @@ public class CredentialSettingsFragment extends Fragment {
                 authTypeSpinner.setSelection(0);
             }
         } else {
+            hostInput.setText(CredentialManager.DEFAULT_KEYCMD_HOST);
             portInput.setText("22");
             authTypeSpinner.setSelection(0);
         }
@@ -1226,6 +1227,14 @@ public class CredentialSettingsFragment extends Fragment {
             holder.activeRadio.setChecked(profile.isActive());
             holder.activeRadio.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
+                    credentialManager.setActiveProfileId(profile.getId());
+                    refreshList();
+                }
+            });
+
+            // Row click → activate this profile
+            holder.itemView.setOnClickListener(v -> {
+                if (!profile.isActive()) {
                     credentialManager.setActiveProfileId(profile.getId());
                     refreshList();
                 }

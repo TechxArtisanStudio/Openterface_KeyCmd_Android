@@ -29,7 +29,7 @@ public class CredentialManager {
     private static final String PREFS_NAME = "credentials_prefs";
     private static final String KEY_PROFILES = "profiles";
     private static final String KEY_ACTIVE_ID = "active_profile_id";
-    public static final String DEFAULT_KEYCMD_HOST = "192.168.12.1";
+    public static final String DEFAULT_KEYCMD_HOST = "192.168.11.2";
 
     private SharedPreferences prefs;
     private final Gson gson;
@@ -239,6 +239,7 @@ public class CredentialManager {
         // Only migrate if there's meaningful data
         if ((host != null && !host.isEmpty()
                     && !"192.168.11.1".equals(host)
+                    && !"192.168.12.1".equals(host)
                     && !DEFAULT_KEYCMD_HOST.equals(host))
                 || (pass != null && !pass.isEmpty())) {
             CredentialProfile migrated = new CredentialProfile();
