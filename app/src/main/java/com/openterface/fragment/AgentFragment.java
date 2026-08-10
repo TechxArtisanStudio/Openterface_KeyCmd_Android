@@ -437,6 +437,13 @@ public class AgentFragment extends Fragment {
                 }
                 showEmptyState(true);
             }
+
+            @Override
+            public void onReexecute() {
+                if (realEngineEnabled && agentController != null) {
+                    agentController.reexecutePlan();
+                }
+            }
         });
         adapter.setRetryListener(() -> {
             if (agentController != null) {

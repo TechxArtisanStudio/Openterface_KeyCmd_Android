@@ -190,6 +190,12 @@ public final class AgentMessage {
         return new AgentMessage(Type.THINKING, text, emptySteps(), emptyLines(), emptyLines(), 0, 0, null);
     }
 
+    /** Create an error message with optional retry capability. */
+    @NonNull
+    public static AgentMessage error(@NonNull String text, boolean canRetry) {
+        return assistantError(text, canRetry);
+    }
+
     @NonNull
     private static List<AgentPlanStep> emptySteps() {
         return Collections.emptyList();

@@ -27,6 +27,9 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         void onEditPlan();
 
         void onCancel();
+
+        /** Called when the user long-presses the act bar to re-execute the current plan. */
+        void onReexecute();
     }
 
     public interface RetryListener {
@@ -215,7 +218,6 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
             super(itemView);
             this.isUser = user;
             textView = itemView.findViewById(user ? R.id.agent_user_text : R.id.agent_assistant_text);
-
             if (user) {
                 errorIcon = null;
                 retryButton = null;
@@ -229,6 +231,10 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
         void bind(@Nullable CharSequence text) {
             textView.setText(text);
+            // Hide retry button by default for plain text binds
+            if (retryButton != null) {
+                retryButton.setVisibility(View.GONE);
+            }
         }
 
         /** Bind with full message state — sets error background, icon visibility, retry button. */
@@ -345,6 +351,14 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                 if (listener != null) {
                     listener.onCancel();
                 }
+            });
+            // Long-press anywhere on the act bar to re-execute the current plan
+            itemView.setOnLongClickListener(v -> {
+                if (listener != null) {
+                    listener.onReexecute();
+                    return true;
+                }
+                return false;
             });
         }
     }

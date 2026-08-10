@@ -86,6 +86,7 @@ public final class AgentController {
 
     private int maxSteps = 10;
     private int maxRetries = 3;
+    private int planRetryCount = 0;  // LLM-level retry count (vs step-level localRetries)
     private String customTerminalPrompt = "";
     private String customHidPrompt = "";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -207,6 +208,7 @@ public final class AgentController {
 
         // Reset cancel flag for new submission
         cancelFlag.set(false);
+        planRetryCount = 0;
 
         // Reload settings to pick up any changes from AgentSettingsBottomSheet
         loadSettings();
@@ -240,6 +242,28 @@ public final class AgentController {
     }
 
     /**
+     * Re-execute the current plan from the beginning.
+     * Only valid in {@link AgentState#WAITING_APPROVE} state (plan generated, not yet running).
+     * Resets step index and retry counter, then starts execution.
+     */
+    public void reexecutePlan() {
+        if (state != AgentState.WAITING_APPROVE || currentPlan == null) {
+            Log.w(TAG, "reexecutePlan() called in state " + state + ", ignoring");
+            return;
+        }
+
+        // Reset execution state
+        currentStepIndex = 0;
+        planRetryCount = 0;
+        cancelFlag.set(false);
+
+        session.addAssistantMessage("🔄 Re-executing plan: " + currentPlan.summary);
+
+        transitionTo(AgentState.EXECUTING);
+        runningTask = executor.submit(this::executePlan);
+    }
+
+    /**
      * Cancel the current operation from any state.
      * Transitions: any → IDLE
      */
@@ -256,6 +280,7 @@ public final class AgentController {
         }
         currentPlan = null;
         currentStepIndex = 0;
+        planRetryCount = 0;
         transitionTo(AgentState.IDLE);
     }
 
@@ -500,6 +525,12 @@ public final class AgentController {
             return;
         }
 
+        // HID mode: no LLM retry (no output to inform alternatives)
+        boolean isHidMode = "hid".equals(promptBuilder.getExecutionMode());
+
+        // Collect failed steps for potential LLM retry at the end
+        List<String[]> failedSteps = new ArrayList<>();
+
         for (int i = currentStepIndex; i < currentPlan.steps.size(); i++) {
             currentStepIndex = i;
             final int stepIndex = i;
@@ -508,134 +539,122 @@ public final class AgentController {
             // Report progress
             postToMain(() -> notifyProgress(stepIndex, currentPlan.steps.size()));
 
-            // Execute with retry loop
-            // HID mode: no retry (no output to inform LLM alternatives)
-            boolean isHidMode = "hid".equals(promptBuilder.getExecutionMode());
-            int effectiveMaxRetries = isHidMode ? 0 : maxRetries;
+            // Use CountDownLatch instead of busy-wait
+            final CountDownLatch latch = new CountDownLatch(1);
+            final String[] stepError = {null};
 
-            boolean stepSucceeded = false;
-            int localRetries = 0;
+            // Notify fragment to show Running state before execution starts
+            String displayCommand = "terminal".equals(step.kind)
+                    ? "$ " + (step.command != null ? step.command : step.title)
+                    : " " + step.title;
+            postToMain(() -> notifyStepStart(stepIndex, displayCommand));
 
-            while (!stepSucceeded && localRetries <= effectiveMaxRetries) {
-                if (localRetries > 0) {
-                    Log.w(TAG, "Retrying step " + stepIndex
-                            + " (" + localRetries + "/" + effectiveMaxRetries + ")");
-                    transitionTo(AgentState.RETRYING);
-                    final int attempt = localRetries;
-                    postToMain(() -> notifyRetry(attempt, effectiveMaxRetries));
-                    transitionTo(AgentState.EXECUTING);
+            // Brief pause on background thread — gives the main thread time
+            // to process notifyStepStart and render the "Running…" card
+            // before the SSH command completes and fires notifyStepOutput.
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
+            toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
+                @Override
+                public void onSuccess(@NonNull String output) {
+                    // Build display lines based on step kind
+                    List<String> lines = new ArrayList<>();
+                    if ("terminal".equals(step.kind)) {
+                        // Terminal: show "$ command" + output
+                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                    } else {
+                        // HID / Macro: show "🔑 title" + output
+                        lines.add("🔑 " + step.title);
+                    }
+                    if (output != null && !output.isEmpty()) {
+                        for (String line : output.split("\n")) {
+                            lines.add(line);
+                        }
+                    }
+                    // Mark as complete so the UI shows "完成" instead of "Running…"
+                    // even when the command produced no output.
+                    session.addExecutionCliMessage(lines);
+                    postToMain(() -> notifyStepOutput(stepIndex, lines, true, true));
+                    latch.countDown();
                 }
 
-                // Use CountDownLatch instead of busy-wait
-                final CountDownLatch latch = new CountDownLatch(1);
-                final String[] stepError = {null};
+                @Override
+                public void onFailure(@NonNull String error) {
+                    List<String> lines = new ArrayList<>();
+                    if ("terminal".equals(step.kind)) {
+                        lines.add("$ " + (step.command != null ? step.command : step.title));
+                    } else {
+                        lines.add("🔑 " + step.title);
+                    }
+                    lines.add("Error: " + error);
+                    session.addExecutionCliMessage(lines);
+                    postToMain(() -> notifyStepOutput(stepIndex, lines, true, false));
+                    stepError[0] = error;
+                    latch.countDown();
+                }
 
-                // Notify fragment to show Running state before execution starts
-                String displayCommand = "terminal".equals(step.kind)
-                        ? "$ " + (step.command != null ? step.command : step.title)
-                        : " " + step.title;
-                postToMain(() -> notifyStepStart(stepIndex, displayCommand));
+                @Override
+                public void onProgress(int idx, int total) {
+                    postToMain(() -> notifyProgress(idx, total));
+                }
+            });
 
-                // Brief pause on background thread — gives the main thread time
-                // to process notifyStepStart and render the "Running…" card
-                // before the SSH command completes and fires notifyStepOutput.
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            // Elapsed-time progress: show "(waiting… Xs)" every 3s so user
+            // sees the card is alive during long commands.
+            final java.util.concurrent.ScheduledExecutorService progressScheduler =
+                    Executors.newSingleThreadScheduledExecutor();
+            final long[] elapsedSec = {0};
+            progressScheduler.scheduleAtFixedRate(() -> {
+                elapsedSec[0]++;
+                final List<String> progressLines = new ArrayList<>();
+                progressLines.add(displayCommand);
+                progressLines.add("(waiting... " + elapsedSec[0] + "s)");
+                postToMain(() -> notifyStepOutput(stepIndex, progressLines, false, null));
+            }, 3, 3, TimeUnit.SECONDS);
+
+            try {
+                boolean completed = latch.await(STEP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                progressScheduler.shutdownNow();
+                if (!completed) {
+                    stepError[0] = "Step timed out after " + STEP_TIMEOUT_SECONDS + "s";
+                    // Update CLI card to show timeout instead of stuck on "Running…"
+                    final List<String> timeoutLines = new ArrayList<>();
+                    timeoutLines.add(displayCommand);
+                    timeoutLines.add("⚠️ " + stepError[0]);
+                    postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true, false));
+                }
+            } catch (InterruptedException e) {
+                progressScheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+                return; // cancelled
+            }
+
+            if (stepError[0] != null) {
+                // Record this failure for potential LLM retry
+                String failedCommand = step.command != null ? step.command
+                        : (step.title != null ? step.title : "step " + (stepIndex + 1));
+                failedSteps.add(new String[]{failedCommand, stepError[0]});
+
+                // Check if we should do LLM-level retry (generate alternative commands)
+                // HID mode: no LLM retry (no output feedback available)
+                if (!isHidMode && planRetryCount < maxRetries) {
+                    // Break out of the step loop; caller will invoke LLM retry
+                    requestRetryPlan(failedSteps);
                     return;
                 }
 
-                toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
-                    @Override
-                    public void onSuccess(@NonNull String output) {
-                        // Build display lines based on step kind
-                        List<String> lines = new ArrayList<>();
-                        if ("terminal".equals(step.kind)) {
-                            // Terminal: show "$ command" + output
-                            lines.add("$ " + (step.command != null ? step.command : step.title));
-                        } else {
-                            // HID / Macro: show "🔑 title" + output
-                            lines.add("🔑 " + step.title);
-                        }
-                        if (output != null && !output.isEmpty()) {
-                            for (String line : output.split("\n")) {
-                                lines.add(line);
-                            }
-                        }
-                        // Mark as complete so the UI shows "完成" instead of "Running…"
-                        // even when the command produced no output.
-                        session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines, true, true));
-                        latch.countDown();
-                    }
-
-                    @Override
-                    public void onFailure(@NonNull String error) {
-                        List<String> lines = new ArrayList<>();
-                        if ("terminal".equals(step.kind)) {
-                            lines.add("$ " + (step.command != null ? step.command : step.title));
-                        } else {
-                            lines.add("🔑 " + step.title);
-                        }
-                        lines.add("Error: " + error);
-                        session.addExecutionCliMessage(lines);
-                        postToMain(() -> notifyStepOutput(stepIndex, lines, true, false));
-                        stepError[0] = error;
-                        latch.countDown();
-                    }
-
-                    @Override
-                    public void onProgress(int idx, int total) {
-                        postToMain(() -> notifyProgress(idx, total));
-                    }
-                });
-
-                // Elapsed-time progress: show "(waiting… Xs)" every 3s so user
-                // sees the card is alive during long commands.
-                final java.util.concurrent.ScheduledExecutorService progressScheduler =
-                        Executors.newSingleThreadScheduledExecutor();
-                final long[] elapsedSec = {0};
-                progressScheduler.scheduleAtFixedRate(() -> {
-                    elapsedSec[0]++;
-                    final List<String> progressLines = new ArrayList<>();
-                    progressLines.add(displayCommand);
-                    progressLines.add("(waiting... " + elapsedSec[0] + "s)");
-                    postToMain(() -> notifyStepOutput(stepIndex, progressLines, false, null));
-                }, 3, 3, TimeUnit.SECONDS);
-
-                try {
-                    boolean completed = latch.await(STEP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-                    progressScheduler.shutdownNow();
-                    if (!completed) {
-                        stepError[0] = "Step timed out after " + STEP_TIMEOUT_SECONDS + "s";
-                        // Update CLI card to show timeout instead of stuck on "Running…"
-                        final List<String> timeoutLines = new ArrayList<>();
-                        timeoutLines.add(displayCommand);
-                        timeoutLines.add("⚠️ " + stepError[0]);
-                        postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true, false));
-                    }
-                } catch (InterruptedException e) {
-                    progressScheduler.shutdownNow();
-                    Thread.currentThread().interrupt();
-                    return; // cancelled
-                }
-
-                if (stepError[0] == null) {
-                    stepSucceeded = true;
-                } else {
-                    localRetries++;
-                    if (localRetries > effectiveMaxRetries) {
-                        postError("Step " + (stepIndex + 1) + " failed after "
-                                + effectiveMaxRetries + " retries: " + stepError[0]);
-                        return;
-                    }
-                    // Retry: re-notify step start so the card shows "Running…" again
-                    postToMain(() -> notifyStepStart(stepIndex, displayCommand));
-                    try { Thread.sleep(500); } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); return;
-                    }
-                }
+                // No more retries allowed — report final failure
+                postError("Step " + (stepIndex + 1) + " failed"
+                        + (planRetryCount >= maxRetries
+                                ? " after " + maxRetries + " LLM retries"
+                                : "")
+                        + ": " + stepError[0]);
+                return;
             }
 
             // Step interval: 0.5s delay between steps (spec requirement)
@@ -653,6 +672,108 @@ public final class AgentController {
         // Fragment's onExecutionComplete will trigger summarize with a delay
         // measured from after the terminal card layout pass, not from here.
         postToMain(this::notifyExecutionComplete);
+    }
+
+    /**
+     * Request LLM to generate alternative commands after step failures.
+     * Called from executePlan() on the background thread when a step fails.
+     *
+     * <p>Uses {@link AgentPromptBuilder#buildRetryPrompt} (already implemented)
+     * to construct the retry prompt, then calls LLM synchronously. The returned
+     * plan replaces {@code currentPlan} and execution restarts from step 0.</p>
+     *
+     * @param failedSteps pairs of (command/description, error message)
+     */
+    private void requestRetryPlan(@NonNull List<String[]> failedSteps) {
+        planRetryCount++;
+        transitionTo(AgentState.RETRYING);
+
+        // Collect original user prompt from session
+        String originalPrompt = "";
+        for (AgentMessage msg : session.getMessages()) {
+            if (msg.type == AgentMessage.Type.USER) {
+                originalPrompt = msg.text != null ? msg.text.toString() : "";
+                break;
+            }
+        }
+
+        final String targetOS = getTargetOs();
+        final String terminalContext = promptBuilder.buildTerminalModeContext();
+        final String prompt = originalPrompt;
+
+        postToMain(() -> notifyRetry(planRetryCount, maxRetries));
+
+        // Submit LLM call on background executor
+        runningTask = executor.submit(() -> {
+            try {
+                // Check cancel before making LLM call
+                if (cancelFlag.get()) {
+                    Log.d(TAG, "Retry plan cancelled");
+                    return;
+                }
+
+                AIConfigProvider config = AIConfigProvider.getInstance(appContext);
+
+                // Local models don't support chatSync reliably — bail out
+                if (config.getEndpoint().startsWith("local://")) {
+                    postError("Local model does not support smart retry");
+                    return;
+                }
+
+                LlmHttpClient httpClient = new LlmHttpClient(
+                        config.getApiKey(), config.getEndpoint(), config.getAdapter(),
+                        LlmHttpClient.DEFAULT_CONNECT_TIMEOUT_MS, AGENT_READ_TIMEOUT_MS);
+
+                // Build retry request using existing prompt builder
+                String retryPrompt = promptBuilder.buildRetryPrompt(
+                        prompt, failedSteps, targetOS);
+                LlmRequest request = new LlmRequest(config.getModel());
+                request.addSystemMessage(terminalContext + "\n\n" + retryPrompt);
+                request.addUserMessage("Please provide alternative commands.");
+                request.temperature = 0.3;
+                request.maxTokens = 2048;
+
+                Log.i(TAG, "requestRetryPlan: calling LLM (attempt "
+                        + planRetryCount + "/" + maxRetries + ")");
+
+                // Synchronous call — retry doesn't need streaming UX
+                LlmResponse response = httpClient.chatSync(request, config.getAdapter());
+
+                if (cancelFlag.get()) {
+                    Log.d(TAG, "Retry plan cancelled during LLM call");
+                    return;
+                }
+
+                // Parse the response into a new plan
+                AgentPlan newPlan = planParser.parseFromResponse(response);
+
+                // Sanitize: inject terminal-launch HID step if in HID mode
+                if ("hid".equals(promptBuilder.getExecutionMode())) {
+                    newPlan = PlanSanitizer.sanitizeForHid(newPlan, targetOS);
+                }
+                if (newPlan.steps.size() > maxSteps) {
+                    newPlan = newPlan.truncateTo(maxSteps);
+                }
+
+                // Replace current plan and restart execution
+                currentPlan = newPlan;
+                currentStepIndex = 0;
+
+                session.addAssistantMessage("🔄 Retry " + planRetryCount + "/" + maxRetries
+                        + ": " + newPlan.summary);
+
+                transitionTo(AgentState.EXECUTING);
+                executePlan();
+
+            } catch (AgentPlanParser.PlanParseException e) {
+                Log.e(TAG, "Retry plan parse failed", e);
+                postError("Retry failed: could not parse LLM response");
+            } catch (Exception e) {
+                Log.e(TAG, "Retry plan generation failed", e);
+                postError("Retry failed: " + (e.getMessage() != null
+                        ? e.getMessage() : "unknown error"));
+            }
+        });
     }
 
     /**
@@ -859,8 +980,13 @@ public final class AgentController {
     /**
      * Post an error — transitions to ERROR state and notifies listener.
      * Ensures onStateChanged fires BEFORE onError.
+     * Also adds an error message to the session so the UI can show a
+     * retry-able error bubble (see AgentMessage.error).
      */
     private void postError(@NonNull String message) {
+        // Add error message to session (marked retryable)
+        session.addMessage(AgentMessage.error("⚠️ " + message, true));
+
         postToMain(() -> {
             transitionTo(AgentState.ERROR);
             notifyError(message);
