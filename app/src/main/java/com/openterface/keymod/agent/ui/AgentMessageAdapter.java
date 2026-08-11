@@ -349,10 +349,15 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
             // HID mode badge
             hidBadge.setVisibility(message.isHidMode ? View.VISIBLE : View.GONE);
 
-            // HID mode: orange border via stroke
-            if (message.isHidMode && itemView instanceof com.google.android.material.card.MaterialCardView) {
-                ((com.google.android.material.card.MaterialCardView) itemView)
-                        .setStrokeColor(0xFFFF9500);
+            // HID mode: orange border via stroke; reset to default indigo otherwise
+            if (itemView instanceof com.google.android.material.card.MaterialCardView) {
+                if (message.isHidMode) {
+                    ((com.google.android.material.card.MaterialCardView) itemView)
+                            .setStrokeColor(0xFFFF9500);
+                } else {
+                    ((com.google.android.material.card.MaterialCardView) itemView)
+                            .setStrokeColor(0xFF5C6BC0);  // @color/color_agent
+                }
             }
 
             container.removeAllViews();
