@@ -71,6 +71,9 @@ public final class AgentController {
     @Nullable private volatile AgentPlan currentPlan;
     private int currentStepIndex = 0;
     @Nullable private Future<?> runningTask;
+    /** Steps from the original plan that were not yet executed when retry was triggered.
+     *  After retry plan completes, these are appended and executed before summarizing. */
+    @Nullable private List<AgentPlan.Step> pendingStepsAfterRetry;
 
     // ── OS Auto-detection ────────────────────────────────────────────────
 
@@ -214,6 +217,7 @@ public final class AgentController {
         // Reset cancel flag for new submission
         cancelFlag.set(false);
         planRetryCount = 0;
+        pendingStepsAfterRetry = null;
 
         // Reload settings to pick up any changes from AgentSettingsBottomSheet
         loadSettings();
@@ -286,6 +290,7 @@ public final class AgentController {
         currentPlan = null;
         currentStepIndex = 0;
         planRetryCount = 0;
+        pendingStepsAfterRetry = null;
         transitionTo(AgentState.IDLE);
     }
 
@@ -673,6 +678,17 @@ public final class AgentController {
                 // Check if we should do LLM-level retry (generate alternative commands)
                 // HID mode: no LLM retry (no output feedback available)
                 if (!isHidMode && planRetryCount < maxRetries) {
+                    // Save remaining unexecuted steps before retry replaces the plan.
+                    // After retry plan completes, these will be appended and executed.
+                    List<AgentPlan.Step> remaining = new ArrayList<>();
+                    for (int j = i + 1; j < currentPlan.steps.size(); j++) {
+                        remaining.add(currentPlan.steps.get(j));
+                    }
+                    if (!remaining.isEmpty()) {
+                        pendingStepsAfterRetry = remaining;
+                        Log.i(TAG, "Saved " + remaining.size()
+                                + " remaining steps for post-retry execution");
+                    }
                     // Break out of the step loop; caller will invoke LLM retry
                     requestRetryPlan(failedSteps);
                     return;
@@ -696,6 +712,25 @@ public final class AgentController {
                     return;
                 }
             }
+        }
+
+        // All steps in current plan completed. Check if there are pending steps
+        // saved from a pre-retry original plan that still need execution.
+        if (pendingStepsAfterRetry != null && !pendingStepsAfterRetry.isEmpty()) {
+            List<AgentPlan.Step> pending = pendingStepsAfterRetry;
+            pendingStepsAfterRetry = null;
+            int resumeFrom = currentPlan.steps.size();
+            currentPlan.steps.addAll(pending);
+            currentStepIndex = resumeFrom;
+            Log.i(TAG, "Continuing with " + pending.size()
+                    + " remaining steps from original plan (total now: "
+                    + currentPlan.steps.size() + ")");
+            // Re-enter the step loop to execute the appended steps.
+            // Using a recursive-style call would lose the local variables,
+            // so we use goto-style label for clarity.
+            // Instead, just re-run executePlan() which will pick up from currentStepIndex.
+            executePlan();
+            return;
         }
 
         // All steps completed — notify completion.
@@ -819,6 +854,15 @@ public final class AgentController {
     /**
      * Summarize execution results via LLM with streaming.
      * Runs on background thread. Streams tokens to Fragment for per-char display.
+     *
+     * <p>Multi-layer defense for small models:
+     * <ol>
+     *   <li>Cap total data at ~3000 chars to fit small model context windows</li>
+     *   <li>maxTokens = 1024 for concise summary</li>
+     *   <li>If LLM returns empty → chatSync fallback</li>
+     *   <li>If chatSync also empty → client-side summary with explanation</li>
+     *   <li>If error → client-side summary (no raw error message)</li>
+     * </ol>
      */
     private void summarize() {
         // Read AI settings from unified config provider
@@ -837,29 +881,66 @@ public final class AgentController {
         CharSequence firstMsgText = session.getMessages().isEmpty() ? null
                 : session.getMessages().get(0).text;
         String originalPrompt = firstMsgText != null ? firstMsgText.toString() : "";
+        // Collect execution results for summarization.
         List<String[]> results = new ArrayList<>();
         for (AgentMessage msg : session.getMessages()) {
             if (msg.type == AgentMessage.Type.EXECUTION_CLI && !msg.terminalLines.isEmpty()) {
                 String cmd = msg.terminalLines.get(0);
-                String output = msg.terminalLines.size() > 1
-                        ? msg.terminalLines.get(1) : "";
-                results.add(new String[]{cmd, output});
+                StringBuilder output = new StringBuilder();
+                for (int i = 1; i < msg.terminalLines.size(); i++) {
+                    if (i > 1) output.append('\n');
+                    output.append(msg.terminalLines.get(i));
+                }
+                results.add(new String[]{cmd, output.toString()});
             }
         }
 
+        // Cap total data for small models.
+        // Each command capped at 800 chars, total capped at 3000 chars.
+        // This ensures small models (e.g., Qwen2.5-3B, Phi-3) can handle the prompt.
+        final int MAX_PER_COMMAND = 800;
+        final int MAX_TOTAL = 3000;
+        List<String[]> cappedResults = new ArrayList<>();
+        int totalChars = 0;
+        boolean wasTruncated = false;
+        for (String[] pair : results) {
+            String output = pair[1];
+            if (totalChars >= MAX_TOTAL) {
+                wasTruncated = true;
+                break;
+            }
+            if (output.length() > MAX_PER_COMMAND) {
+                output = output.substring(0, MAX_PER_COMMAND)
+                        + "\n... (" + (output.length() - MAX_PER_COMMAND) + " chars truncated)";
+                wasTruncated = true;
+            }
+            int remaining = MAX_TOTAL - totalChars;
+            if (output.length() > remaining) {
+                output = output.substring(0, remaining) + "\n... (truncated)";
+                wasTruncated = true;
+            }
+            cappedResults.add(new String[]{pair[0], output});
+            totalChars += output.length() + pair[0].length() + 10;
+        }
+
+        if (wasTruncated) {
+            Log.i(TAG, "summarize: data capped to " + totalChars + " chars for small model");
+        }
+
         String summarizePrompt = promptBuilder.buildSummarizePrompt(
-                originalPrompt, results);
+                originalPrompt, cappedResults);
         LlmRequest request = new LlmRequest(model);
         request.addSystemMessage(summarizePrompt);
-        request.addUserMessage("Summarize the results.");
+        request.addUserMessage("Summarize the results concisely.");
         request.temperature = 0.3;
         request.maxTokens = 1024;
 
-        Log.i(TAG, "summarize: calling LLM (streaming)...");
+        Log.i(TAG, "summarize: calling LLM, results=" + cappedResults.size()
+                + ", totalChars=" + totalChars);
 
         // For HID mode: no output to summarize, skip LLM call
         final boolean isHidModeFinal = "hid".equals(promptBuilder.getExecutionMode());
-        if (isHidModeFinal || results.isEmpty()) {
+        if (isHidModeFinal || cappedResults.isEmpty()) {
             final int totalSteps = currentPlan != null ? currentPlan.steps.size() : 0;
             postToMain(() -> {
                 notifySummaryToken("✅ Completed " + totalSteps + " step(s).");
@@ -869,6 +950,10 @@ public final class AgentController {
             });
             return;
         }
+
+        // Store for client-side fallback
+        final List<String[]> finalResults = cappedResults;
+        final boolean finalWasTruncated = wasTruncated;
 
         httpClient.chatStream(request, adapter, new LlmResult() {
             @Override
@@ -882,31 +967,41 @@ public final class AgentController {
             public void onComplete(@NonNull LlmResponse fullResponse) {
                 Log.i(TAG, "summarize: stream complete, length=" + fullResponse.content.length());
 
-                // Same fallback as generatePlan: if streaming returned suspiciously
-                // short content (Ollama/Qwen with stream:true), retry with chatSync().
+                // If streaming returned empty/too-short content, try chatSync
                 if (fullResponse.content.length() < 20) {
-                    Log.w(TAG, "summarize: streaming content too short ("
-                            + fullResponse.content.length() + " chars), "
-                            + "falling back to chatSync()...");
+                    Log.w(TAG, "summarize: streaming returned " + fullResponse.content.length()
+                            + " chars, trying chatSync fallback...");
                     try {
                         LlmResponse syncResponse = httpClient.chatSync(request, adapter);
-                        Log.i(TAG, "summarize: chatSync fallback, length="
-                                + syncResponse.content.length());
-                        session.addAssistantMessage(syncResponse.content);
-                        // Reset Fragment's summary buffer state before delivering full content,
-                        // because earlier streaming onChunk calls may have set summaryDelayScheduled=true
-                        // which would cause appendSummaryToken to drop the full response.
-                        postToMain(() -> {
-                            notifySummaryReset();
-                            notifySummaryToken(syncResponse.content);
-                            notifySummaryComplete();
-                            transitionTo(AgentState.IDLE);
-                        });
+                        Log.i(TAG, "summarize: chatSync returned " + syncResponse.content.length()
+                                + " chars");
+
+                        if (syncResponse.content.length() < 20) {
+                            // Both methods returned empty — use client-side fallback
+                            String fallback = buildClientSideFallback(finalResults, finalWasTruncated);
+                            session.addAssistantMessage(fallback);
+                            postToMain(() -> {
+                                notifySummaryReset();
+                                notifySummaryToken(fallback);
+                                notifySummaryComplete();
+                                transitionTo(AgentState.IDLE);
+                            });
+                        } else {
+                            session.addAssistantMessage(syncResponse.content);
+                            postToMain(() -> {
+                                notifySummaryReset();
+                                notifySummaryToken(syncResponse.content);
+                                notifySummaryComplete();
+                                transitionTo(AgentState.IDLE);
+                            });
+                        }
                     } catch (Exception syncErr) {
-                        Log.e(TAG, "summarize: chatSync fallback also failed", syncErr);
+                        Log.e(TAG, "summarize: chatSync also failed", syncErr);
+                        String fallback = buildClientSideFallback(finalResults, finalWasTruncated);
+                        session.addAssistantMessage(fallback);
                         postToMain(() -> {
                             notifySummaryReset();
-                            notifySummaryToken("️ Summarize failed: " + syncErr.getMessage());
+                            notifySummaryToken(fallback);
                             notifySummaryComplete();
                             transitionTo(AgentState.IDLE);
                         });
@@ -924,14 +1019,89 @@ public final class AgentController {
             @Override
             public void onError(@NonNull Exception e) {
                 if (cancelFlag.get()) return;
-                Log.e(TAG, "summarize: error", e);
+                Log.e(TAG, "summarize: LLM error", e);
+                // Use client-side fallback instead of raw error
+                String fallback = buildClientSideFallback(finalResults, finalWasTruncated);
+                session.addAssistantMessage(fallback);
                 postToMain(() -> {
-                    notifySummaryToken("Failed to summarize: " + e.getMessage());
+                    notifySummaryReset();
+                    notifySummaryToken(fallback);
                     notifySummaryComplete();
                     transitionTo(AgentState.IDLE);
                 });
             }
         }, cancelFlag);
+    }
+
+    /**
+     * Build a client-side fallback summary when LLM returns empty or fails.
+     *
+     * <p>Includes:
+     * <ul>
+     *   <li>Explanation of why LLM summary is unavailable</li>
+     *   <li>List of executed commands with first 2 lines of output</li>
+     *   <li>Success/failure counts</li>
+     * </ul>
+     */
+    @NonNull
+    private String buildClientSideFallback(@NonNull List<String[]> results, boolean wasTruncated) {
+        StringBuilder sb = new StringBuilder();
+
+        // Explanation header
+        sb.append("⚠️ **Summary unavailable**\n\n");
+        sb.append("The AI model returned an empty response. This usually happens when:\n");
+        sb.append("- Too many commands were executed (large output)\n");
+        sb.append("- The model's context window was exceeded\n");
+        sb.append("- Temporary model service issue\n\n");
+
+        if (wasTruncated) {
+            sb.append("_Note: Output was truncated to fit model limits._\n\n");
+        }
+
+        // Command list
+        sb.append("**Executed commands:**\n\n");
+
+        int successCount = 0;
+        int failureCount = 0;
+
+        for (int i = 0; i < results.size(); i++) {
+            String cmd = results.get(i)[0];
+            String output = results.get(i)[1];
+
+            boolean isError = output.startsWith("Error:")
+                    || output.contains("Exec failed")
+                    || output.contains("session is down")
+                    || output.contains("not captured in HID mode");
+
+            if (isError) failureCount++;
+            else successCount++;
+
+            String cmdName = cmd.startsWith("$ ") ? cmd.substring(2) : cmd;
+            sb.append("**").append(i + 1).append(". ").append(cmdName).append("**");
+            sb.append(isError ? " " : " ✅").append("\n");
+
+            if (!output.isEmpty()) {
+                String[] lines = output.split("\n", 3);
+                for (String line : lines) {
+                    sb.append("> ").append(line).append("\n");
+                }
+                if (lines.length >= 3) {
+                    sb.append("> ...\n");
+                }
+            }
+            sb.append("\n");
+        }
+
+        // Footer
+        sb.append("---\n");
+        sb.append("**Total**: ").append(results.size()).append(" command(s) — ");
+        sb.append(successCount).append(" succeeded");
+        if (failureCount > 0) {
+            sb.append(", ").append(failureCount).append(" failed");
+        }
+        sb.append(".\n");
+
+        return sb.toString();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
