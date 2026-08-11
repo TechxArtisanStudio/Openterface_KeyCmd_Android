@@ -113,34 +113,15 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
             BottomSheetDialog bsd = (BottomSheetDialog) d;
             BottomSheetBehavior<?> behavior = bsd.getBehavior();
 
-            // ─ Portrait: expose only the header icon row behind the sheet ──
-            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-            boolean isPortrait = dm.heightPixels > dm.widthPixels;
-            if (isPortrait) {
-                // Measure the header's bottom edge on screen so the sheet
-                // starts right below the settings-icon row.
-                View headerView = requireActivity().findViewById(R.id.header_layout);
-                int peekHeight;
-                if (headerView != null) {
-                    int[] loc = new int[2];
-                    headerView.getLocationOnScreen(loc);
-                    int headerBottom = loc[1] + headerView.getHeight();
-                    peekHeight = dm.heightPixels - headerBottom;
-                } else {
-                    // Fallback: leave roughly the top ~60dp (header) visible
-                    peekHeight = dm.heightPixels - (int) (60 * dm.density);
-                }
-                behavior.setPeekHeight(peekHeight);
-                behavior.setSkipCollapsed(false);
-                behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
-            } else {
-                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                behavior.setSkipCollapsed(true);
-            }
+            // ─ Open directly in EXPANDED state — no intermediate COLLAPSED step ──
+            // User can interact with settings immediately; swipe down to dismiss.
+            // (Matches TargetSettingsSheet behavior.)
+            behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            behavior.setSkipCollapsed(true);
             behavior.setHideable(true);
 
             // ─ Rounded top corners (16dp) via ViewOutlineProvider ──
-            float density = dm.density;
+            float density = getResources().getDisplayMetrics().density;
             View bottomSheet = bsd.findViewById(com.google.android.material.R.id.design_bottom_sheet);
             if (bottomSheet != null) {
                 final float cornerRadius = 16 * density;

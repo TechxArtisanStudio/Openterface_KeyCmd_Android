@@ -50,6 +50,8 @@ import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.settings.AIConfigProvider;
 import com.openterface.keymod.agent.settings.AIProvider;
+import com.openterface.terminal.CredentialManager;
+import com.openterface.terminal.CredentialProfile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +99,8 @@ public class AgentFragment extends Fragment {
     @Nullable private ExecutorService verifyExecutor;
     private final AtomicBoolean verifyRunning = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    /** Hash of last verified config to avoid redundant API tests */
+    @Nullable private String lastVerifiedConfigHash;
 
     @NonNull
     public static AgentFragment newInstance(
@@ -145,10 +149,14 @@ public class AgentFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Restore persisted Agent SSH profile so it survives app restart
+        restoreAgentSshProfile();
         // Re-check API config when returning from settings
         refreshEngineState();
         // Refresh connection pill to reflect current AI Provider selection
         updateConnectionPill();
+        // Update session bar to reflect restored target
+        updateSessionBar();
         // Update executor connections (user may have connected/disconnected)
         updateTerminalExecutorSshClient();
         updateHidExecutorConnection();
@@ -248,14 +256,26 @@ public class AgentFragment extends Fragment {
             // No API key at all → show gate
             verifyRunning.set(false);
             disableEngine();
+            lastVerifiedConfigHash = null;
             return;
         }
 
+        // Compute config hash to check if we need to re-verify
+        String currentConfigHash = computeConfigHash();
+        boolean configChanged = !currentConfigHash.equals(lastVerifiedConfigHash);
+
         // API key is configured — hide gate and show chat interface
-        // (verification happens async, but we show the UI immediately)
         showGate(false);
         if (demoPickerScroll != null) {
             demoPickerScroll.setVisibility(View.GONE);
+        }
+
+        // Only run API test if config changed or first time
+        if (!configChanged && realEngineEnabled) {
+            // Config unchanged and engine already enabled — skip verification
+            verifyRunning.set(false);
+            Log.d(TAG, "refreshEngineState: config unchanged, skipping API test");
+            return;
         }
 
         // Verify API key works
@@ -281,6 +301,11 @@ public class AgentFragment extends Fragment {
             mainHandler.post(() -> {
                 // Enable engine (this also hides gate)
                 enableEngine();
+
+                if (finalValid) {
+                    // Mark config as verified
+                    lastVerifiedConfigHash = currentConfigHash;
+                }
 
                 if (!finalValid) {
                     // Show error bubble in chat for invalid API key
@@ -308,6 +333,22 @@ public class AgentFragment extends Fragment {
         } catch (Exception e) {
             Log.w(TAG, "API verification failed", e);
             return false;
+        }
+    }
+
+    /** Compute a hash of current API config to detect changes */
+    @NonNull
+    private String computeConfigHash() {
+        try {
+            AIConfigProvider config = AIConfigProvider.getInstance(requireContext());
+            String endpoint = config.getEndpoint() != null ? config.getEndpoint() : "";
+            String model = config.getModel() != null ? config.getModel() : "";
+            String apiKey = config.getApiKey() != null ? config.getApiKey() : "";
+            String providerName = config.getProviderName() != null ? config.getProviderName() : "";
+            // Simple hash: concatenate key fields
+            return (endpoint + "|" + model + "|" + apiKey.hashCode() + "|" + providerName).hashCode() + "";
+        } catch (Exception e) {
+            return "error_" + System.currentTimeMillis();
         }
     }
 
@@ -487,6 +528,13 @@ public class AgentFragment extends Fragment {
         MaterialButton byok = view.findViewById(R.id.agent_gate_byok_button);
         MaterialButton github = view.findViewById(R.id.agent_gate_github_button);
         MaterialButton skip = view.findViewById(R.id.agent_gate_demo_skip_button);
+
+        // Hide demo and GitHub buttons when no API is configured
+        // Only show BYOK (Bring Your Own Key) button to guide user to configure API
+        boolean hasApi = isApiKeyConfigured();
+        github.setVisibility(hasApi ? View.VISIBLE : View.GONE);
+        skip.setVisibility(hasApi ? View.VISIBLE : View.GONE);
+
         applyGateButtonLayout(buttonRow, byok, github, skip);
 
         byok.setOnClickListener(v -> {
@@ -1029,8 +1077,10 @@ public class AgentFragment extends Fragment {
                 }
                 break;
             case WAITING_APPROVE:
-                inputField.setEnabled(false);
-                sendButton.setEnabled(false);
+                // Enable input so user can enter a new request without approving
+                inputField.setEnabled(true);
+                sendButton.setEnabled(true);
+                inputField.setHint(R.string.agent_state_waiting_approve);
                 updateThinkingRow(false);
                 break;
             case EXECUTING:
@@ -1173,30 +1223,34 @@ public class AgentFragment extends Fragment {
 
     /**
      * Append a streaming token to the summary.
-     * While tokens stream in: updates THINKING message to "Receiving… X tokens".
-     * Once enough content accumulates (>100 chars): replaces THINKING with ASSISTANT summary.
-     * chatSync fallback (single token >50 chars): skips "Receiving…" and shows summary directly.
+     * Optimized rendering logic:
+     * - First few tokens: update THINKING message to show token count
+     * - After 100 chars: replace THINKING with ASSISTANT summary message
+     * - Subsequent tokens: update ASSISTANT message using payload-based partial rebind
      */
     private void appendSummaryToken(@NonNull String token) {
         summaryContent.append(token);
         summaryReceivedTokens++;
 
-        // chatSync fallback: large single token → show summary immediately
+        // Large single token (chatSync fallback): show summary immediately
         if (!summaryStarted && token.length() > 50) {
             summaryStarted = true;
             doAppendSummaryToken(summaryContent.toString());
             return;
         }
 
+        // First token: show "Receiving..." message
         if (!summaryStarted) {
-            // Still accumulating: update THINKING message to show token count
-            summaryStarted = true; // prevent re-entering this branch
+            summaryStarted = true;
             updateThinkingMessage("Receiving… " + summaryReceivedTokens + " tokens");
             return;
         }
 
         // Check if enough content to replace THINKING with summary
-        if (summaryContent.length() > 100) {
+        if (summaryContent.length() > 100 && summaryMessagePosition < 0) {
+            doAppendSummaryToken(summaryContent.toString());
+        } else if (summaryMessagePosition >= 0) {
+            // Already have ASSISTANT message: update using payload
             doAppendSummaryToken(summaryContent.toString());
         } else {
             // Not enough yet: keep showing "Receiving… X tokens"
@@ -1204,48 +1258,105 @@ public class AgentFragment extends Fragment {
         }
     }
 
+    /**
+     * Display or update the summary message.
+     * Uses payload-based partial updates for efficient streaming.
+     */
     private void doAppendSummaryToken(@NonNull String text) {
         if (summaryMessagePosition < 0) {
             // First display: find and replace the THINKING message with ASSISTANT summary
+            boolean found = false;
             for (int i = chatMessages.size() - 1; i >= 0; i--) {
                 if (chatMessages.get(i).type == AgentMessage.Type.THINKING) {
                     summaryMessagePosition = i;
                     AgentMessage summaryMsg = AgentMessage.assistant(text);
                     chatMessages.set(i, summaryMsg);
                     adapter.setItem(i, summaryMsg);
+                    found = true;
                     break;
                 }
             }
-            if (summaryMessagePosition < 0) {
-                // THINKING already replaced or not found: update existing summary or append
+
+            if (!found) {
+                // THINKING not found: try to update existing ASSISTANT or append new one
                 for (int i = chatMessages.size() - 1; i >= 0; i--) {
                     if (chatMessages.get(i).type == AgentMessage.Type.ASSISTANT) {
                         summaryMessagePosition = i;
                         AgentMessage summaryMsg = AgentMessage.assistant(text);
                         chatMessages.set(i, summaryMsg);
                         adapter.setItem(i, summaryMsg);
+                        scrollToBottom();
+                        showEmptyState(false);
                         return;
                     }
                 }
-                // Fallback: no ASSISTANT found, append new one
+                // No ASSISTANT found: append new one
                 AgentMessage summaryMsg = AgentMessage.assistant(text);
                 chatMessages.add(summaryMsg);
                 summaryMessagePosition = chatMessages.size() - 1;
                 adapter.addItem(summaryMsg);
             }
         } else {
-            // Subsequent tokens: update existing ASSISTANT summary in place
+            // Subsequent tokens: use payload-based update for efficiency
             AgentMessage summaryMsg = AgentMessage.assistant(text);
             chatMessages.set(summaryMessagePosition, summaryMsg);
-            adapter.setItem(summaryMessagePosition, summaryMsg);
+
+            // Try efficient payload-based update first, fall back to full rebind
+            if (!adapter.updateLastAssistantMessageText(text)) {
+                adapter.setItem(summaryMessagePosition, summaryMsg);
+            }
         }
 
-        messagesList.post(() -> {
-            if (adapter.getItemCount() > 0) {
-                messagesList.scrollToPosition(adapter.getItemCount() - 1);
-            }
-        });
+        scrollToBottom();
         showEmptyState(false);
+    }
+
+    // ── Profile Persistence ───────────────────────────────────────────
+
+    /**
+     * Restore the Agent's active SSH profile from SharedPreferences.
+     *
+     * <p>When the app restarts, {@code MainActivity.activeProfile} is null because
+     * it's only set in-memory by TargetSettingsSheet. This method reads the persisted
+     * profile ID from SharedPreferences and restores it so that AgentController,
+     * session bar, and tool executors can find the correct profile on startup.
+     *
+     * <p>Safe to call multiple times — only restores if no profile is currently active
+     * in Activity memory and a valid profile ID is persisted.
+     */
+    private void restoreAgentSshProfile() {
+        if (!isAdded()) return;
+        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
+
+        com.openterface.keymod.MainActivity activity =
+                (com.openterface.keymod.MainActivity) requireActivity();
+
+        // Already restored (or user has an active profile in memory) → skip
+        if (activity.getActiveSshProfile() != null) return;
+
+        // Read persisted profile ID
+        String profileId = requireContext()
+                .getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .getString("agent_active_profile_id", null);
+        if (profileId == null || profileId.isEmpty()) return;
+
+        // Look up the profile in CredentialManager and restore it
+        try {
+            CredentialManager credentialManager = new CredentialManager(requireContext());
+            for (CredentialProfile p : credentialManager.getAllProfiles()) {
+                if (profileId.equals(p.getId())) {
+                    activity.setActiveSshProfile(p);
+                    Log.d(TAG, "Restored Agent SSH profile: " + p.getDisplayLabel());
+                    return;
+                }
+            }
+            // Profile ID exists but profile no longer found (deleted) → clear stale pref
+            Log.d(TAG, "Persisted Agent profile ID not found, clearing: " + profileId);
+            requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                    .edit().remove("agent_active_profile_id").apply();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to restore Agent SSH profile", e);
+        }
     }
 
     // ── Session Bar ─────────────────────────────────────────────────

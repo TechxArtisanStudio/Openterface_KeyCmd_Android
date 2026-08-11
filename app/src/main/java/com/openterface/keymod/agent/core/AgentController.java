@@ -72,6 +72,11 @@ public final class AgentController {
     private int currentStepIndex = 0;
     @Nullable private Future<?> runningTask;
 
+    // ── OS Auto-detection ────────────────────────────────────────────────
+
+    /** Detected target OS from SSH connection (null if not detected yet) */
+    @Nullable private volatile OsDetector.DetectedOS detectedOs;
+
     // ── Dependencies ─────────────────────────────────────────────────────
 
     private final Context appContext;
@@ -358,6 +363,31 @@ public final class AgentController {
             promptBuilder.setActiveProfile(profile);
             Log.i(TAG, "Prompt routing: terminal mode (SSH profile: "
                     + profile.getDisplayLabel() + ")");
+
+            // ─ OS Auto-detection: try to detect target OS from SSH connection ──
+            // Always detect fresh to ensure accuracy if SSH profile changed
+            detectedOs = null;
+            try {
+                String fallbackOs = profile.getTargetOs();
+                if (fallbackOs == null || fallbackOs.isEmpty()) {
+                    SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
+                    fallbackOs = prefs.getString("agent_target_os", "linux");
+                }
+                // Synchronous detection with timeout (blocks briefly but ensures correct OS)
+                com.openterface.terminal.SshClient sshClient = null;
+                if (originalContext instanceof com.openterface.keymod.MainActivity) {
+                    sshClient = ((com.openterface.keymod.MainActivity) originalContext).getSshClient();
+                }
+                if (sshClient != null) {
+                    detectedOs = OsDetector.detectOsSync(sshClient, fallbackOs);
+                    Log.i(TAG, "OS auto-detected: " + detectedOs.getDisplayName()
+                            + " (code: " + detectedOs.getCode() + ")");
+                } else {
+                    Log.w(TAG, "OS auto-detection skipped: no SSH client available");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "OS auto-detection failed, using profile fallback", e);
+            }
         } else {
             promptBuilder.setExecutionMode("hid");
             promptBuilder.setActiveProfile(null);
@@ -946,16 +976,26 @@ public final class AgentController {
     }
 
     /**
-     * Get the target OS name. Uses active profile's targetOs if available,
-     * otherwise falls back to agent_prefs.
+     * Get the target OS name. Priority:
+     * 1. Auto-detected OS from SSH connection (if available)
+     * 2. Active profile's targetOs
+     * 3. agent_prefs fallback
      */
     @NonNull
     private String getTargetOs() {
+        // Priority 1: Auto-detected OS from SSH
+        if (detectedOs != null) {
+            return detectedOs.getCode();
+        }
+
+        // Priority 2: Profile-level OS
         CredentialProfile profile = getActiveSshProfile();
         if (profile != null) {
             String os = profile.getTargetOs();
             if (os != null && !os.isEmpty()) return os;
         }
+
+        // Priority 3: Global preferences fallback
         SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
         String os = prefs.getString("agent_target_os", "linux");
         return os != null && !os.isEmpty() ? os : "linux";

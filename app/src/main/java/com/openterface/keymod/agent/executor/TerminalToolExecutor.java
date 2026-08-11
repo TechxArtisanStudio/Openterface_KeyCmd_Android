@@ -11,6 +11,8 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
+import com.openterface.keymod.agent.core.CommandValidator;
+import com.openterface.keymod.agent.util.PathHelper;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 import com.openterface.terminal.BleEthSocketFactory;
 import com.openterface.terminal.BleEthTransport;
@@ -167,12 +169,30 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             return;
         }
 
-        Log.i(TAG, "Executing: " + command);
+        // ─ OS Command Validation (safety net) ──
+        CommandValidator.ValidationResult validation =
+                CommandValidator.validate(command, targetOs);
+        if (!validation.valid) {
+            Log.w(TAG, "Command validation warning for " + targetOs + ": " + validation.message);
+            // Log warning but still execute (validator may have false positives)
+        }
+
+        // ─ PATH Augmentation for non-interactive SSH sessions ─
+        // SSH non-interactive shells don't load .zshrc/.bashrc, so common tools
+        // (fastfetch, htop, brew, etc.) may not be in PATH.
+        // Wrap command with PATH setup if the tool likely needs it.
+        String finalCommand = command;
+        if (PathHelper.mayNeedPathAugmentation(command, targetOs)) {
+            finalCommand = PathHelper.wrapWithPathVariable(command, targetOs);
+            Log.d(TAG, "PATH augmented: " + finalCommand);
+        }
+
+        Log.i(TAG, "Executing: " + finalCommand);
         callback.onProgress(step.index, -1);
 
         currentThread = Thread.currentThread();
 
-        client.executeCommand(command, DEFAULT_TIMEOUT_MS, new SshClient.ExecCallback() {
+        client.executeCommand(finalCommand, DEFAULT_TIMEOUT_MS, new SshClient.ExecCallback() {
             @Override
             public void onOutput(@NonNull String line) {
                 Log.v(TAG, "output: " + line);

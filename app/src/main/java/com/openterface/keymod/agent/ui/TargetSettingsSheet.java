@@ -284,8 +284,20 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     private void onProfileDeselected() {
         // Agent only: clear SSH profile reference → enter HID mode
         MainActivity activity = (MainActivity) requireActivity();
+        CredentialProfile deselectedProfile = activity.getActiveSshProfile();
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;
+
+        // Preserve the profile's target OS as the current OS selection
+        // so HID mode has a sensible default
+        if (deselectedProfile != null) {
+            String profileOs = deselectedProfile.getTargetOs();
+            if (profileOs != null && !profileOs.isEmpty()) {
+                requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                        .edit().putString(PREF_AGENT_TARGET_OS, profileOs).apply();
+                currentOs = profileOs;
+            }
+        }
 
         // Clear persisted profile ID
         requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)

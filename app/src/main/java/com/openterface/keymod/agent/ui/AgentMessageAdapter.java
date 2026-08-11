@@ -1,5 +1,6 @@
 package com.openterface.keymod.agent.ui;
 
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 import com.openterface.keymod.R;
+import com.openterface.keymod.agent.util.MarkdownRenderer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +48,9 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
     /** Payload for partial rebind of THINKING items — updates text without resetting the ProgressBar animation. */
     private static final Object PAYLOAD_THINKING_TEXT = new Object();
+
+    /** Payload for partial rebind of ASSISTANT items — updates text only during streaming. */
+    private static final String PAYLOAD_TEXT_UPDATE = "TEXT_UPDATE";
 
     private final List<AgentMessage> messages = new ArrayList<>();
     @Nullable private ActBarListener actBarListener;
@@ -95,6 +100,26 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         if (messages.isEmpty()) return false;
         messages.set(messages.size() - 1, updated);
         notifyItemChanged(messages.size() - 1);
+        return true;
+    }
+
+    /**
+     * Update the text of the last ASSISTANT message using payload-based partial rebind.
+     * Optimized for streaming: only updates text without resetting other UI state.
+     * Returns true if a message was updated.
+     */
+    public boolean updateLastAssistantMessageText(@NonNull CharSequence text) {
+        if (messages.isEmpty()) return false;
+        int lastPos = messages.size() - 1;
+        AgentMessage lastMsg = messages.get(lastPos);
+        if (lastMsg.type != AgentMessage.Type.ASSISTANT) return false;
+
+        // Create updated message preserving all other properties
+        AgentMessage updated = AgentMessage.assistant(text);
+        messages.set(lastPos, updated);
+
+        // Use payload for efficient partial update
+        notifyItemChanged(lastPos, PAYLOAD_TEXT_UPDATE);
         return true;
     }
 
@@ -192,13 +217,31 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position,
                                   @NonNull java.util.List<Object> payloads) {
-        if (!payloads.isEmpty() && PAYLOAD_THINKING_TEXT.equals(payloads.get(0))
-                && holder instanceof ThinkingHolder) {
-            // Partial rebind: update text only — keeps the ProgressBar animation running.
-            ((ThinkingHolder) holder).textView.setText(messages.get(position).text);
-            return;
+        if (!payloads.isEmpty()) {
+            Object payload = payloads.get(0);
+
+            // Handle text-only updates for streaming assistant messages
+            if (PAYLOAD_TEXT_UPDATE.equals(payload) && holder instanceof SimpleTextHolder) {
+                AgentMessage message = messages.get(position);
+                if (((SimpleTextHolder) holder).isUser) {
+                    // User messages: plain text
+                    ((SimpleTextHolder) holder).textView.setText(message.text);
+                } else {
+                    // Assistant messages: render markdown
+                    String textStr = message.text != null ? message.text.toString() : "";
+                    Spanned rendered = MarkdownRenderer.toSpanned(textStr);
+                    ((SimpleTextHolder) holder).textView.setText(rendered);
+                }
+                return; // Skip full rebind
+            }
+
+            // Handle thinking text updates — partial rebind keeps ProgressBar animation running
+            if (PAYLOAD_THINKING_TEXT.equals(payload) && holder instanceof ThinkingHolder) {
+                ((ThinkingHolder) holder).textView.setText(messages.get(position).text);
+                return;
+            }
         }
-        // No matching payload — fall back to full bind.
+        // Fall back to full bind
         onBindViewHolder(holder, position);
     }
 
@@ -212,7 +255,7 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         private final ImageView errorIcon;
         private final MaterialButton retryButton;
         private final View contentRow;
-        private final boolean isUser;
+        final boolean isUser;  // package-private for access from onBindViewHolder
 
         SimpleTextHolder(@NonNull View itemView, boolean user) {
             super(itemView);
@@ -230,7 +273,15 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
         }
 
         void bind(@Nullable CharSequence text) {
-            textView.setText(text);
+            if (isUser) {
+                // User messages: plain text
+                textView.setText(text);
+            } else {
+                // Assistant messages: render markdown
+                String textStr = text != null ? text.toString() : "";
+                Spanned rendered = MarkdownRenderer.toSpanned(textStr);
+                textView.setText(rendered);
+            }
             // Hide retry button by default for plain text binds
             if (retryButton != null) {
                 retryButton.setVisibility(View.GONE);
@@ -239,10 +290,31 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
 
         /** Bind with full message state — sets error background, icon visibility, retry button. */
         void bind(@NonNull AgentMessage message, @Nullable RetryListener retryListener) {
-            textView.setText(message.text);
+            if (isUser) {
+                // User messages: plain text
+                textView.setText(message.text);
+            } else {
+                // Assistant messages: render markdown
+                String textStr = message.text != null ? message.text.toString() : "";
+                Spanned rendered = MarkdownRenderer.toSpanned(textStr);
+                textView.setText(rendered);
+            }
 
             if (isUser) return;  // User bubbles never have error state
 
+            // Defensive reset: always reset to normal state first
+            if (contentRow != null) {
+                contentRow.setBackgroundResource(R.drawable.agent_bubble_assistant);
+            }
+            if (errorIcon != null) {
+                errorIcon.setVisibility(View.GONE);
+            }
+            if (retryButton != null) {
+                retryButton.setVisibility(View.GONE);
+                retryButton.setOnClickListener(null);
+            }
+
+            // Apply error state if needed
             if (message.isError) {
                 // Error state: red background + warning icon + optional retry button
                 if (contentRow != null) {
@@ -252,23 +324,12 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                     errorIcon.setVisibility(View.VISIBLE);
                     errorIcon.setColorFilter(0xFFEF4444); // presentation_red
                 }
-                if (retryButton != null) {
-                    retryButton.setVisibility(message.canRetry ? View.VISIBLE : View.GONE);
+                // Only show retry button if canRetry is true
+                if (retryButton != null && message.canRetry) {
+                    retryButton.setVisibility(View.VISIBLE);
                     retryButton.setOnClickListener(v -> {
                         if (retryListener != null) retryListener.onRetry();
                     });
-                }
-            } else {
-                // Normal state
-                if (contentRow != null) {
-                    contentRow.setBackgroundResource(R.drawable.agent_bubble_assistant);
-                }
-                if (errorIcon != null) {
-                    errorIcon.setVisibility(View.GONE);
-                }
-                if (retryButton != null) {
-                    retryButton.setVisibility(View.GONE);
-                    retryButton.setOnClickListener(null);
                 }
             }
         }
