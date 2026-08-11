@@ -655,7 +655,7 @@ public final class AgentController {
                     // Update CLI card to show timeout instead of stuck on "Running…"
                     final List<String> timeoutLines = new ArrayList<>();
                     timeoutLines.add(displayCommand);
-                    timeoutLines.add("⚠️ " + stepError[0]);
+                    timeoutLines.add(stepError[0]);
                     postToMain(() -> notifyStepOutput(stepIndex, timeoutLines, true, false));
                 }
             } catch (InterruptedException e) {
@@ -926,7 +926,7 @@ public final class AgentController {
                 if (cancelFlag.get()) return;
                 Log.e(TAG, "summarize: error", e);
                 postToMain(() -> {
-                    notifySummaryToken("⚠️ Failed to summarize: " + e.getMessage());
+                    notifySummaryToken("Failed to summarize: " + e.getMessage());
                     notifySummaryComplete();
                     transitionTo(AgentState.IDLE);
                 });
@@ -1025,7 +1025,7 @@ public final class AgentController {
      */
     private void postError(@NonNull String message) {
         // Add error message to session (marked retryable)
-        session.addMessage(AgentMessage.error("⚠️ " + message, true));
+        session.addMessage(AgentMessage.error(message, true));
 
         postToMain(() -> {
             transitionTo(AgentState.ERROR);

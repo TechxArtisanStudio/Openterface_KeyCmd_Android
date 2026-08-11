@@ -836,7 +836,7 @@ public class AgentFragment extends Fragment {
                     canRetry = false;  // Macro doesn't exist, retry is meaningless
                 } else {
                     // LLM call failure, plan parse failure, step timeout, etc. → retryable
-                    displayText = "⚠️ " + message;
+                    displayText = message;
                     canRetry = true;
                 }
 
@@ -853,7 +853,7 @@ public class AgentFragment extends Fragment {
             public void onPlanTruncated(int maxSteps) {
                 if (!isAdded()) return;
                 chatMessages.add(AgentMessage.assistant(
-                        "⚠️ Plan truncated to " + maxSteps + " steps (exceeds limit)."));
+                        "Plan truncated to " + maxSteps + " steps (exceeds limit)."));
                 adapter.submitList(new ArrayList<>(chatMessages));
                 scrollToBottom();
             }
@@ -973,7 +973,7 @@ public class AgentFragment extends Fragment {
 
             // Build error message with inline terminal icon
             String placeholder = "[]";
-            String template = "⚠️ No target configured.\n\n"
+            String template = "No target configured.\n\n"
                     + "Tap the target icon " + placeholder + " in the top bar to set up:\n"
                     + "• Target OS for HID mode\n"
                     + "• Or connect an SSH host in Terminal tab";

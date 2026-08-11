@@ -1685,12 +1685,12 @@ by TechxArtisan</string>
     <string name="agent_action_retry">Retry</string>
 
     <!-- Agent error messages -->
-    <string name="agent_error_api_connection_failed">⚠️ API connection failed. Please check your settings.</string>
-    <string name="agent_error_ssh_not_connected">⚠️ %1$s\n\nGo to Terminal tab → connect to a host → come back here.</string>
-    <string name="agent_error_hid_not_connected">⚠️ %1$s\n\nConnect via USB or Bluetooth to use HID/Macro features.</string>
-    <string name="agent_error_macro_not_found">⚠️ %1$s\n\nAvailable macros: %2$s</string>
-    <string name="agent_error_no_target_configured">⚠️ No target configured\n\nTap the target icon in the top bar to select a target OS or connect via SSH.</string>
-    <string name="agent_error_no_previous_prompt">⚠️ No previous prompt to retry.</string>
+    <string name="agent_error_api_connection_failed">API connection failed. Please check your settings.</string>
+    <string name="agent_error_ssh_not_connected">%1$s\n\nGo to Terminal tab → connect to a host → come back here.</string>
+    <string name="agent_error_hid_not_connected">%1$s\n\nConnect via USB or Bluetooth to use HID/Macro features.</string>
+    <string name="agent_error_macro_not_found">%1$s\n\nAvailable macros: %2$s</string>
+    <string name="agent_error_no_target_configured">No target configured\n\nTap the target icon in the top bar to select a target OS or connect via SSH.</string>
+    <string name="agent_error_no_previous_prompt">No previous prompt to retry.</string>
 
     <!-- Agent plan texts (Day 3) -->
     <string name="agent_plan_summary">Plan summary</string>
