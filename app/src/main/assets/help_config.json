@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "baseUrl": "https://assets.openterface.com/keymod/android/tutorial/",
   "modes": {
     "km_basic": {
@@ -7,21 +7,21 @@
         { "id": "connection",          "video": "01-ble-connect.mp4",          "poster": "km_basic/connection_poster.png",          "image": "km_basic/connection.gif",          "fallback": "km_basic/connection.png",          "autoPlay": true, "loop": false },
         { "id": "target_os",           "video": "02-kb-switch.mp4",           "poster": "km_basic/target_os_poster.png",           "image": "km_basic/target_os.gif",           "fallback": "km_basic/target_os.png",           "autoPlay": true, "loop": false },
         { "id": "submode_tabs",        "video": "03-mouse-mode.mp4",        "poster": "km_basic/submode_tabs_poster.png",        "image": "km_basic/submode_tabs.gif",        "fallback": "km_basic/submode_tabs.png",        "autoPlay": true, "loop": false },
-        { "id": "keyboard_modes",      "poster": "km_basic/keyboard_modes_poster.png",      "image": "km_basic/keyboard_modes.gif",      "fallback": "km_basic/keyboard_modes.png" },
-        { "id": "modifier_hold_swipe", "image": "km_basic/modifier_hold_swipe.gif", "fallback": "km_basic/modifier_hold_swipe.png" },
-        { "id": "menu",                "poster": "km_basic/menu_poster.png",                "image": "km_basic/menu.gif",                "fallback": "km_basic/menu.png" }
+        { "id": "keyboard_modes",      "video": "06-keyboard-modes.mp4",      "poster": "km_basic/keyboard_modes_poster.png",      "image": "km_basic/keyboard_modes.gif",      "fallback": "km_basic/keyboard_modes.png",      "autoPlay": true, "loop": false },
+        { "id": "modifier_hold_swipe", "video": "07-modfer-hold-swipe-basic.mp4", "poster": "km_basic/modifier_hold_swipe_poster.png", "image": "km_basic/modifier_hold_swipe.gif", "fallback": "km_basic/modifier_hold_swipe.png", "autoPlay": true, "loop": false },
+        { "id": "menu",                "video": "10-menu.mp4",                "poster": "km_basic/menu_poster.png",                "image": "km_basic/menu.gif",                "fallback": "km_basic/menu.png",                "autoPlay": true, "loop": false }
       ]
     },
     "km_pro": {
       "steps": [
         { "id": "connection",          "video": "01-ble-connect.mp4",          "poster": "km_pro/connection_poster.png",          "image": "km_pro/connection.gif",          "fallback": "km_pro/connection.png",          "autoPlay": true, "loop": false },
         { "id": "target_os",           "video": "02-kb-switch.mp4",           "poster": "km_pro/target_os_poster.png",           "image": "km_pro/target_os.gif",           "fallback": "km_pro/target_os.png",           "autoPlay": true, "loop": false },
-        { "id": "submodes",            "poster": "km_pro/submodes_poster.png",            "image": "km_pro/submodes.gif",            "fallback": "km_pro/submodes.png" },
+        { "id": "submodes",            "video": "08-submodes.mp4",            "poster": "km_pro/submodes_poster.png",            "image": "km_pro/submodes.gif",            "fallback": "km_pro/submodes.png",            "autoPlay": true, "loop": false },
         { "id": "setup",               "poster": "km_pro/setup_poster.png",               "image": "km_pro/setup.gif",               "fallback": "km_pro/setup.png" },
         { "id": "keyboard_strip",      "video": "04-km-pro.mp4",      "poster": "km_pro/keyboard_strip_poster.png",      "image": "km_pro/keyboard_strip.gif",      "fallback": "km_pro/keyboard_strip.png",      "autoPlay": true, "loop": false },
-        { "id": "modifier_hold_swipe", "poster": "km_pro/modifier_hold_swipe_poster.png", "image": "km_pro/modifier_hold_swipe.gif", "fallback": "km_pro/modifier_hold_swipe.png" },
+        { "id": "modifier_hold_swipe", "video": "07-modfier-hold-swipe-pro.mp4", "poster": "km_pro/modifier_hold_swipe_poster.png", "image": "km_pro/modifier_hold_swipe.gif", "fallback": "km_pro/modifier_hold_swipe.png", "autoPlay": true, "loop": false },
         { "id": "compose_editor",      "video": "05-compose.mp4",      "poster": "km_pro/compose_editor_poster.png",      "image": "km_pro/compose_editor.gif",      "fallback": "km_pro/compose_editor.png",      "autoPlay": true, "loop": false },
-        { "id": "compose_actions",     "poster": "km_pro/compose_actions_poster.png",     "image": "km_pro/compose_actions.gif",     "fallback": "km_pro/compose_actions.png" }
+        { "id": "compose_actions",     "video": "09-compose-actions.mp4",     "poster": "km_pro/compose_actions_poster.png",     "image": "km_pro/compose_actions.gif",     "fallback": "km_pro/compose_actions.png",     "autoPlay": true, "loop": false }
       ]
     },
     "presentation": {
@@ -29,24 +29,24 @@
         { "id": "tools",   "image": "presentation/tools.gif",   "fallback": "presentation/tools.png" },
         { "id": "nav",     "image": "presentation/nav.gif",     "fallback": "presentation/nav.png" },
         { "id": "actions", "image": "presentation/actions.gif", "fallback": "presentation/actions.png" },
-        { "id": "timer",   "image": "presentation/timer.gif",   "fallback": "presentation/timer.png" }
+        { "id": "timer",   "video": "12-timer.mp4",   "poster": "presentation/timer_poster.png",   "image": "presentation/timer.gif",   "fallback": "presentation/timer.png",   "autoPlay": true, "loop": false }
       ]
     },
     "gamepad": {
       "steps": [
         { "id": "connection", "image": "gamepad/connection.gif", "fallback": "gamepad/connection.png" },
-        { "id": "presets",    "image": "gamepad/presets.gif",    "fallback": "gamepad/presets.png" },
+        { "id": "presets",    "video": "14-presets.mp4",    "poster": "gamepad/presets_poster.png",    "image": "gamepad/presets.gif",    "fallback": "gamepad/presets.png",    "autoPlay": true, "loop": false },
         { "id": "customize",  "image": "gamepad/customize.gif",  "fallback": "gamepad/customize.png" },
         { "id": "rearrange",  "image": "gamepad/rearrange.gif",  "fallback": "gamepad/rearrange.png" },
-        { "id": "sticks",     "image": "gamepad/sticks.gif",     "fallback": "gamepad/sticks.png" }
+        { "id": "sticks",     "video": "15-sticks.mp4",     "poster": "gamepad/sticks_poster.png",     "image": "gamepad/sticks.gif",     "fallback": "gamepad/sticks.png",     "autoPlay": true, "loop": false }
       ]
     },
     "shortcut_hub": {
       "steps": [
         { "id": "profiles",             "image": "shortcut_hub/profiles.gif",             "fallback": "shortcut_hub/profiles.png" },
         { "id": "open_profile",          "image": "shortcut_hub/open_profile.gif",          "fallback": "shortcut_hub/open_profile.png" },
-        { "id": "detail_intro",          "image": "shortcut_hub/detail_intro.gif",          "fallback": "shortcut_hub/detail_intro.png" },
-        { "id": "favorites_list",        "image": "shortcut_hub/favorites_list.gif",        "fallback": "shortcut_hub/favorites_list.png" },
+        { "id": "detail_intro",          "video": "11-detail-intro.mp4",          "poster": "shortcut_hub/detail_intro_poster.png",          "image": "shortcut_hub/detail_intro.gif",          "fallback": "shortcut_hub/detail_intro.png",          "autoPlay": true, "loop": false },
+        { "id": "favorites_list",        "video": "13-favorites-list.mp4",        "poster": "shortcut_hub/favorites_list_poster.png",        "image": "shortcut_hub/favorites_list.gif",        "fallback": "shortcut_hub/favorites_list.png",        "autoPlay": true, "loop": false },
         { "id": "browse_category",       "image": "shortcut_hub/browse_category.gif",       "fallback": "shortcut_hub/browse_category.png" },
         { "id": "add_shortcut_toolbar",  "image": "shortcut_hub/add_shortcut_toolbar.gif",  "fallback": "shortcut_hub/add_shortcut_toolbar.png" },
         { "id": "detail_setup_gear",     "image": "shortcut_hub/detail_setup_gear.gif",     "fallback": "shortcut_hub/detail_setup_gear.png" },
