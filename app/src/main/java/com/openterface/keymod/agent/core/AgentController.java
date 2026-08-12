@@ -88,6 +88,7 @@ public final class AgentController {
     private final AgentPromptBuilder promptBuilder;
     private final AgentPlanParser planParser;
     private final AgentSession session;
+    private final TraceManager traceManager;
     @Nullable private AgentToolExecutor toolExecutor;
 
     // ── Config ───────────────────────────────────────────────────────────
@@ -114,6 +115,7 @@ public final class AgentController {
         this.promptBuilder = new AgentPromptBuilder(this.appContext);
         this.planParser = new AgentPlanParser();
         this.session = new AgentSession(this.appContext);
+        this.traceManager = new TraceManager(this.appContext);
 
         // Load settings from SharedPreferences
         loadSettings();
@@ -219,6 +221,9 @@ public final class AgentController {
         planRetryCount = 0;
         pendingStepsAfterRetry = null;
 
+        // P0-4: Start new trace session
+        traceManager.startSession();
+
         // Reload settings to pick up any changes from AgentSettingsBottomSheet
         loadSettings();
 
@@ -291,6 +296,8 @@ public final class AgentController {
         currentStepIndex = 0;
         planRetryCount = 0;
         pendingStepsAfterRetry = null;
+        // End trace session on cancel
+        traceManager.endSession(false, "cancelled");
         transitionTo(AgentState.IDLE);
     }
 
@@ -403,13 +410,17 @@ public final class AgentController {
         String customPrompt = getCustomPromptForMode(promptBuilder.getExecutionMode());
         LlmRequest request = promptBuilder.buildRequest(model, userPrompt, customPrompt);
 
-        Log.i(TAG, "generatePlan: mode=" + promptBuilder.getExecutionMode()
-                + ", model=" + model + ", messages=" + request.messages.size());
+        // P0-4: Start trace for plan generation
+        traceManager.newTrace("generate_plan");
+
+        Log.i(TAG, traceManager.formatLogMessage(
+                "generatePlan: mode=" + promptBuilder.getExecutionMode()
+                + ", model=" + model + ", messages=" + request.messages.size()));
 
         try {
             // Call LLM with streaming to show tokens in real-time.
             // chatStream() blocks until the stream completes.
-            Log.i(TAG, "generatePlan: calling LLM (streaming)...");
+            Log.i(TAG, traceManager.formatLogMessage("generatePlan: calling LLM (streaming)..."));
             final StringBuilder streamingContent = new StringBuilder();
             final LlmResponse[] streamResult = {null};
 
@@ -490,8 +501,9 @@ public final class AgentController {
     private void onStreamFinished(@NonNull LlmResponse response) {
         try {
             // Log full response for debugging parsing issues
-            Log.i(TAG, "onStreamFinished: content length=" + response.content.length()
-                    + ", finishReason=" + response.finishReason);
+            Log.i(TAG, traceManager.formatLogMessage(
+                    "onStreamFinished: content length=" + response.content.length()
+                    + ", finishReason=" + response.finishReason));
             if (response.content.length() <= 2000) {
                 Log.d(TAG, "onStreamFinished: content=" + response.content);
             }
@@ -502,6 +514,8 @@ public final class AgentController {
                 plan = planParser.parseFromResponse(response);
             } catch (AgentPlanParser.PlanParseException e) {
                 Log.e(TAG, "Plan parse failed. Raw response: " + response.content);
+                // P0-4: End trace with failure
+                traceManager.endTrace(false, "error", "parse_failed");
                 throw e;
             }
 
@@ -527,6 +541,9 @@ public final class AgentController {
             currentPlan = finalPlan;
             session.addAssistantMessage(finalPlan.summary);
 
+            // P0-4: End trace with success
+            traceManager.endTrace(true, "steps", String.valueOf(finalPlan.steps.size()));
+
             // Transition to WAITING_APPROVE on main thread
             postToMain(() -> {
                 transitionTo(AgentState.WAITING_APPROVE);
@@ -538,6 +555,10 @@ public final class AgentController {
                 return;
             }
             Log.e(TAG, "Plan parsing failed", e);
+            // P0-4: End trace with failure (if not already ended)
+            if (traceManager.getCurrentTraceId() != null) {
+                traceManager.endTrace(false, "error", e.getMessage() != null ? e.getMessage() : "unknown");
+            }
             postError(e.getMessage() != null ? e.getMessage() : "Failed to parse plan");
         }
     }
@@ -555,6 +576,7 @@ public final class AgentController {
         if (toolExecutor == null) {
             postToMain(() -> {
                 notifyError("Tool executor not implemented");
+                traceManager.endSession(false, "no_tool_executor");
                 transitionTo(AgentState.IDLE);
             });
             return;
@@ -570,6 +592,9 @@ public final class AgentController {
             currentStepIndex = i;
             final int stepIndex = i;
             AgentPlan.Step step = currentPlan.steps.get(i);
+
+            // Trace each step execution
+            traceManager.newTrace("execute_step_" + stepIndex);
 
             // Report progress
             postToMain(() -> notifyProgress(stepIndex, currentPlan.steps.size()));
@@ -615,6 +640,7 @@ public final class AgentController {
                     // even when the command produced no output.
                     session.addExecutionCliMessage(lines);
                     postToMain(() -> notifyStepOutput(stepIndex, lines, true, true));
+                    traceManager.endTrace(true);
                     latch.countDown();
                 }
 
@@ -630,6 +656,7 @@ public final class AgentController {
                     session.addExecutionCliMessage(lines);
                     postToMain(() -> notifyStepOutput(stepIndex, lines, true, false));
                     stepError[0] = error;
+                    traceManager.endTrace(false, "error", error);
                     latch.countDown();
                 }
 
@@ -736,6 +763,7 @@ public final class AgentController {
         // All steps completed — notify completion.
         // Fragment's onExecutionComplete will trigger summarize with a delay
         // measured from after the terminal card layout pass, not from here.
+        Log.i(TAG, traceManager.formatLogMessage("executePlan: all steps completed"));
         postToMain(this::notifyExecutionComplete);
     }
 
@@ -752,6 +780,7 @@ public final class AgentController {
     private void requestRetryPlan(@NonNull List<String[]> failedSteps) {
         planRetryCount++;
         transitionTo(AgentState.RETRYING);
+        traceManager.newTrace("retry_plan");
 
         // Collect original user prompt from session
         String originalPrompt = "";
@@ -798,8 +827,9 @@ public final class AgentController {
                 request.temperature = 0.3;
                 request.maxTokens = 2048;
 
-                Log.i(TAG, "requestRetryPlan: calling LLM (attempt "
-                        + planRetryCount + "/" + maxRetries + ")");
+                Log.i(TAG, traceManager.formatLogMessage(
+                        "requestRetryPlan: calling LLM (attempt "
+                        + planRetryCount + "/" + maxRetries + ")"));
 
                 // Synchronous call — retry doesn't need streaming UX
                 LlmResponse response = httpClient.chatSync(request, config.getAdapter());
@@ -935,8 +965,10 @@ public final class AgentController {
         request.temperature = 0.3;
         request.maxTokens = 1024;
 
-        Log.i(TAG, "summarize: calling LLM, results=" + cappedResults.size()
-                + ", totalChars=" + totalChars);
+        traceManager.newTrace("summarize");
+        Log.i(TAG, traceManager.formatLogMessage(
+                "summarize: calling LLM, results=" + cappedResults.size()
+                + ", totalChars=" + totalChars));
 
         // For HID mode: no output to summarize, skip LLM call
         final boolean isHidModeFinal = "hid".equals(promptBuilder.getExecutionMode());
@@ -948,6 +980,8 @@ public final class AgentController {
                 session.addAssistantMessage("✅ Completed " + totalSteps + " step(s).");
                 transitionTo(AgentState.IDLE);
             });
+            // End trace session for HID/empty summarize skip
+            traceManager.endSession(true, null);
             return;
         }
 
@@ -992,6 +1026,7 @@ public final class AgentController {
                                 notifySummaryReset();
                                 notifySummaryToken(syncResponse.content);
                                 notifySummaryComplete();
+                                traceManager.endSession(true, null);
                                 transitionTo(AgentState.IDLE);
                             });
                         }
@@ -999,6 +1034,7 @@ public final class AgentController {
                         Log.e(TAG, "summarize: chatSync also failed", syncErr);
                         String fallback = buildClientSideFallback(finalResults, finalWasTruncated);
                         session.addAssistantMessage(fallback);
+                        traceManager.endSession(true, "error_fallback");
                         postToMain(() -> {
                             notifySummaryReset();
                             notifySummaryToken(fallback);
@@ -1010,6 +1046,7 @@ public final class AgentController {
                 }
 
                 session.addAssistantMessage(fullResponse.content);
+                traceManager.endSession(true, null);
                 postToMain(() -> {
                     notifySummaryComplete();
                     transitionTo(AgentState.IDLE);
@@ -1023,6 +1060,7 @@ public final class AgentController {
                 // Use client-side fallback instead of raw error
                 String fallback = buildClientSideFallback(finalResults, finalWasTruncated);
                 session.addAssistantMessage(fallback);
+                traceManager.endSession(true, "error_fallback");
                 postToMain(() -> {
                     notifySummaryReset();
                     notifySummaryToken(fallback);
@@ -1194,6 +1232,9 @@ public final class AgentController {
      * retry-able error bubble (see AgentMessage.error).
      */
     private void postError(@NonNull String message) {
+        // End trace session on error
+        traceManager.endSession(false, message);
+
         // Add error message to session (marked retryable)
         session.addMessage(AgentMessage.error(message, true));
 
