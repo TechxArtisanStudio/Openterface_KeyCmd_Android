@@ -169,6 +169,27 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             return;
         }
 
+        // ── P0-1: Command Danger Check ──
+        // Must run BEFORE SSH connection attempt so that blocked commands
+        // are refused even when no SSH session is alive.
+        try {
+            CommandValidator.DangerResult danger =
+                    CommandValidator.checkCommandDanger(command);
+            if (danger.level == CommandValidator.DangerLevel.BLOCKED) {
+                Log.w(TAG, "Blocked dangerous command: " + command
+                        + " — " + danger.reason);
+                throw new CommandValidator.DangerousCommandException(danger);
+            }
+            if (danger.level == CommandValidator.DangerLevel.DANGEROUS) {
+                Log.w(TAG, "Dangerous command detected (proceeding with warning): "
+                        + command + " — " + danger.reason);
+                // TODO(P1): Surface confirmation dialog to user via callback
+            }
+        } catch (CommandValidator.DangerousCommandException e) {
+            callback.onFailure("⛔ Blocked: " + e.getDangerResult().reason);
+            return;
+        }
+
         // ─ OS Command Validation (safety net) ──
         CommandValidator.ValidationResult validation =
                 CommandValidator.validate(command, targetOs);

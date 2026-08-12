@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Validates that generated commands match the target OS.
@@ -45,6 +46,72 @@ public final class CommandValidator {
             "launchctl", "mdfind", "sysctl -n machdep"
     ));
 
+    // ── Command Danger Classification (P0-1) ──────────────────────────
+
+    /**
+     * Danger level of a command.
+     *
+     * <ul>
+     *   <li>{@link #SAFE} — normal command, no special handling.</li>
+     *   <li>{@link #DANGEROUS} — potentially destructive; UI should ask for
+     *       user confirmation before execution.</li>
+     *   <li>{@link #BLOCKED} — extremely destructive; execution is always
+     *       refused.  A {@link DangerousCommandException} is thrown.</li>
+     * </ul>
+     */
+    public enum DangerLevel {
+        SAFE,
+        DANGEROUS,
+        BLOCKED
+    }
+
+    /**
+     * Thrown when a command matches a blocked (extremely destructive) pattern.
+     * Callers should refuse to execute the command and surface
+     * {@link #getDangerResult()} to the user.
+     */
+    public static class DangerousCommandException extends RuntimeException {
+        private final DangerResult dangerResult;
+
+        public DangerousCommandException(@NonNull DangerResult result) {
+            super(result.reason);
+            this.dangerResult = result;
+        }
+
+        @NonNull
+        public DangerResult getDangerResult() {
+            return dangerResult;
+        }
+    }
+
+    /**
+     * Result of a danger-level check.
+     */
+    public static class DangerResult {
+        @NonNull public final DangerLevel level;
+        @NonNull public final String reason;
+
+        DangerResult(@NonNull DangerLevel level, @NonNull String reason) {
+            this.level = level;
+            this.reason = reason;
+        }
+
+        @NonNull
+        public static DangerResult safe() {
+            return new DangerResult(DangerLevel.SAFE, "");
+        }
+
+        @NonNull
+        public static DangerResult dangerous(@NonNull String reason) {
+            return new DangerResult(DangerLevel.DANGEROUS, reason);
+        }
+
+        @NonNull
+        public static DangerResult blocked(@NonNull String reason) {
+            return new DangerResult(DangerLevel.BLOCKED, reason);
+        }
+    }
+
     /**
      * Validation result.
      */
@@ -77,6 +144,12 @@ public final class CommandValidator {
     public static ValidationResult validate(@NonNull String command, @NonNull String targetOs) {
         if (command.isEmpty()) {
             return ValidationResult.valid();
+        }
+
+        // ── Danger check (runs before OS validation) ──
+        DangerResult danger = checkCommandDanger(command);
+        if (danger.level == DangerLevel.BLOCKED) {
+            return ValidationResult.invalid(danger.reason);
         }
 
         String cmdLower = command.trim().toLowerCase();
@@ -178,4 +251,138 @@ public final class CommandValidator {
     public static boolean quickCheck(@NonNull String command, @NonNull String targetOs) {
         return validate(command, targetOs).valid;
     }
+
+    // ── Command Danger Checking ───────────────────────────────────────
+
+    /**
+     * Check the danger level of a command.
+     *
+     * <p>This method analyses the command string for patterns known to be
+     * extremely destructive (BLOCKED) or potentially harmful (DANGEROUS).
+     *
+     * <ul>
+     *   <li><b>BLOCKED</b> — caller MUST throw {@link DangerousCommandException}
+     *       and refuse execution.</li>
+     *   <li><b>DANGEROUS</b> — caller SHOULD ask the user for explicit
+     *       confirmation before executing.</li>
+     *   <li><b>SAFE</b> — no special action needed.</li>
+     * </ul>
+     *
+     * @param command the raw command string
+     * @return danger result (never null)
+     */
+    @NonNull
+    public static DangerResult checkCommandDanger(@NonNull String command) {
+        if (command.trim().isEmpty()) {
+            return DangerResult.safe();
+        }
+
+        String cmdLower = command.trim().toLowerCase();
+        String firstWord = cmdLower.split("\\s+")[0];
+
+        // 1. Check blocked patterns (extremely destructive — always refuse)
+        for (String pattern : BLOCKED_COMMAND_PATTERNS) {
+            if (matchPattern(cmdLower, firstWord, pattern)) {
+                return DangerResult.blocked(
+                        "Command is extremely dangerous and has been blocked: " + command);
+            }
+        }
+
+        // 2. Check dangerous commands (potentially destructive — need confirmation)
+        for (String cmd : DANGEROUS_COMMANDS) {
+            if (firstWord.equals(cmd)) {
+                return DangerResult.dangerous(
+                        "Command '" + cmd + "' is potentially destructive. "
+                        + "Please confirm before executing.");
+            }
+        }
+
+        return DangerResult.safe();
+    }
+
+    /**
+     * Match a command against a pattern.
+     *
+     * <p>Simple patterns (no regex metacharacters) are matched as
+     * {@code cmdLower.startsWith(pattern)}.  Patterns containing
+     * {@code (}, {@code )}, {@code |}, {@code \}, or {@code {} are
+     * compiled as case-insensitive regexes.
+     */
+    private static boolean matchPattern(
+            @NonNull String cmdLower, @NonNull String firstWord,
+            @NonNull String pattern) {
+        if (pattern.contains("(") || pattern.contains(")")
+                || pattern.contains("|") || pattern.contains("\\")
+                || pattern.contains("{")) {
+            return Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
+                    .matcher(cmdLower).find();
+        }
+        return cmdLower.startsWith(pattern) || firstWord.equals(pattern);
+    }
+
+    /**
+     * Patterns for commands that are <b>always blocked</b> because they are
+     * almost certainly destructive.  Each entry is either a simple prefix
+     * string or a regex (detected by the presence of regex metacharacters).
+     */
+    private static final Set<String> BLOCKED_COMMAND_PATTERNS = new HashSet<>(Arrays.asList(
+            // ── rm: recursive delete on root or broad wildcards (regex) ──
+            // Match "rm -<flags-with-r> /" with optional trailing args
+            "rm\\s+-[a-z]*r[a-z]*\\s+/(\\s|$)",
+            // Match "rm -<flags-with-r> /*" (wildcard)
+            "rm\\s+-[a-z]*r[a-z]*\\s+/\\*",
+            // Match "rm --recursive /" with optional trailing args
+            "rm\\s+--recursive\\s+/(\\s|$)",
+            // Match "rm --recursive /*" (wildcard)
+            "rm\\s+--recursive\\s+/\\*",
+            // ── dd: overwrite with /dev/zero ──
+            "dd\\s+if=/dev/zero",
+            // ── dd: write directly to block device (exclude /dev/null, /dev/zero) ──
+            "dd\\s+of=/dev/(?!null|zero)",
+            // ── Disk format / wipe ──
+            "mkfs\\.",
+            "mkfs ",
+            "format c:",
+            "format d:",
+            "format e:",
+            "del /f /s /q",
+            // ── Fork bombs (regex-escaped so matchPattern treats them as regex) ──
+            ":\\s*\\(\\s*\\)\\s*\\{",
+            "\\.\\s*\\(\\s*\\)\\s*\\{\\.\\s*\\|\\s*\\.\\s*&\\s*\\}\\s*;",
+            // ── Raw block-device writes ──
+            ">\\s*/dev/sd",
+            ">\\s*/dev/nvme",
+            ">\\s*/dev/hd",
+            // ── Disk encryption wipe ──
+            "cryptsetup\\s+erase",
+            "cryptsetup\\s+lukserase"
+    ));
+
+    /**
+     * First-words of commands that are <b>potentially destructive</b> and
+     * should require user confirmation.
+     */
+    private static final Set<String> DANGEROUS_COMMANDS = new HashSet<>(Arrays.asList(
+            "rm",               // file deletion
+            "shutdown",         // system shutdown
+            "reboot",           // system reboot
+            "halt",             // system halt
+            "poweroff",         // power off
+            "init",             // init system (e.g. init 0)
+            "dd",               // raw data copy (without if=/dev/zero — that's BLOCKED)
+            "mkfs",             // format filesystem
+            "chmod",            // change permissions
+            "chown",            // change ownership
+            "chgrp",            // change group
+            "kill",             // send signal to process
+            "killall",          // kill by name
+            "pkill",            // kill by pattern
+            "fdisk",            // partition table
+            "parted",           // partition
+            "diskpart",         // Windows partition
+            "format",           // Windows disk format
+            "del",              // Windows delete
+            "erase",            // Windows erase
+            "rmdir"             // remove directory
+    ));
 }
