@@ -4,9 +4,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -144,6 +146,7 @@ public class AgentFragment extends Fragment {
         setupSuggestedPrompts();
         applyLaunchArgs();
         refreshEngineState();
+        setupKeyboardHandler();
     }
 
     @Override
@@ -751,7 +754,11 @@ public class AgentFragment extends Fragment {
             @Override
             public void onExecutionProgress(int currentStep, int totalSteps) {
                 if (!isAdded()) return;
-                inputField.setHint("Executing step " + (currentStep + 1) + "/" + totalSteps + "...");
+                if (totalSteps > 0) {
+                    inputField.setHint("Executing step " + (currentStep + 1) + "/" + totalSteps + "...");
+                } else {
+                    inputField.setHint(R.string.agent_state_executing);
+                }
             }
 
             @Override
@@ -1062,13 +1069,11 @@ public class AgentFragment extends Fragment {
         switch (state) {
             case IDLE:
                 inputField.setEnabled(true);
-                sendButton.setEnabled(true);
                 inputField.setHint(R.string.agent_input_hint_real);
                 updateThinkingRow(false);
                 break;
             case THINKING:
                 inputField.setEnabled(false);
-                sendButton.setEnabled(false);
                 inputField.setHint(R.string.agent_state_thinking);
                 updateThinkingRow(true);
                 // SSH connects in parallel with LLM thinking
@@ -1079,23 +1084,49 @@ public class AgentFragment extends Fragment {
             case WAITING_APPROVE:
                 // Enable input so user can enter a new request without approving
                 inputField.setEnabled(true);
-                sendButton.setEnabled(true);
                 inputField.setHint(R.string.agent_state_waiting_approve);
                 updateThinkingRow(false);
                 break;
             case EXECUTING:
                 inputField.setEnabled(false);
-                sendButton.setEnabled(false);
                 updateThinkingRow(false);
                 break;
             case RETRYING:
-                // Keep disabled during retry
+                // Keep input disabled during retry
                 break;
             case ERROR:
                 inputField.setEnabled(true);
-                sendButton.setEnabled(true);
                 updateThinkingRow(false);
                 break;
+        }
+        updateSendButtonForState(state);
+    }
+
+    /**
+     * Switch send button icon and action based on current Agent state.
+     * <ul>
+     *   <li>IDLE / WAITING_APPROVE / ERROR → send icon, calls {@link #submitToAgent()}</li>
+     *   <li>THINKING / EXECUTING / RETRYING → stop icon, calls {@code agentController.cancel()}</li>
+     * </ul>
+     */
+    private void updateSendButtonForState(@NonNull AgentState state) {
+        boolean isBusy = state == AgentState.THINKING
+                || state == AgentState.EXECUTING
+                || state == AgentState.RETRYING;
+        if (isBusy) {
+            sendButton.setEnabled(true);
+            sendButton.setImageResource(R.drawable.ic_hourglass);
+            sendButton.setContentDescription(getString(R.string.agent_act_cancel));
+            sendButton.setOnClickListener(v -> {
+                if (agentController != null) {
+                    agentController.cancel();
+                }
+            });
+        } else {
+            sendButton.setEnabled(true);
+            sendButton.setImageResource(R.drawable.ic_toolbar_send);
+            sendButton.setContentDescription(getString(R.string.agent_send_cd));
+            sendButton.setOnClickListener(v -> submitToAgent());
         }
     }
 
@@ -1429,6 +1460,51 @@ public class AgentFragment extends Fragment {
             });
         }
     }
+
+    /**
+     * Fallback keyboard handler: if {@code adjustResize} fails to shrink the
+     * root (device-specific), apply bottom padding so the input bar stays above
+     * the keyboard. Normally a no-op when adjustResize works correctly.
+     */
+    private void setupKeyboardHandler() {
+        if (inputField == null) return;
+        final View rootView = getView();
+        if (rootView == null) return;
+
+        inputField.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                rootView.getViewTreeObserver()
+                        .addOnGlobalLayoutListener(layoutListener);
+            } else {
+                rootView.getViewTreeObserver()
+                        .removeOnGlobalLayoutListener(layoutListener);
+                if (rootView.getPaddingBottom() > 0) {
+                    rootView.setPadding(0, 0, 0, 0);
+                }
+            }
+        });
+    }
+
+    private final ViewTreeObserver.OnGlobalLayoutListener layoutListener = () -> {
+        View rootView = getView();
+        if (rootView == null) return;
+
+        Rect visibleFrame = new Rect();
+        rootView.getWindowVisibleDisplayFrame(visibleFrame);
+
+        int[] loc = new int[2];
+        rootView.getLocationOnScreen(loc);
+        int rootBottomOnScreen = loc[1] + rootView.getHeight();
+        int covered = rootBottomOnScreen - visibleFrame.bottom;
+
+        // adjustResize should handle the resize; only fall back to padding
+        // if the system didn't shrink the root enough.
+        if (covered > 50 && rootView.getPaddingBottom() < covered) {
+            rootView.setPadding(0, 0, 0, covered);
+        } else if (covered <= 50 && rootView.getPaddingBottom() > 0) {
+            rootView.setPadding(0, 0, 0, 0);
+        }
+    };
 
     // ── Suggested Prompts (6 hardcoded FAQs, aligned with iOS) ──────
 

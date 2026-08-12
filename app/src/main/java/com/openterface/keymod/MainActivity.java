@@ -530,9 +530,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     
     private void setImmersiveMode() {
         View decorView = getWindow().getDecorView();
+        // LAYOUT_STABLE intentionally omitted: it prevents adjustResize from
+        // working when the soft keyboard appears, causing the Agent input bar
+        // to be covered by the keyboard.
         decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
