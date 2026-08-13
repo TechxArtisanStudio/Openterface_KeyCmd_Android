@@ -103,9 +103,9 @@ public class OsDetectorTest {
     }
 
     @Test
-    public void testUnknownDefaultsToLinux() {
-        assertEquals("linux", OsDetector.DetectedOS.UNKNOWN.getCode());
-        assertEquals("Linux", OsDetector.DetectedOS.UNKNOWN.getDisplayName());
+    public void testUnknownDefaultsToMacos() {
+        assertEquals("macos", OsDetector.DetectedOS.UNKNOWN.getCode());
+        assertEquals("macOS", OsDetector.DetectedOS.UNKNOWN.getDisplayName());
     }
 
     // ── Enum completeness ──────────────────────────────────────────────

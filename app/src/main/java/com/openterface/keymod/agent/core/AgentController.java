@@ -83,8 +83,8 @@ public final class AgentController {
     // ── Dependencies ─────────────────────────────────────────────────────
 
     private final Context appContext;
-    /** Original context — may be Activity, used for getActiveSshProfile() lookup. */
-    private final Context originalContext;
+    /** Host environment — provides SSH profile, SshClient, and BLE service. */
+    @NonNull private final AgentEnvironment environment;
     private final AgentPromptBuilder promptBuilder;
     private final AgentPlanParser planParser;
     private final AgentSession session;
@@ -109,9 +109,9 @@ public final class AgentController {
 
     @Nullable private AgentListener listener;
 
-    public AgentController(@NonNull Context context) {
-        this.originalContext = context;
+    public AgentController(@NonNull Context context, @NonNull AgentEnvironment environment) {
         this.appContext = context.getApplicationContext();
+        this.environment = environment;
         this.promptBuilder = new AgentPromptBuilder(this.appContext);
         this.planParser = new AgentPlanParser();
         this.session = new AgentSession(this.appContext);
@@ -386,10 +386,7 @@ public final class AgentController {
                     fallbackOs = prefs.getString("agent_target_os", "macos");
                 }
                 // Synchronous detection with timeout (blocks briefly but ensures correct OS)
-                com.openterface.terminal.SshClient sshClient = null;
-                if (originalContext instanceof com.openterface.keymod.MainActivity) {
-                    sshClient = ((com.openterface.keymod.MainActivity) originalContext).getSshClient();
-                }
+                com.openterface.terminal.SshClient sshClient = environment.getSshClient();
                 if (sshClient != null) {
                     detectedOs = OsDetector.detectOsSync(sshClient, fallbackOs);
                     Log.i(TAG, "OS auto-detected: " + detectedOs.getDisplayName()
@@ -1164,26 +1161,12 @@ public final class AgentController {
     }
 
     /**
-     * Get the active SSH profile from MainActivity (Target Settings).
-     * Returns null if context is not MainActivity or no profile is selected.
+     * Get the active SSH profile from the host environment (Target Settings).
+     * Returns null if no profile is selected.
      */
     @Nullable
     private CredentialProfile getActiveSshProfile() {
-        try {
-            // Unwrap ContextWrapper chain to find the actual Activity
-            android.content.Context ctx = originalContext;
-            while (ctx instanceof android.content.ContextWrapper) {
-                if (ctx instanceof com.openterface.keymod.MainActivity) {
-                    return ((com.openterface.keymod.MainActivity) ctx).getActiveSshProfile();
-                }
-                ctx = ((android.content.ContextWrapper) ctx).getBaseContext();
-            }
-            Log.w(TAG, "Context is not MainActivity: " + originalContext.getClass().getName());
-            return null;
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to get active SSH profile", e);
-            return null;
-        }
+        return environment.getActiveSshProfile();
     }
 
     /**

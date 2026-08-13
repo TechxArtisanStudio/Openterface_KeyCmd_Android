@@ -20,7 +20,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
-import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.agent.core.AgentEnvironment;
 import com.openterface.keymod.R;
 import com.openterface.keymod.util.BottomSheetBlurHelper;
 import com.openterface.terminal.CredentialManager;
@@ -144,7 +144,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         // Restore Agent's active profile:
         // 1. Try Activity memory (survives sheet dismiss while app is alive)
         // 2. Fall back to SharedPreferences (survives app restart)
-        MainActivity activity = (MainActivity) requireActivity();
+        AgentEnvironment activity = (AgentEnvironment) requireActivity();
         CredentialProfile agentProfile = activity.getActiveSshProfile();
         if (agentProfile != null) {
             agentActiveProfileId = agentProfile.getId();
@@ -213,7 +213,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         notifyTargetChanged();
 
         // If both OS and SSH profile are now set, hint the user it's still SSH mode.
-        MainActivity activity = (MainActivity) requireActivity();
+        AgentEnvironment activity = (AgentEnvironment) requireActivity();
         if (activity.getActiveSshProfile() != null && !os.isEmpty()) {
             showSshModeToast();
         }
@@ -262,7 +262,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
     private void onProfileSelected(@NonNull CredentialProfile profile) {
         // Agent only: store profile for Agent auto-connect (does NOT affect Terminal tab)
-        MainActivity activity = (MainActivity) requireActivity();
+        AgentEnvironment activity = (AgentEnvironment) requireActivity();
         activity.setActiveSshProfile(profile);
         agentActiveProfileId = profile.getId();
 
@@ -286,7 +286,7 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     /** Deselect the active profile — clears Agent's SSH mode and returns to HID mode. */
     private void onProfileDeselected() {
         // Agent only: clear SSH profile reference → enter HID mode
-        MainActivity activity = (MainActivity) requireActivity();
+        AgentEnvironment activity = (AgentEnvironment) requireActivity();
         CredentialProfile deselectedProfile = activity.getActiveSshProfile();
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;

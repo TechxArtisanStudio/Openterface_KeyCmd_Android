@@ -43,6 +43,7 @@ import com.openterface.keymod.agent.ui.AgentMessageAdapter;
 import com.openterface.keymod.agent.ui.AgentPlanStep;
 import com.openterface.keymod.agent.ui.EditPlanSheet;
 import com.openterface.keymod.agent.core.AgentController;
+import com.openterface.keymod.agent.core.AgentEnvironment;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentState;
 import com.openterface.keymod.agent.executor.CompositeToolExecutor;
@@ -167,32 +168,28 @@ public class AgentFragment extends Fragment {
     }
 
     /**
-     * Update the TerminalToolExecutor with the current SshClient from MainActivity.
+     * Update the TerminalToolExecutor with the current SshClient from the environment.
      * SshClient is stored at the Activity level so it survives tab switches.
      * Also sets HID ConnectionManager for fallback when SSH is unavailable.
      */
     private void updateTerminalExecutorSshClient() {
         if (terminalExecutor == null || !isAdded()) return;
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
-        com.openterface.keymod.MainActivity mainActivity =
-                (com.openterface.keymod.MainActivity) requireActivity();
-        com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
+        AgentEnvironment env = (AgentEnvironment) requireActivity();
+        com.openterface.terminal.SshClient sshClient = env.getSshClient();
         terminalExecutor.setSshClient(sshClient);
         // Set HID fallback: ConnectionManager + targetOS for when SSH is unavailable
-        terminalExecutor.setConnectionManager(mainActivity.getConnectionManager());
+        terminalExecutor.setConnectionManager(env.getConnectionManager());
         terminalExecutor.setTargetOs(getTargetOs());
     }
 
     /**
      * Update the HidToolExecutor with the current ConnectionManager and target OS.
-     * ConnectionManager is obtained from MainActivity.
+     * ConnectionManager is obtained from the environment.
      */
     private void updateHidExecutorConnection() {
         if (hidExecutor == null || !isAdded()) return;
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
-        com.openterface.keymod.MainActivity mainActivity =
-                (com.openterface.keymod.MainActivity) requireActivity();
-        hidExecutor.setConnectionManager(mainActivity.getConnectionManager());
+        AgentEnvironment env = (AgentEnvironment) requireActivity();
+        hidExecutor.setConnectionManager(env.getConnectionManager());
         hidExecutor.setTargetOs(getTargetOs());
     }
 
@@ -201,10 +198,8 @@ public class AgentFragment extends Fragment {
      */
     private void updateMacroExecutorConnection() {
         if (macroExecutor == null || !isAdded()) return;
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
-        com.openterface.keymod.MainActivity mainActivity =
-                (com.openterface.keymod.MainActivity) requireActivity();
-        macroExecutor.setConnectionManager(mainActivity.getConnectionManager());
+        AgentEnvironment env = (AgentEnvironment) requireActivity();
+        macroExecutor.setConnectionManager(env.getConnectionManager());
     }
 
     /**
@@ -223,10 +218,9 @@ public class AgentFragment extends Fragment {
             return agentOs;
         }
         // 2. SSH profile's target OS
-        if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
-            com.openterface.keymod.MainActivity mainActivity =
-                    (com.openterface.keymod.MainActivity) requireActivity();
-            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+        if (isAdded()) {
+            AgentEnvironment env = (AgentEnvironment) requireActivity();
+            com.openterface.terminal.CredentialProfile profile = env.getActiveSshProfile();
             if (profile != null) {
                 String os = profile.getTargetOs();
                 if (os != null && !os.isEmpty()) {
@@ -358,15 +352,17 @@ public class AgentFragment extends Fragment {
     private void enableEngine() {
         if (!realEngineEnabled) {
             realEngineEnabled = true;
-            // Use getActivity() instead of requireContext() to ensure we pass
-            // the Activity (not Application) to AgentController.
-            // This is critical for getActiveSshProfile() to work correctly.
+            // Use getActivity() to get the Activity context.
+            // MainActivity implements AgentEnvironment, providing SSH profile
+            // and SshClient access without instanceof coupling.
             android.content.Context ctx = getActivity();
             if (ctx == null) ctx = requireContext();
-            agentController = new AgentController(ctx);
+            AgentEnvironment env = (AgentEnvironment) requireActivity();
+            agentController = new AgentController(ctx, env);
 
             // TerminalToolExecutor for SSH command execution
             terminalExecutor = new TerminalToolExecutor(requireContext());
+            terminalExecutor.setEnvironment(env);
             updateTerminalExecutorSshClient();
 
             // HidToolExecutor for wireless keyboard control
@@ -1061,10 +1057,9 @@ public class AgentFragment extends Fragment {
         if (!isAdded()) return false;
 
         // Check for active SSH profile
-        if (requireActivity() instanceof com.openterface.keymod.MainActivity) {
-            com.openterface.keymod.MainActivity mainActivity =
-                    (com.openterface.keymod.MainActivity) requireActivity();
-            com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+        if (isAdded()) {
+            AgentEnvironment env = (AgentEnvironment) requireActivity();
+            com.openterface.terminal.CredentialProfile profile = env.getActiveSshProfile();
             if (profile != null) {
                 return true;  // Terminal mode is configured
             }
@@ -1376,13 +1371,11 @@ public class AgentFragment extends Fragment {
      */
     private void restoreAgentSshProfile() {
         if (!isAdded()) return;
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
 
-        com.openterface.keymod.MainActivity activity =
-                (com.openterface.keymod.MainActivity) requireActivity();
+        AgentEnvironment env = (AgentEnvironment) requireActivity();
 
         // Already restored (or user has an active profile in memory) → skip
-        if (activity.getActiveSshProfile() != null) return;
+        if (env.getActiveSshProfile() != null) return;
 
         // Read persisted profile ID
         String profileId = requireContext()
@@ -1395,7 +1388,7 @@ public class AgentFragment extends Fragment {
             CredentialManager credentialManager = new CredentialManager(requireContext());
             for (CredentialProfile p : credentialManager.getAllProfiles()) {
                 if (profileId.equals(p.getId())) {
-                    activity.setActiveSshProfile(p);
+                    env.setActiveSshProfile(p);
                     Log.d(TAG, "Restored Agent SSH profile: " + p.getDisplayLabel());
                     return;
                 }
@@ -1420,14 +1413,12 @@ public class AgentFragment extends Fragment {
      */
     public void updateSessionBar() {
         if (sessionHint == null || !isAdded()) return;
-        if (!(requireActivity() instanceof com.openterface.keymod.MainActivity)) return;
-        com.openterface.keymod.MainActivity mainActivity =
-                (com.openterface.keymod.MainActivity) requireActivity();
-        com.openterface.terminal.CredentialProfile profile = mainActivity.getActiveSshProfile();
+        AgentEnvironment env = (AgentEnvironment) requireActivity();
+        com.openterface.terminal.CredentialProfile profile = env.getActiveSshProfile();
 
         if (profile != null) {
             // Terminal (SSH) mode
-            com.openterface.terminal.SshClient sshClient = mainActivity.getSshClient();
+            com.openterface.terminal.SshClient sshClient = env.getSshClient();
             if (sshClient != null && sshClient.isSessionConnected()) {
                 // SSH connected — show profile label
                 sessionHint.setText("Target: " + profile.getDisplayLabel());

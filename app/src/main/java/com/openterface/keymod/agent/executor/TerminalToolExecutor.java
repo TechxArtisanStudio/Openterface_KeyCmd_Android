@@ -8,7 +8,7 @@ import androidx.annotation.Nullable;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
-import com.openterface.keymod.MainActivity;
+import com.openterface.keymod.agent.core.AgentEnvironment;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
 import com.openterface.keymod.agent.core.CommandValidator;
@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Executes terminal steps via SSH ChannelExec.
  *
  * <p>If no SSH session is alive, attempts to auto-connect using the
- * {@link CredentialProfile} stored in {@link MainActivity} (selected via
+ * {@link CredentialProfile} stored via {@link AgentEnvironment} (selected via
  * TargetSettingsSheet). If SSH is unavailable and a HID device is connected,
  * falls back to typing the command as HID keystrokes into the active terminal
  * window (output cannot be captured in this mode).</p>
@@ -40,6 +40,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
     private final Context context;
     private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    @Nullable private AgentEnvironment environment;
     @Nullable private SshClient sshClient;
     @Nullable private ConnectionManager connectionManager;
     @NonNull private String targetOs = "macos"; // TODO(release): revert default to "linux"
@@ -48,9 +49,12 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     @Nullable private String lastAutoConnectError;
 
     public TerminalToolExecutor(@NonNull Context context) {
-        // Keep the original context (not getApplicationContext) so that
-        // tryAutoConnect() can cast it to MainActivity via instanceof.
         this.context = context;
+    }
+
+    /** Set the host environment for SSH profile and BLE service access. */
+    public void setEnvironment(@NonNull AgentEnvironment environment) {
+        this.environment = environment;
     }
 
     /** Set the SSH client to use for command execution. */
@@ -84,25 +88,23 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
      * @param onConnected callback fired on main thread when connection succeeds
      */
     public void preConnectSsh(@Nullable Runnable onConnected) {
-        if (context instanceof MainActivity) {
-            MainActivity activity = (MainActivity) context;
-            CredentialProfile activeProfile = activity.getActiveSshProfile();
-            if (activeProfile != null) {
-                SshClient existing = activity.getSshClient();
-                if (existing != null && existing.isSessionConnected()) {
-                    return; // Already connected
-                }
-                new Thread(() -> {
-                    lastAutoConnectError = null;
-                    SshClient client = tryAutoConnectWithProfile(activeProfile);
-                    if (client != null) {
-                        this.sshClient = client;
-                        if (onConnected != null) {
-                            mainHandler.post(onConnected);
-                        }
-                    }
-                }, "AgentPreConnect").start();
+        if (environment == null) return;
+        CredentialProfile activeProfile = environment.getActiveSshProfile();
+        if (activeProfile != null) {
+            SshClient existing = environment.getSshClient();
+            if (existing != null && existing.isSessionConnected()) {
+                return; // Already connected
             }
+            new Thread(() -> {
+                lastAutoConnectError = null;
+                SshClient client = tryAutoConnectWithProfile(activeProfile);
+                if (client != null) {
+                    this.sshClient = client;
+                    if (onConnected != null) {
+                        mainHandler.post(onConnected);
+                    }
+                }
+            }, "AgentPreConnect").start();
         }
     }
 
@@ -127,11 +129,10 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         SshClient client = null;
 
-        // Priority 1: Reuse existing SSH session from the Activity if still alive.
+        // Priority 1: Reuse existing SSH session from the environment if still alive.
         // Avoids expensive BLE disconnect/reconnect + SSH handshake on every step.
-        if (context instanceof MainActivity) {
-            MainActivity activity = (MainActivity) context;
-            SshClient existing = activity.getSshClient();
+        if (environment != null) {
+            SshClient existing = environment.getSshClient();
             if (existing != null && existing.isSessionConnected()) {
                 client = existing;
                 Log.d(TAG, "Reusing existing SSH session (no reconnect needed)");
@@ -139,9 +140,8 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
 
         // Priority 2: Existing session dead or absent — reconnect via profile.
-        if (client == null && context instanceof MainActivity) {
-            MainActivity activity = (MainActivity) context;
-            CredentialProfile activeProfile = activity.getActiveSshProfile();
+        if (client == null && environment != null) {
+            CredentialProfile activeProfile = environment.getActiveSshProfile();
 
             if (activeProfile != null) {
                 lastAutoConnectError = null;
@@ -335,18 +335,16 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
      */
     @Nullable
     private SshClient tryAutoConnectWithProfile(@NonNull CredentialProfile profile) {
-        if (!(context instanceof MainActivity)) {
-            lastAutoConnectError = "not running in MainActivity";
-            Log.w(TAG, "Auto-connect skipped: context is not MainActivity (type="
-                    + (context != null ? context.getClass().getSimpleName() : "null") + ")");
+        if (environment == null) {
+            lastAutoConnectError = "no AgentEnvironment set";
+            Log.w(TAG, "Auto-connect skipped: environment not set");
             return null;
         }
-        MainActivity activity = (MainActivity) context;
 
         Log.i(TAG, "Connecting SSH via Target Settings profile: " + profile.getDisplayLabel());
 
         // Determine transport type: BLE if BluetoothService is connected, else USB
-        BluetoothService btService = activity.getBluetoothService();
+        BluetoothService btService = environment.getBluetoothService();
         boolean useBle = btService != null && btService.isConnected();
         Log.i(TAG, "Auto-connect transport: " + (useBle ? "BLE" : "USB"));
 
@@ -398,8 +396,8 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
             if (client.isSessionConnected()) {
                 Log.i(TAG, "SSH connected via Target Settings profile: " + profile.getDisplayLabel());
-                disconnectOldSshClient(activity);
-                activity.setSshClient(client);
+                disconnectOldSshClient();
+                environment.setSshClient(client);
                 return client;
             } else {
                 lastAutoConnectError = sshError[0] != null
@@ -416,7 +414,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     }
 
     /**
-     * Try to auto-connect SSH using the profile stored in MainActivity.
+     * Try to auto-connect SSH using the profile stored in the environment.
      * This lets the Agent work even when the Terminal tab's SSH session died.
      *
      * <p>On failure, stores the reason in {@link #lastAutoConnectError} so
@@ -424,14 +422,12 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
      */
     @Nullable
     private SshClient tryAutoConnect() {
-        if (!(context instanceof MainActivity)) {
-            lastAutoConnectError = "not running in MainActivity";
-            Log.w(TAG, "Auto-connect skipped: context is not MainActivity (type="
-                    + (context != null ? context.getClass().getSimpleName() : "null") + ")");
+        if (environment == null) {
+            lastAutoConnectError = "no AgentEnvironment set";
+            Log.w(TAG, "Auto-connect skipped: environment not set");
             return null;
         }
-        MainActivity activity = (MainActivity) context;
-        CredentialProfile profile = activity.getActiveSshProfile();
+        CredentialProfile profile = environment.getActiveSshProfile();
         if (profile == null) {
             lastAutoConnectError = "no SSH profile selected";
             Log.i(TAG, "Auto-connect skipped: no active SSH profile");
@@ -441,7 +437,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         Log.i(TAG, "Auto-connecting SSH via profile: " + profile.getDisplayLabel());
 
         // Determine transport type: BLE if BluetoothService is connected, else USB
-        BluetoothService btService = activity.getBluetoothService();
+        BluetoothService btService = environment.getBluetoothService();
         boolean useBle = btService != null && btService.isConnected();
         Log.i(TAG, "Auto-connect transport: " + (useBle ? "BLE" : "USB"));
 
@@ -495,8 +491,8 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
             if (client.isSessionConnected()) {
                 Log.i(TAG, "Auto-connect SSH succeeded via " + (useBle ? "BLE" : "USB"));
-                disconnectOldSshClient(activity);
-                activity.setSshClient(client);
+                disconnectOldSshClient();
+                environment.setSshClient(client);
                 return client;
             } else {
                 // Connect returned without exception but session is not alive
@@ -531,11 +527,12 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     }
 
     /**
-     * Disconnect the previous SSH client stored in the Activity, if any.
+     * Disconnect the previous SSH client stored in the environment, if any.
      * Prevents resource leaks (JSch session, BLE transport) when reconnecting.
      */
-    private void disconnectOldSshClient(@NonNull MainActivity activity) {
-        SshClient old = activity.getSshClient();
+    private void disconnectOldSshClient() {
+        if (environment == null) return;
+        SshClient old = environment.getSshClient();
         if (old != null && old.isSessionConnected()) {
             Log.d(TAG, "Disconnecting old SSH client before replacing");
             try {

@@ -76,6 +76,7 @@ import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
 import com.openterface.fragment.AgentFragment;
+import com.openterface.keymod.agent.core.AgentEnvironment;
 import com.openterface.keymod.agent.ui.AgentSettingsBottomSheet;
 import com.openterface.keymod.agent.ui.TargetSettingsSheet;
 import com.openterface.keymod.prefs.KmProSubmodePrefs;
@@ -105,7 +106,8 @@ import android.Manifest;
 import com.polidea.rxandroidble2.scan.ScanSettings;
 import android.app.PendingIntent;
 
-public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
+public class MainActivity extends AppCompatActivity
+        implements BluetoothDialogFragment.BluetoothConnectionListener, AgentEnvironment {
 
     public static final String EXTRA_AGENT_DEMO_SCRIPT = "agent_demo_script";
     public static final String EXTRA_AGENT_DEMO_AUTO_PLAY = "agent_demo_auto_play";
