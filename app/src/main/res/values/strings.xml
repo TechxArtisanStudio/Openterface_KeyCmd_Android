@@ -209,9 +209,13 @@
     <string name="settings_ai_provider_url">API Base URL</string>
     <string name="settings_ai_provider_model">Model Name</string>
     <string name="settings_ai_api_key_optional">API Key Optional</string>
+    <string name="settings_ai_api_key_optional_desc">Enable for local providers (Ollama, LM Studio, etc.)</string>
     <string name="settings_ai_provider_name_hint">Enter provider name</string>
     <string name="settings_ai_provider_url_hint">https://api.example.com/v1</string>
+    <string name="settings_ai_update_key">Update API Key</string>
+    <string name="settings_ai_key_for_provider">API Key for %1$s</string>
     <string name="settings_ai_provider_model_hint">Enter model name</string>
+    <string name="settings_ai_edit_provider">Edit Provider: %1$s</string>
 
     <!-- API Key Management Section -->
     <string name="settings_ai_section_api_key">API Key Management</string>
@@ -232,6 +236,7 @@
     <string name="settings_ai_dialog_add">Add Provider</string>
     <string name="settings_ai_dialog_delete">Delete Provider</string>
     <string name="settings_ai_dialog_clear">Clear</string>
+    <string name="settings_ai_dialog_select_provider">Select AI Provider</string>
 
     <!-- Test Connection Result -->
     <string name="settings_ai_test_result_title">Test Result:</string>

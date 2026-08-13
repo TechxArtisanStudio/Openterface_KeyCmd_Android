@@ -1,6 +1,6 @@
 package com.openterface.keymod.fragments;
 
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -243,16 +244,25 @@ public class AISettingsFragment extends Fragment {
 
     // Section 3: AI Provider Setting
     private Spinner providerSpinner;
+    private TextView activeProviderNameText;
+    private LinearLayout activeProviderRow;
+    private TextView apiKeyWarningText;
+    private TextView editProviderHeader;
     private MaterialButton addProviderBtn;
     private MaterialButton deleteProviderBtn;
     private TextInputEditText providerNameEdit;
     private TextInputEditText providerUrlEdit;
     private TextInputEditText providerModelEdit;
+    private TextInputLayout providerUrlInputLayout;
+    private TextInputLayout providerModelInputLayout;
     private SwitchCompat apiKeyOptionalSwitch;
     private MaterialButton testConnectionBtn;
     private TextView testResultText;
 
     // Section 4: API Key Management
+    private TextView apiKeyProviderLabel;
+    private MaterialButton updateKeyBtn;
+    private LinearLayout apiKeyActionButtons;
     private TextInputEditText apiKeyEditText;
     private TextInputLayout apiKeyInputLayout;
     private MaterialButton saveKeyBtn;
@@ -356,16 +366,25 @@ public class AISettingsFragment extends Fragment {
 
         // Section 3: AI Provider Setting
         providerSpinner = view.findViewById(R.id.ai_provider_spinner);
+        activeProviderNameText = view.findViewById(R.id.active_provider_name_text);
+        activeProviderRow = view.findViewById(R.id.active_provider_row);
+        apiKeyWarningText = view.findViewById(R.id.api_key_warning_text);
+        editProviderHeader = view.findViewById(R.id.edit_provider_header);
         addProviderBtn = view.findViewById(R.id.ai_add_provider_btn);
         deleteProviderBtn = view.findViewById(R.id.ai_delete_provider_btn);
         providerNameEdit = view.findViewById(R.id.provider_name_edit);
         providerUrlEdit = view.findViewById(R.id.provider_url_edit);
         providerModelEdit = view.findViewById(R.id.provider_model_edit);
+        providerUrlInputLayout = view.findViewById(R.id.provider_url_input_layout);
+        providerModelInputLayout = view.findViewById(R.id.provider_model_input_layout);
         apiKeyOptionalSwitch = view.findViewById(R.id.api_key_optional_switch);
         testConnectionBtn = view.findViewById(R.id.ai_test_button);
         testResultText = view.findViewById(R.id.test_result_text);
 
         // Section 4: API Key Management
+        apiKeyProviderLabel = view.findViewById(R.id.api_key_provider_label);
+        updateKeyBtn = view.findViewById(R.id.ai_update_key_btn);
+        apiKeyActionButtons = view.findViewById(R.id.api_key_action_buttons);
         apiKeyEditText = view.findViewById(R.id.ai_api_key_edittext);
         apiKeyInputLayout = view.findViewById(R.id.ai_api_key_input_layout);
         saveKeyBtn = view.findViewById(R.id.ai_save_key_btn);
@@ -392,10 +411,9 @@ public class AISettingsFragment extends Fragment {
 
         // Initialize provider adapter with mutable list
         providers = providerManager.getProviders();
-        providerAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item,
+        providerAdapter = new ProviderSpinnerAdapter(requireContext(),
+                R.layout.item_provider_spinner,
                 new ArrayList<>(Arrays.asList(getProviderDisplayNames())));
-        providerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         providerSpinner.setAdapter(providerAdapter);
     }
 
@@ -408,13 +426,41 @@ public class AISettingsFragment extends Fragment {
             if (TextUtils.isEmpty(name)) {
                 name = unnamedProvider;
             }
-            // Add checkmark if API key is configured
-            if (keyManager.hasKey(provider.id)) {
-                name = name + " ✓";
-            }
             names[i] = name;
         }
         return names;
+    }
+
+    /**
+     * Custom ArrayAdapter for the provider Spinner.
+     * - Closed state: handled by parent ArrayAdapter (uses item_provider_spinner.xml).
+     * - Dropdown state: custom layout with checkmark icon aligned to the right.
+     */
+    private class ProviderSpinnerAdapter extends ArrayAdapter<String> {
+        ProviderSpinnerAdapter(@NonNull android.content.Context context, int resource, @NonNull java.util.List<String> objects) {
+            super(context, resource, objects);
+        }
+
+        @Override
+        public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            View row = convertView;
+            if (row == null) {
+                row = LayoutInflater.from(getContext())
+                        .inflate(R.layout.item_provider_dropdown, parent, false);
+            }
+
+            TextView nameView = row.findViewById(android.R.id.text1);
+            ImageView checkIcon = row.findViewById(R.id.provider_check_icon);
+
+            nameView.setText(getItem(position));
+
+            // Show checkmark only if API key is configured for this provider
+            boolean hasKey = position < providers.size()
+                    && keyManager.hasKey(providers.get(position).id);
+            checkIcon.setVisibility(hasKey ? View.VISIBLE : View.GONE);
+
+            return row;
+        }
     }
 
     private void refreshProviderSpinner() {
@@ -466,6 +512,12 @@ public class AISettingsFragment extends Fragment {
         // Update API key status
         updateApiKeyStatus(selectedIndex);
 
+        // Update Edit Provider header
+        updateEditProviderHeader(selectedIndex);
+
+        // Update Active Provider name text
+        updateActiveProviderName(selectedIndex);
+
         isLoadingSettings = false;
     }
 
@@ -481,6 +533,30 @@ public class AISettingsFragment extends Fragment {
         apiKeyOptionalSwitch.setChecked(provider.apiKeyOptional);
 
         isUpdatingProviderFields = false;
+
+        // Immediately validate and show error state for empty fields
+        validateAndShowErrors();
+    }
+
+    /**
+     * Validates URL and Model fields, shows red borders and error messages if empty.
+     * Called after loading provider details to show initial validation state.
+     */
+    private void validateAndShowErrors() {
+        String url = providerUrlEdit.getText().toString().trim();
+        String model = providerModelEdit.getText().toString().trim();
+
+        if (TextUtils.isEmpty(url)) {
+            providerUrlInputLayout.setError(getString(R.string.settings_ai_validation_url_empty));
+        } else {
+            providerUrlInputLayout.setError(null);
+        }
+
+        if (TextUtils.isEmpty(model)) {
+            providerModelInputLayout.setError(getString(R.string.settings_ai_validation_model_empty));
+        } else {
+            providerModelInputLayout.setError(null);
+        }
     }
 
     private void loadApiKey(int index) {
@@ -497,6 +573,21 @@ public class AISettingsFragment extends Fragment {
         AIProvider provider = providers.get(index);
         boolean hasKey = keyManager.hasKey(provider.id);
 
+        // Update warning text visibility
+        if (hasKey || provider.apiKeyOptional) {
+            apiKeyWarningText.setVisibility(View.GONE);
+        } else {
+            apiKeyWarningText.setVisibility(View.VISIBLE);
+        }
+
+        // Update API Key Management row label
+        String providerName = provider.name;
+        if (TextUtils.isEmpty(providerName)) {
+            providerName = getString(R.string.settings_ai_unnamed_provider);
+        }
+        apiKeyProviderLabel.setText(getString(R.string.settings_ai_key_for_provider, providerName));
+
+        // Update status text in API Key Management section
         if (hasKey) {
             apiKeyStatusText.setText(R.string.settings_ai_key_status_configured);
             apiKeyStatusText.setTextColor(getResources().getColor(R.color.theme_accent_green, null));
@@ -507,6 +598,35 @@ public class AISettingsFragment extends Fragment {
             apiKeyStatusText.setText(R.string.settings_ai_key_status_not_configured);
             apiKeyStatusText.setTextColor(getResources().getColor(R.color.theme_accent_red, null));
         }
+    }
+
+    private void updateEditProviderHeader(int index) {
+        if (index < 0 || index >= providers.size()) {
+            editProviderHeader.setVisibility(View.GONE);
+            return;
+        }
+
+        AIProvider provider = providers.get(index);
+        String name = provider.name;
+        if (TextUtils.isEmpty(name)) {
+            name = getString(R.string.settings_ai_unnamed_provider);
+        }
+        editProviderHeader.setText(getString(R.string.settings_ai_edit_provider, name));
+        editProviderHeader.setVisibility(View.VISIBLE);
+    }
+
+    private void updateActiveProviderName(int index) {
+        if (index < 0 || index >= providers.size()) {
+            activeProviderNameText.setText("");
+            return;
+        }
+
+        AIProvider provider = providers.get(index);
+        String name = provider.name;
+        if (TextUtils.isEmpty(name)) {
+            name = getString(R.string.settings_ai_unnamed_provider);
+        }
+        activeProviderNameText.setText(name);
     }
 
     // ── Role helpers ──────────────────────────────────────────────────────
@@ -631,9 +751,14 @@ public class AISettingsFragment extends Fragment {
                 loadProviderDetails(pos);
                 loadApiKey(pos);
                 updateApiKeyStatus(pos);
+                updateEditProviderHeader(pos);
+                updateActiveProviderName(pos);
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
+
+        // Active Provider row click - show provider selection dialog
+        activeProviderRow.setOnClickListener(v -> showProviderSelectionDialog());
 
         // Add Provider button
         addProviderBtn.setOnClickListener(v -> showAddProviderDialog());
@@ -662,6 +787,21 @@ public class AISettingsFragment extends Fragment {
 
         // Test Connection button
         testConnectionBtn.setOnClickListener(v -> testConnection());
+
+        // Update API Key button - toggle input visibility
+        updateKeyBtn.setOnClickListener(v -> {
+            boolean isVisible = apiKeyInputLayout.getVisibility() == View.VISIBLE;
+            if (isVisible) {
+                // Hide input and action buttons
+                apiKeyInputLayout.setVisibility(View.GONE);
+                apiKeyActionButtons.setVisibility(View.GONE);
+            } else {
+                // Show input and action buttons
+                apiKeyInputLayout.setVisibility(View.VISIBLE);
+                apiKeyActionButtons.setVisibility(View.VISIBLE);
+                apiKeyEditText.requestFocus();
+            }
+        });
     }
 
     private android.text.TextWatcher createProviderTextWatcher() {
@@ -684,9 +824,34 @@ public class AISettingsFragment extends Fragment {
         if (index < 0 || index >= providers.size()) return;
 
         AIProvider provider = providers.get(index);
-        provider.name = providerNameEdit.getText().toString().trim();
-        provider.apiBaseURL = providerUrlEdit.getText().toString().trim();
-        provider.modelName = providerModelEdit.getText().toString().trim();
+        String name = providerNameEdit.getText().toString().trim();
+        String url = providerUrlEdit.getText().toString().trim();
+        String model = providerModelEdit.getText().toString().trim();
+
+        boolean hasError = false;
+
+        // Validate URL field - show red border and error message if empty
+        if (TextUtils.isEmpty(url)) {
+            providerUrlInputLayout.setError(getString(R.string.settings_ai_validation_url_empty));
+            hasError = true;
+        } else {
+            providerUrlInputLayout.setError(null);
+        }
+
+        // Validate Model field - show red border and error message if empty
+        if (TextUtils.isEmpty(model)) {
+            providerModelInputLayout.setError(getString(R.string.settings_ai_validation_model_empty));
+            hasError = true;
+        } else {
+            providerModelInputLayout.setError(null);
+        }
+
+        // Do not save or refresh if validation failed — keep error state visible
+        if (hasError) return;
+
+        provider.name = name;
+        provider.apiBaseURL = url;
+        provider.modelName = model;
         provider.apiKeyOptional = apiKeyOptionalSwitch.isChecked();
 
         providerManager.updateProvider(provider);
@@ -698,7 +863,7 @@ public class AISettingsFragment extends Fragment {
     }
 
     private void showAddProviderDialog() {
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_ai_dialog_add_title)
                 .setMessage(R.string.settings_ai_dialog_add_message)
                 .setPositiveButton(R.string.settings_ai_dialog_add, (dialog, which) -> {
@@ -723,7 +888,7 @@ public class AISettingsFragment extends Fragment {
             return;
         }
 
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_ai_dialog_delete_title)
                 .setMessage(R.string.settings_ai_dialog_delete_message)
                 .setPositiveButton(R.string.settings_ai_dialog_delete, (dialog, which) -> {
@@ -788,11 +953,16 @@ public class AISettingsFragment extends Fragment {
         isLoadingSettings = true;
         providerSpinner.setSelection(index);
         isLoadingSettings = false;
+
+        // Hide input and action buttons after saving
+        apiKeyInputLayout.setVisibility(View.GONE);
+        apiKeyActionButtons.setVisibility(View.GONE);
+
         Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show();
     }
 
     private void showClearApiKeyDialog() {
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.settings_ai_dialog_clear_key_title)
                 .setMessage(R.string.settings_ai_dialog_clear_key_message)
                 .setPositiveButton(R.string.settings_ai_dialog_clear, (dialog, which) -> {
@@ -807,6 +977,41 @@ public class AISettingsFragment extends Fragment {
                     isLoadingSettings = true;
                     providerSpinner.setSelection(index);
                     isLoadingSettings = false;
+
+                    // Hide input and action buttons after clearing
+                    apiKeyInputLayout.setVisibility(View.GONE);
+                    apiKeyActionButtons.setVisibility(View.GONE);
+                })
+                .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
+                .show();
+    }
+
+    private void showProviderSelectionDialog() {
+        String[] displayNames = getProviderDisplayNames();
+        int currentIndex = providerSpinner.getSelectedItemPosition();
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ai_dialog_select_provider)
+                .setSingleChoiceItems(displayNames, currentIndex, (dialog, which) -> {
+                    if (which < 0 || which >= providers.size()) return;
+                    // Skip if already selected
+                    if (which == currentIndex) {
+                        dialog.dismiss();
+                        return;
+                    }
+                    // Update manager
+                    providerManager.setSelectedProviderIndex(which);
+                    // Update hidden spinner
+                    isLoadingSettings = true;
+                    providerSpinner.setSelection(which);
+                    isLoadingSettings = false;
+                    // Refresh detail panels
+                    loadProviderDetails(which);
+                    loadApiKey(which);
+                    updateApiKeyStatus(which);
+                    updateEditProviderHeader(which);
+                    updateActiveProviderName(which);
+                    dialog.dismiss();
                 })
                 .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
                 .show();
