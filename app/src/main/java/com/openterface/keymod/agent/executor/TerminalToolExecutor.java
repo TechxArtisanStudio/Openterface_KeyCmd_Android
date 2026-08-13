@@ -42,7 +42,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     @Nullable private SshClient sshClient;
     @Nullable private ConnectionManager connectionManager;
-    @NonNull private String targetOs = "linux";
+    @NonNull private String targetOs = "macos"; // TODO(release): revert default to "linux"
     @Nullable private volatile Thread currentThread;
     /** Stores the reason the last auto-connect attempt failed, for surfacing to the user. */
     @Nullable private String lastAutoConnectError;
@@ -127,19 +127,30 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         SshClient client = null;
 
-        // Priority: Target Settings profile > Terminal's connection
+        // Priority 1: Reuse existing SSH session from the Activity if still alive.
+        // Avoids expensive BLE disconnect/reconnect + SSH handshake on every step.
         if (context instanceof MainActivity) {
+            MainActivity activity = (MainActivity) context;
+            SshClient existing = activity.getSshClient();
+            if (existing != null && existing.isSessionConnected()) {
+                client = existing;
+                Log.d(TAG, "Reusing existing SSH session (no reconnect needed)");
+            }
+        }
+
+        // Priority 2: Existing session dead or absent — reconnect via profile.
+        if (client == null && context instanceof MainActivity) {
             MainActivity activity = (MainActivity) context;
             CredentialProfile activeProfile = activity.getActiveSshProfile();
 
             if (activeProfile != null) {
-                // Target Settings has a profile — always use it (may reconnect)
                 lastAutoConnectError = null;
                 client = tryAutoConnectWithProfile(activeProfile);
             }
         }
 
-        // Fallback: use Terminal's existing connection if no profile selected
+        // Priority 3: Fallback — use the executor's own sshClient reference
+        // (e.g. set via setSshClient() or preConnectSsh())
         if (client == null || !client.isSessionConnected()) {
             client = this.sshClient;
             if (client != null && !client.isSessionConnected()) {
@@ -191,11 +202,18 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
 
         // ─ OS Command Validation (safety net) ──
+        // Block execution if the command is clearly wrong for the target OS.
+        // This prevents the Agent's wrong-OS commands from ever hitting SSH,
+        // so the terminal never shows raw stderr — the Agent's LLM retry
+        // mechanism receives the validation error and generates a correct
+        // alternative instead.
         CommandValidator.ValidationResult validation =
                 CommandValidator.validate(command, targetOs);
         if (!validation.valid) {
-            Log.w(TAG, "Command validation warning for " + targetOs + ": " + validation.message);
-            // Log warning but still execute (validator may have false positives)
+            Log.w(TAG, "Blocked OS-mismatched command for " + targetOs + ": "
+                    + command + " — " + validation.message);
+            callback.onFailure("⚠️ OS mismatch: " + validation.message);
+            return;
         }
 
         // ─ PATH Augmentation for non-interactive SSH sessions ─
@@ -228,7 +246,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                     Log.i(TAG, "Command succeeded: " + command);
                     callback.onSuccess(truncated);
                 } else {
-                    String errorOutput = "Error: Exit code: " + exitCode;
+                    String errorOutput = "Exit code: " + exitCode;
                     if (!truncated.isEmpty()) {
                         errorOutput += "\n" + truncated;
                     }
@@ -380,6 +398,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
             if (client.isSessionConnected()) {
                 Log.i(TAG, "SSH connected via Target Settings profile: " + profile.getDisplayLabel());
+                disconnectOldSshClient(activity);
                 activity.setSshClient(client);
                 return client;
             } else {
@@ -476,6 +495,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
             if (client.isSessionConnected()) {
                 Log.i(TAG, "Auto-connect SSH succeeded via " + (useBle ? "BLE" : "USB"));
+                disconnectOldSshClient(activity);
                 activity.setSshClient(client);
                 return client;
             } else {
@@ -508,6 +528,22 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
         frame[6] = (byte) (checksum & 0xFF);
         return frame;
+    }
+
+    /**
+     * Disconnect the previous SSH client stored in the Activity, if any.
+     * Prevents resource leaks (JSch session, BLE transport) when reconnecting.
+     */
+    private void disconnectOldSshClient(@NonNull MainActivity activity) {
+        SshClient old = activity.getSshClient();
+        if (old != null && old.isSessionConnected()) {
+            Log.d(TAG, "Disconnecting old SSH client before replacing");
+            try {
+                old.disconnect();
+            } catch (Exception e) {
+                Log.w(TAG, "Error disconnecting old SSH client", e);
+            }
+        }
     }
 
     /**

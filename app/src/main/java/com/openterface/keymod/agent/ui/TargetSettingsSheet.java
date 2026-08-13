@@ -32,10 +32,12 @@ import java.util.List;
 /**
  * BottomSheet with two sections: Target OS picker + Terminal Profile list.
  *
- * <p>The two sections are mutually exclusive (aligned with iOS):</p>
+ * <p>The two sections can be used independently or together:</p>
  * <ul>
- *   <li>Selecting an OS clears the active SSH profile → HID mode</li>
- *   <li>Selecting a profile clears the OS highlight → Terminal (SSH) mode</li>
+ *   <li>OS selection: tells the Agent what kind of commands to generate</li>
+ *   <li>SSH profile: provides the SSH connection for Terminal mode</li>
+ *   <li>Both together: Agent connects via SSH but generates OS-specific commands.
+ *       A Toast hints that the session is still in SSH mode.</li>
  * </ul>
  */
 public class TargetSettingsSheet extends BottomSheetDialogFragment {
@@ -197,37 +199,29 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     }
 
     private void onOsSelected(@NonNull String os) {
-        // Check if we're currently in terminal mode (SSH profile active)
-        // If so, clicking any OS should SELECT it (not toggle off)
-        MainActivity activity = (MainActivity) requireActivity();
-        boolean wasInTerminalMode = activity.getActiveSshProfile() != null;
-
-        if (!wasInTerminalMode && os.equals(currentOs)) {
-            // Toggle off: deselect this OS (only when already in HID mode)
-            requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                    .edit().remove(PREF_AGENT_TARGET_OS).apply();
-            currentOs = "";
-        } else {
-            // Select this OS
-            requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                    .edit().putString(PREF_AGENT_TARGET_OS, os).apply();
-            currentOs = os;
-        }
-
-        // Agent only: clear Agent's own SSH profile reference → HID mode.
-        // Do NOT touch credentialManager — Terminal tab's active profile is independent.
-        activity.setActiveSshProfile(null);
-        agentActiveProfileId = null;
+        // Save the selected OS to prefs so the Agent uses it for command generation.
+        // This does NOT toggle off — clicking the same OS just re-confirms it.
         requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
-                .edit().remove(PREF_AGENT_PROFILE_ID).apply();
+                .edit().putString(PREF_AGENT_TARGET_OS, os).apply();
+        currentOs = os;
 
+        // NOTE: We intentionally do NOT clear the active SSH profile here.
+        // The user can simultaneously select an OS and a profile — the OS tells
+        // the Agent what kind of commands to generate, while the profile provides
+        // the SSH connection.  When both are set, the session stays in SSH mode.
         refreshUi();
         notifyTargetChanged();
+
+        // If both OS and SSH profile are now set, hint the user it's still SSH mode.
+        MainActivity activity = (MainActivity) requireActivity();
+        if (activity.getActiveSshProfile() != null && !os.isEmpty()) {
+            showSshModeToast();
+        }
     }
 
     /**
      * Refresh OS button styles.
-     * @param highlightOs OS to highlight, or null to clear all highlights (Terminal mode).
+     * @param highlightOs OS to highlight, or null to clear all highlights.
      */
     private void refreshOsButtonStyles(@Nullable String highlightOs) {
         int selectedStroke = MaterialColors.getColor(
@@ -278,6 +272,15 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
 
         refreshUi();
         notifyTargetChanged();
+
+        // If both OS and SSH profile are now set, hint the user it's still SSH mode.
+        // Refresh currentOs from prefs before showing toast to ensure it's not stale.
+        String os = requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
+                .getString(PREF_AGENT_TARGET_OS, "");
+        currentOs = os.isEmpty() ? currentOs : os;
+        if (!os.isEmpty()) {
+            showSshModeToast();
+        }
     }
 
     /** Deselect the active profile — clears Agent's SSH mode and returns to HID mode. */
@@ -310,16 +313,14 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     // ── Refresh ──────────────────────────────────────────────────────────
 
     private void refreshUi() {
-        // Check current mode: Terminal (Agent SSH profile active) or HID
-        MainActivity activity = (MainActivity) requireActivity();
-        boolean isTerminalMode = activity.getActiveSshProfile() != null;
-
         // Read OS from prefs
         currentOs = requireContext().getSharedPreferences("agent_prefs", Context.MODE_PRIVATE)
                 .getString(PREF_AGENT_TARGET_OS, "");
 
-        // OS buttons: highlight only in HID mode
-        refreshOsButtonStyles(isTerminalMode ? null : (currentOs.isEmpty() ? null : currentOs));
+        // OS buttons: highlight the selected OS in BOTH modes (Terminal and HID).
+        // The OS is always shown so the user knows what the Agent will target.
+        String highlightOs = currentOs.isEmpty() ? null : currentOs;
+        refreshOsButtonStyles(highlightOs);
 
         // Profile list
         List<CredentialProfile> profiles = credentialManager.getAllProfiles();
@@ -332,6 +333,14 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
             // Use Agent's own activeProfileId for highlighting (independent from CredentialManager)
             profileAdapter.submitList(new ArrayList<>(profiles), agentActiveProfileId);
         }
+    }
+
+    /** Brief toast to let the user know they are in SSH mode with an OS hint. */
+    private void showSshModeToast() {
+        if (!isAdded() || getContext() == null) return;
+        android.widget.Toast.makeText(getContext(),
+                "SSH 模式 · Agent 将生成 " + currentOs.toUpperCase() + " 命令",
+                android.widget.Toast.LENGTH_SHORT).show();
     }
 
     // ── Profile Adapter ──────────────────────────────────────────────────

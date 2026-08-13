@@ -36,7 +36,7 @@ public final class HidToolExecutor implements AgentToolExecutor {
     private static final String TAG = "HidToolExecutor";
 
     @Nullable private ConnectionManager connectionManager;
-    @NonNull private String targetOs = "linux";
+    @NonNull private String targetOs = "macos"; // TODO(release): revert default to "linux"
     @NonNull private final AtomicBoolean cancelFlag = new AtomicBoolean(false);
     @Nullable private volatile Thread sendThread;
 

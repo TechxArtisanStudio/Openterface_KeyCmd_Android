@@ -14,6 +14,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import androidx.annotation.Nullable;
 
 /**
  * SSH-2.0 client wrapper using JSch.
@@ -61,6 +65,20 @@ public class SshClient {
     private Channel shellChannel;
     private TerminalSession terminalSession;
     private volatile boolean connected = false;
+
+    // ── OS Auto-detection cache (session-scoped) ────────────────────────
+    //
+    // Populated asynchronously right after connect() succeeds by probing the
+    // remote host with a lightweight command.  Downstream consumers (the Agent's
+    // OsDetector, CommandValidator, etc.) read these fields via the getters
+    // below.  The cache is cleared on disconnect() / forceReconnect() so that
+    // a fresh probe runs after every reconnection — the target OS can change
+    // if the user switches profiles.
+    //
+    // Values: "linux", "macos", "windows", or null (probe not yet finished).
+    private volatile String cachedOs = null;
+    private volatile long cachedOsProbeTime = 0L;
+    private volatile boolean osProbeRunning = false;
 
     public SshClient(String host, int port, String username,
                      String password, TransportAdapter transport) {
@@ -130,6 +148,9 @@ public class SshClient {
         try {
             Log.v(TAG, "SSH connect start: authType=" + profile.getAuthType()
                     + " viaCustomSocket=" + (socketFactory != null));
+            // Clear any stale OS cache from a previous session so callers don't
+            // read the old target OS while a new probe is pending.
+            clearCachedOs();
             JSch jsch = new JSch();
 
             // Host key checking:
@@ -194,6 +215,11 @@ public class SshClient {
             if (listener != null) {
                 listener.onConnected();
             }
+
+            // Fire-and-forget OS probe: populates cachedOs asynchronously so
+            // the Agent has the target OS by the time the user submits a prompt
+            // (typically 5-10 seconds of human thinking).  Non-blocking.
+            probeTargetOsInBackground();
 
         } catch (Exception e) {
             connected = false;
@@ -614,6 +640,9 @@ public class SshClient {
         Log.v(TAG, "SSH disconnect requested");
         connected = false;
 
+        // Clear OS cache on disconnect so a fresh probe runs after reconnect
+        clearCachedOs();
+
         // Clear send callbacks first — prevents writes to a closing channel
         // if a key press races with disconnect.
         if (terminalSession != null) {
@@ -628,5 +657,121 @@ public class SshClient {
             session.disconnect();
         }
         transport.disconnect();
+    }
+
+    // ── OS Auto-detection (session-scoped cache) ────────────────────────
+
+    /**
+     * Fire-and-forget OS probe that runs asynchronously right after the SSH
+     * session is established.
+     *
+     * <p>The probe executes a single cross-platform command:
+     * <pre>uname -s 2>/dev/null || echo WINDOWS</pre>
+     *
+     * <ul>
+     *   <li>On Linux:  stdout contains "Linux"</li>
+     *   <li>On macOS:  stdout contains "Darwin"</li>
+     *   <li>On Windows (CMD/PowerShell): {@code uname} is unknown so the
+     *       command falls through to the {@code echo WINDOWS} branch</li>
+     *   <li>On Windows (Git Bash / MSYS / Cygwin): {@code uname -s} succeeds
+     *       with "MINGW…" / "MSYS…" / "CYGWIN…" — detected as Windows</li>
+     * </ul>
+     *
+     * <p>Runs on a dedicated background thread so connect() returns fast.
+     * If the probe fails for any reason, {@link #cachedOs} stays {@code null}
+     * and callers fall back to {@link OsDetector#detectOsSync}.
+     */
+    private void probeTargetOsInBackground() {
+        if (osProbeRunning || !connected || session == null) {
+            return;
+        }
+        osProbeRunning = true;
+        cachedOs = null;
+        cachedOsProbeTime = 0L;
+
+        new Thread(() -> {
+            try {
+                // Single-shot probe: one SSH channel, ~100-300ms round-trip
+                final CountDownLatch latch = new CountDownLatch(1);
+                final StringBuilder output = new StringBuilder();
+                final int[] exitCode = {-1};
+
+                executeCommand("uname -s 2>/dev/null || echo WINDOWS",
+                        8000, // 8s probe timeout — generous but not blocking
+                        new ExecCallback() {
+                    @Override
+                    public void onOutput(String line) {
+                        output.append(line).append('\n');
+                    }
+
+                    @Override
+                    public void onComplete(int code, String fullOutput) {
+                        exitCode[0] = code;
+                        if (fullOutput != null && !fullOutput.isEmpty()) {
+                            output.append(fullOutput);
+                        }
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Log.d(TAG, "OS probe exec error: " + message);
+                        latch.countDown();
+                    }
+                });
+
+                if (!latch.await(10, TimeUnit.SECONDS)) {
+                    Log.w(TAG, "OS probe timed out");
+                    return;
+                }
+
+                String result = output.toString().trim().toLowerCase();
+                String detected = null;
+
+                if (result.contains("linux")) {
+                    detected = "linux";
+                } else if (result.contains("darwin")) {
+                    detected = "macos";
+                } else if (result.contains("mingw") || result.contains("msys")
+                        || result.contains("cygwin")) {
+                    // Git Bash / MSYS / Cygwin on Windows
+                    detected = "windows";
+                } else if (result.contains("windows")) {
+                    detected = "windows";
+                }
+                // else: stay null — OsDetector.detectOsSync will run later
+
+                cachedOs = detected;
+                cachedOsProbeTime = System.currentTimeMillis();
+                Log.i(TAG, "OS probe result: " + (detected != null ? detected : "unknown (will retry)"));
+            } catch (Exception e) {
+                Log.w(TAG, "OS probe failed: " + e.getMessage());
+            } finally {
+                osProbeRunning = false;
+            }
+        }, "SshOsProbe").start();
+    }
+
+    /** Clear the OS cache. Called on disconnect / reconnect. */
+    private void clearCachedOs() {
+        cachedOs = null;
+        cachedOsProbeTime = 0L;
+        osProbeRunning = false;
+    }
+
+    /**
+     * Get the cached detected OS, or {@code null} if the probe has not
+     * completed yet or failed.
+     *
+     * <p>Values: "linux", "macos", "windows".</p>
+     */
+    @Nullable
+    public String getCachedOs() {
+        return cachedOs;
+    }
+
+    /** Timestamp (millis) when the cached OS was written. 0 if not yet probed. */
+    public long getCachedOsProbeTime() {
+        return cachedOsProbeTime;
     }
 }

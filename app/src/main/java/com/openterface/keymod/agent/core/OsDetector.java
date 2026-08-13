@@ -42,7 +42,7 @@ public final class OsDetector {
         LINUX("linux", "Linux"),
         MACOS("macos", "macOS"),
         WINDOWS("windows", "Windows"),
-        UNKNOWN("linux", "Linux");  // Default fallback
+        UNKNOWN("macos", "macOS");  // Default fallback
 
         private final String code;
         private final String displayName;
@@ -150,12 +150,27 @@ public final class OsDetector {
     /**
      * Detect OS synchronously (blocks until detection completes or times out).
      *
+     * <p>Cached-first: if {@link SshClient#getCachedOs()} returns a non-null value
+     * (populated by the background probe right after connect), this method returns
+     * immediately without issuing any SSH command.  Only when the cache is empty
+     * does it fall through to the full multi-command probe.
+     *
      * @param sshClient the connected SSH client
      * @param fallbackOs the user-configured OS to fallback to
      * @return the detected OS, or fallback if detection fails
      */
     @NonNull
     public static DetectedOS detectOsSync(@NonNull SshClient sshClient, @NonNull String fallbackOs) {
+        // Fast path: use cached OS from the SshClient background probe
+        String cached = sshClient.getCachedOs();
+        if (cached != null) {
+            DetectedOS cachedOs = mapCodeToDetectedOS(cached);
+            if (cachedOs != DetectedOS.UNKNOWN) {
+                Log.d(TAG, "OS detected from SshClient cache: " + cachedOs.getDisplayName());
+                return cachedOs;
+            }
+        }
+
         final DetectedOS[] result = {DetectedOS.UNKNOWN};
         CountDownLatch latch = new CountDownLatch(1);
 
@@ -174,6 +189,20 @@ public final class OsDetector {
     }
 
     // ── Detection strategies ────────────────────────────────────────────
+
+    /**
+     * Map an OS code string ("linux", "macos", "windows") to a {@link DetectedOS}.
+     * Returns {@link DetectedOS#UNKNOWN} for unrecognized codes.
+     */
+    @NonNull
+    private static DetectedOS mapCodeToDetectedOS(@NonNull String code) {
+        switch (code.toLowerCase()) {
+            case "linux":   return DetectedOS.LINUX;
+            case "macos":   return DetectedOS.MACOS;
+            case "windows": return DetectedOS.WINDOWS;
+            default:        return DetectedOS.UNKNOWN;
+        }
+    }
 
     /**
      * Try to detect OS using {@code uname -s}.

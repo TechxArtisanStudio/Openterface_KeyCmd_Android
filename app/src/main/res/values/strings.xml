@@ -1667,6 +1667,7 @@ by TechxArtisan</string>
     <string name="agent_cli_running">Running…</string>
     <string name="agent_cli_done">完成</string>
     <string name="agent_cli_failed">失败</string>
+    <string name="agent_cli_retried">已重试</string>
     <string name="agent_retry">重试</string>
     <string name="agent_verifying_api">Verifying API connection…</string>
     <string name="agent_execution_macro_label">MACRO · EXECUTING</string>

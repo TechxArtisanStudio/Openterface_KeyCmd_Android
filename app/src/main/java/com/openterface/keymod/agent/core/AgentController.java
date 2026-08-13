@@ -383,7 +383,7 @@ public final class AgentController {
                 String fallbackOs = profile.getTargetOs();
                 if (fallbackOs == null || fallbackOs.isEmpty()) {
                     SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
-                    fallbackOs = prefs.getString("agent_target_os", "linux");
+                    fallbackOs = prefs.getString("agent_target_os", "macos");
                 }
                 // Synchronous detection with timeout (blocks briefly but ensures correct OS)
                 com.openterface.terminal.SshClient sshClient = null;
@@ -865,8 +865,11 @@ public final class AgentController {
                 postError("Retry failed: could not parse LLM response");
             } catch (Exception e) {
                 Log.e(TAG, "Retry plan generation failed", e);
-                postError("Retry failed: " + (e.getMessage() != null
-                        ? e.getMessage() : "unknown error"));
+                String detail = e.getMessage();
+                if (detail == null || detail.isEmpty()) {
+                    detail = e.getClass().getSimpleName();
+                }
+                postError("Retry failed: " + detail);
             }
         });
     }
@@ -1185,28 +1188,38 @@ public final class AgentController {
 
     /**
      * Get the target OS name. Priority:
-     * 1. Auto-detected OS from SSH connection (if available)
-     * 2. Active profile's targetOs
-     * 3. agent_prefs fallback
+     * 1. User's explicit OS selection from TargetSettingsSheet (agent_prefs)
+     *    — the user's deliberate override, always respected
+     * 2. Auto-detected OS from SSH connection (if available)
+     *    — safety net when no explicit selection is made
+     * 3. Active profile's targetOs
+     * 4. Default fallback ("macos" for test config)
      */
     @NonNull
     private String getTargetOs() {
-        // Priority 1: Auto-detected OS from SSH
+        // Priority 1: User's explicit OS choice from TargetSettingsSheet.
+        // When the user selects an OS in the sheet, it is saved to prefs
+        // and takes precedence over auto-detection and profile defaults.
+        SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
+        String userOs = prefs.getString("agent_target_os", "");
+        if (userOs != null && !userOs.isEmpty()) {
+            return userOs;
+        }
+
+        // Priority 2: Auto-detected OS from SSH
         if (detectedOs != null) {
             return detectedOs.getCode();
         }
 
-        // Priority 2: Profile-level OS
+        // Priority 3: Profile-level OS
         CredentialProfile profile = getActiveSshProfile();
         if (profile != null) {
             String os = profile.getTargetOs();
             if (os != null && !os.isEmpty()) return os;
         }
 
-        // Priority 3: Global preferences fallback
-        SharedPreferences prefs = appContext.getSharedPreferences("agent_prefs", Context.MODE_PRIVATE);
-        String os = prefs.getString("agent_target_os", "linux");
-        return os != null && !os.isEmpty() ? os : "linux";
+        // Priority 4: Default fallback
+        return "macos"; // TODO(release): revert default to "linux"
     }
 
     /**

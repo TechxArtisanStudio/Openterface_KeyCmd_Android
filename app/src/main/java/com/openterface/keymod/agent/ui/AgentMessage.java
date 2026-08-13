@@ -37,6 +37,14 @@ public final class AgentMessage {
     public final boolean canRetry;
     /** True when an EXECUTION_CLI command succeeded (false = failed, null = running). */
     @Nullable public final Boolean cliSuccess;
+    /**
+     * True when this EXECUTION_CLI message represents a failed command that was
+     * subsequently retried by the Agent's LLM retry mechanism.  The UI renders
+     * such cards in a muted grey style with a "Retried" hint instead of the
+     * default red failure styling — the failure has been resolved, so the user
+     * doesn't need to see a loud error card.
+     */
+    public final boolean cliRetried;
 
     private AgentMessage(
             @NonNull Type type,
@@ -50,7 +58,7 @@ public final class AgentMessage {
             boolean isHidMode,
             boolean isComplete) {
         this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep,
-                macroStatusChip, isHidMode, isComplete, false, false, null);
+                macroStatusChip, isHidMode, isComplete, false, false, null, false);
     }
 
     private AgentMessage(
@@ -67,7 +75,7 @@ public final class AgentMessage {
             boolean isError,
             boolean canRetry) {
         this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep,
-                macroStatusChip, isHidMode, isComplete, isError, canRetry, null);
+                macroStatusChip, isHidMode, isComplete, isError, canRetry, null, false);
     }
 
     private AgentMessage(
@@ -84,6 +92,25 @@ public final class AgentMessage {
             boolean isError,
             boolean canRetry,
             @Nullable Boolean cliSuccess) {
+        this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep,
+                macroStatusChip, isHidMode, isComplete, isError, canRetry, cliSuccess, false);
+    }
+
+    private AgentMessage(
+            @NonNull Type type,
+            @Nullable CharSequence text,
+            @NonNull List<AgentPlanStep> planSteps,
+            @NonNull List<String> terminalLines,
+            @NonNull List<String> macroSteps,
+            int macroProgress,
+            int macroCurrentStep,
+            @Nullable String macroStatusChip,
+            boolean isHidMode,
+            boolean isComplete,
+            boolean isError,
+            boolean canRetry,
+            @Nullable Boolean cliSuccess,
+            boolean cliRetried) {
         this.type = type;
         this.text = text;
         this.planSteps = planSteps;
@@ -97,6 +124,7 @@ public final class AgentMessage {
         this.isError = isError;
         this.canRetry = canRetry;
         this.cliSuccess = cliSuccess;
+        this.cliRetried = cliRetried;
     }
 
     private AgentMessage(
@@ -109,7 +137,7 @@ public final class AgentMessage {
             int macroCurrentStep,
             @Nullable String macroStatusChip) {
         this(type, text, planSteps, terminalLines, macroSteps, macroProgress, macroCurrentStep,
-                macroStatusChip, false, false, false, false, null);
+                macroStatusChip, false, false, false, false, null, false);
     }
 
     @NonNull
@@ -158,7 +186,18 @@ public final class AgentMessage {
     @NonNull
     public static AgentMessage executionCliComplete(@NonNull List<String> lines, boolean success) {
         return new AgentMessage(Type.EXECUTION_CLI, null, emptySteps(), new ArrayList<>(lines),
-                emptyLines(), 0, 0, null, false, true, false, false, success);
+                emptyLines(), 0, 0, null, false, true, false, false, success, false);
+    }
+
+    /**
+     * Create a completed EXECUTION_CLI message that was subsequently retried by
+     * the Agent's LLM retry mechanism.  Rendered in a muted grey style with a
+     * "retried" hint — the failure has been resolved.
+     */
+    @NonNull
+    public static AgentMessage executionCliRetried(@NonNull List<String> lines) {
+        return new AgentMessage(Type.EXECUTION_CLI, null, emptySteps(), new ArrayList<>(lines),
+                emptyLines(), 0, 0, null, false, true, false, false, false, true);
     }
 
     /** @deprecated Use {@link #executionCliComplete(List, boolean)} instead. */

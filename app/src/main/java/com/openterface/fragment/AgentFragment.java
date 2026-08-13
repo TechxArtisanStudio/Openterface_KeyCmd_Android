@@ -764,10 +764,29 @@ public class AgentFragment extends Fragment {
             @Override
             public void onRetry(int attempt, int maxAttempts) {
                 if (!isAdded()) return;
+
+                // ── Dim the last failed CLI card to a muted "Retried" grey ──
+                // The Agent's LLM retry mechanism is about to regenerate an
+                // alternative, so we don't want a loud red failure card lingering
+                // in the terminal output.  Replace the card in-place so the user
+                // sees the original command (greyed out) with a subtle hint.
+                // Only dim cards that are explicitly failed (cliSuccess == false),
+                // not cards that are still running (cliSuccess == null).
+                for (int i = chatMessages.size() - 1; i >= 0; i--) {
+                    AgentMessage msg = chatMessages.get(i);
+                    if (msg.type == AgentMessage.Type.EXECUTION_CLI
+                            && Boolean.FALSE.equals(msg.cliSuccess)) {
+                        AgentMessage retried = AgentMessage.executionCliRetried(msg.terminalLines);
+                        chatMessages.set(i, retried);
+                        adapter.setItem(i, retried);
+                        break;
+                    }
+                }
+
                 // Insert retry status message and thinking indicator
                 chatMessages.add(AgentMessage.assistant(
                         "🔄 Retry " + attempt + "/" + maxAttempts
-                        + ": 1 command(s) failed. Asking for alternatives..."));
+                        + ": command failed. Asking for alternatives..."));
                 chatMessages.add(AgentMessage.thinking(getString(R.string.agent_state_thinking)));
                 adapter.submitList(new ArrayList<>(chatMessages));
                 messagesList.post(() -> {

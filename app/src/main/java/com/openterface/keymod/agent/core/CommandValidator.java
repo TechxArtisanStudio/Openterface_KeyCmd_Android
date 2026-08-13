@@ -3,6 +3,7 @@ package com.openterface.keymod.agent.core;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -21,17 +22,50 @@ public final class CommandValidator {
     private static final String TAG = "CommandValidator";
 
     // Commands that are specific to Unix-like systems (Linux/macOS)
+    // Expanded to cover common Agent-generated commands that would fail
+    // on Windows CMD / PowerShell.  Note: commands like ip/netstat/hostname
+    // are intentionally NOT here because they exist on both platforms.
     private static final Set<String> UNIX_COMMANDS = new HashSet<>(Arrays.asList(
             "ls", "cat", "grep", "ps", "kill", "top", "df", "free", "chmod", "chown",
-            "ip", "ifconfig", "systemctl", "journalctl", "apt", "yum", "dnf", "pacman",
-            "brew", "sw_vers", "uname", "lscpu", "hostname", "ss", "netstat"
+            "ifconfig", "systemctl", "journalctl", "apt", "apt-get", "yum", "dnf", "pacman",
+            "zypper", "brew", "sw_vers", "uname", "lscpu", "hostnamectl", "ss",
+            "pgrep", "pkill", "find", "xargs", "sed", "awk", "tar", "gzip", "gunzip",
+            "bzip2", "xz", "curl", "wget", "rsync", "scp", "rsyslog", "logrotate",
+            "ln", "readlink", "mktemp", "mkfifo", "strace", "ltrace", "ldd", "file",
+            "which", "whereis", "locate", "updatedb", "mount", "umount", "fdisk",
+            "parted", "mkfs", "fsck", "tune2fs", "e2fsck", "blkid", "lsblk",
+            "modprobe", "insmod", "rmmod", "lsmod", "dmesg", "sysctl",
+            "iptables", "nft", "ufw", "firewall-cmd", "nmcli", "iwconfig", "iwlist",
+            "traceroute", "mtr", "dig", "nslookup", "host", "tcpdump",
+            "screen", "tmux", "nohup", "crontab", "at", "watch",
+            "base64", "md5sum", "sha256sum", "sha1sum",
+            "shred", "wipe", "srm"
     ));
 
     // Commands that are specific to Windows
+    // Expanded to cover PowerShell cmdlets (Get-*, Set-*, etc.), Windows-native
+    // tools (winget, choco, wmic), and CMD-only commands.
     private static final Set<String> WINDOWS_COMMANDS = new HashSet<>(Arrays.asList(
             "dir", "type", "findstr", "tasklist", "taskkill", "ipconfig", "ver",
-            "wmic", "sc", "icacls", "winget", "choco", "powershell", "Get-",
-            "Select-", "Where-", "Sort-", "Stop-"
+            "wmic", "sc", "icacls", "winget", "choco", "powershell",
+            "Get-", "Set-", "Select-", "Where-", "Sort-", "Stop-",
+            "Start-", "New-", "Remove-", "Rename-", "Copy-", "Move-",
+            "Invoke-", "Out-", "Write-", "Read-", "Test-", "Format-",
+            "ConvertTo-", "ConvertFrom-", "Import-", "Export-",
+            "ForEach-", "Group-", "Measure-", "Tee-",
+            // Common CMD-only commands (excluding ones that also exist on Unix:
+            // cd, mkdir, rmdir, more, sort, shutdown — these are intentionally NOT listed)
+            "assoc", "attrib", "bcdedit", "cacls", "choice", "cipher",
+            "cleanmgr", "clip", "cls", "cmdkey", "comp", "compact", "control",
+            "defrag", "del", "diskpart", "doskey", "driverquery",
+            "erase", "eventcreate", "eventvwr", "expand", "fltmc", "forfiles",
+            "fsutil", "ftp", "ftype", "gpresult", "gpupdate", "makecab",
+            "mklink", "mode", "openfiles", "pathping", "popd",
+            "print", "prncnfg", "prompt", "pushd", "query", "qprocess",
+            "quser", "qwinsta", "reg", "regedit", "regsvr32", "robocopy",
+            "rwinsta", "schtasks", "sfc", "setx", "subst",
+            "systeminfo", "takeown", "tree", "tskill", "typeperf", "vol",
+            "xcopy"
     ));
 
     // Commands specific to Linux (not macOS)
@@ -155,6 +189,12 @@ public final class CommandValidator {
         String cmdLower = command.trim().toLowerCase();
         String firstWord = cmdLower.split("\\s+")[0];
 
+        // ── Path-style mismatch (e.g. /etc/nginx on Windows) ──
+        ValidationResult pathCheck = checkPathMismatch(cmdLower, targetOs.toLowerCase());
+        if (pathCheck != null) {
+            return pathCheck;
+        }
+
         switch (targetOs.toLowerCase()) {
             case "windows":
                 return validateWindowsCommand(cmdLower, firstWord);
@@ -172,9 +212,52 @@ public final class CommandValidator {
     }
 
     /**
+     * Check for path-style mismatches: Unix absolute paths (e.g. /etc/nginx)
+     * on a Windows target, or Windows drive paths (e.g. C:\Windows) on a
+     * Unix target.  Returns a non-null ValidationResult when a mismatch is
+     * detected, or null when no path issue is found.
+     */
+    @Nullable
+    private static ValidationResult checkPathMismatch(@NonNull String cmdLower,
+                                                       @NonNull String targetOs) {
+        if ("windows".equals(targetOs)) {
+            // Unix absolute paths on Windows target — very likely wrong.
+            // Exclude common false-positives: bare flags like -v, -h,
+            // URL schemes (http://), and pipe redirects (| /dev/null).
+            if (cmdLower.matches(".*\\s/[a-zA-Z][a-zA-Z0-9_/.-]+.*")) {
+                // Ignore: http(s)://, ftp://, file://, ssh://
+                if (!cmdLower.contains("://")) {
+                    // Ignore: pipe to /dev/null, /dev/stderr, etc.
+                    if (!cmdLower.contains("/dev/")) {
+                        return ValidationResult.invalid(
+                                "Unix-style path detected ('/...') but target is Windows. "
+                                + "Use Windows paths like C:\\... instead.");
+                    }
+                }
+            }
+        } else {
+            // Unix target (linux/macos): Windows drive paths (C:\, D:\) are wrong
+            if (cmdLower.matches(".*[a-z]:\\\\.*")) {
+                return ValidationResult.invalid(
+                        "Windows-style path detected ('X:\\...') but target is "
+                        + targetOs + ". Use Unix paths like /foo/bar instead.");
+            }
+        }
+        return null;
+    }
+
+    /**
      * Validate command for Windows target.
      */
     private static ValidationResult validateWindowsCommand(String cmdLower, String firstWord) {
+        // "sudo" prefix is a dead giveaway the command is Unix — sudo doesn't
+        // exist on native Windows CMD / PowerShell.
+        if ("sudo".equals(firstWord)) {
+            return ValidationResult.invalid(
+                    "'sudo' is a Unix command and won't work on Windows. "
+                    + "Run the command directly, or use 'runas' on Windows."
+            );
+        }
         // Check for Unix commands that won't work on Windows CMD
         if (UNIX_COMMANDS.contains(firstWord)) {
             // Some commands exist on both but are different (e.g., netstat)

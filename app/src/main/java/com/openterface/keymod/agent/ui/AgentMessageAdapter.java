@@ -469,6 +469,23 @@ public final class AgentMessageAdapter extends RecyclerView.Adapter<RecyclerView
                 outputText.setVisibility(View.GONE);
             }
 
+            // ── Retried state: the command failed but the Agent successfully
+            // retried with an alternative.  Render muted grey so the user sees
+            // a subtle "retried" hint instead of a loud red failure card. ──
+            if (message.cliRetried) {
+                statusBadge.setText(R.string.agent_cli_retried);
+                statusBadge.setTextColor(0xFF9CA3AF); // muted grey
+                cardView.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFF9CA3AF).getDefaultColor());
+                cardView.setStrokeWidth(Math.round(1f * itemView.getResources().getDisplayMetrics().density));
+                headerIcon.setImageResource(R.drawable.ic_terminal);
+                headerIcon.setColorFilter(0xFF9CA3AF);
+                headerLabel.setTextColor(0xFF9CA3AF);
+                // Dim the command text slightly to further de-emphasize
+                commandText.setTextColor(0xFF9CA3AF);
+                outputText.setTextColor(0xFF6B7280);
+                return;
+            }
+
             // Use explicit cliSuccess field from AgentController (not string matching)
             // cliSuccess: null = running, true = success, false = failed
             if (message.cliSuccess == null) {

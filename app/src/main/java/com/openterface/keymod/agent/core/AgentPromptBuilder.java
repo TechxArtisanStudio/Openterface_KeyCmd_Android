@@ -495,16 +495,29 @@ public final class AgentPromptBuilder {
 
     // ── Target OS ────────────────────────────────────────────────────────
 
-    /** Read the target OS: from active profile if available, else from prefs, else default. */
+    /**
+     * Read the target OS. Priority:
+     * 1. User's explicit OS choice from TargetSettingsSheet (agent_prefs)
+     * 2. Active profile's targetOs
+     * 3. Default fallback
+     */
     @NonNull
     private String getTargetOs() {
+        // Priority 1: User's explicit OS choice — always takes precedence
+        SharedPreferences prefs = context.getSharedPreferences(AGENT_PREFS_NAME, Context.MODE_PRIVATE);
+        String userOs = prefs.getString(PREF_AGENT_TARGET_OS, "");
+        if (userOs != null && !userOs.isEmpty()) {
+            return userOs;
+        }
+
+        // Priority 2: Active profile's targetOs
         if (activeProfile != null && activeProfile.getTargetOs() != null
                 && !activeProfile.getTargetOs().isEmpty()) {
             return activeProfile.getTargetOs();
         }
-        SharedPreferences prefs = context.getSharedPreferences(AGENT_PREFS_NAME, Context.MODE_PRIVATE);
-        String os = prefs.getString(PREF_AGENT_TARGET_OS, "linux");
-        return os != null && !os.isEmpty() ? os : "linux";
+
+        // Priority 3: Default fallback
+        return "macos"; // TODO(release): revert default to "linux"
     }
 
     @NonNull
