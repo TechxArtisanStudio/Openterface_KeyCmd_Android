@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import androidx.annotation.Nullable;
 
@@ -65,6 +66,9 @@ public class SshClient {
     private Channel shellChannel;
     private TerminalSession terminalSession;
     private volatile boolean connected = false;
+
+    /** Lock for synchronizing reconnect operations to prevent race conditions. */
+    private final ReentrantLock reconnectLock = new ReentrantLock();
 
     // ── OS Auto-detection cache (session-scoped) ────────────────────────
     //
@@ -581,6 +585,11 @@ public class SshClient {
      * Force a full reconnection: disconnect old session (even if it appears connected)
      * and establish a new one using the stored profile.
      *
+     * <p>Thread-safe: Uses a ReentrantLock to prevent race conditions when multiple
+     * threads attempt to reconnect simultaneously (e.g., parallel exec commands
+     * detecting session failure). If another thread is already reconnecting, this
+     * method waits up to 30 seconds for it to complete.</p>
+     *
      * @return true if reconnection succeeded
      */
     private boolean forceReconnect() {
@@ -589,25 +598,51 @@ public class SshClient {
             Log.e(TAG, "forceReconnect: no profile stored");
             return false;
         }
-        Log.i(TAG, "Force reconnecting SSH session...");
 
-        // Always disconnect old session, even if it appears connected
-        // (it might be a stale/dead connection)
-        if (session != null) {
-            try {
-                session.disconnect();
-            } catch (Exception e) {
-                Log.w(TAG, "Error disconnecting old session: " + e.getMessage());
-            }
+        // Try to acquire the reconnect lock with timeout to prevent deadlock
+        boolean lockAcquired = false;
+        try {
+            lockAcquired = reconnectLock.tryLock(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, "forceReconnect: interrupted while waiting for lock");
+            return false;
         }
-        connected = false;
+
+        if (!lockAcquired) {
+            Log.w(TAG, "forceReconnect: could not acquire lock (another reconnect in progress?)");
+            return false;
+        }
 
         try {
-            connect(profile);
-            return connected;
-        } catch (Exception e) {
-            Log.e(TAG, "Force reconnect failed: " + e.getMessage());
-            return false;
+            // Double-check: another thread may have reconnected while we waited
+            if (isSessionReliable()) {
+                Log.i(TAG, "forceReconnect: session already reliable (reconnected by another thread)");
+                return true;
+            }
+
+            Log.i(TAG, "Force reconnecting SSH session...");
+
+            // Always disconnect old session, even if it appears connected
+            // (it might be a stale/dead connection)
+            if (session != null) {
+                try {
+                    session.disconnect();
+                } catch (Exception e) {
+                    Log.w(TAG, "Error disconnecting old session: " + e.getMessage());
+                }
+            }
+            connected = false;
+
+            try {
+                connect(profile);
+                return connected;
+            } catch (Exception e) {
+                Log.e(TAG, "Force reconnect failed: " + e.getMessage());
+                return false;
+            }
+        } finally {
+            reconnectLock.unlock();
         }
     }
 

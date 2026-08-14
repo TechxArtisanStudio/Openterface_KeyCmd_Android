@@ -130,8 +130,43 @@ public final class AgentSession {
         JSONObject obj = new JSONObject();
         obj.put("type", msg.type.name());
         obj.put("text", msg.text != null ? msg.text.toString() : null);
-        // Note: planSteps, terminalLines, macroSteps etc. are not persisted
-        // across restarts — they represent transient execution state.
+
+        // PLAN: persist planSteps + isHidMode
+        if (!msg.planSteps.isEmpty()) {
+            JSONArray stepsArray = new JSONArray();
+            for (AgentPlanStep step : msg.planSteps) {
+                stepsArray.put(step.toJSONObject());
+            }
+            obj.put("planSteps", stepsArray);
+        }
+        obj.put("isHidMode", msg.isHidMode);
+
+        // EXECUTION_CLI: persist terminalLines + completion state
+        if (!msg.terminalLines.isEmpty()) {
+            JSONArray linesArray = new JSONArray();
+            for (String line : msg.terminalLines) {
+                linesArray.put(line);
+            }
+            obj.put("terminalLines", linesArray);
+        }
+        obj.put("isComplete", msg.isComplete);
+        obj.put("isError", msg.isError);
+        obj.put("canRetry", msg.canRetry);
+        obj.put("cliSuccess", msg.cliSuccess != null ? msg.cliSuccess.booleanValue() : JSONObject.NULL);
+        obj.put("cliRetried", msg.cliRetried);
+
+        // EXECUTION_MACRO: persist macro steps + progress
+        if (!msg.macroSteps.isEmpty()) {
+            JSONArray macroArray = new JSONArray();
+            for (String step : msg.macroSteps) {
+                macroArray.put(step);
+            }
+            obj.put("macroSteps", macroArray);
+        }
+        obj.put("macroProgress", msg.macroProgress);
+        obj.put("macroCurrentStep", msg.macroCurrentStep);
+        obj.put("macroStatusChip", msg.macroStatusChip);
+
         // Note: CharSequence styling (e.g. ImageSpan) is lost on serialization.
         return obj;
     }
@@ -148,19 +183,73 @@ public final class AgentSession {
             type = AgentMessage.Type.ASSISTANT;
         }
 
+        // ACT_BAR and THINKING are transient — restore as ASSISTANT
+        if (type == AgentMessage.Type.ACT_BAR || type == AgentMessage.Type.THINKING) {
+            return AgentMessage.assistant(text);
+        }
+
         switch (type) {
             case USER:
                 return AgentMessage.user(text);
-            case ASSISTANT:
+
+            case ASSISTANT: {
+                boolean isError = obj.optBoolean("isError", false);
+                boolean canRetry = obj.optBoolean("canRetry", false);
+                if (isError) {
+                    return AgentMessage.assistantError(text != null ? text : "", canRetry);
+                }
                 return AgentMessage.assistant(text);
-            case PLAN:
-                return AgentMessage.plan(Collections.emptyList());
-            case ACT_BAR:
-                return AgentMessage.actBar();
-            case EXECUTION_CLI:
-                return AgentMessage.executionCli(Collections.emptyList());
-            case EXECUTION_MACRO:
-                return AgentMessage.executionMacro(Collections.emptyList(), 0, 0, null);
+            }
+
+            case PLAN: {
+                List<AgentPlanStep> steps = new ArrayList<>();
+                JSONArray stepsArray = obj.optJSONArray("planSteps");
+                if (stepsArray != null) {
+                    for (int i = 0; i < stepsArray.length(); i++) {
+                        steps.add(AgentPlanStep.fromJSONObject(stepsArray.getJSONObject(i)));
+                    }
+                }
+                boolean isHidMode = obj.optBoolean("isHidMode", false);
+                return AgentMessage.plan(steps, isHidMode);
+            }
+
+            case EXECUTION_CLI: {
+                List<String> lines = new ArrayList<>();
+                JSONArray linesArray = obj.optJSONArray("terminalLines");
+                if (linesArray != null) {
+                    for (int i = 0; i < linesArray.length(); i++) {
+                        lines.add(linesArray.getString(i));
+                    }
+                }
+                boolean isComplete = obj.optBoolean("isComplete", false);
+                boolean cliRetried = obj.optBoolean("cliRetried", false);
+                if (cliRetried) {
+                    return AgentMessage.executionCliRetried(lines);
+                }
+                if (isComplete) {
+                    Boolean cliSuccess = null;
+                    if (!obj.isNull("cliSuccess")) {
+                        cliSuccess = obj.optBoolean("cliSuccess", true);
+                    }
+                    return AgentMessage.executionCliComplete(lines, cliSuccess != null && cliSuccess);
+                }
+                return AgentMessage.executionCli(lines);
+            }
+
+            case EXECUTION_MACRO: {
+                List<String> macroSteps = new ArrayList<>();
+                JSONArray macroArray = obj.optJSONArray("macroSteps");
+                if (macroArray != null) {
+                    for (int i = 0; i < macroArray.length(); i++) {
+                        macroSteps.add(macroArray.getString(i));
+                    }
+                }
+                int progress = obj.optInt("macroProgress", 0);
+                int currentStep = obj.optInt("macroCurrentStep", 0);
+                String statusChip = obj.optString("macroStatusChip", null);
+                return AgentMessage.executionMacro(macroSteps, progress, currentStep, statusChip);
+            }
+
             default:
                 return AgentMessage.assistant(text);
         }
