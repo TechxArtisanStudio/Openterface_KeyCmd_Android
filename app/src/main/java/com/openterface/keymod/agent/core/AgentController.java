@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
+import com.openterface.keymod.agent.llm.ConversationManager;
 import com.openterface.keymod.agent.ui.AgentMessage;
 import com.openterface.terminal.CredentialProfile;
 
@@ -93,6 +94,15 @@ public final class AgentController {
 
     @Nullable private PlanExecutionUseCase planExecUseCase;
     @Nullable private Thread summarizeThread;
+
+    // ── Multi-turn conversation (P1-7) ───────────────────────────────────
+
+    /** ConversationManager for multi-turn context. Rebuilt when system prompt changes. */
+    @Nullable private ConversationManager conversation;
+    /** Tracks the system prompt used to build the current conversation. */
+    @Nullable private String lastConversationSystemPrompt;
+    /** Max tokens for conversation context trimming. */
+    private static final int MAX_CONTEXT_TOKENS = 4000;
 
     public AgentController(@NonNull Context context, @NonNull AgentEnvironment environment) {
         this.appContext = context.getApplicationContext();
@@ -299,6 +309,9 @@ public final class AgentController {
     public void reset() {
         cancel();
         session.clear();
+        // Clear multi-turn conversation history (P1-7)
+        conversation = null;
+        lastConversationSystemPrompt = null;
     }
 
     /**
@@ -359,6 +372,24 @@ public final class AgentController {
     // ── UseCase factories ────────────────────────────────────────────────
 
     /**
+     * Get or create the ConversationManager for multi-turn context (P1-7).
+     * Rebuilds if the system prompt has changed (e.g., execution mode switch).
+     *
+     * @param systemPrompt the current system prompt
+     * @return ConversationManager instance with history preserved across submits
+     */
+    @NonNull
+    private ConversationManager getOrCreateConversation(@NonNull String systemPrompt) {
+        if (conversation == null || !systemPrompt.equals(lastConversationSystemPrompt)) {
+            conversation = new ConversationManager(systemPrompt);
+            conversation.setMaxContextTokens(MAX_CONTEXT_TOKENS);
+            lastConversationSystemPrompt = systemPrompt;
+            Log.i(TAG, "ConversationManager rebuilt (system prompt changed)");
+        }
+        return conversation;
+    }
+
+    /**
      * Create a PlanGenerationUseCase with current listener and config.
      * Recreated per submit() to capture the latest listener reference.
      */
@@ -372,6 +403,9 @@ public final class AgentController {
                     @Override
                     public void onPlanReady(@NonNull AgentPlan plan) {
                         currentPlan = plan;
+                        // NOTE: Raw LLM JSON response is stored as assistant message
+                        // by PlanGenerationUseCase.onStreamFinished() — do NOT store
+                        // a reformatted markdown summary here, it confuses the LLM.
                         postToMain(() -> {
                             transitionTo(AgentState.WAITING_APPROVE);
                             notifyPlanReady(plan);
@@ -391,6 +425,12 @@ public final class AgentController {
                     @Override
                     public void onOsDetected(@NonNull OsDetector.DetectedOS os) {
                         detectedOs = os;
+                    }
+
+                    @Override
+                    @NonNull
+                    public ConversationManager onGetConversation(@NonNull String systemPrompt) {
+                        return getOrCreateConversation(systemPrompt);
                     }
                 });
     }
@@ -425,9 +465,58 @@ public final class AgentController {
                     public void onTransitionToIdle() {
                         transitionTo(AgentState.IDLE);
                     }
+
+                    @Override
+                    public void onExecutionCompleted(@NonNull List<String[]> results) {
+                        // Add execution results as a USER message (system feedback).
+                        // IMPORTANT: use "user" role, NOT "assistant" — execution results
+                        // are system feedback, not the LLM's own output. Storing them as
+                        // assistant messages confuses the LLM about its output format.
+                        if (conversation != null && !results.isEmpty()) {
+                            conversation.addUserMessage(
+                                    "[System: execution results from previous plan]\n"
+                                            + buildExecutionResultsContext(results));
+                        }
+                    }
                 });
         uc.setToolExecutor(toolExecutor);
         return uc;
+    }
+
+    /**
+     * Build a context string from execution results for the conversation history.
+     * Includes commands, outputs (truncated), and success/failure status.
+     */
+    @NonNull
+    private String buildExecutionResultsContext(@NonNull List<String[]> results) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[Execution Results]\n");
+        int successCount = 0;
+        int failCount = 0;
+        for (String[] result : results) {
+            if (result.length >= 3) {
+                String cmd = result[0];
+                String output = result[1];
+                String status = result[2];
+                sb.append("- `").append(cmd).append("` → ");
+                if ("success".equals(status)) {
+                    successCount++;
+                    // Truncate output for context window
+                    if (output.length() > 150) {
+                        sb.append(output.substring(0, 150)).append("...");
+                    } else {
+                        sb.append(output.isEmpty() ? "(no output)" : output);
+                    }
+                    sb.append(" ✅\n");
+                } else {
+                    failCount++;
+                    sb.append("Error: ").append(output).append(" ❌\n");
+                }
+            }
+        }
+        sb.append("\nSummary: ").append(successCount).append(" succeeded, ")
+                .append(failCount).append(" failed");
+        return sb.toString();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

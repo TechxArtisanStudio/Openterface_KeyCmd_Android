@@ -408,7 +408,7 @@ public final class AgentPromptBuilder {
      * placeholders in the prompt template.
      */
     @NonNull
-    private String replacePlaceholders(@NonNull String template) {
+    String replacePlaceholders(@NonNull String template) {
         String result = template.replace("{{TERMINAL_MODE_CONTEXT}}", buildTerminalModeContext());
         result = result.replace("{{MACRO_CONTEXT}}", buildMacroContext());
         return result;

@@ -66,6 +66,9 @@ final class PlanExecutionUseCase {
     @Nullable private List<AgentPlan.Step> pendingStepsAfterRetry;
     @Nullable private Future<?> runningTask;
 
+    /** Collects execution results for conversation context (P1-7 enrichment). */
+    private final List<String[]> executionResults = new ArrayList<>();
+
     /**
      * @param appContext    application context (for LLM config)
      * @param promptBuilder builds retry prompts + terminal context
@@ -139,6 +142,7 @@ final class PlanExecutionUseCase {
     void executePlan(@NonNull AgentPlan plan, @NonNull String targetOs) {
         this.currentPlan = plan;
         this.currentStepIndex = 0;
+        this.executionResults.clear();  // Clear for fresh execution
         runningTask = executor.submit(() -> executePlanInternal(targetOs));
     }
 
@@ -152,6 +156,7 @@ final class PlanExecutionUseCase {
         currentStepIndex = 0;
         planRetryCount = 0;
         cancelFlag.set(false);
+        this.executionResults.clear();  // Clear for fresh execution
         runningTask = executor.submit(() -> executePlanInternal(targetOs));
     }
 
@@ -228,6 +233,13 @@ final class PlanExecutionUseCase {
                             lines.add(line);
                         }
                     }
+                    // Collect result for conversation context (P1-7 enrichment)
+                    String cmd = step.command != null ? step.command : step.title;
+                    String truncatedOutput = output != null && output.length() > 200
+                            ? output.substring(0, 200) + "... (truncated)"
+                            : (output != null ? output : "");
+                    executionResults.add(new String[]{cmd, truncatedOutput, "success"});
+
                     postToMain(() -> session.addExecutionCliMessage(lines));
                     postToMain(() -> {
                         if (listener != null) listener.onStepOutput(stepIndex, lines, true, true);
@@ -245,6 +257,10 @@ final class PlanExecutionUseCase {
                         lines.add("🔑 " + step.title);
                     }
                     lines.add("Error: " + error);
+                    // Collect result for conversation context (P1-7 enrichment)
+                    String cmd = step.command != null ? step.command : step.title;
+                    executionResults.add(new String[]{cmd, error, "failed"});
+
                     postToMain(() -> session.addExecutionCliMessage(lines));
                     postToMain(() -> {
                         if (listener != null) listener.onStepOutput(stepIndex, lines, true, false);
@@ -355,8 +371,11 @@ final class PlanExecutionUseCase {
             return;
         }
 
-        // All steps completed — notify completion.
-        Log.i(TAG, traceManager.formatLogMessage("executePlan: all steps completed"));
+        // All steps completed — notify completion with results (P1-7 enrichment)
+        Log.i(TAG, traceManager.formatLogMessage("executePlan: all steps completed, results="
+                + executionResults.size()));
+        final List<String[]> resultsCopy = new ArrayList<>(executionResults);
+        callback.onExecutionCompleted(resultsCopy);
         postToMain(() -> {
             if (listener != null) listener.onExecutionComplete();
         });
@@ -491,5 +510,11 @@ final class PlanExecutionUseCase {
 
         /** Transition to IDLE state (for toolExecutor==null case). */
         void onTransitionToIdle();
+
+        /**
+         * All steps completed successfully.
+         * @param results list of [command, output, status] for each step
+         */
+        void onExecutionCompleted(@NonNull List<String[]> results);
     }
 }

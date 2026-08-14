@@ -9,6 +9,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.agent.llm.ConversationManager;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.LlmRequest;
 import com.openterface.keymod.agent.llm.LlmResponse;
@@ -49,6 +50,9 @@ final class PlanGenerationUseCase {
 
     /** Detected target OS from SSH connection (null if not detected yet). */
     @Nullable private volatile OsDetector.DetectedOS detectedOs;
+
+    /** ConversationManager for multi-turn context — stored to record raw LLM response. */
+    @Nullable private ConversationManager conversation;
 
     /**
      * @param appContext      application context
@@ -195,10 +199,27 @@ final class PlanGenerationUseCase {
             Log.i(TAG, "Prompt routing: HID mode (no SSH profile)");
         }
 
-        // Build request with custom prompt support
+        // Build system prompt (custom or default)
         String customPrompt = getCustomPromptForMode(
                 promptBuilder.getExecutionMode(), customTerminalPrompt, customHidPrompt);
-        LlmRequest request = promptBuilder.buildRequest(model, userPrompt, customPrompt);
+        String systemPrompt;
+        if (customPrompt != null && !customPrompt.isEmpty()) {
+            systemPrompt = promptBuilder.replacePlaceholders(customPrompt);
+        } else {
+            systemPrompt = promptBuilder.buildSystemPrompt();
+        }
+
+        // P1-7: Use ConversationManager for multi-turn context
+        this.conversation = callback.onGetConversation(systemPrompt);
+        String wrappedUserPrompt = promptBuilder.buildUserPrompt(userPrompt);
+        conversation.addUserMessage(wrappedUserPrompt);
+        conversation.trimIfNeeded();
+        LlmRequest request = conversation.buildRequest(model);
+        request.temperature = 0.3;
+        request.maxTokens = 2048;
+
+        Log.i(TAG, "generatePlan: conversation history size=" + conversation.size()
+                + ", estimated tokens=" + conversation.estimateTokenCount());
 
         // Start trace for plan generation
         traceManager.newTrace("generate_plan");
@@ -322,6 +343,13 @@ final class PlanGenerationUseCase {
                 });
             }
 
+            // Store the raw LLM response as assistant message in ConversationManager.
+            // IMPORTANT: store the raw JSON, NOT a reformatted markdown summary —
+            // storing markdown confuses the LLM into mimicking markdown instead of JSON.
+            if (conversation != null) {
+                conversation.addAssistantMessage(response.content);
+            }
+
             // Store plan and record assistant message (on main thread for thread safety)
             final AgentPlan finalPlan = plan;
             postToMain(() -> session.addAssistantMessage(finalPlan.summary));
@@ -369,5 +397,15 @@ final class PlanGenerationUseCase {
 
         /** OS was auto-detected from SSH — controller should store the result. */
         void onOsDetected(@NonNull OsDetector.DetectedOS os);
+
+        /**
+         * Get the ConversationManager for multi-turn context (P1-7).
+         * Controller creates/rebuilds if system prompt has changed.
+         *
+         * @param systemPrompt the current system prompt (determines if conversation needs rebuild)
+         * @return ConversationManager instance with preserved history
+         */
+        @NonNull
+        ConversationManager onGetConversation(@NonNull String systemPrompt);
     }
 }
