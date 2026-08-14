@@ -95,6 +95,10 @@ public final class AgentController {
     @Nullable private PlanExecutionUseCase planExecUseCase;
     @Nullable private Thread summarizeThread;
 
+    /** Session message count before the current execution round. Used by
+     *  SummaryUseCase to scope result collection to the current round only. */
+    private int executionStartSessionIndex = 0;
+
     // ── Multi-turn conversation (P1-7) ───────────────────────────────────
 
     /** ConversationManager for multi-turn context. Rebuilt when system prompt changes. */
@@ -251,6 +255,7 @@ public final class AgentController {
         transitionTo(AgentState.EXECUTING);
         String targetOs = getTargetOs();
         planExecUseCase = createPlanExecutionUseCase();
+        executionStartSessionIndex = session.size();
         planExecUseCase.executePlan(currentPlan, targetOs);
     }
 
@@ -363,6 +368,7 @@ public final class AgentController {
             SummaryUseCase summary = new SummaryUseCase(
                     session, promptBuilder, traceManager, clientFactory,
                     listener, cancelFlag, mainHandler, currentPlan,
+                    executionStartSessionIndex,
                     () -> postToMain(() -> transitionTo(AgentState.IDLE)));
             summary.summarize();
         }, "AgentSummarize");

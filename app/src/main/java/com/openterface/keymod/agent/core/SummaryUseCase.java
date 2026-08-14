@@ -46,6 +46,10 @@ final class SummaryUseCase {
     /** Current plan — read for step count in HID/empty skip. */
     @Nullable private final AgentPlan currentPlan;
 
+    /** Start index in session messages — only messages from this index onward
+     *  are collected as execution results (current round only). */
+    private final int executionStartIndex;
+
     /**
      * @param session        message store (read execution results, write summary)
      * @param promptBuilder  builds summarize prompt
@@ -55,6 +59,7 @@ final class SummaryUseCase {
      * @param cancelFlag     cancellation flag shared with AgentController
      * @param mainHandler    main thread handler for posting UI updates
      * @param currentPlan    current plan (nullable — for step count in HID mode)
+     * @param executionStartIndex session message index before execution started
      * @param callback       notifies when summarize is done (triggers state transition to IDLE)
      */
     SummaryUseCase(
@@ -66,6 +71,7 @@ final class SummaryUseCase {
             @NonNull AtomicBoolean cancelFlag,
             @NonNull Handler mainHandler,
             @Nullable AgentPlan currentPlan,
+            int executionStartIndex,
             @NonNull Callback callback) {
         this.session = session;
         this.promptBuilder = promptBuilder;
@@ -75,6 +81,7 @@ final class SummaryUseCase {
         this.cancelFlag = cancelFlag;
         this.mainHandler = mainHandler;
         this.currentPlan = currentPlan;
+        this.executionStartIndex = executionStartIndex;
         this.callback = callback;
     }
 
@@ -93,15 +100,19 @@ final class SummaryUseCase {
                 : session.getMessages().get(0).text;
         String originalPrompt = firstMsgText != null ? firstMsgText.toString() : "";
 
-        // Collect execution results for summarization
+        // Collect execution results for summarization — only from current round.
+        // Messages before executionStartIndex belong to previous rounds.
         List<String[]> results = new ArrayList<>();
-        for (AgentMessage msg : session.getMessages()) {
+        List<AgentMessage> msgs = session.getMessages();
+        int startIdx = Math.min(executionStartIndex, msgs.size());
+        for (int i = startIdx; i < msgs.size(); i++) {
+            AgentMessage msg = msgs.get(i);
             if (msg.type == AgentMessage.Type.EXECUTION_CLI && !msg.terminalLines.isEmpty()) {
                 String cmd = msg.terminalLines.get(0);
                 StringBuilder output = new StringBuilder();
-                for (int i = 1; i < msg.terminalLines.size(); i++) {
-                    if (i > 1) output.append('\n');
-                    output.append(msg.terminalLines.get(i));
+                for (int j = 1; j < msg.terminalLines.size(); j++) {
+                    if (j > 1) output.append('\n');
+                    output.append(msg.terminalLines.get(j));
                 }
                 results.add(new String[]{cmd, output.toString()});
             }
