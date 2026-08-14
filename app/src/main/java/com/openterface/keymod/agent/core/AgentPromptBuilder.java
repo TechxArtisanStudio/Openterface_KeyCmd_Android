@@ -114,6 +114,9 @@ public final class AgentPromptBuilder {
             + "- Keep steps minimal — one command per step.\n"
             + "- Do not include destructive commands unless explicitly requested.\n"
             + "- Use commands appropriate for the target OS specified above.\n"
+            + "- When listing processes, files, or large data, ALWAYS limit output "
+            + "(e.g., `ps aux | head -30`, `ls | head -20`). Never use bare `ps`, `ps aux`, "
+            + "`find /`, or similar commands that produce unbounded output.\n"
             + "- If you cannot fulfill the request, say so in the intro and return empty steps array.";
 
     private static final String FALLBACK_HID =
@@ -183,6 +186,9 @@ public final class AgentPromptBuilder {
             + "## Constraints\n\n"
             + "- Keep steps minimal — one command per step.\n"
             + "- Do not include destructive commands unless explicitly requested.\n"
+            + "- When listing processes, files, or large data, ALWAYS limit output "
+            + "(e.g., `ps aux | head -30`, `ls | head -20`). Never use bare `ps`, `ps aux`, "
+            + "`find /`, or similar commands that produce unbounded output.\n"
             + "- If you cannot fulfill the request, say so in the intro and return empty steps array.";
 
     public AgentPromptBuilder(@NonNull Context context) {
@@ -363,6 +369,10 @@ public final class AgentPromptBuilder {
 
         sb.append("Please provide alternative commands that will work on ")
           .append(targetOS).append(".\n")
+          .append("IMPORTANT: If the failed command produced large output "
+                  + "(process lists, file trees, etc.), use filtering or limiting "
+                  + "in your alternative commands (e.g., `ps aux | head -30`, "
+                  + "`ls | head -20`).\n")
           .append("Respond with a single JSON object inside a ```json code fence. No prose before or after.\n\n")
           .append("```json\n")
           .append("{\n")

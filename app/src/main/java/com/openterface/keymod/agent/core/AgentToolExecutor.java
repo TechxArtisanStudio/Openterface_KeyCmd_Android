@@ -47,5 +47,16 @@ public interface AgentToolExecutor {
 
         /** Execution progress update */
         void onProgress(int stepIndex, int totalSteps);
+
+        /**
+         * Streaming output line from a running command.
+         * Called on the executor thread for each line of stdout as it arrives
+         * (before the command completes). Default is a no-op for backward
+         * compatibility — implementers that support streaming should override.
+         *
+         * @param stepIndex the current step index
+         * @param line      a single line of command output (no trailing newline)
+         */
+        default void onOutputLine(int stepIndex, @NonNull String line) {}
     }
 }

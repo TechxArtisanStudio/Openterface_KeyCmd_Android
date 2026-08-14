@@ -8,6 +8,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.openterface.keymod.agent.executor.TerminalToolExecutor;
 import com.openterface.keymod.agent.llm.LlmHttpClient;
 import com.openterface.keymod.agent.llm.LlmRequest;
 import com.openterface.keymod.agent.llm.LlmResponse;
@@ -15,13 +16,16 @@ import com.openterface.keymod.agent.settings.AIConfigProvider;
 import com.openterface.keymod.agent.ui.AgentMessage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Executes plan steps sequentially with retry logic.
@@ -39,8 +43,14 @@ final class PlanExecutionUseCase {
 
     private static final String TAG = "PlanExecUseCase";
 
-    /** Timeout for waiting on a single step's execution callback. */
-    private static final long STEP_TIMEOUT_SECONDS = 30;
+    /**
+     * Timeout for waiting on a single step's execution callback.
+     * Must exceed {@link TerminalToolExecutor#DEFAULT_TIMEOUT_MS} so the SSH
+     * command can finish before the latch fires. The extra 30 s covers
+     * network latency, callback dispatch, and inter-step delay.
+     */
+    private static final long STEP_TIMEOUT_SECONDS =
+            (TerminalToolExecutor.DEFAULT_TIMEOUT_MS / 1000) + 30; // 90 s
 
     private final Context appContext;
     private final AgentPromptBuilder promptBuilder;
@@ -202,6 +212,15 @@ final class PlanExecutionUseCase {
             final CountDownLatch latch = new CountDownLatch(1);
             final String[] stepError = {null};
 
+            // Streaming output buffer — accumulates lines as they arrive from SSH.
+            // When non-empty at onSuccess time, we reuse it instead of re-parsing.
+            final StringBuilder outputBuffer = new StringBuilder();
+            // Forward reference to the progress scheduler so onOutputLine can
+            // cancel it as soon as real output starts arriving.
+            final AtomicReference<ScheduledExecutorService> schedulerRef =
+                    new AtomicReference<>();
+            final AtomicBoolean hasStreamingOutput = new AtomicBoolean(false);
+
             // Notify fragment to show Running state before execution starts
             String displayCommand = "terminal".equals(step.kind)
                     ? "$ " + (step.command != null ? step.command : step.title)
@@ -222,27 +241,43 @@ final class PlanExecutionUseCase {
             toolExecutor.execute(step, new AgentToolExecutor.ExecutionCallback() {
                 @Override
                 public void onSuccess(@NonNull String output) {
-                    List<String> lines = new ArrayList<>();
-                    if ("terminal".equals(step.kind)) {
-                        lines.add("$ " + (step.command != null ? step.command : step.title));
-                    } else {
-                        lines.add("🔑 " + step.title);
-                    }
-                    if (output != null && !output.isEmpty()) {
-                        for (String line : output.split("\n")) {
-                            lines.add(line);
-                        }
-                    }
-                    // Collect result for conversation context (P1-7 enrichment)
+                    // When streaming was used, the UI already has the output lines
+                    // appended incrementally. Just mark the card complete and save
+                    // the full output to session / conversation context.
+                    String effectiveOutput = hasStreamingOutput.get()
+                            ? outputBuffer.toString()
+                            : output;
+
+                    // Save to conversation context (P1-7 enrichment)
                     String cmd = step.command != null ? step.command : step.title;
-                    String truncatedOutput = output != null && output.length() > 200
-                            ? output.substring(0, 200) + "... (truncated)"
-                            : (output != null ? output : "");
+                    String truncatedOutput = effectiveOutput != null
+                            && effectiveOutput.length() > 200
+                            ? effectiveOutput.substring(0, 200) + "... (truncated)"
+                            : (effectiveOutput != null ? effectiveOutput : "");
                     executionResults.add(new String[]{cmd, truncatedOutput, "success"});
 
-                    postToMain(() -> session.addExecutionCliMessage(lines));
+                    // Always save to session history — SummaryUseCase reads from
+                    // session.getMessages() to collect results for summarization.
+                    // The UI card is managed separately by AgentFragment.chatMessages
+                    // (created via onStepStart, updated via onOutputLine), so adding
+                    // to session does NOT create duplicate UI cards.
+                    List<String> fullLines = new ArrayList<>();
+                    if ("terminal".equals(step.kind)) {
+                        fullLines.add("$ " + (step.command != null ? step.command : step.title));
+                    } else {
+                        fullLines.add("🔑 " + step.title);
+                    }
+                    if (effectiveOutput != null && !effectiveOutput.isEmpty()) {
+                        for (String line : effectiveOutput.split("\n")) {
+                            fullLines.add(line);
+                        }
+                    }
+                    postToMain(() -> session.addExecutionCliMessage(fullLines));
+
+                    // Mark the Running card as complete (UI keeps existing lines).
                     postToMain(() -> {
-                        if (listener != null) listener.onStepOutput(stepIndex, lines, true, true);
+                        if (listener != null)
+                            listener.onStepOutput(stepIndex, Collections.emptyList(), true, true);
                     });
                     traceManager.endTrace(true);
                     latch.countDown();
@@ -261,6 +296,7 @@ final class PlanExecutionUseCase {
                     String cmd = step.command != null ? step.command : step.title;
                     executionResults.add(new String[]{cmd, error, "failed"});
 
+                    // Always save to session for SummaryUseCase (see onSuccess comment).
                     postToMain(() -> session.addExecutionCliMessage(lines));
                     postToMain(() -> {
                         if (listener != null) listener.onStepOutput(stepIndex, lines, true, false);
@@ -276,11 +312,33 @@ final class PlanExecutionUseCase {
                         if (listener != null) listener.onExecutionProgress(idx, total);
                     });
                 }
+
+                /** Streaming output — fires for each line as SSH delivers it. */
+                @Override
+                public void onOutputLine(int idx, @NonNull String line) {
+                    outputBuffer.append(line).append('\n');
+                    hasStreamingOutput.set(true);
+
+                    // Cancel the "(waiting...)" timer — real output has arrived.
+                    java.util.concurrent.ScheduledExecutorService sched = schedulerRef.get();
+                    if (sched != null) {
+                        sched.shutdownNow();
+                    }
+
+                    // Forward the single line to the UI so it appends to the Running card.
+                    postToMain(() -> {
+                        if (listener != null)
+                            listener.onStepOutput(stepIndex,
+                                    Collections.singletonList(line),
+                                    false, null);
+                    });
+                }
             });
 
             // Elapsed-time progress: show "(waiting… Xs)" every 3s
             final java.util.concurrent.ScheduledExecutorService progressScheduler =
                     Executors.newSingleThreadScheduledExecutor();
+            schedulerRef.set(progressScheduler);
             final long[] elapsedSec = {0};
             progressScheduler.scheduleAtFixedRate(() -> {
                 elapsedSec[0]++;

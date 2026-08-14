@@ -898,23 +898,37 @@ public class AgentFragment extends Fragment {
             public void onStepOutput(int stepIndex, @NonNull List<String> lines,
                                       boolean isComplete, @Nullable Boolean success) {
                 if (!isAdded()) return;
-                // Find the existing Running CLI card and update it with output,
-                // instead of adding a duplicate card.
+                // Find the most recent Running CLI card to update in place.
                 boolean updated = false;
                 for (int i = chatMessages.size() - 1; i >= 0; i--) {
-                    if (chatMessages.get(i).type == AgentMessage.Type.EXECUTION_CLI) {
-                        AgentMessage msg = isComplete
-                                ? AgentMessage.executionCliComplete(lines, success != null ? success : true)
-                                : AgentMessage.executionCli(lines);
-                        chatMessages.set(i, msg);
-                        // Use adapter.setItem() to sync internal data AND rebind.
-                        adapter.setItem(i, msg);
+                    AgentMessage existing = chatMessages.get(i);
+                    if (existing.type == AgentMessage.Type.EXECUTION_CLI) {
+                        if (isComplete) {
+                            // Final state — mark card complete.
+                            // If lines are provided (error case), replace; otherwise
+                            // keep the lines already accumulated via streaming.
+                            List<String> finalLines = lines.isEmpty()
+                                    ? existing.terminalLines : lines;
+                            AgentMessage msg = AgentMessage.executionCliComplete(
+                                    finalLines, success != null ? success : true);
+                            chatMessages.set(i, msg);
+                            adapter.setItem(i, msg);
+                        } else if (!lines.isEmpty()) {
+                            // Streaming: append new lines to the running card.
+                            List<String> merged = new ArrayList<>(existing.terminalLines);
+                            merged.addAll(lines);
+                            AgentMessage msg = AgentMessage.executionCli(merged);
+                            chatMessages.set(i, msg);
+                            adapter.setItem(i, msg);
+                        }
+                        // isComplete + empty lines → mark complete, keep existing lines
+                        // !isComplete + empty lines → nothing to do
                         updated = true;
                         break;
                     }
                 }
                 if (!updated) {
-                    // Fallback: no Running card found, add new one
+                    // Fallback: no Running card found, add new one.
                     AgentMessage msg = isComplete
                             ? AgentMessage.executionCliComplete(lines, success != null ? success : true)
                             : AgentMessage.executionCli(lines);

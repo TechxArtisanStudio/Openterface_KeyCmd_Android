@@ -34,9 +34,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class TerminalToolExecutor implements AgentToolExecutor {
 
     private static final String TAG = "TerminalToolExecutor";
-    private static final int DEFAULT_TIMEOUT_MS = 60_000;
-    private static final int MAX_OUTPUT_CHARS = 2000;
-    private static final int MAX_OUTPUT_LINES = 50;
+    /** SSH command execution timeout (public so PlanExecutionUseCase can base its latch timeout on it). */
+    public static final int DEFAULT_TIMEOUT_MS = 60_000;
+    /** Output truncation limits — generous enough for filtered commands, but still a safety net. */
+    private static final int MAX_OUTPUT_CHARS = 4000;
+    private static final int MAX_OUTPUT_LINES = 100;
 
     private final Context context;
     private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -235,6 +237,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             @Override
             public void onOutput(@NonNull String line) {
                 Log.v(TAG, "output: " + line);
+                callback.onOutputLine(step.index, line);
             }
 
             @Override
