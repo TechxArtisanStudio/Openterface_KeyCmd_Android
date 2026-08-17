@@ -25,6 +25,7 @@ import com.openterface.keymod.R;
 import com.openterface.keymod.util.BottomSheetBlurHelper;
 import com.openterface.terminal.CredentialManager;
 import com.openterface.terminal.CredentialProfile;
+import com.openterface.terminal.SshClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -263,6 +264,20 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
     private void onProfileSelected(@NonNull CredentialProfile profile) {
         // Agent only: store profile for Agent auto-connect (does NOT affect Terminal tab)
         AgentEnvironment activity = (AgentEnvironment) requireActivity();
+
+        // Disconnect the old SSH client so that the next execute() triggers a
+        // fresh auto-connect with the new profile.  Without this, TerminalToolExecutor
+        // Priority 1 would reuse the old session (connected to the OLD host/transport),
+        // producing "Exec failed after reconnect: channel is not opened".
+        SshClient oldClient = activity.getSshClient();
+        if (oldClient != null) {
+            try {
+                oldClient.disconnect();
+            } catch (Exception ignored) {
+            }
+            activity.setSshClient(null);
+        }
+
         activity.setActiveSshProfile(profile);
         agentActiveProfileId = profile.getId();
 
@@ -288,6 +303,17 @@ public class TargetSettingsSheet extends BottomSheetDialogFragment {
         // Agent only: clear SSH profile reference → enter HID mode
         AgentEnvironment activity = (AgentEnvironment) requireActivity();
         CredentialProfile deselectedProfile = activity.getActiveSshProfile();
+
+        // Disconnect the old SSH client so it doesn't linger as a stale reference.
+        SshClient oldClient = activity.getSshClient();
+        if (oldClient != null) {
+            try {
+                oldClient.disconnect();
+            } catch (Exception ignored) {
+            }
+            activity.setSshClient(null);
+        }
+
         activity.setActiveSshProfile(null);
         agentActiveProfileId = null;
 

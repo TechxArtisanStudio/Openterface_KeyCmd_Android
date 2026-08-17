@@ -144,6 +144,12 @@ public class SshClient {
         return connected;
     }
 
+    /** Get the profile this client was originally connected with, for profile-equality checks. */
+    @Nullable
+    public CredentialProfile getConnectProfile() {
+        return connectProfile;
+    }
+
     /**
      * Establish SSH connection. Call on background thread.
      * Supports both password and public key authentication based on profile settings.

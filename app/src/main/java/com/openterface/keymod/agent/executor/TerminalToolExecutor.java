@@ -94,8 +94,11 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         CredentialProfile activeProfile = environment.getActiveSshProfile();
         if (activeProfile != null) {
             SshClient existing = environment.getSshClient();
-            if (existing != null && existing.isSessionConnected()) {
-                return; // Already connected
+            // Only skip if session is alive AND its profile matches the current active profile.
+            // Otherwise the old session may be connected to a different (now stale) host.
+            if (existing != null && existing.isSessionConnected()
+                    && profilesMatch(existing, activeProfile)) {
+                return; // Already connected to the correct target
             }
             new Thread(() -> {
                 lastAutoConnectError = null;
@@ -131,13 +134,23 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         SshClient client = null;
 
-        // Priority 1: Reuse existing SSH session from the environment if still alive.
-        // Avoids expensive BLE disconnect/reconnect + SSH handshake on every step.
+        // Priority 1: Reuse existing SSH session from the environment if still alive
+        // AND its profile matches the currently active one.
+        // Avoids expensive BLE disconnect/reconnect + SSH handshake on every step,
+        // but prevents the "Exec failed after reconnect" bug when the user switched
+        // profiles without disconnecting the old session.
         if (environment != null) {
             SshClient existing = environment.getSshClient();
+            CredentialProfile activeProfile = environment.getActiveSshProfile();
             if (existing != null && existing.isSessionConnected()) {
-                client = existing;
-                Log.d(TAG, "Reusing existing SSH session (no reconnect needed)");
+                if (profilesMatch(existing, activeProfile)) {
+                    client = existing;
+                    Log.d(TAG, "Reusing existing SSH session (no reconnect needed)");
+                } else {
+                    Log.i(TAG, "SSH session profile mismatch — discarding stale session");
+                    try { existing.disconnect(); } catch (Exception ignored) {}
+                    environment.setSshClient(null);
+                }
             }
         }
 
@@ -560,6 +573,20 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 Log.w(TAG, "Error disconnecting old SSH client", e);
             }
         }
+    }
+
+    /**
+     * Check whether an existing SshClient was created from the given profile.
+     * Returns true when the client's stored connectProfile matches the active
+     * profile by ID.  Used to decide whether a cached session can be safely
+     * reused after the user switches profiles.
+     */
+    private boolean profilesMatch(@NonNull SshClient client, @Nullable CredentialProfile activeProfile) {
+        CredentialProfile connectProfile = client.getConnectProfile();
+        if (connectProfile == null || activeProfile == null) {
+            return connectProfile == activeProfile; // both null → match
+        }
+        return connectProfile.getId().equals(activeProfile.getId());
     }
 
     /**
