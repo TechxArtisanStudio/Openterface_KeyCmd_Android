@@ -3,6 +3,8 @@ package com.openterface.keymod.agent.ui;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -241,6 +243,12 @@ public class EditPlanSheet extends BottomSheetDialogFragment {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             EditableStep step = editableSteps.get(position);
 
+            // ── Clear previous TextWatchers to avoid stale callbacks ──
+            // RecyclerView reuses ViewHolders, so old watchers would update
+            // the wrong EditableStep if not removed.
+            holder.titleInput.removeTextChangedListener(holder.titleWatcher);
+            holder.commandInput.removeTextChangedListener(holder.commandWatcher);
+
             holder.indexLabel.setText(String.valueOf(position + 1));
             holder.titleInput.setText(step.title);
             holder.commandInput.setText(getPayloadText(step));
@@ -254,18 +262,23 @@ public class EditPlanSheet extends BottomSheetDialogFragment {
             }
             holder.commandInput.setHint(hint);
 
-            // Title change listener
-            holder.titleInput.setOnFocusChangeListener((v, hasFocus) -> {
-                if (!hasFocus) step.title = holder.titleInput.getText().toString();
-            });
-
-            // Command change listener
-            holder.commandInput.setOnFocusChangeListener((v, hasFocus) -> {
-                if (!hasFocus) {
-                    String text = holder.commandInput.getText().toString();
-                    setPayloadFromText(step, text);
+            // ── TextWatchers: save edits immediately as user types ──
+            // This replaces the old focus-change approach which lost edits
+            // when ViewHolders were recycled before focus was lost.
+            holder.titleWatcher = new SimpleTextWatcher() {
+                @Override
+                public void afterTextChanged(Editable s) {
+                    step.title = s.toString();
                 }
-            });
+            };
+            holder.commandWatcher = new SimpleTextWatcher() {
+                @Override
+                public void afterTextChanged(Editable s) {
+                    setPayloadFromText(step, s.toString());
+                }
+            };
+            holder.titleInput.addTextChangedListener(holder.titleWatcher);
+            holder.commandInput.addTextChangedListener(holder.commandWatcher);
 
             // Delete button
             holder.deleteButton.setOnClickListener(v -> removeStep(holder.getAdapterPosition()));
@@ -281,6 +294,8 @@ public class EditPlanSheet extends BottomSheetDialogFragment {
             final EditText titleInput;
             final EditText commandInput;
             final ImageButton deleteButton;
+            TextWatcher titleWatcher;
+            TextWatcher commandWatcher;
 
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -290,6 +305,14 @@ public class EditPlanSheet extends BottomSheetDialogFragment {
                 deleteButton = itemView.findViewById(R.id.step_delete_button);
             }
         }
+    }
+
+    /** Minimal TextWatcher that only requires afterTextChanged. */
+    private static abstract class SimpleTextWatcher implements TextWatcher {
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) { }
     }
 
     // ── EditableStep ────────────────────────────────────────────────────
