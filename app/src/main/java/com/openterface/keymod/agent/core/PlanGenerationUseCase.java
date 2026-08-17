@@ -334,10 +334,23 @@ final class PlanGenerationUseCase {
                 }
             }
 
-            // Truncate plan if it exceeds maxSteps
-            if (plan.steps.size() > maxSteps) {
-                plan = plan.truncateTo(maxSteps);
-                final int truncatedTo = maxSteps;
+            // ── Dynamic maxSteps based on task complexity ──
+            // Complex tasks (pipes, conditionals, searches) deserve more steps
+            // than simple ones.  Clamp between the user-configured maxSteps and
+            // a ceiling of 20 to prevent runaway plans.
+            int estimatedComplexity = estimateTaskComplexity(plan);
+            int effectiveMaxSteps = Math.min(
+                    Math.max(maxSteps, estimatedComplexity * 2),
+                    20);
+            Log.i(TAG, "Task complexity=" + estimatedComplexity
+                    + ", effectiveMaxSteps=" + effectiveMaxSteps
+                    + " (configured=" + maxSteps + ", planSteps="
+                    + plan.steps.size() + ")");
+
+            // Truncate plan if it exceeds effectiveMaxSteps
+            if (plan.steps.size() > effectiveMaxSteps) {
+                plan = plan.truncateTo(effectiveMaxSteps);
+                final int truncatedTo = effectiveMaxSteps;
                 postToMain(() -> {
                     if (listener != null) listener.onPlanTruncated(truncatedTo);
                 });
@@ -382,6 +395,50 @@ final class PlanGenerationUseCase {
         } else {
             mainHandler.post(action);
         }
+    }
+
+    /**
+     * Estimate the complexity of a plan based on its command features.
+     *
+     * <p>Scoring rules:
+     * <ul>
+     *   <li>Each step: +1 (baseline)</li>
+     *   <li>Pipe operator {@code |}: +2 per step (chained commands)</li>
+     *   <li>Redirections {@code >} / {@code <}: +1 per step</li>
+     *   <li>Conditionals {@code &&} / {@code ||}: +2 per step</li>
+     *   <li>Search commands ({@code find}, {@code grep}): +1 per step</li>
+     * </ul>
+     *
+     * <p>Returns a score in range [0, 15].  Combined with user-configured
+     * {@code maxSteps}, this determines the effective truncation limit:
+     * {@code effectiveMaxSteps = clamp(maxSteps, complexity*2, 20)}.
+     */
+    static int estimateTaskComplexity(@NonNull AgentPlan plan) {
+        int score = 0;
+        for (AgentPlan.Step step : plan.steps) {
+            String cmd = step.command;
+            if (cmd == null) {
+                // Non-terminal step (macro, HID) — still counts as 1
+                score += 1;
+                continue;
+            }
+            // Baseline: every step counts
+            score += 1;
+            // Pipe operator (single |, not part of ||)
+            String withoutDoublePipe = cmd.replace("||", "");
+            if (withoutDoublePipe.indexOf('|') >= 0) score += 2;
+            // Redirections
+            if (cmd.indexOf('>') >= 0 || cmd.indexOf('<') >= 0) score += 1;
+            // Conditionals
+            if (cmd.contains("&&") || cmd.contains("||")) score += 2;
+            // Search / filter commands
+            if (cmd.contains("find ") || cmd.contains("grep ")
+                    || cmd.contains("locate ") || cmd.contains("awk ")
+                    || cmd.contains("sed ")) {
+                score += 1;
+            }
+        }
+        return Math.min(score, 15);
     }
 
     /** Callback interface for communicating results back to AgentController. */

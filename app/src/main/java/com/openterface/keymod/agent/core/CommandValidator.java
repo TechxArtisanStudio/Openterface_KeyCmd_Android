@@ -5,9 +5,15 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -468,4 +474,202 @@ public final class CommandValidator {
             "erase",            // Windows erase
             "rmdir"             // remove directory
     ));
+
+    // ── Command Auto-Correction Maps ─────────────────────────────────────
+
+    /**
+     * Correction map: Unix command → Windows equivalent.
+     * Keys are lowercase; values are the corrected command prefix.
+     *
+     * <p>Rules are kept conservative on purpose: only patterns whose
+     * replacement preserves semantics are listed.  Complex commands that
+     * don't match a clean rule are left untouched — the OS validation gate
+     * plus the LLM retry mechanism handle those.
+     */
+    private static final Map<String, String> UNIX_TO_WINDOWS = new HashMap<>();
+    static {
+        UNIX_TO_WINDOWS.put("ls -la", "dir");
+        UNIX_TO_WINDOWS.put("ls -l", "dir");
+        UNIX_TO_WINDOWS.put("ls -al", "dir");
+        UNIX_TO_WINDOWS.put("ls", "dir");
+        UNIX_TO_WINDOWS.put("cat ", "type ");
+        UNIX_TO_WINDOWS.put("cat", "type");
+        UNIX_TO_WINDOWS.put("grep ", "findstr ");
+        UNIX_TO_WINDOWS.put("grep", "findstr");
+        UNIX_TO_WINDOWS.put("ps aux", "tasklist");
+        UNIX_TO_WINDOWS.put("ps -ef", "tasklist");
+        UNIX_TO_WINDOWS.put("ps", "tasklist");
+        UNIX_TO_WINDOWS.put("kill -9", "taskkill /F /PID");
+        UNIX_TO_WINDOWS.put("kill", "taskkill /PID");
+        UNIX_TO_WINDOWS.put("df -h", "wmic logicaldisk get size,freesize,caption");
+        UNIX_TO_WINDOWS.put("df -H", "wmic logicaldisk get size,freesize,caption");
+        UNIX_TO_WINDOWS.put("df", "wmic logicaldisk get size,freesize,caption");
+        UNIX_TO_WINDOWS.put("free -h", "systeminfo | findstr /C:\"Total Physical Memory\"");
+        UNIX_TO_WINDOWS.put("free", "systeminfo | findstr /C:\"Total Physical Memory\"");
+        UNIX_TO_WINDOWS.put("hostname -I", "ipconfig");
+        UNIX_TO_WINDOWS.put("ip addr", "ipconfig");
+        UNIX_TO_WINDOWS.put("ifconfig", "ipconfig");
+        UNIX_TO_WINDOWS.put("wc -l", "find /c /v \"\"");
+        UNIX_TO_WINDOWS.put("clear", "cls");
+        UNIX_TO_WINDOWS.put("which ", "where ");
+        UNIX_TO_WINDOWS.put("which", "where");
+        UNIX_TO_WINDOWS.put("pwd", "cd");
+        UNIX_TO_WINDOWS.put("mkdir -p", "mkdir");
+        UNIX_TO_WINDOWS.put("rm -rf", "rmdir /s /q");
+        UNIX_TO_WINDOWS.put("rm -r", "rmdir /s /q");
+        UNIX_TO_WINDOWS.put("rm ", "del ");
+        UNIX_TO_WINDOWS.put("rm", "del");
+        UNIX_TO_WINDOWS.put("cp ", "copy ");
+        UNIX_TO_WINDOWS.put("cp", "copy");
+        UNIX_TO_WINDOWS.put("mv ", "move ");
+        UNIX_TO_WINDOWS.put("mv", "move");
+        UNIX_TO_WINDOWS.put("touch ", "echo. > ");
+        UNIX_TO_WINDOWS.put("touch", "echo. >");
+        UNIX_TO_WINDOWS.put("man ", "help ");
+        UNIX_TO_WINDOWS.put("man", "help");
+    }
+
+    /**
+     * Correction map: Linux command → macOS equivalent.
+     * Same conservative policy as {@link #UNIX_TO_WINDOWS}.
+     */
+    private static final Map<String, String> LINUX_TO_MACOS = new HashMap<>();
+    static {
+        LINUX_TO_MACOS.put("hostname -I", "ipconfig getifaddr en0");
+        LINUX_TO_MACOS.put("ip addr show", "ifconfig");
+        LINUX_TO_MACOS.put("ip addr", "ifconfig");
+        LINUX_TO_MACOS.put("free -h", "vm_stat");
+        LINUX_TO_MACOS.put("free", "vm_stat");
+        LINUX_TO_MACOS.put("lscpu", "sysctl -n machdep.cpu.brand_string");
+        LINUX_TO_MACOS.put("lsb_release -a", "sw_vers");
+        LINUX_TO_MACOS.put("lsb_release", "sw_vers");
+        LINUX_TO_MACOS.put("cat /etc/os-release", "sw_vers");
+        LINUX_TO_MACOS.put("apt-get install", "brew install");
+        LINUX_TO_MACOS.put("apt install", "brew install");
+        LINUX_TO_MACOS.put("apt-get", "brew");
+        LINUX_TO_MACOS.put("apt", "brew");
+        LINUX_TO_MACOS.put("yum install", "brew install");
+        LINUX_TO_MACOS.put("yum", "brew");
+        LINUX_TO_MACOS.put("dnf install", "brew install");
+        LINUX_TO_MACOS.put("dnf", "brew");
+        LINUX_TO_MACOS.put("systemctl status", "launchctl list | grep");
+        LINUX_TO_MACOS.put("ss -tulpn", "netstat -an");
+        LINUX_TO_MACOS.put("ss", "netstat");
+    }
+
+    /**
+     * Correction map: macOS command → Linux equivalent.
+     * Same conservative policy as {@link #UNIX_TO_WINDOWS}.
+     */
+    private static final Map<String, String> MACOS_TO_LINUX = new HashMap<>();
+    static {
+        MACOS_TO_LINUX.put("ipconfig getifaddr", "hostname -I");
+        MACOS_TO_LINUX.put("vm_stat", "free -h");
+        MACOS_TO_LINUX.put("sw_vers", "lsb_release -a");
+        MACOS_TO_LINUX.put("sysctl -n machdep.cpu.brand_string", "lscpu");
+        MACOS_TO_LINUX.put("sysctl -a", "cat /proc/cpuinfo");
+        MACOS_TO_LINUX.put("brew install", "apt-get install");
+        MACOS_TO_LINUX.put("brew", "apt-get");
+        MACOS_TO_LINUX.put("diskutil list", "lsblk");
+        MACOS_TO_LINUX.put("diskutil", "lsblk");
+        MACOS_TO_LINUX.put("launchctl list", "systemctl list-units");
+        MACOS_TO_LINUX.put("log show", "journalctl");
+        MACOS_TO_LINUX.put("mdfind", "find /");
+    }
+
+    /**
+     * Correct a command for the target OS by replacing common OS-specific
+     * commands with their equivalents.
+     *
+     * <p>This is a best-effort transformation. If no correction is needed
+     * (or no rule matches), the original command is returned unchanged.
+     *
+     * @param command  the original command string
+     * @param targetOs the target OS ("linux", "macos", "windows")
+     * @return the corrected command, or the original if no correction applied
+     */
+    @NonNull
+    public static String correctCommandForOs(@NonNull String command, @NonNull String targetOs) {
+        if (command.trim().isEmpty()) {
+            return command;
+        }
+
+        String cmdLower = command.toLowerCase();
+        String os = targetOs.toLowerCase();
+
+        Map<String, String> correctionMap;
+        switch (os) {
+            case "windows":
+                correctionMap = UNIX_TO_WINDOWS;
+                break;
+            case "macos":
+                correctionMap = LINUX_TO_MACOS;
+                break;
+            case "linux":
+                correctionMap = MACOS_TO_LINUX;
+                break;
+            default:
+                return command; // Unknown OS, no correction
+        }
+
+        String corrected = command;
+        // Apply corrections in order of specificity (longer patterns first)
+        List<Map.Entry<String, String>> entries =
+                new ArrayList<>(correctionMap.entrySet());
+        // Sort by key length descending so longer matches take priority
+        Collections.sort(entries, (a, b) ->
+                Integer.compare(b.getKey().length(), a.getKey().length()));
+
+        for (Map.Entry<String, String> entry : entries) {
+            String pattern = entry.getKey();
+            String replacement = entry.getValue();
+            if (cmdLower.contains(pattern.toLowerCase())) {
+                // Case-insensitive replacement with word boundaries to
+                // prevent substring matches (e.g. "rm" inside "form",
+                // "cat" inside "catalog", "ls" inside "also").
+                String regex = buildWordBoundaryRegex(pattern);
+                String newCorrected = corrected.replaceAll(
+                        regex,
+                        Matcher.quoteReplacement(replacement));
+                // contains() may pass (substring) but regex may not match
+                // (word boundary prevents it).  Only return when the
+                // replacement actually changed the string.
+                if (!newCorrected.equals(corrected)) {
+                    corrected = newCorrected;
+                    Log.d(TAG, "Auto-corrected command for " + targetOs + ": '"
+                            + command + "' → '" + corrected + "'");
+                    return corrected;
+                }
+            }
+        }
+
+        return corrected;
+    }
+
+    /**
+     * Build a case-insensitive regex for command replacement with word
+     * boundaries.  Prevents substring matches like {@code rm} inside
+     * "form" or {@code cat} inside "catalog".
+     *
+     * <p>Rules:
+     * <ul>
+     *   <li>If the pattern starts with a word character (letter/digit),
+     *       prepend {@code \b}.</li>
+     *   <li>If the pattern ends with a word character, append {@code \b}.</li>
+     *   <li>The pattern body is quoted via {@link Pattern#quote} so that
+     *       metacharacters in the replacement keys are treated literally.</li>
+     * </ul>
+     */
+    private static String buildWordBoundaryRegex(@NonNull String pattern) {
+        StringBuilder sb = new StringBuilder("(?i)");
+        if (pattern.length() > 0 && Character.isLetterOrDigit(pattern.charAt(0))) {
+            sb.append("\\b");
+        }
+        sb.append(Pattern.quote(pattern));
+        if (pattern.length() > 0
+                && Character.isLetterOrDigit(pattern.charAt(pattern.length() - 1))) {
+            sb.append("\\b");
+        }
+        return sb.toString();
+    }
 }

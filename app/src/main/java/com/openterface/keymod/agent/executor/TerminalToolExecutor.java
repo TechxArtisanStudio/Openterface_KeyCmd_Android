@@ -182,20 +182,37 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
             return;
         }
 
+        // ── OS Command Auto-Correction (best effort) ──
+        // Run FIRST so that common OS-specific mismatches get fixed before
+        // the danger/validation gates run.  If correction is applied, the
+        // subsequent checks operate on the corrected command, which is the
+        // right thing — danger and validation should assess what will
+        // actually execute, not the original wrong-OS command.
+        final String originalCommand = command;
+        String correctedCommand = CommandValidator.correctCommandForOs(command, targetOs);
+        final String effectiveCommand;  // effectively final, used by callback
+        if (!correctedCommand.equals(command)) {
+            Log.i(TAG, "Auto-corrected command for " + targetOs + ": '"
+                    + command + "' → '" + correctedCommand + "'");
+            effectiveCommand = correctedCommand;
+        } else {
+            effectiveCommand = command;
+        }
+
         // ── P0-1: Command Danger Check ──
         // Must run BEFORE SSH connection attempt so that blocked commands
         // are refused even when no SSH session is alive.
         try {
             CommandValidator.DangerResult danger =
-                    CommandValidator.checkCommandDanger(command);
+                    CommandValidator.checkCommandDanger(effectiveCommand);
             if (danger.level == CommandValidator.DangerLevel.BLOCKED) {
-                Log.w(TAG, "Blocked dangerous command: " + command
+                Log.w(TAG, "Blocked dangerous command: " + effectiveCommand
                         + " — " + danger.reason);
                 throw new CommandValidator.DangerousCommandException(danger);
             }
             if (danger.level == CommandValidator.DangerLevel.DANGEROUS) {
                 Log.w(TAG, "Dangerous command detected (proceeding with warning): "
-                        + command + " — " + danger.reason);
+                        + effectiveCommand + " — " + danger.reason);
                 // TODO(P1): Surface confirmation dialog to user via callback
             }
         } catch (CommandValidator.DangerousCommandException e) {
@@ -204,16 +221,15 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         }
 
         // ─ OS Command Validation (safety net) ──
-        // Block execution if the command is clearly wrong for the target OS.
-        // This prevents the Agent's wrong-OS commands from ever hitting SSH,
-        // so the terminal never shows raw stderr — the Agent's LLM retry
-        // mechanism receives the validation error and generates a correct
-        // alternative instead.
+        // Block execution if the (possibly corrected) command is still wrong
+        // for the target OS.  This is the final gate before SSH execution.
         CommandValidator.ValidationResult validation =
-                CommandValidator.validate(command, targetOs);
+                CommandValidator.validate(effectiveCommand, targetOs);
         if (!validation.valid) {
             Log.w(TAG, "Blocked OS-mismatched command for " + targetOs + ": "
-                    + command + " — " + validation.message);
+                    + effectiveCommand + " — " + validation.message
+                    + (originalCommand.equals(effectiveCommand) ? ""
+                            : " (original: '" + originalCommand + "')"));
             callback.onFailure("⚠️ OS mismatch: " + validation.message);
             return;
         }
@@ -222,9 +238,9 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
         // SSH non-interactive shells don't load .zshrc/.bashrc, so common tools
         // (fastfetch, htop, brew, etc.) may not be in PATH.
         // Wrap command with PATH setup if the tool likely needs it.
-        String finalCommand = command;
-        if (PathHelper.mayNeedPathAugmentation(command, targetOs)) {
-            finalCommand = PathHelper.wrapWithPathVariable(command, targetOs);
+        String finalCommand = effectiveCommand;
+        if (PathHelper.mayNeedPathAugmentation(effectiveCommand, targetOs)) {
+            finalCommand = PathHelper.wrapWithPathVariable(effectiveCommand, targetOs);
             Log.d(TAG, "PATH augmented: " + finalCommand);
         }
 
@@ -246,14 +262,14 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 String truncated = truncateOutput(output);
 
                 if (exitCode == 0) {
-                    Log.i(TAG, "Command succeeded: " + command);
+                    Log.i(TAG, "Command succeeded: " + effectiveCommand);
                     callback.onSuccess(truncated);
                 } else {
                     String errorOutput = "Exit code: " + exitCode;
                     if (!truncated.isEmpty()) {
                         errorOutput += "\n" + truncated;
                     }
-                    Log.w(TAG, "Command failed (exit=" + exitCode + "): " + command);
+                    Log.w(TAG, "Command failed (exit=" + exitCode + "): " + effectiveCommand);
                     callback.onFailure(errorOutput);
                 }
             }

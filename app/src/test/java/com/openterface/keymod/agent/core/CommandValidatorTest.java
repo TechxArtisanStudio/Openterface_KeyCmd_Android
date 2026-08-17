@@ -826,4 +826,278 @@ public class CommandValidatorTest {
     public void testQuickCheckAllowsSafeCommand() {
         assertTrue(CommandValidator.quickCheck("ls -la", "linux"));
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Day 5: Command Auto-Correction Tests (correctCommandForOs)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ── Edge cases ────────────────────────────────────────────────────
+
+    @Test
+    public void testCorrectionEmptyCommandReturnsEmpty() {
+        assertEquals("", CommandValidator.correctCommandForOs("", "windows"));
+    }
+
+    @Test
+    public void testCorrectionWhitespaceCommandReturnsOriginal() {
+        assertEquals("   ", CommandValidator.correctCommandForOs("   ", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnknownOsReturnsOriginal() {
+        assertEquals("ls -la", CommandValidator.correctCommandForOs("ls -la", "freebsd"));
+    }
+
+    @Test
+    public void testCorrectionCorrectCommandUnchanged() {
+        // "dir" on Windows is already correct — no correction needed
+        assertEquals("dir", CommandValidator.correctCommandForOs("dir", "windows"));
+        assertEquals("ipconfig", CommandValidator.correctCommandForOs("ipconfig", "windows"));
+    }
+
+    // ── Unix → Windows corrections ────────────────────────────────────
+
+    @Test
+    public void testCorrectionUnixToWindowsLsToDir() {
+        assertEquals("dir", CommandValidator.correctCommandForOs("ls -la", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsLsWithPath() {
+        assertEquals("dir /tmp", CommandValidator.correctCommandForOs("ls -la /tmp", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsCatToType() {
+        assertEquals("type /etc/hosts", CommandValidator.correctCommandForOs("cat /etc/hosts", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsGrepToFindstr() {
+        assertEquals("findstr pattern file.txt",
+                CommandValidator.correctCommandForOs("grep pattern file.txt", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsPsToTasklist() {
+        assertEquals("tasklist", CommandValidator.correctCommandForOs("ps aux", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsKillToTaskkill() {
+        assertEquals("taskkill /F /PID 1234",
+                CommandValidator.correctCommandForOs("kill -9 1234", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsHostnameIToIpconfig() {
+        assertEquals("ipconfig", CommandValidator.correctCommandForOs("hostname -I", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsFreeToSysteminfo() {
+        String result = CommandValidator.correctCommandForOs("free -h", "windows");
+        assertTrue("Should contain 'systeminfo': " + result, result.contains("systeminfo"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsDfToWmic() {
+        String result = CommandValidator.correctCommandForOs("df -h", "windows");
+        assertTrue("Should contain 'wmic': " + result, result.contains("wmic"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsClearToCls() {
+        assertEquals("cls", CommandValidator.correctCommandForOs("clear", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsPwdToCd() {
+        assertEquals("cd", CommandValidator.correctCommandForOs("pwd", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsRmToDel() {
+        assertEquals("del file.txt", CommandValidator.correctCommandForOs("rm file.txt", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsRmRfToRmdir() {
+        assertEquals("rmdir /s /q /tmp/test",
+                CommandValidator.correctCommandForOs("rm -rf /tmp/test", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsCaseInsensitive() {
+        assertEquals("dir", CommandValidator.correctCommandForOs("LS -LA", "windows"));
+    }
+
+    @Test
+    public void testCorrectionUnixToWindowsLongestMatchPriority() {
+        // "ls -la" should match before bare "ls" — both resolve to "dir"
+        assertEquals("dir", CommandValidator.correctCommandForOs("ls -la", "windows"));
+        assertEquals("dir /home", CommandValidator.correctCommandForOs("ls /home", "windows"));
+    }
+
+    // ── Linux → macOS corrections ─────────────────────────────────────
+
+    @Test
+    public void testCorrectionLinuxToMacosHostnameIToIpconfig() {
+        assertEquals("ipconfig getifaddr en0",
+                CommandValidator.correctCommandForOs("hostname -I", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosFreeToVmStat() {
+        assertEquals("vm_stat", CommandValidator.correctCommandForOs("free -h", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosLscpuToSysctl() {
+        assertEquals("sysctl -n machdep.cpu.brand_string",
+                CommandValidator.correctCommandForOs("lscpu", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosLsbReleaseToSwVers() {
+        assertEquals("sw_vers", CommandValidator.correctCommandForOs("lsb_release -a", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosAptToBrew() {
+        assertEquals("brew install vim",
+                CommandValidator.correctCommandForOs("apt-get install vim", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosYumToBrew() {
+        assertEquals("brew install wget",
+                CommandValidator.correctCommandForOs("yum install wget", "macos"));
+    }
+
+    @Test
+    public void testCorrectionLinuxToMacosSystemctlStatus() {
+        String result = CommandValidator.correctCommandForOs("systemctl status nginx", "macos");
+        assertTrue("Should use launchctl: " + result, result.contains("launchctl"));
+    }
+
+    // ── macOS → Linux corrections ─────────────────────────────────────
+
+    @Test
+    public void testCorrectionMacosToLinuxIpconfigToHostname() {
+        // "ipconfig getifaddr" is replaced with "hostname -I", but "en0" is preserved
+        assertEquals("hostname -I en0",
+                CommandValidator.correctCommandForOs("ipconfig getifaddr en0", "linux"));
+    }
+
+    @Test
+    public void testCorrectionMacosToLinuxVmStatToFree() {
+        assertEquals("free -h", CommandValidator.correctCommandForOs("vm_stat", "linux"));
+    }
+
+    @Test
+    public void testCorrectionMacosToLinuxSwVersToLsbRelease() {
+        assertEquals("lsb_release -a", CommandValidator.correctCommandForOs("sw_vers", "linux"));
+    }
+
+    @Test
+    public void testCorrectionMacosToLinuxSysctlToLscpu() {
+        assertEquals("lscpu",
+                CommandValidator.correctCommandForOs("sysctl -n machdep.cpu.brand_string", "linux"));
+    }
+
+    @Test
+    public void testCorrectionMacosToLinuxBrewToApt() {
+        assertEquals("apt-get install vim",
+                CommandValidator.correctCommandForOs("brew install vim", "linux"));
+    }
+
+    @Test
+    public void testCorrectionMacosToLinuxDiskutilToLsblk() {
+        assertEquals("lsblk",
+                CommandValidator.correctCommandForOs("diskutil list", "linux"));
+    }
+
+    // ── Commands that should NOT be corrected (already correct OS) ────
+
+    @Test
+    public void testCorrectionNoChangeOnCorrectOs() {
+        // ls is correct on Linux
+        assertEquals("ls -la /home", CommandValidator.correctCommandForOs("ls -la /home", "linux"));
+        // dir is correct on Windows
+        assertEquals("dir C:\\", CommandValidator.correctCommandForOs("dir C:\\", "windows"));
+        // brew is correct on macOS
+        assertEquals("brew list", CommandValidator.correctCommandForOs("brew list", "macos"));
+    }
+
+    // ── Correction preserves case of replacement ──────────────────────
+
+    @Test
+    public void testCorrectionUsesCanonicalCase() {
+        // Input is uppercase but replacement should use canonical Windows case
+        String result = CommandValidator.correctCommandForOs("LS -LA", "windows");
+        assertEquals("dir", result);
+    }
+
+    // ── Word boundary: must not match inside substrings ─────────────────
+
+    @Test
+    public void testWordBoundary_RmNotMatchedInsideForm() {
+        // "form" contains "rm" as substring — must NOT be corrected to "delo"
+        assertEquals("form file.txt",
+                CommandValidator.correctCommandForOs("form file.txt", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_CatNotMatchedInsideCatalog() {
+        // "catalog" contains "cat" as substring — must not mangle to "typealog".
+        // "ls" is correctly converted to "dir"; "catalog" stays intact.
+        assertEquals("dir /tmp/catalog/data",
+                CommandValidator.correctCommandForOs("ls /tmp/catalog/data", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_LsNotMatchedInsideAlso() {
+        // "also" contains "ls" as substring — must not be corrected
+        // Use a command where "also" appears in an argument
+        String result = CommandValidator.correctCommandForOs("echo also", "windows");
+        // "echo" is not in the correction map, so should be unchanged
+        assertEquals("echo also", result);
+    }
+
+    @Test
+    public void testWordBoundary_DfNotMatchedInsideDiff() {
+        // "diff" contains "df" as substring — must NOT be corrected
+        assertEquals("diff file1 file2",
+                CommandValidator.correctCommandForOs("diff file1 file2", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_FreeNotMatchedInsideFreedom() {
+        // "freedom" contains "free" — must NOT be corrected
+        assertEquals("echo freedom",
+                CommandValidator.correctCommandForOs("echo freedom", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_ScpNotConvertedOnWindows() {
+        // "scp" contains "cp" as substring — must NOT be converted to "copy"
+        assertEquals("scp file.txt user@host:/tmp/",
+                CommandValidator.correctCommandForOs("scp file.txt user@host:/tmp/", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_PsNotMatchedInsideCaps() {
+        // "caps" contains "ps" as substring — must NOT be converted
+        assertEquals("echo caps",
+                CommandValidator.correctCommandForOs("echo caps", "windows"));
+    }
+
+    @Test
+    public void testWordBoundary_ClearNotMatchedInsideClearance() {
+        // "clearance" contains "clear" as substring — must NOT be converted to "cls"
+        // Without word-boundary fix: "echo clearance" → "echo clsance" (bug)
+        assertEquals("echo clearance",
+                CommandValidator.correctCommandForOs("echo clearance", "windows"));
+    }
 }
