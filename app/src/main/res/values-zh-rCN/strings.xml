@@ -1389,7 +1389,7 @@
     <!-- Terminal SSH Connection Dialog -->
     <string name="terminal_connect_title">连接 SSH</string>
     <string name="terminal_devices_label">已配置设备</string>
-    <string name="terminal_no_devices">暂无已配置设备。请在 设置 → 凭据 中添加。</string>
+    <string name="terminal_no_devices">暂无已配置设备。点击顶部设置图标 → 凭据。</string>
     <string name="terminal_add_profile">添加凭据</string>
     <string name="terminal_select_device">请选择设备</string>
     <string name="terminal_transport_label">传输方式</string>

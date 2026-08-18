@@ -1524,7 +1524,7 @@ by TechxArtisan</string>
     <string name="terminal_search_devices">Search devices</string>
     <string name="terminal_search_hint">Search by name or host…</string>
     <string name="terminal_no_match">No matching devices</string>
-    <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
+    <string name="terminal_no_devices">No devices configured. Tap the settings icon → Credentials.</string>
     <string name="terminal_add_profile">Add Profile</string>
     <string name="terminal_select_device">Please select a device</string>
     <string name="terminal_device_info">Device Info</string>
