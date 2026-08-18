@@ -235,8 +235,41 @@ public final class MarkdownRenderer {
         // Links: [text](url) — after HTML escaping, brackets are escaped
         // We need to handle the escaped versions: &#91; &#93;
         // Actually, escapeHtml doesn't escape [ and ], so they remain as-is
-        result = result.replaceAll("\\[([^\\]]+)\\]\\(([^)]+)\\)",
-                "<a href=\"$2\">$1</a>");
+        //
+        // Security: only allow safe URL schemes (http, https, mailto, tel).
+        // LLM-generated markdown can contain `[click](javascript:alert(1))`;
+        // without a scheme allow-list, that becomes a live XSS vector in
+        // TextView via Html.fromHtml.
+        {
+            java.util.regex.Pattern linkPattern =
+                    java.util.regex.Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+)\\)");
+            java.util.regex.Matcher m = linkPattern.matcher(result);
+            // Use StringBuffer (not StringBuilder) — Matcher.appendReplacement/appendTail
+            // only accept StringBuffer on Java 8 / Android (StringBuilder overload is Java 9+).
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String linkText = m.group(1);
+                String linkUrl = m.group(2);
+                String urlLower = linkUrl.trim().toLowerCase();
+                if (urlLower.startsWith("http://")
+                        || urlLower.startsWith("https://")
+                        || urlLower.startsWith("mailto:")
+                        || urlLower.startsWith("tel:")
+                        || urlLower.startsWith("/")) {
+                    m.appendReplacement(sb, "<a href=\""
+                            + java.util.regex.Matcher.quoteReplacement(linkUrl)
+                            + "\">"
+                            + java.util.regex.Matcher.quoteReplacement(linkText)
+                            + "</a>");
+                } else {
+                    // Strip the link but keep the text visible
+                    m.appendReplacement(sb,
+                            java.util.regex.Matcher.quoteReplacement(linkText));
+                }
+            }
+            m.appendTail(sb);
+            result = sb.toString();
+        }
 
         return result;
     }

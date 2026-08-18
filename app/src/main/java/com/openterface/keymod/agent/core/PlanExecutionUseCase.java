@@ -359,6 +359,12 @@ final class PlanExecutionUseCase {
                     final List<String> timeoutLines = new ArrayList<>();
                     timeoutLines.add(displayCommand);
                     timeoutLines.add(stepError[0]);
+                    // Cancel the still-running tool command — otherwise its late
+                    // callbacks will continue to append to session / executionResults
+                    // and potentially overwrite the timeout error message.
+                    if (toolExecutor != null) {
+                        try { toolExecutor.cancel(); } catch (Exception ignored) {}
+                    }
                     postToMain(() -> {
                         if (listener != null)
                             listener.onStepOutput(stepIndex, timeoutLines, true, false);
@@ -366,6 +372,10 @@ final class PlanExecutionUseCase {
                 }
             } catch (InterruptedException e) {
                 progressScheduler.shutdownNow();
+                // Also cancel the tool — same reasoning as the timeout branch.
+                if (toolExecutor != null) {
+                    try { toolExecutor.cancel(); } catch (Exception ignored) {}
+                }
                 Thread.currentThread().interrupt();
                 return; // cancelled
             }
@@ -419,8 +429,10 @@ final class PlanExecutionUseCase {
         if (pendingStepsAfterRetry != null && !pendingStepsAfterRetry.isEmpty()) {
             List<AgentPlan.Step> pending = pendingStepsAfterRetry;
             pendingStepsAfterRetry = null;
+            // Build a new plan with pending steps appended — currentPlan.steps is
+            // unmodifiable (see AgentPlan constructor), so we cannot addAll in place.
             int resumeFrom = currentPlan.steps.size();
-            currentPlan.steps.addAll(pending);
+            currentPlan = currentPlan.withStepsAppended(pending);
             currentStepIndex = resumeFrom;
             Log.i(TAG, "Continuing with " + pending.size()
                     + " remaining steps from original plan (total now: "

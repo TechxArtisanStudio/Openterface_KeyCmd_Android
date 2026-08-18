@@ -33,6 +33,23 @@ public interface ProviderAdapter {
     String buildUrl(String endpoint, String model);
 
     /**
+     * Build the full API URL for SSE streaming.
+     *
+     * <p>Default implementation returns {@link #buildUrl(String, String)} (most
+     * providers use the same URL for streaming and non-streaming, toggling
+     * streaming via the request body). Google Gemini overrides this because
+     * its streaming endpoint is a different URL path
+     * ({@code :streamGenerateContent?alt=sse}).
+     *
+     * @param endpoint base URL without trailing slash
+     * @param model    model name
+     * @return complete URL for streaming chat completions
+     */
+    default String buildStreamUrl(String endpoint, String model) {
+        return buildUrl(endpoint, model);
+    }
+
+    /**
      * Set authentication headers on the connection.
      *
      * @param conn   the HTTP connection to configure

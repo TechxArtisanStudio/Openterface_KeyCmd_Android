@@ -229,7 +229,7 @@ public class AgentFragment extends Fragment {
             }
         }
         // 3. Fallback
-        return "linux";
+        return com.openterface.keymod.agent.core.AgentController.DEFAULT_TARGET_OS;
     }
 
     /**

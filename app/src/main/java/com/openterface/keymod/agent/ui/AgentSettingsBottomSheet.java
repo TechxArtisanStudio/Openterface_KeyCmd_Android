@@ -57,17 +57,8 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     private static final int MIN_STEPS = 3,  MAX_STEPS = 30;
     private static final int MIN_RETRIES = 0, MAX_RETRIES = 5;
 
-    /** Callback invoked when the settings sheet is dismissed. */
-    public interface OnDismissCallback {
-        void onSheetDismissed();
-    }
-
-    private static OnDismissCallback sDismissCallback;
-
-    /** Set a callback to be invoked when any AgentSettingsBottomSheet is dismissed. */
-    public static void setOnDismissCallback(OnDismissCallback callback) {
-        sDismissCallback = callback;
-    }
+    /** Fragment result key — fired in {@link #onDismiss} so the host can react. */
+    public static final String RESULT_KEY = "agent_settings_dismissed";
 
     // ── Views ───────────────────────────────────────────────────────────
 
@@ -182,8 +173,14 @@ public class AgentSettingsBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onDismiss(@NonNull DialogInterface dialog) {
         super.onDismiss(dialog);
-        if (sDismissCallback != null) {
-            sDismissCallback.onSheetDismissed();
+        // Publish dismiss via FragmentResult API — avoids the old static callback
+        // that held a strong reference to the host Activity (memory leak).
+        android.os.Bundle result = new android.os.Bundle();
+        // setFragmentResult is on Fragment 1.3+, but using the parent manager
+        // explicitly is more robust across different DialogFragment subclasses.
+        androidx.fragment.app.FragmentManager fm = getParentFragmentManager();
+        if (fm != null) {
+            fm.setFragmentResult(RESULT_KEY, result);
         }
     }
 

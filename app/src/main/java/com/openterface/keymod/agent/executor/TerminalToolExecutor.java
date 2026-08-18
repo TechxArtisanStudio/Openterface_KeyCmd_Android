@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 
 import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
+import com.openterface.keymod.agent.core.AgentController;
 import com.openterface.keymod.agent.core.AgentEnvironment;
 import com.openterface.keymod.agent.core.AgentPlan;
 import com.openterface.keymod.agent.core.AgentToolExecutor;
@@ -45,7 +46,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
     @Nullable private AgentEnvironment environment;
     @Nullable private SshClient sshClient;
     @Nullable private ConnectionManager connectionManager;
-    @NonNull private String targetOs = "macos"; // TODO(release): revert default to "linux"
+    @NonNull private String targetOs = AgentController.DEFAULT_TARGET_OS;
     @Nullable private volatile Thread currentThread;
     /** Stores the reason the last auto-connect attempt failed, for surfacing to the user. */
     @Nullable private String lastAutoConnectError;
@@ -350,10 +351,21 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
     @Override
     public void cancel() {
-        Thread t = currentThread;
-        if (t != null) {
-            t.interrupt();
-            currentThread = null;
+        // Interrupt the real SSH exec thread + close its channel so the remote
+        // command stops promptly. The previous implementation interrupted
+        // `currentThread` which was the caller (PlanExecutionUseCase's executor
+        // thread), not the thread that's actually running the SSH command —
+        // cancellation therefore had no effect on the in-flight command.
+        SshClient client = this.sshClient;
+        if (client != null) {
+            client.cancelCurrentExec();
+        }
+        // Also try the environment's SSH client if it differs from ours.
+        if (environment != null) {
+            SshClient envClient = environment.getSshClient();
+            if (envClient != null && envClient != client) {
+                envClient.cancelCurrentExec();
+            }
         }
     }
 
@@ -382,9 +394,14 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         try {
             SshClient client;
+            // Keep references so we can clean them up on failure — without this
+            // the BleEthTransport and callback leak into BluetoothService's list
+            // each time auto-connect fails (linear growth → OOM eventually).
+            BleEthTransport transport = null;
+            BluetoothService.BleEthDataCallback bleCallback = null;
             if (useBle) {
                 // BLE-Eth transport: requires cleanup + callback registration
-                BleEthTransport transport = new BleEthTransport(btService::writeBleEthData);
+                transport = new BleEthTransport(btService::writeBleEthData);
 
                 // Cleanup stale firmware state: send DISCONNECT frames for all connection IDs
                 Log.i(TAG, "BLE cleanup: sending DISCONNECT frames for connId 0-5");
@@ -397,12 +414,13 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 Log.i(TAG, "BLE cleanup: complete");
 
                 // Register callback
-                BluetoothService.BleEthDataCallback callback = data -> {
-                    if (transport != null) {
-                        transport.handleIncomingData(data);
+                final BleEthTransport finalTransport = transport;
+                bleCallback = data -> {
+                    if (finalTransport != null) {
+                        finalTransport.handleIncomingData(data);
                     }
                 };
-                btService.addBleEthCallback(callback);
+                btService.addBleEthCallback(bleCallback);
 
                 String host = profile.getHost();
                 int port = profile.getPort();
@@ -436,12 +454,32 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                         ? sshError[0]
                         : "SSH session not connected (check host/port/credentials)";
                 Log.w(TAG, "SSH connect failed: " + lastAutoConnectError);
+                cleanupBleResources(btService, transport, bleCallback, client);
                 return null;
             }
         } catch (Exception e) {
             lastAutoConnectError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             Log.e(TAG, "SSH connect exception: " + lastAutoConnectError, e);
             return null;
+        }
+    }
+
+    /**
+     * Release BLE resources (transport + callback) after a failed auto-connect.
+     * Safe to call with null values — skips cleanup for whichever resource is absent.
+     */
+    private void cleanupBleResources(@Nullable BluetoothService btService,
+                                      @Nullable BleEthTransport transport,
+                                      @Nullable BluetoothService.BleEthDataCallback callback,
+                                      @Nullable SshClient client) {
+        if (btService != null && callback != null) {
+            try { btService.removeBleEthCallback(callback); } catch (Exception ignored) {}
+        }
+        if (transport != null) {
+            try { transport.disconnect(); } catch (Exception ignored) {}
+        }
+        if (client != null) {
+            try { client.disconnect(); } catch (Exception ignored) {}
         }
     }
 
@@ -475,9 +513,14 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
 
         try {
             SshClient client;
+            // Keep references so we can clean them up on failure — without this
+            // the BleEthTransport and callback leak into BluetoothService's list
+            // each time auto-connect fails (linear growth → OOM eventually).
+            BleEthTransport transport = null;
+            BluetoothService.BleEthDataCallback bleCallback = null;
             if (useBle) {
                 // BLE-Eth transport: requires cleanup + callback registration
-                BleEthTransport transport = new BleEthTransport(btService::writeBleEthData);
+                transport = new BleEthTransport(btService::writeBleEthData);
 
                 // Cleanup stale firmware state: send DISCONNECT frames for all connection IDs
                 // Uses the same frame format as TerminalFragment.buildDisconnectFrame()
@@ -492,12 +535,13 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                 Log.i(TAG, "BLE cleanup: complete");
 
                 // Register callback
-                BluetoothService.BleEthDataCallback callback = data -> {
-                    if (transport != null) {
-                        transport.handleIncomingData(data);
+                final BleEthTransport finalTransport = transport;
+                bleCallback = data -> {
+                    if (finalTransport != null) {
+                        finalTransport.handleIncomingData(data);
                     }
                 };
-                btService.addBleEthCallback(callback);
+                btService.addBleEthCallback(bleCallback);
 
                 String host = profile.getHost();
                 int port = profile.getPort();
@@ -532,6 +576,7 @@ public final class TerminalToolExecutor implements AgentToolExecutor {
                         ? sshError[0]
                         : "SSH session not connected (check host/port/credentials)";
                 Log.w(TAG, "Auto-connect SSH failed: " + lastAutoConnectError);
+                cleanupBleResources(btService, transport, bleCallback, client);
                 return null;
             }
         } catch (Exception e) {

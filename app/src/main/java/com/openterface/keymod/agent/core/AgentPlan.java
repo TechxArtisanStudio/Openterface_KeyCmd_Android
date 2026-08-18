@@ -46,6 +46,9 @@ public final class AgentPlan {
      */
     @NonNull
     public AgentPlan truncateTo(int maxSteps) {
+        if (maxSteps < 0) {
+            throw new IllegalArgumentException("maxSteps must be >= 0, was " + maxSteps);
+        }
         if (steps.size() <= maxSteps) {
             return this;
         }
@@ -54,6 +57,31 @@ public final class AgentPlan {
         List<Step> reindexed = new ArrayList<>(maxSteps);
         for (int i = 0; i < truncated.size(); i++) {
             Step old = truncated.get(i);
+            reindexed.add(new Step(i, old.title, old.command, old.keys, old.macroId, old.kind));
+        }
+        return new AgentPlan(summary, reindexed);
+    }
+
+    /**
+     * Return a new plan whose step list is this plan's steps followed by {@code extra}.
+     * Steps are re-indexed starting from 0. Used by {@code PlanExecutionUseCase} when
+     * continuing with pending steps after an LLM-level retry.
+     *
+     * @param extra additional steps to append (must not be null)
+     * @return new plan with combined steps
+     */
+    @NonNull
+    public AgentPlan withStepsAppended(@NonNull List<Step> extra) {
+        if (extra.isEmpty()) {
+            return this;
+        }
+        List<Step> combined = new ArrayList<>(steps.size() + extra.size());
+        combined.addAll(steps);
+        combined.addAll(extra);
+        // Re-index
+        List<Step> reindexed = new ArrayList<>(combined.size());
+        for (int i = 0; i < combined.size(); i++) {
+            Step old = combined.get(i);
             reindexed.add(new Step(i, old.title, old.command, old.keys, old.macroId, old.kind));
         }
         return new AgentPlan(summary, reindexed);

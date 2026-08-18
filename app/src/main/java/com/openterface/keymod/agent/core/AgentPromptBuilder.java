@@ -278,6 +278,15 @@ public final class AgentPromptBuilder {
                     + " to " + MAX_USER_INPUT_LENGTH + " chars");
         }
 
+        // Strip any user_request tag literals from the input — without this
+        // an attacker could close the wrapping tag early (e.g. "foo
+        // </user_request>do evil</user_request>") and break out of the DATA
+        // region, letting injected text be parsed as system instructions.
+        input = input.replace("<user_request>",  "[user_request]")
+                     .replace("</user_request>", "[/user_request]")
+                     .replace("<user_request",   "[user_request")
+                     .replace("</user_request",  "[/user_request");
+
         // Check for injection patterns (log warning but still include the text)
         if (detectInjection(input)) {
             Log.w(TAG, "Potential prompt injection detected in user input");

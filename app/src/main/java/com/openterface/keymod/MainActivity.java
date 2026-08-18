@@ -662,14 +662,20 @@ public class MainActivity extends AppCompatActivity
         agentSettingsHeaderButton = findViewById(R.id.agent_settings_header_button);
         if (agentSettingsHeaderButton != null) {
             agentSettingsHeaderButton.setOnClickListener(v -> {
-                AgentSettingsBottomSheet.setOnDismissCallback(() -> {
-                    Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-                    if (f instanceof AgentFragment) {
-                        ((AgentFragment) f).onSettingsDismissed();
-                    }
-                });
-                new AgentSettingsBottomSheet().show(getSupportFragmentManager(), "agent_settings");
+                new com.openterface.keymod.agent.ui.AgentSettingsBottomSheet()
+                        .show(getSupportFragmentManager(), "agent_settings");
             });
+            // Listen for the settings-sheet dismiss result — replaces the old
+            // static callback (which leaked MainActivity via a captured lambda).
+            getSupportFragmentManager().setFragmentResultListener(
+                    com.openterface.keymod.agent.ui.AgentSettingsBottomSheet.RESULT_KEY,
+                    this,
+                    (requestKey, result) -> {
+                        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                        if (f instanceof AgentFragment) {
+                            ((AgentFragment) f).onSettingsDismissed();
+                        }
+                    });
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);

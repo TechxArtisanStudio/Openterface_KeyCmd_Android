@@ -10,6 +10,7 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Manages the list of AI providers with persistence.
@@ -25,8 +26,10 @@ public class AIProviderManager {
 
     private final SharedPreferences prefs;
     private final Gson gson;
-    // NOTE: All access to providers must happen on the main (UI) thread.
-    // Currently safe because all callers are UI-driven (Fragment/Activity).
+    // CopyOnWriteArrayList: safe for concurrent iteration (background threads
+    // read via AIConfigProvider while the UI thread mutates). The old comment
+    // "main thread only" was not actually enforced — AIConfigProvider is
+    // called from PlanGeneration/PlanExecution background threads.
     private List<AIProvider> providers;
     private String selectedProviderId;
 
@@ -34,7 +37,7 @@ public class AIProviderManager {
         prefs = context.getApplicationContext()
                 .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         gson = new Gson();
-        providers = new ArrayList<>();
+        providers = new CopyOnWriteArrayList<>();
         loadProviders();
     }
 
@@ -60,10 +63,11 @@ public class AIProviderManager {
         if (json != null) {
             try {
                 Type type = new TypeToken<ArrayList<AIProvider>>() {}.getType();
-                providers = gson.fromJson(json, type);
+                List<AIProvider> parsed = gson.fromJson(json, type);
+                providers = new CopyOnWriteArrayList<>(parsed != null ? parsed : new ArrayList<AIProvider>());
             } catch (Exception e) {
                 Log.e(TAG, "Failed to parse providers JSON", e);
-                providers = new ArrayList<>();
+                providers = new CopyOnWriteArrayList<>();
             }
         }
 
@@ -86,7 +90,7 @@ public class AIProviderManager {
      * Initializes the provider list with default presets.
      */
     private void initializeDefaultProviders() {
-        providers = AIProvider.getDefaultProviders();
+        providers = new CopyOnWriteArrayList<>(AIProvider.getDefaultProviders());
         saveProviders();
     }
 
@@ -253,7 +257,7 @@ public class AIProviderManager {
      * Resets the provider list to defaults.
      */
     public void resetToDefaults() {
-        providers = AIProvider.getDefaultProviders();
+        providers = new CopyOnWriteArrayList<>(AIProvider.getDefaultProviders());
         selectedProviderId = providers.isEmpty() ? null : providers.get(0).id;
         saveProviders();
         prefs.edit().putString(KEY_SELECTED_PROVIDER_ID, selectedProviderId).apply();

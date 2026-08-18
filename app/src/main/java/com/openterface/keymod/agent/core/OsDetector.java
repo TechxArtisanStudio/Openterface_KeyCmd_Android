@@ -42,7 +42,7 @@ public final class OsDetector {
         LINUX("linux", "Linux"),
         MACOS("macos", "macOS"),
         WINDOWS("windows", "Windows"),
-        UNKNOWN("macos", "macOS");  // Default fallback
+        UNKNOWN("unknown", "Unknown");  // Distinct code so callers can tell "detection failed" apart from a real OS.
 
         private final String code;
         private final String displayName;

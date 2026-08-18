@@ -49,6 +49,17 @@ public final class GoogleAdapter implements ProviderAdapter {
     }
 
     @Override
+    public String buildStreamUrl(String endpoint, String model) {
+        // Gemini's streaming endpoint uses a different path and must include
+        // the ?alt=sse query parameter so the response comes back as SSE.
+        String base = endpoint;
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/v1beta/models/" + model + ":streamGenerateContent?alt=sse";
+    }
+
+    @Override
     public void setAuthHeaders(HttpURLConnection conn, String apiKey) {
         conn.setRequestProperty("Content-Type", "application/json");
         // Gemini uses API key as query parameter — handled by appendAuthToUrl

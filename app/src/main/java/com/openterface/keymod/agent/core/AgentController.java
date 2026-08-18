@@ -530,9 +530,9 @@ public final class AgentController {
     /**
      * Get the target OS name. Priority:
      * 1. User's explicit OS selection from TargetSettingsSheet (agent_prefs)
-     * 2. Auto-detected OS from SSH connection (if available)
+     * 2. Auto-detected OS from SSH connection (if available and not UNKNOWN)
      * 3. Active profile's targetOs
-     * 4. Default fallback ("macos")
+     * 4. Default fallback ("linux")
      */
     @NonNull
     private String getTargetOs() {
@@ -543,8 +543,10 @@ public final class AgentController {
             return userOs;
         }
 
-        // Priority 2: Auto-detected OS from SSH
-        if (detectedOs != null) {
+        // Priority 2: Auto-detected OS from SSH (skip UNKNOWN — it means
+        // detection failed, and we must not let it override the user's
+        // profile-level setting below).
+        if (detectedOs != null && detectedOs != OsDetector.DetectedOS.UNKNOWN) {
             return detectedOs.getCode();
         }
 
@@ -556,8 +558,15 @@ public final class AgentController {
         }
 
         // Priority 4: Default fallback
-        return "macos"; // TODO(release): revert default to "linux"
+        return DEFAULT_TARGET_OS;
     }
+
+    /**
+     * Shared default target OS. All fallback paths across the Agent module
+     * must use this constant so the default is consistent regardless of
+     * which call path is taken.
+     */
+    public static final String DEFAULT_TARGET_OS = "linux";
 
     /**
      * Transition to a new state and notify listener.

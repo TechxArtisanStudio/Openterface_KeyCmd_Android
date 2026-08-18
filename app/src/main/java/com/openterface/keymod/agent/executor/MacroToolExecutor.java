@@ -1,6 +1,8 @@
 package com.openterface.keymod.agent.executor;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -164,8 +166,11 @@ public final class MacroToolExecutor implements AgentToolExecutor {
 
         macrosManager.setListener(ourListener);
 
-        // Start playback (async — plays via Handler.postDelayed recursion)
-        macrosManager.playMacro(macro, cm);
+        // Start playback on the main thread — MacrosManager internally creates a
+        // Handler (for postDelayed key-event scheduling), which requires a Looper.
+        // PlanExecutionUseCase invokes execute() on a background Executor thread
+        // without Looper, so dispatching to main prevents a RuntimeException.
+        new Handler(Looper.getMainLooper()).post(() -> macrosManager.playMacro(macro, cm));
 
         // Wait for completion on a background thread
         new Thread(() -> {

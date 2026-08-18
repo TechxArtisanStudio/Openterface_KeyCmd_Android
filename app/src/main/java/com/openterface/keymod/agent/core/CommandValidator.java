@@ -393,9 +393,13 @@ public final class CommandValidator {
      * Match a command against a pattern.
      *
      * <p>Simple patterns (no regex metacharacters) are matched as
-     * {@code cmdLower.startsWith(pattern)}.  Patterns containing
+     * {@code cmdLower.startsWith(patternLower)}.  Patterns containing
      * {@code (}, {@code )}, {@code |}, {@code \}, or {@code {} are
      * compiled as case-insensitive regexes.
+     *
+     * <p>The pattern is always lowercased before the simple-string check so
+     * that a future uppercase pattern cannot silently bypass matching —
+     * {@code cmdLower} is already lowercased by the caller.
      */
     private static boolean matchPattern(
             @NonNull String cmdLower, @NonNull String firstWord,
@@ -406,7 +410,11 @@ public final class CommandValidator {
             return Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
                     .matcher(cmdLower).find();
         }
-        return cmdLower.startsWith(pattern) || firstWord.equals(pattern);
+        // Defensive lowercase — patterns in the static sets are currently
+        // already lowercase, but lowercasing here prevents a silent bypass
+        // if someone adds a mixed-case entry later.
+        String patternLower = pattern.toLowerCase();
+        return cmdLower.startsWith(patternLower) || firstWord.equals(patternLower);
     }
 
     /**

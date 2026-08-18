@@ -154,7 +154,11 @@ public final class LlmHttpClient {
             return;
         }
 
-        String url = buildAuthUrl(adapter, request.model);
+        // Use the streaming-specific URL — most providers share the URL with
+        // non-streaming and toggle via the body, but Gemini needs a different
+        // endpoint path (:streamGenerateContent?alt=sse).
+        String baseUrl = adapter.buildStreamUrl(endpoint, request.model);
+        String url = adapter.appendAuthToUrl(baseUrl, apiKey);
 
         HttpURLConnection conn = null;
         try {
@@ -174,6 +178,13 @@ public final class LlmHttpClient {
                     new InputStreamReader(conn.getInputStream(), "UTF-8"));
             StringBuilder fullContent = new StringBuilder();
 
+            // Track whether the stream terminated cleanly via a terminal marker
+            // ([DONE], message_stop, finishReason, etc.). If readLine() exits
+            // without us ever seeing a terminal event, the stream was truncated
+            // mid-flight (network drop, proxy close, provider crash) — report
+            // it as an error instead of pretending it succeeded.
+            boolean sawTerminal = false;
+
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -184,7 +195,13 @@ public final class LlmHttpClient {
                         return;
                     }
 
-                    LlmResponse chunk = parser.parseLine(line);
+                    LlmResponse chunk;
+                    try {
+                        chunk = parser.parseLine(line);
+                    } catch (SseParser.StreamDoneException e) {
+                        sawTerminal = true;
+                        break;
+                    }
                     if (chunk == null) continue;
 
                     if (!chunk.content.isEmpty()) {
@@ -194,13 +211,19 @@ public final class LlmHttpClient {
                     callback.onChunk(chunk);
 
                     if (chunk.isTerminal()) {
+                        sawTerminal = true;
                         break;
                     }
                 }
-            } catch (SseParser.StreamDoneException e) {
-                Log.d(TAG, "SSE stream ended normally");
             } finally {
                 reader.close();
+            }
+
+            if (!sawTerminal) {
+                // Stream ended without a terminal marker — treat as a failure
+                // so truncated JSON does not silently flow into the plan parser.
+                throw new IOException("SSE stream ended without a terminal event "
+                        + "(possible network drop or provider error)");
             }
 
             // Assemble tool calls from accumulated fragments

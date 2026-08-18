@@ -90,8 +90,13 @@ public final class GeminiSseParser extends SseParser {
             String mappedFinish = mapFinishReason(finishReason);
 
             if (mappedFinish != null) {
-                // Stream is done — return terminal with token counts
-                return LlmResponse.terminal(mappedFinish, promptTokens, completionTokens);
+                // Stream is done — include any remaining delta text in the
+                // terminal response. The previous implementation returned a
+                // terminal LlmResponse with an empty delta, silently dropping
+                // the last text chunk when finishReason and text arrived
+                // together in the same SSE payload.
+                return LlmResponse.terminal(delta, mappedFinish,
+                        promptTokens, completionTokens);
             }
 
             if (!delta.isEmpty()) {

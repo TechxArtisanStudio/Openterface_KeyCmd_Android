@@ -46,7 +46,10 @@ public final class OpenAIAdapter implements ProviderAdapter {
         // Extract choice
         JSONObject choice = json.getJSONArray("choices").getJSONObject(0);
         JSONObject message = choice.getJSONObject("message");
-        String content = message.getString("content");
+        // Use optString — tool-only responses (content:null + tool_calls) and
+        // some reasoning models return a JSON null for "content". getString()
+        // would throw a JSONException in that case.
+        String content = message.optString("content", "");
 
         // Finish reason
         String finishReason = choice.optString("finish_reason", null);

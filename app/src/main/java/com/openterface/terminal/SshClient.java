@@ -84,6 +84,21 @@ public class SshClient {
     private volatile long cachedOsProbeTime = 0L;
     private volatile boolean osProbeRunning = false;
 
+    /**
+     * Currently running exec thread, or null. Set by {@link #executeCommand}
+     * when the background thread starts, cleared when it exits. Allows
+     * external callers (e.g. {@code TerminalToolExecutor.cancel()}) to
+     * interrupt the real thread running the SSH exec, not a bystander.
+     */
+    @Nullable private volatile Thread currentExecThread = null;
+
+    /**
+     * The currently open {@link ChannelExec}, or null. Used by
+     * {@link #cancelCurrentExec()} to close the channel and break the
+     * read loop when cancellation is requested.
+     */
+    @Nullable private volatile ChannelExec currentExecChannel = null;
+
     public SshClient(String host, int port, String username,
                      String password, TransportAdapter transport) {
         this.host = host;
@@ -450,7 +465,7 @@ public class SshClient {
      */
     public void executeCommand(final String command, int timeoutMs,
                                final ExecCallback callback) {
-        new Thread(new Runnable() {
+        Thread execThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 ChannelExec execChannel = null;
@@ -470,6 +485,7 @@ public class SshClient {
                     }
 
                     execChannel = openExecChannel(command);
+                    currentExecChannel = execChannel;
                 } catch (Exception firstErr) {
                     Log.w(TAG, "Exec attempt failed: " + firstErr.getMessage()
                             + ", attempting reconnect...");
@@ -478,6 +494,7 @@ public class SshClient {
                         Log.i(TAG, "Reconnect succeeded, retrying command");
                         try {
                             execChannel = openExecChannel(command);
+                            currentExecChannel = execChannel;
                         } catch (Exception retryErr) {
                             callback.onError("Exec failed after reconnect: " + retryErr.getMessage());
                             return;
@@ -507,6 +524,15 @@ public class SshClient {
                         if (timeoutMs > 0
                                 && (System.currentTimeMillis() - startTime) > timeoutMs) {
                             callback.onError("Command timed out after " + timeoutMs + "ms");
+                            break;
+                        }
+
+                        // Cancellation check — cancelCurrentExec() sets the flag and
+                        // closes the channel, but checking here lets us exit promptly
+                        // with a clear message instead of relying on the channel close.
+                        if (Thread.currentThread().isInterrupted()) {
+                            Log.i(TAG, "Exec interrupted — cancelling command");
+                            callback.onError("Command cancelled");
                             break;
                         }
 
@@ -561,12 +587,35 @@ public class SshClient {
                     Log.e(TAG, "Exec failed: " + e.getMessage(), e);
                     callback.onError("Exec failed: " + e.getMessage());
                 } finally {
+                    currentExecChannel = null;
+                    currentExecThread = null;
                     if (execChannel != null) {
                         execChannel.disconnect();
                     }
                 }
             }
-        }, "SshExec-" + Math.abs(command.hashCode())).start();
+        }, "SshExec-" + Math.abs(command.hashCode()));
+        currentExecThread = execThread;
+        execThread.start();
+    }
+
+    /**
+     * Cancel any currently running exec command. Interrupts the exec thread
+     * and closes the channel, which breaks the read loop in
+     * {@link #executeCommand(String, int, ExecCallback)} and triggers an
+     * {@code onError("Command cancelled")} callback.
+     *
+     * <p>Safe to call when no exec is running — does nothing in that case.</p>
+     */
+    public void cancelCurrentExec() {
+        Thread t = currentExecThread;
+        if (t != null) {
+            t.interrupt();
+        }
+        ChannelExec ch = currentExecChannel;
+        if (ch != null) {
+            try { ch.disconnect(); } catch (Exception ignored) {}
+        }
     }
 
     /**
