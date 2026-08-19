@@ -83,16 +83,16 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.openterface.keymod"
-        minSdk 26
+        applicationId "com.openterface.KeyCmd"
+        minSdk 21
         targetSdk 35
-        versionCode 34
-        versionName "0.34"
+        versionCode 37
+        versionName "0.37"
 
         setProperty("archivesBaseName", "KeyCmd")
 
         buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
-        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://assets.openterface.com/keymod/android/help_config.json"'
+        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://assets.openterface.com/keymod/android/tutorial/config.json"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -114,6 +114,7 @@ android {
         }
     }
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -148,6 +149,8 @@ tasks.named('preBuild').configure { dependsOn('syncBundledGamepadPresets') }
 
 dependencies {
 
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+
     implementation libs.appcompat
     implementation libs.material
     implementation libs.activity
@@ -167,6 +170,7 @@ dependencies {
     // AndroidX Preferences
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.gridlayout:gridlayout:1.0.0'
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
     
     // Gson for JSON serialization

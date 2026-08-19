@@ -56,7 +56,12 @@ public final class TouchPadHaptics {
             return;
         }
         try {
-            v.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                v.vibrate(VibrationEffect.createOneShot(durationMs, amplitude));
+            } else {
+                // VibrationEffect requires API 26+, use simple vibrate for older versions
+                v.vibrate(durationMs);
+            }
         } catch (Exception e) {
             Log.v(TAG, "Vibration skipped: " + e.getMessage());
         }
@@ -68,7 +73,12 @@ public final class TouchPadHaptics {
             return;
         }
         try {
-            v.vibrate(VibrationEffect.createWaveform(timingsMs, amplitudes, -1));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                v.vibrate(VibrationEffect.createWaveform(timingsMs, amplitudes, -1));
+            } else {
+                // VibrationEffect requires API 26+, use simple vibrate for older versions
+                v.vibrate(timingsMs, -1);
+            }
         } catch (Exception e) {
             Log.v(TAG, "Vibration skipped: " + e.getMessage());
         }

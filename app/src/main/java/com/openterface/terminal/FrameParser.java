@@ -49,9 +49,6 @@ public class FrameParser {
         for (byte b : data) {
             process(b & 0xFF);
         }
-        if (!receivedFrames.isEmpty()) {
-            android.util.Log.v("FrameParser", "feed: " + receivedFrames.size() + " frames ready");
-        }
     }
 
     /** Feed a single byte into the parser. */
@@ -63,7 +60,6 @@ public class FrameParser {
         switch (state) {
             case STATE_WAIT_HEAD1:
                 if (b == FRAME_HEAD1) {
-                    android.util.Log.v("FrameParser", "Found HEAD1 (0x57), waiting for HEAD2");
                     bufLen = 0;
                     buf[bufLen++] = (byte) b;
                     checksum = b;
@@ -106,6 +102,7 @@ public class FrameParser {
                 if (payloadLen == 0) {
                     state = STATE_WAIT_CHECKSUM;
                 } else if (payloadLen > MAX_PAYLOAD_LEN) {
+                    payloadLen = 0; // clear stale value to prevent overread in error handler
                     state = STATE_WAIT_HEAD1; // Invalid length, reset
                 } else {
                     state = STATE_WAIT_PAYLOAD;
@@ -133,8 +130,20 @@ public class FrameParser {
                     }
                     receivedFrames.add(new ParsedFrame(addr, cmd, payload));
                 } else {
-                    android.util.Log.w("FrameParser", "Checksum mismatch! Expected=0x" + Integer.toHexString(expected)
-                            + " Got=0x" + Integer.toHexString(b) + " Frame discarded");
+                    int cmd = buf[3] & 0xFF;
+                    int addr = buf[2] & 0xFF;
+                    StringBuilder firstBytes = new StringBuilder();
+                    int showLen = Math.min(payloadLen, 8);
+                    for (int i = 0; i < showLen; i++) {
+                        firstBytes.append(String.format("%02X ", buf[5 + i] & 0xFF));
+                    }
+                    Log.e("FrameParser", "Checksum MISMATCH! Expected=0x" + Integer.toHexString(expected)
+                            + " Got=0x" + Integer.toHexString(b)
+                            + " addr=0x" + Integer.toHexString(addr)
+                            + " cmd=0x" + Integer.toHexString(cmd)
+                            + " payloadLen=" + payloadLen
+                            + " firstBytes=[" + firstBytes.toString().trim() + "]"
+                            + " — Frame discarded!");
                 }
                 state = STATE_WAIT_HEAD1;
                 break;

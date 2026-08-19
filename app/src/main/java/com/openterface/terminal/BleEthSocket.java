@@ -28,6 +28,7 @@ public class BleEthSocket extends Socket {
 
     private final BleEthTransport transport;
     private volatile boolean connected = false;
+    private volatile int soTimeoutMs = 0;
 
     public BleEthSocket(BleEthTransport transport) {
         this.transport = transport;
@@ -95,6 +96,17 @@ public class BleEthSocket extends Socket {
     public void connect(java.net.SocketAddress endpoint, int timeout) throws IOException {
         // This shouldn't be called since we use SocketFactory
         throw new IOException("Direct connect not supported on BLE-Eth socket");
+    }
+
+    @Override
+    public synchronized void setSoTimeout(int timeout) {
+        soTimeoutMs = timeout;
+        transport.setReadTimeout(timeout);
+    }
+
+    @Override
+    public synchronized int getSoTimeout() {
+        return soTimeoutMs;
     }
 
     @Override

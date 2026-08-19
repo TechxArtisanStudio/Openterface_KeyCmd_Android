@@ -72,7 +72,11 @@ public class BluetoothService extends Service {
     private static final int BLE_ETH_TARGET_MTU = 247;
     private static final int BLE_ETH_WRITE_TIMEOUT_MS = 5000;
     private static final int BLE_ETH_INTER_CHUNK_DELAY_MS = 10;
-    private static final int SAFE_BLE_STREAM_CHUNK = 128;
+    // Firmware negotiates MTU=60 (ATT payload = 57 bytes).
+    // Each BLE write must fit within ATT payload to avoid GATT timeout.
+    // Chunks are sent with write-without-response for speed; the firmware
+    // reassembles chunks into complete protocol frames using 57 AB headers.
+    private static final int SAFE_BLE_STREAM_CHUNK = 57;
     private static final int BLE_ETH_FRAME_CMD_INDEX = 3;
     private static final int BLE_ETH_CMD_CONNECT = 0x10;
     private static final int BLE_ETH_CMD_DISCONNECT = 0x12;
@@ -273,9 +277,11 @@ public class BluetoothService extends Service {
                                      BluetoothGattCharacteristic characteristic,
                                      byte[] data,
                                      boolean acknowledgedWrite) {
-        characteristic.setWriteType(acknowledgedWrite
-                ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        // Always use acknowledged writes (WRITE_TYPE_DEFAULT) to ensure reliable
+        // delivery to the firmware. The iOS version uses acknowledged writes for
+        // all BLE-Eth data, which is why it works reliably. WRITE_TYPE_NO_RESPONSE
+        // can silently drop packets if the firmware's BLE reception is busy.
+        characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
 
         CountDownLatch writeLatch = new CountDownLatch(1);
         final boolean[] writeSucceeded = new boolean[1];

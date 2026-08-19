@@ -907,7 +907,7 @@ public class GamepadFragment extends Fragment {
             sendCombinedKeyReport();
             if (vibrator != null && vibrator.hasVibrator()
                     && isPresetKeyboardHoldToggleId(buttonId)) {
-                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
             }
         });
 
@@ -7567,7 +7567,7 @@ public class GamepadFragment extends Fragment {
         if (vibrator == null || !vibrator.hasVibrator()) {
             return;
         }
-        vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(15); };
     }
 
     @Override
