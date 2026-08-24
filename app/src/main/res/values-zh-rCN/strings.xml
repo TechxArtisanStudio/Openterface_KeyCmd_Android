@@ -1479,6 +1479,11 @@
     <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
     <string name="credential_public_key_not_available">不可用（请重新导入或重新生成密钥以查看）</string>
     <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
+    <string name="credential_export_copy_clipboard">复制到剪贴板</string>
+    <string name="credential_export_share_app">分享到其他应用</string>
+    <string name="credential_export_push_server">推送到服务器</string>
+    <string name="credential_export_copied">公钥已复制到剪贴板</string>
+    <string name="credential_export_no_apps">没有可用的分享应用</string>
     <string name="credential_push_key">推送到服务器</string>
     <string name="credential_push_key_title">推送公钥</string>
     <string name="credential_push_key_desc">通过密码认证将公钥推送到服务器</string>

@@ -106,6 +106,7 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.GamepadConfigManager;
 import com.openterface.keymod.GamepadLayout;
 import com.openterface.keymod.GamepadView;
+import com.openterface.keymod.util.TouchPadHaptics;
 import com.openterface.keymod.gamepad.GamepadCanvasBackgroundPreview;
 import com.openterface.keymod.gamepad.GamepadCapLabels;
 import com.openterface.keymod.gamepad.GamepadLayoutDocEditor;
@@ -905,9 +906,8 @@ public class GamepadFragment extends Fragment {
                 }
             }
             sendCombinedKeyReport();
-            if (vibrator != null && vibrator.hasVibrator()
-                    && isPresetKeyboardHoldToggleId(buttonId)) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
+            if (isPresetKeyboardHoldToggleId(buttonId)) {
+                TouchPadHaptics.vibrateOneShot(requireContext(), 30, VibrationEffect.DEFAULT_AMPLITUDE);
             }
         });
 
@@ -7564,10 +7564,7 @@ public class GamepadFragment extends Fragment {
     }
 
     private void vibrateGamepadTick() {
-        if (vibrator == null || !vibrator.hasVibrator()) {
-            return;
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(15, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(15); };
+        TouchPadHaptics.vibrateOneShot(requireContext(), 15, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     @Override

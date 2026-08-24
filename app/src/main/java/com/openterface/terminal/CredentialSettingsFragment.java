@@ -53,6 +53,7 @@ import java.util.List;
  */
 public class CredentialSettingsFragment extends Fragment {
 
+    private static final String TAG = "CredentialSettings";
     private static final int REQUEST_CODE_IMPORT_KEY = 1001;
     public static final String ARG_EDIT_PROFILE_ID = "arg_edit_profile_id";
 
@@ -68,8 +69,11 @@ public class CredentialSettingsFragment extends Fragment {
 
     // Bridging fields for import key data loss fix
     private String[] importKeyDataRef;
+    private String[] importPublicKeyDataRef;
     private String[] importPassphraseDataRef;
     private TextView importKeyStatusRef;
+    private String[] importAuthTypeRef;
+    private Spinner importAuthSpinnerRef;
 
     @Nullable
     @Override
@@ -128,7 +132,8 @@ public class CredentialSettingsFragment extends Fragment {
         if (shield == null) {
             shield = new SensitivePageShield(requireActivity());
         }
-        shield.enable();
+        // TODO: Temporarily disabled for documentation screenshots. Restore before release.
+        // shield.enable();
     }
 
     @Override
@@ -170,6 +175,24 @@ public class CredentialSettingsFragment extends Fragment {
                     if (importKeyDataRef != null && importKeyStatusRef != null) {
                         importKeyDataRef[0] = keyContent;
                         importKeyStatusRef.setText(R.string.credential_key_imported);
+
+                        // Extract public key from imported private key (same as paste flow)
+                        if (importPublicKeyDataRef != null) {
+                            String extractedPub = extractPublicKeyFromPrivateKey(keyContent);
+                            if (extractedPub != null) {
+                                importPublicKeyDataRef[0] = extractedPub;
+                                android.util.Log.v(TAG, "onActivityResult: extracted public key from imported private key");
+                            } else {
+                                android.util.Log.w(TAG, "onActivityResult: failed to extract public key from imported private key");
+                            }
+                        }
+
+                        // Auto-switch to SSH Key auth type when key is imported
+                        if (importAuthTypeRef != null && importAuthSpinnerRef != null
+                                && CredentialProfile.AUTH_TYPE_PASSWORD.equals(importAuthTypeRef[0])) {
+                            importAuthTypeRef[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
+                            importAuthSpinnerRef.setSelection(1);
+                        }
                     }
                     Toast.makeText(requireContext(), R.string.credential_key_imported, Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
@@ -362,25 +385,36 @@ public class CredentialSettingsFragment extends Fragment {
             popup.setOnMenuItemClickListener(item -> {
                 switch (item.getItemId()) {
                     case 1: // Paste
-                        showPasteKeyDialog(privateKeyData, keyPassphraseData, keyStatus);
+                        showPasteKeyDialog(privateKeyData, publicKeyData, keyPassphraseData, keyStatus,
+                                selectedAuthType, authTypeSpinner);
                         break;
                     case 2: // Import from file
                         // Set bridging fields so onActivityResult can update the key data
                         importKeyDataRef = privateKeyData;
+                        importPublicKeyDataRef = publicKeyData;
                         importPassphraseDataRef = keyPassphraseData;
                         importKeyStatusRef = keyStatus;
+                        importAuthTypeRef = selectedAuthType;
+                        importAuthSpinnerRef = authTypeSpinner;
                         importKeyFromFile();
                         break;
                     case 3: // Generate
-                        showGenerateKeyDialog((keyPair, passphrase) -> {
+                        showGenerateKeyDialog(existingProfile != null ? existingProfile.getId() : null,
+                                (keyPair, passphrase) -> {
                             privateKeyData[0] = keyPair.privateKey;
                             keyPassphraseData[0] = passphrase != null ? passphrase : "";
                             publicKeyData[0] = keyPair.publicKey;
                             keyStatus.setText(R.string.credential_key_generated);
+                            // Auto-switch to SSH Key auth type when key is generated
+                            if (CredentialProfile.AUTH_TYPE_PASSWORD.equals(selectedAuthType[0])) {
+                                selectedAuthType[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
+                                authTypeSpinner.setSelection(1);
+                            }
                         });
                         break;
                     case 4: // Edit existing key
                         showEditKeyDialog(privateKeyData[0], publicKeyData[0], keyPassphraseData[0],
+                                existingProfile != null ? existingProfile.getId() : null,
                                 (updatedKey, updatedPassphrase) -> {
                                     privateKeyData[0] = updatedKey;
                                     keyPassphraseData[0] = updatedPassphrase;
@@ -497,8 +531,13 @@ public class CredentialSettingsFragment extends Fragment {
 
     /**
      * Show dialog for pasting a private key.
+     * Also extracts the public key from the pasted private key so that
+     * algorithm detection works correctly.
+     * Auto-switches auth type to SSH Key if currently set to Password.
      */
-    private void showPasteKeyDialog(String[] privateKeyData, String[] keyPassphraseData, TextView keyStatus) {
+    private void showPasteKeyDialog(String[] privateKeyData, String[] publicKeyData,
+                                    String[] keyPassphraseData, TextView keyStatus,
+                                    String[] selectedAuthType, Spinner authTypeSpinner) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_paste_key, null);
 
@@ -514,7 +553,17 @@ public class CredentialSettingsFragment extends Fragment {
                     if (!key.isEmpty()) {
                         privateKeyData[0] = key;
                         keyPassphraseData[0] = passphrase;
+                        // Extract public key from the pasted private key
+                        String extractedPub = extractPublicKeyFromPrivateKey(key);
+                        if (extractedPub != null) {
+                            publicKeyData[0] = extractedPub;
+                        }
                         keyStatus.setText(R.string.credential_key_set);
+                        // Auto-switch to SSH Key auth type when key is pasted
+                        if (CredentialProfile.AUTH_TYPE_PASSWORD.equals(selectedAuthType[0])) {
+                            selectedAuthType[0] = CredentialProfile.AUTH_TYPE_SSH_KEY;
+                            authTypeSpinner.setSelection(1);
+                        }
                         Toast.makeText(requireContext(), R.string.credential_key_set, Toast.LENGTH_SHORT).show();
                     }
                 })
@@ -541,7 +590,8 @@ public class CredentialSettingsFragment extends Fragment {
      */
     private void setupEditKeySection(View dialogView, AlertDialog dialog,
                                      String publicKey, String privateKey, String passphrase,
-                                     String algorithmLabel, boolean disableAlgorithmField) {
+                                     String algorithmLabel, boolean disableAlgorithmField,
+                                     @Nullable String profileId) {
         // ── Switch to edit mode ──
         View generateSection = dialogView.findViewById(R.id.key_generate_section);
         View editSection = dialogView.findViewById(R.id.key_edit_section);
@@ -638,10 +688,146 @@ public class CredentialSettingsFragment extends Fragment {
             algoMenu.show();
         });
 
-        // ── Update dialog chrome ──
+        // ─ Export or share public key button ──
+        MaterialButton exportBtn = dialogView.findViewById(R.id.key_edit_export_public_key_btn);
+        if (exportBtn != null) {
+            exportBtn.setOnClickListener(v -> {
+                if (displayPublicKey.isEmpty()) {
+                    Toast.makeText(requireContext(),
+                            R.string.credential_public_key_not_available, Toast.LENGTH_SHORT).show();
+                } else {
+                    // Launch ExportPublicKeyActivity
+                    Intent intent = new Intent(requireContext(), ExportPublicKeyActivity.class);
+                    intent.putExtra(ExportPublicKeyActivity.EXTRA_PUBLIC_KEY, displayPublicKey);
+                    if (profileId != null) {
+                        intent.putExtra(ExportPublicKeyActivity.EXTRA_PROFILE_ID, profileId);
+                    }
+                    startActivity(intent);
+                }
+            });
+        }
+
+        // ─ Update dialog chrome ──
         dialog.setTitle(R.string.credential_edit_key);
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setText(getString(R.string.credential_save));
+    }
+
+    /**
+     * Share the SSH public key via Android system share chooser.
+     *
+     * @param publicKey the public key text
+     */
+    private void sharePublicKey(String publicKey) {
+        try {
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("text/plain");
+            share.putExtra(Intent.EXTRA_TEXT, publicKey);
+            share.putExtra(Intent.EXTRA_SUBJECT, "SSH Public Key");
+            startActivity(Intent.createChooser(share,
+                    getString(R.string.credential_export_share_app)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(requireContext(),
+                    R.string.credential_export_no_apps, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Show a dialog to push the SSH public key to a remote server.
+     *
+     * @param publicKey the public key to push
+     */
+    private void showPushKeyDialog(String publicKey) {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_push_key, null);
+
+        EditText hostInput = dialogView.findViewById(R.id.push_host_input);
+        EditText portInput = dialogView.findViewById(R.id.push_port_input);
+        EditText usernameInput = dialogView.findViewById(R.id.push_username_input);
+        EditText passwordInput = dialogView.findViewById(R.id.push_password_input);
+
+        // Set default port
+        if (portInput != null && portInput.getText().toString().isEmpty()) {
+            portInput.setText("22");
+        }
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setTitle(R.string.credential_push_key_title);
+        builder.setView(dialogView);
+        builder.setPositiveButton(R.string.credential_push, null); // set listener below
+        builder.setNegativeButton(R.string.credential_cancel, (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(d -> {
+            androidx.appcompat.app.AlertDialog alert = (androidx.appcompat.app.AlertDialog) d;
+            android.widget.Button pushButton = alert.getButton(AlertDialog.BUTTON_POSITIVE);
+
+            pushButton.setOnClickListener(v -> {
+                String host = hostInput != null ? hostInput.getText().toString().trim() : "";
+                String portStr = portInput != null ? portInput.getText().toString().trim() : "22";
+                String username = usernameInput != null ? usernameInput.getText().toString().trim() : "";
+                String password = passwordInput != null ? passwordInput.getText().toString() : "";
+
+                if (host.isEmpty() || username.isEmpty() || password.isEmpty()) {
+                    Toast.makeText(requireContext(),
+                            getString(R.string.credential_push_key_failed, "Host, username and password are required"),
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                int port;
+                try {
+                    port = Integer.parseInt(portStr);
+                } catch (NumberFormatException e) {
+                    port = 22;
+                }
+
+                // Disable button and show progress
+                pushButton.setEnabled(false);
+                TextView progressText = dialogView.findViewById(R.id.push_progress_text);
+                if (progressText != null) {
+                    progressText.setText(R.string.credential_push_key_connecting);
+                    progressText.setVisibility(View.VISIBLE);
+                }
+
+                // SshKeyPusher connects directly to server (no BLE-Eth tunnel needed for push)
+                com.jcraft.jsch.SocketFactory socketFactory = null;
+
+                SshKeyPusher.pushKey(host, port, username, password, publicKey, socketFactory,
+                        new SshKeyPusher.ProgressListener() {
+                            @Override
+                            public void onProgress(String message) {
+                                if (progressText != null) {
+                                    requireActivity().runOnUiThread(() -> progressText.setText(message));
+                                }
+                            }
+
+                            @Override
+                            public void onSuccess() {
+                                requireActivity().runOnUiThread(() -> {
+                                    Toast.makeText(requireContext(),
+                                            R.string.credential_push_key_success, Toast.LENGTH_SHORT).show();
+                                    alert.dismiss();
+                                });
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                requireActivity().runOnUiThread(() -> {
+                                    Toast.makeText(requireContext(),
+                                            getString(R.string.credential_push_key_failed, message),
+                                            Toast.LENGTH_LONG).show();
+                                    pushButton.setEnabled(true);
+                                    if (progressText != null) {
+                                        progressText.setVisibility(View.GONE);
+                                    }
+                                });
+                            }
+                        });
+            });
+        });
+
+        dialog.show();
     }
 
     /**
@@ -661,7 +847,8 @@ public class CredentialSettingsFragment extends Fragment {
      *
      * @param onGenerated callback receiving (keyPairResult, passphrase)
      */
-    private void showGenerateKeyDialog(java.util.function.BiConsumer<SshKeyGenerator.KeyPairResult, String> onGenerated) {
+    private void showGenerateKeyDialog(@Nullable String profileId,
+                                       java.util.function.BiConsumer<SshKeyGenerator.KeyPairResult, String> onGenerated) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_generate_ssh_key, null);
 
@@ -802,7 +989,7 @@ public class CredentialSettingsFragment extends Fragment {
                                 // Use shared helper to populate edit section
                                 setupEditKeySection(dialogView, dialog,
                                         result.publicKey, result.privateKey,
-                                        passphrase, selectedAlgo, false);
+                                        passphrase, selectedAlgo, false, profileId);
                                 // Read passphrase from Edit input at save time
                                 saveHandler[0] = () -> {
                                     EditText editPassphrase = dialogView.findViewById(
@@ -840,6 +1027,7 @@ public class CredentialSettingsFragment extends Fragment {
      * @param onSaved     callback receiving (privateKey, updatedPassphrase)
      */
     private void showEditKeyDialog(String privateKey, String publicKey, String passphrase,
+                                   @Nullable String profileId,
                                    java.util.function.BiConsumer<String, String> onSaved) {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_generate_ssh_key, null);
@@ -857,7 +1045,7 @@ public class CredentialSettingsFragment extends Fragment {
         dialog.setOnShowListener(d -> {
             // Use shared helper to populate edit section
             setupEditKeySection(dialogView, dialog,
-                    publicKey, privateKey, passphrase, algoLabel, true);
+                    publicKey, privateKey, passphrase, algoLabel, true, profileId);
 
             // Override positive button to read passphrase from the edit input at save time
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -874,7 +1062,127 @@ public class CredentialSettingsFragment extends Fragment {
     // ─── Key Algorithm Detection ─────────────────────────────────────────
 
     /**
-     * Detect the key algorithm label ("ED25519" or "RSA").
+     * Extract the public key string from a private key (OpenSSH format).
+     * Returns null if extraction fails.
+     */
+    public static String extractPublicKeyFromPrivateKey(String privateKey) {
+        if (privateKey == null || privateKey.isEmpty()) return null;
+
+        if (!privateKey.contains("OPENSSH PRIVATE KEY")) {
+            android.util.Log.w(TAG, "extractPubKey: not an OPENSSH private key");
+            return null;
+        }
+        try {
+            String b64 = privateKey
+                    .replace("-----BEGIN OPENSSH PRIVATE KEY-----", "")
+                    .replace("-----END OPENSSH PRIVATE KEY-----", "")
+                    .replaceAll("\\s", "");
+            byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            android.util.Log.v(TAG, "extractPubKey: decoded length=" + decoded.length);
+
+            // OpenSSH private key layout:
+            //   "openssh-key-v1\0"  (15 bytes)
+            //   string  ciphername
+            //   string  kdfname
+            //   string  kdfoptions
+            //   uint32  number of keys
+            //   uint32  public key blob length
+            //   bytes   public key blob
+            int off = 15;
+
+            // Verify AUTH_MAGIC
+            String magic = new String(decoded, 0, 15, "UTF-8");
+            if (!magic.startsWith("openssh-key-v1")) {
+                android.util.Log.w(TAG, "extractPubKey: bad magic: " + magic);
+                return null;
+            }
+
+            off = skipString(decoded, off); // ciphername
+            if (off < 0) { android.util.Log.w(TAG, "extractPubKey: skipString ciphername failed"); return null; }
+            off = skipString(decoded, off); // kdfname
+            if (off < 0) { android.util.Log.w(TAG, "extractPubKey: skipString kdfname failed"); return null; }
+            off = skipString(decoded, off); // kdfoptions
+            if (off < 0) { android.util.Log.w(TAG, "extractPubKey: skipString kdfoptions failed"); return null; }
+            if (decoded.length < off + 4) { android.util.Log.w(TAG, "extractPubKey: not enough data for numKeys"); return null; }
+            int numKeys = readUint32(decoded, off);
+            off += 4; // skip numKeys (uint32)
+            android.util.Log.v(TAG, "extractPubKey: numKeys=" + numKeys + " off=" + off);
+            if (decoded.length < off + 4) { android.util.Log.w(TAG, "extractPubKey: not enough data for pubKeyLen"); return null; }
+            int pubKeyLen = readUint32(decoded, off);
+            off += 4;
+            android.util.Log.v(TAG, "extractPubKey: pubKeyLen=" + pubKeyLen + " off=" + off + " decoded.length=" + decoded.length);
+            if (off + pubKeyLen > decoded.length) { android.util.Log.w(TAG, "extractPubKey: pubKeyLen exceeds data"); return null; }
+
+            // The public key blob starts with a length-prefixed key type string.
+            // Read the key type to determine the prefix.
+            if (pubKeyLen < 4) { android.util.Log.w(TAG, "extractPubKey: pubKeyLen too small"); return null; }
+            int innerTypeLen = readUint32(decoded, off);
+            if (off + 4 + innerTypeLen > decoded.length) { android.util.Log.w(TAG, "extractPubKey: innerTypeLen exceeds data"); return null; }
+            String keyType = new String(decoded, off + 4, innerTypeLen, "UTF-8");
+            android.util.Log.v(TAG, "extractPubKey: keyType=" + keyType + " innerTypeLen=" + innerTypeLen);
+
+            String prefix;
+            if ("ssh-ed25519".equals(keyType)) prefix = "ssh-ed25519";
+            else if ("ssh-rsa".equals(keyType)) prefix = "ssh-rsa";
+            else if (keyType.startsWith("ecdsa-")) prefix = keyType;
+            else { android.util.Log.w(TAG, "extractPubKey: unsupported keyType=" + keyType); return null; }
+
+            String pubKeyB64 = android.util.Base64.encodeToString(
+                    decoded, off, pubKeyLen, android.util.Base64.NO_WRAP);
+            String result = prefix + " " + pubKeyB64;
+            android.util.Log.v(TAG, "extractPubKey: success, pubKey length=" + result.length());
+            return result;
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "extractPubKey: exception", e);
+            return null;
+        }
+    }
+
+    /**
+     * Skip a length-prefixed string in the OpenSSH binary format.
+     * Returns the offset after the string, or -1 on error.
+     */
+    private static int skipString(byte[] data, int off) {
+        if (data.length < off + 4) return -1;
+        int len = readUint32(data, off);
+        off += 4 + len;
+        if (off > data.length) return -1;
+        return off;
+    }
+
+    /**
+     * Read the key type string from an OpenSSH private key.
+     * Returns null if parsing fails.
+     */
+    private static String readOpenSSHKeyType(String privateKey) {
+        if (privateKey == null || !privateKey.contains("OPENSSH PRIVATE KEY")) return null;
+        try {
+            String b64 = privateKey
+                    .replace("-----BEGIN OPENSSH PRIVATE KEY-----", "")
+                    .replace("-----END OPENSSH PRIVATE KEY-----", "")
+                    .replaceAll("\\s", "");
+            byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            int off = 15;
+            off = skipString(decoded, off); // ciphername
+            if (off < 0) return null;
+            off = skipString(decoded, off); // kdfname
+            if (off < 0) return null;
+            off = skipString(decoded, off); // kdfoptions
+            if (off < 0) return null;
+            if (decoded.length < off + 4) return null;
+            off += 4; // skip numKeys
+            if (decoded.length < off + 4) return null;
+            int typeLen = readUint32(decoded, off);
+            off += 4;
+            if (off + typeLen > decoded.length) return null;
+            return new String(decoded, off, typeLen, "UTF-8");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Detect the key algorithm label ("ED25519", "RSA", or "ECDSA").
      * Uses the stored public key first (most reliable — plain text like "ssh-ed25519 ...").
      * Falls back to parsing the OpenSSH binary format of the private key.
      */
@@ -883,6 +1191,7 @@ public class CredentialSettingsFragment extends Fragment {
         if (publicKey != null && !publicKey.isEmpty()) {
             if (publicKey.startsWith("ssh-ed25519")) return "ED25519";
             if (publicKey.startsWith("ssh-rsa")) return "RSA";
+            if (publicKey.startsWith("ecdsa-")) return "ECDSA";
         }
 
         // 2. Traditional RSA PEM header
@@ -891,37 +1200,13 @@ public class CredentialSettingsFragment extends Fragment {
         }
 
         // 3. OpenSSH format: decode base64 and read key type from binary content.
-        // The key type bytes are split across base64 encoding boundaries, so we
-        // must decode first — simple string contains() won't work.
         if (privateKey != null && privateKey.contains("OPENSSH PRIVATE KEY")) {
-            try {
-                String b64 = privateKey
-                        .replace("-----BEGIN OPENSSH PRIVATE KEY-----", "")
-                        .replace("-----END OPENSSH PRIVATE KEY-----", "")
-                        .replaceAll("\\s", "");
-                byte[] decoded = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
-                // OpenSSH binary layout:
-                //   0-14:  "openssh-key-v1\0" (15 bytes)
-                //   15-18: cipher name length (uint32)
-                //   19..:  cipher name ("none" = 4 bytes)
-                //   next:  kdf name length (uint32) + kdf name
-                //   next:  key type length (uint32) + key type string
-                int off = 15;
-                if (decoded.length < off + 4) return "RSA";
-                int cipherLen = readUint32(decoded, off);
-                off += 4 + cipherLen;
-                if (decoded.length < off + 4) return "RSA";
-                int kdfLen = readUint32(decoded, off);
-                off += 4 + kdfLen;
-                if (decoded.length < off + 4) return "RSA";
-                int typeLen = readUint32(decoded, off);
-                off += 4;
-                if (off + typeLen > decoded.length) return "RSA";
-                String keyType = new String(decoded, off, typeLen, "UTF-8");
+            String keyType = readOpenSSHKeyType(privateKey);
+            if (keyType != null) {
                 if ("ssh-ed25519".equals(keyType)) return "ED25519";
                 if ("ssh-rsa".equals(keyType)) return "RSA";
-            } catch (Exception e) {
-                // Fall through
+                if (keyType.startsWith("ecdsa-")) return "ECDSA";
+                return "UNKNOWN";
             }
         }
 

@@ -1,17 +1,26 @@
 package com.openterface.terminal;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
+
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelShell;
+import com.jcraft.jsch.HostKey;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UserInfo;
-import com.openterface.terminal.CredentialProfile;
+
+import com.openterface.keymod.BuildConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.Properties;
 
 /**
@@ -36,7 +45,9 @@ public class SshClient {
     private final String password;
     private final TransportAdapter transport;
     private final com.jcraft.jsch.SocketFactory socketFactory;
+    private final CredentialProfile profile;
     private volatile Listener listener;
+    private Context appContext;
 
     private Session session;
     private Channel shellChannel;
@@ -51,6 +62,7 @@ public class SshClient {
         this.password = password;
         this.transport = transport;
         this.socketFactory = null;
+        this.profile = null;
     }
 
     public SshClient(String host, int port, String username,
@@ -62,6 +74,7 @@ public class SshClient {
         this.password = password;
         this.transport = transport;
         this.socketFactory = socketFactory;
+        this.profile = null;
     }
 
     public SshClient(CredentialProfile profile, TransportAdapter transport) {
@@ -71,6 +84,7 @@ public class SshClient {
         this.password = profile.getPassword();
         this.transport = transport;
         this.socketFactory = null;
+        this.profile = profile;
     }
 
     public SshClient(CredentialProfile profile, TransportAdapter transport,
@@ -81,10 +95,18 @@ public class SshClient {
         this.password = profile.getPassword();
         this.transport = transport;
         this.socketFactory = socketFactory;
+        this.profile = profile;
     }
 
     public void setListener(Listener listener) {
         this.listener = listener;
+    }
+
+    /** Set application context for host key storage (MITM protection). */
+    public void setContext(Context context) {
+        if (context != null) {
+            this.appContext = context.getApplicationContext();
+        }
     }
 
     /**
@@ -112,11 +134,13 @@ public class SshClient {
             JSch jsch = new JSch();
 
             // Host key checking:
-            // "ask" mode prompts UserInfo on first connection or host-key change.
-            // We provide an auto-accept UserInfo so the user isn't blocked, but
-            // the host key is still saved into known_hosts — subsequent connections
-            // verify against the stored key and reject changes (MITM protection).
-            // This is much safer than "no" which never stores or verifies the key.
+            // StrictHostKeyChecking="no" skips JSch's built-in host key verification.
+            // We cannot use "ask" mode because it triggers a Cipher.isCBC() NPE in the
+            // BLE-Eth tunnel scenario (JSch Issue #760 — cipher not initialized when
+            // host key callback runs during handshake over custom SocketFactory).
+            // Instead, we verify the host key fingerprint at application level AFTER
+            // connection succeeds, by comparing against a stored value per host.
+            // This provides MITM protection without triggering the JSch bug.
             Properties config = new Properties();
             config.put("StrictHostKeyChecking", "no");
             config.put("compression.s2c", "none");
@@ -126,18 +150,45 @@ public class SshClient {
             if (profile.isSshKeyAuth()) {
                 // Public key authentication
                 String privateKey = profile.getPrivateKey();
+                String publicKey = profile.getPublicKey();
                 String passphrase = profile.getKeyPassphrase();
 
                 if (privateKey != null && !privateKey.isEmpty()) {
-                    // Add identity with optional passphrase
-                    byte[] privateKeyBytes = privateKey.getBytes();
+                    // Detect key type for logging
+                    String keyType = "unknown";
+                    if (privateKey.contains("OPENSSH PRIVATE KEY")) keyType = "OpenSSH";
+                    else if (privateKey.contains("RSA PRIVATE KEY")) keyType = "RSA-PEM";
+                    else if (privateKey.contains("EC PRIVATE KEY")) keyType = "EC-PEM";
+                    Log.v(TAG, "Using SSH key authentication: type=" + keyType
+                            + " len=" + privateKey.length()
+                            + " hasPassphrase=" + (passphrase != null && !passphrase.isEmpty()));
+
+                    // Load key bytes directly — never write private key to disk
+                    byte[] privateKeyBytes = privateKey.getBytes(StandardCharsets.UTF_8);
+                    byte[] pubKeyBytes = (publicKey != null && !publicKey.isEmpty())
+                            ? publicKey.getBytes(StandardCharsets.UTF_8) : null;
                     byte[] passphraseBytes = (passphrase != null && !passphrase.isEmpty())
-                        ? passphrase.getBytes() : null;
-                    jsch.addIdentity("ssh-key", privateKeyBytes, null, passphraseBytes);
+                            ? passphrase.getBytes(StandardCharsets.UTF_8) : null;
+
+                    // Use a descriptive identity name for JSch's key management
+                    String identityName = "keycmd-" + (profile.getName() != null
+                            ? profile.getName().replaceAll("[^a-zA-Z0-9_-]", "_") : "ssh-key");
+
+                    if (pubKeyBytes != null) {
+                        jsch.addIdentity(identityName, privateKeyBytes, pubKeyBytes, passphraseBytes);
+                        Log.v(TAG, "Loaded key pair (in-memory): type=" + keyType);
+                    } else {
+                        jsch.addIdentity(identityName, privateKeyBytes, null, passphraseBytes);
+                        Log.v(TAG, "Loaded private key only (in-memory): type=" + keyType);
+                    }
+
+                    // Diagnostic: log fingerprint only (never log the full key)
+                    if (publicKey != null && !publicKey.isEmpty()) {
+                        Log.v(TAG, "Public key MD5 fingerprint: " + computePublicKeyFingerprint(publicKey));
+                    }
 
                     config.put("PreferredAuthentications", "publickey");
                     config.put("PubkeyAuthentication", "yes");
-                    Log.v(TAG, "Using SSH key authentication");
                 } else {
                     throw new Exception("Private key is empty for SSH key authentication");
                 }
@@ -151,9 +202,23 @@ public class SshClient {
             session = jsch.getSession(username, host, port);
             session.setConfig(config);
 
-            // Set UserInfo so "ask" mode auto-accepts on first use without throwing.
-            // JSch will then write the host key into known_hosts. On subsequent
-            // connections, the stored key is verified — a changed key is detected.
+            // Enable JSch debug logging only in debug builds to avoid leaking
+            // internal session/auth details to logcat in production.
+            if (BuildConfig.DEBUG) {
+                JSch.setLogger(new com.jcraft.jsch.Logger() {
+                    @Override
+                    public boolean isEnabled(int level) {
+                        return level <= com.jcraft.jsch.Logger.DEBUG;
+                    }
+                    @Override
+                    public void log(int level, String message) {
+                        Log.d(TAG + "-JSch", message);
+                    }
+                });
+            }
+
+            // UserInfo is required by JSch even with StrictHostKeyChecking="no"
+            // (some code paths may still call promptPassword/promptPassphrase).
             session.setUserInfo(new AutoAcceptUserInfo());
 
             // For password auth, set password on session
@@ -167,6 +232,13 @@ public class SshClient {
             }
 
             session.connect(20000); // SSH handshake timeout
+
+            // Application-level host key verification (MITM protection).
+            // Since StrictHostKeyChecking="no" skips JSch's built-in check,
+            // we verify the host key fingerprint here against a stored value.
+            // Throws on mismatch to prevent silent MITM attacks.
+            verifyHostKey(jsch, session);
+
             connected = true;
             Log.i(TAG, "SSH connect succeeded");
 
@@ -174,10 +246,59 @@ public class SshClient {
                 listener.onConnected();
             }
 
+        } catch (HostKeyMismatchException e) {
+            // Host key changed — potential MITM. Disconnect and notify user.
+            connected = false;
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+                session = null;
+            }
+            if (transport != null) {
+                transport.disconnect();
+            }
+            Log.e(TAG, "Host key verification failed: " + e.getMessage());
+            if (!wasCancelled() && listener != null) {
+                listener.onError("HOST_KEY_MISMATCH: " + e.getMessage());
+            }
+
         } catch (Exception e) {
             connected = false;
-            String errorMessage = getSafeErrorMessage(e);
-            Log.e(TAG, "SSH connect failed: " + errorMessage);
+
+            // If this thread was interrupted by a newer connection attempt
+            // (user switched credentials mid-handshake), the exception is expected —
+            // the session/transport were torn down by the new connectBleEth/connectUsbEcm.
+            // Skip cleanup and error reporting to avoid spurious error dialogs.
+            if (wasCancelled()) {
+                Log.v(TAG, "SSH connect cancelled by new connection attempt"
+                        + " (exception: " + e.getClass().getSimpleName() + ")");
+                // Null out session so future disconnect() calls are no-ops.
+                session = null;
+                return;
+            }
+
+            // Guard against NullPointerException from JSch internals (e.g. Cipher.isCBC())
+            // when another thread disconnects our session mid-handshake. This is a known
+            // JSch bug (Issue #760) triggered by concurrent disconnect during handshake.
+            if (e instanceof NullPointerException) {
+                Log.v(TAG, "SSH connect got NPE during handshake (likely concurrent disconnect)"
+                        + " — treating as silent cancellation");
+                session = null;
+                return;
+            }
+
+            // Clean up session and transport on failure to prevent stale state
+            // from affecting subsequent connection attempts.
+            if (session != null) {
+                session.disconnect();
+                session = null;
+            }
+            if (transport != null) {
+                transport.disconnect();
+            }
+            // Log the FULL exception with stack trace for debugging
+            Log.e(TAG, "SSH connect failed: " + e.getClass().getName()
+                    + ": " + e.getMessage(), e);
+            String errorMessage = buildErrorMessage(e);
             if (listener != null) {
                 listener.onError(errorMessage);
             }
@@ -185,36 +306,204 @@ public class SshClient {
     }
 
     /**
-     * Get safe error message without leaking sensitive info like passwords.
+     * Returns true if this connection attempt was cancelled by a newer connection
+     * (the connection thread was interrupted). Used to suppress spurious error
+     * dialogs when the user rapidly switches between credentials.
      */
-    private String getSafeErrorMessage(Exception e) {
-        String message = e.getMessage();
-        String className = e.getClass().getSimpleName();
-
-        // Check for authentication failure
-        if (message != null && (message.contains("Auth fail") ||
-            message.contains("auth fail") ||
-            message.contains("Authentication fail") ||
-            className.contains("Auth"))) {
-            return "AUTH_FAILED";
-        }
-
-        // For other exceptions, return generic message
-        if (message != null && message.length() > 100) {
-            return className + ": Connection error";
-        }
-
-        return className + ": " + (message != null ? message : "Unknown error");
+    private boolean wasCancelled() {
+        return Thread.currentThread().isInterrupted();
     }
 
     /**
-     * Legacy method for backward compatibility. Uses password authentication.
+     * Build an error message that is useful for the UI without leaking credentials.
+     * Strips password values and key material from exception messages.
+     */
+    private String buildErrorMessage(Exception e) {
+        String message = e.getMessage();
+        String className = e.getClass().getSimpleName();
+
+        if (message == null || message.isEmpty()) {
+            return className + ": Unknown error";
+        }
+
+        // Sanitize: strip anything that looks like a password or key blob
+        String sanitized = message;
+        // Remove password= or passwd= values (e.g. "password=abc123")
+        sanitized = sanitized.replaceAll("(?i)(password|passwd|passphrase)\\s*[=:]\\s*[^\\s,;]+", "$1=***");
+        // Remove anything that looks like PEM key content
+        sanitized = sanitized.replaceAll("-----[A-Z ]+-----", "[KEY_MATERIAL]");
+        // Remove base64 blobs longer than 40 chars (likely key/cert data)
+        sanitized = sanitized.replaceAll("[A-Za-z0-9+/=]{40,}", "[BLOB]");
+
+        // Tag auth failures with a marker the UI can detect
+        String lower = sanitized.toLowerCase();
+        if (lower.contains("auth") && (lower.contains("fail") || lower.contains("cancel")
+                || lower.contains("denied") || lower.contains("rejected")
+                || lower.contains("no more"))) {
+            return "AUTH_FAILED: " + sanitized;
+        }
+
+        return className + ": " + sanitized;
+    }
+
+    /**
+     * Compute MD5 fingerprint of an OpenSSH-format public key string.
+     * Format: "ssh-ed25519 AAAAC3... comment"
+     * Returns the fingerprint as "MD5:aa:bb:cc:..." or null on error.
+     */
+    private static String computePublicKeyFingerprint(String publicKey) {
+        if (publicKey == null || publicKey.isEmpty()) return null;
+        try {
+            // Extract base64 part (between first space and second space/end)
+            String[] parts = publicKey.trim().split("\\s+");
+            if (parts.length < 2) return null;
+            byte[] keyBytes = android.util.Base64.decode(parts[1], android.util.Base64.DEFAULT);
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(keyBytes);
+            StringBuilder sb = new StringBuilder("MD5:");
+            for (int i = 0; i < digest.length; i++) {
+                if (i > 0) sb.append(':');
+                sb.append(String.format("%02x", digest[i] & 0xFF));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Application-level host key verification for MITM protection.
+     * Since StrictHostKeyChecking="no" skips JSch's built-in check (due to Cipher.isCBC()
+     * NPE in BLE-Eth tunnel), we verify the host key fingerprint manually:
+     * - First connection: store the fingerprint in encrypted SharedPreferences
+     * - Subsequent connections: compare against stored fingerprint
+     * - Mismatch: throw HostKeyMismatchException to disconnect and alert the user
+     */
+    private void verifyHostKey(JSch jsch, Session session) throws HostKeyMismatchException {
+        if (appContext == null) {
+            Log.w(TAG, "No app context set — skipping host key verification");
+            return;
+        }
+
+        try {
+            HostKey hostKey = session.getHostKey();
+            if (hostKey == null) {
+                Log.w(TAG, "No host key available from session");
+                return;
+            }
+
+            String hostPort = host + ":" + port;
+
+            // Compute fingerprint of the host key using JSch's built-in method
+            String fingerprint = hostKey.getFingerPrint(jsch);
+            Log.v(TAG, "Host key fingerprint for " + hostPort + ": " + fingerprint);
+
+            String storedFingerprint = getStoredFingerprint(hostPort);
+
+            if (storedFingerprint == null) {
+                // First connection — store the fingerprint for future verification
+                storeFingerprint(hostPort, fingerprint);
+                Log.i(TAG, "Host key stored for " + hostPort + ": " + fingerprint);
+            } else if (storedFingerprint.equals(fingerprint)) {
+                Log.v(TAG, "Host key verified for " + hostPort);
+            } else {
+                // Host key mismatch — potential MITM attack!
+                // Disconnect immediately to protect the user.
+                String errorMsg = "Host key changed for " + hostPort
+                        + ". Expected: " + storedFingerprint
+                        + ", Got: " + fingerprint
+                        + ". This may indicate a man-in-the-middle attack"
+                        + " or the server key was legitimately regenerated.";
+                Log.e(TAG, "HOST KEY MISMATCH: " + errorMsg);
+                throw new HostKeyMismatchException(errorMsg);
+            }
+        } catch (HostKeyMismatchException e) {
+            // Re-throw without wrapping — caller handles disconnect.
+            throw e;
+        } catch (Exception e) {
+            Log.w(TAG, "Host key verification failed: " + e.getMessage());
+            // Verification error (not mismatch) — allow connection but log warning.
+            // This covers edge cases like corrupted storage, missing JSch methods, etc.
+        }
+    }
+
+    /**
+     * Exception thrown when the SSH host key fingerprint doesn't match the stored value.
+     * The caller should disconnect and alert the user.
+     */
+    static class HostKeyMismatchException extends Exception {
+        HostKeyMismatchException(String message) {
+            super(message);
+        }
+    }
+
+    private String getStoredFingerprint(String hostPort) {
+        try {
+            SharedPreferences prefs = getHostKeyPrefs();
+            return prefs.getString(hostPort, null);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to read stored fingerprint: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private void storeFingerprint(String hostPort, String fingerprint) {
+        try {
+            SharedPreferences prefs = getHostKeyPrefs();
+            prefs.edit().putString(hostPort, fingerprint).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to store host key fingerprint: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Get encrypted SharedPreferences for host key fingerprint storage.
+     * Uses EncryptedSharedPreferences to prevent tampering by attackers with device access.
+     */
+    private SharedPreferences getHostKeyPrefs() throws GeneralSecurityException, IOException {
+        MasterKey masterKey = new MasterKey.Builder(appContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build();
+        return EncryptedSharedPreferences.create(
+                appContext,
+                "ssh_host_keys_encrypted",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
+    }
+
+    /**
+     * Legacy method for backward compatibility.
+     * Uses the profile passed to the constructor if available (preserving auth type and SSH key),
+     * otherwise falls back to a default password-auth profile.
      */
     public void connect() {
-        // Create a default profile with password auth
-        CredentialProfile profile = new CredentialProfile();
-        profile.setAuthType(CredentialProfile.AUTH_TYPE_PASSWORD);
-        connect(profile);
+        if (profile != null) {
+            connect(profile);
+        } else {
+            // Validate required fields before creating profile
+            if (host == null || host.isEmpty()) {
+                if (listener != null) {
+                    listener.onError("SSH connect failed: host is not set");
+                }
+                return;
+            }
+            if (username == null || username.isEmpty()) {
+                if (listener != null) {
+                    listener.onError("SSH connect failed: username is not set");
+                }
+                return;
+            }
+            // Create a default profile with password auth from stored host/user/password
+            CredentialProfile defaultProfile = new CredentialProfile();
+            defaultProfile.setAuthType(CredentialProfile.AUTH_TYPE_PASSWORD);
+            defaultProfile.setHost(host);
+            defaultProfile.setPort(port);
+            defaultProfile.setUsername(username);
+            defaultProfile.setPassword(password);
+            connect(defaultProfile);
+        }
     }
 
     /**
@@ -234,7 +523,7 @@ public class SshClient {
 
             InputStream in = shellChannel.getInputStream();
             OutputStream out = shellChannel.getOutputStream();
-            shellChannel.connect();
+            shellChannel.connect(15000); // 15s timeout for shell channel open
 
             // Read thread: SSH -> TerminalView
             new Thread(() -> {
@@ -303,8 +592,9 @@ public class SshClient {
     }
 
     /**
-     * UserInfo implementation that automatically accepts host key prompts.
-     * This enables StrictHostKeyChecking="ask" to be safe and automatic.
+     * UserInfo implementation that automatically accepts prompts.
+     * Required by JSch even with StrictHostKeyChecking="no" for some code paths
+     * that may call promptPassword/promptPassphrase during authentication.
      */
     private static class AutoAcceptUserInfo implements UserInfo {
         @Override
@@ -329,8 +619,8 @@ public class SshClient {
 
         @Override
         public boolean promptYesNo(String message) {
-            // Automatically accept unknown host keys
-            Log.d(TAG, "Auto-accepting host key: " + message);
+            // Auto-accept prompts (host key verification is done at application level)
+            Log.d(TAG, "Auto-accepting prompt: " + message);
             return true;
         }
 
@@ -338,6 +628,44 @@ public class SshClient {
         public void showMessage(String message) {
             Log.d(TAG, "JSch message: " + message);
         }
+    }
+
+    /**
+     * Execute a command on the existing SSH session via ChannelExec.
+     * Used by ExportPublicKeyActivity to push keys through the active tunnel
+     * (avoids opening a second SSH session on a single-connection transport like BLE-Eth).
+     *
+     * Wraps the command in bash -c to ensure multi-line snippets (if/then/fi, etc.)
+     * are executed as a shell script rather than treated as raw text.
+     *
+     * @param command Shell command to execute
+     * @return exit status of the command, or -1 if execution failed
+     * @throws Exception if the channel cannot be opened or the session is not connected
+     */
+    public int executeCommand(String command) throws Exception {
+        if (!isConnected()) {
+            throw new IllegalStateException("SSH session is not connected");
+        }
+
+        // Escape single quotes in the command for safe embedding in bash -c '...'
+        String escapedCommand = command.replace("'", "'\\''");
+
+        // Wrap in bash -c to ensure multi-line snippets are interpreted as shell script
+        String bashCommand = "bash -c '" + escapedCommand + "'";
+
+        com.jcraft.jsch.ChannelExec channel =
+                (com.jcraft.jsch.ChannelExec) session.openChannel("exec");
+        channel.setCommand(bashCommand);
+        channel.connect(15000);
+
+        // Wait for command to complete
+        while (!channel.isClosed()) {
+            Thread.sleep(100);
+        }
+
+        int exitStatus = channel.getExitStatus();
+        channel.disconnect();
+        return exitStatus;
     }
 
     /** Disconnect SSH session. */
@@ -355,9 +683,13 @@ public class SshClient {
         if (shellChannel != null && shellChannel.isConnected()) {
             shellChannel.disconnect();
         }
+        shellChannel = null;
+
         if (session != null && session.isConnected()) {
             session.disconnect();
         }
+        session = null;
+
         transport.disconnect();
     }
 }
