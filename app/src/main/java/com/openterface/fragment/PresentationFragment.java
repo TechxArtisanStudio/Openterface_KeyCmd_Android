@@ -47,7 +47,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
+import com.openterface.keymod.util.DisplayCompat;
 import com.openterface.keymod.util.PopOutTouchPadDialog;
+import com.openterface.keymod.util.TouchPadHaptics;
 
 import java.util.concurrent.TimeUnit;
 
@@ -1049,9 +1051,7 @@ public class PresentationFragment extends Fragment {
     private void triggerTimerTargetAlertIfNeeded() {
         if (timerTargetAlerted) return;
         timerTargetAlerted = true;
-        if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(220); };
-        }
+        TouchPadHaptics.vibrateOneShot(requireContext(), 220, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     private void updateTimerProgressFill() {
@@ -1124,9 +1124,7 @@ public class PresentationFragment extends Fragment {
     // ── Helpers ──────────────────────────────────────────────────────
 
     private void vibrate() {
-        if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
-        }
+        TouchPadHaptics.vibrateOneShot(requireContext(), 30, VibrationEffect.DEFAULT_AMPLITUDE);
     }
 
     private void ensurePresentationPortraitPairListenerEnabled() {
@@ -1170,7 +1168,7 @@ public class PresentationFragment extends Fragment {
             return;
         }
         int lock;
-        switch (displayRotationCompat(activity)) {
+        switch (DisplayCompat.getRotation(activity)) {
             case Surface.ROTATION_180:
                 lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
                 break;
@@ -1182,17 +1180,6 @@ public class PresentationFragment extends Fragment {
                 break;
         }
         applyPresentationPortraitLockIfChanged(activity, lock);
-    }
-
-    private static int displayRotationCompat(@NonNull Activity activity) {
-        // getDisplay() requires API 30+, use getDefaultDisplay() for older versions
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            Display display = activity.getDisplay();
-            if (display != null) {
-                return display.getRotation();
-            }
-        }
-        return activity.getWindowManager().getDefaultDisplay().getRotation();
     }
 
     private void updatePresentationPortraitLockFromSensorDegrees(int orientationDegrees) {

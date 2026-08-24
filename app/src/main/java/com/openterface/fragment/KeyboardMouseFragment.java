@@ -30,6 +30,7 @@ import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.R;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.util.DisplayCompat;
 import com.openterface.keymod.basic.KmBasicHoldLockController;
 import com.openterface.keymod.fragments.KeyboardMouseSettingsFragment;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
@@ -326,7 +327,7 @@ public final class KeyboardMouseFragment extends Fragment {
             return;
         }
         int lock;
-        switch (displayRotationCompat(activity)) {
+        switch (DisplayCompat.getRotation(activity)) {
             case Surface.ROTATION_180:
                 lock = ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
                 break;
@@ -338,17 +339,6 @@ public final class KeyboardMouseFragment extends Fragment {
                 break;
         }
         applyPortraitPairLockIfChanged(activity, lock);
-    }
-
-    private static int displayRotationCompat(@NonNull Activity activity) {
-        // getDisplay() requires API 30+, use getDefaultDisplay() for older versions
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            Display display = activity.getDisplay();
-            if (display != null) {
-                return display.getRotation();
-            }
-        }
-        return activity.getWindowManager().getDefaultDisplay().getRotation();
     }
 
     private void updatePortraitPairLockFromSensorDegrees(int orientationDegrees) {

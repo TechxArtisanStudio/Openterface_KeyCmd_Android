@@ -50,7 +50,12 @@ public final class TouchPadHaptics {
         return (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
     }
 
-    private static void vibrateOneShot(@NonNull Context context, long durationMs, int amplitude) {
+    /**
+     * Vibrate for a single duration with the given amplitude.
+     * Centralizes the API 26+ {@link VibrationEffect} compat check.
+     * Safe to call even if the device has no vibrator.
+     */
+    public static void vibrateOneShot(@NonNull Context context, long durationMs, int amplitude) {
         Vibrator v = getVibrator(context);
         if (v == null || !v.hasVibrator()) {
             return;

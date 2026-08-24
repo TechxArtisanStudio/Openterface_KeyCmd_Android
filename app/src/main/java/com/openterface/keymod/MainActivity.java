@@ -336,10 +336,12 @@ public class MainActivity extends AppCompatActivity
     private static final int PERMISSION_REQUEST_CODE = 1;
 
     private BluetoothService bluetoothService;
+    private static BluetoothService sBluetoothService; // Static ref for access from other Activities
     private boolean isServiceBound;
 
     // Connection Manager
     private ConnectionManager connectionManager;
+    private static ConnectionManager sConnectionManager; // Static ref for access from other Activities
     
     // Bluetooth Auto Connect Manager
     private BluetoothAutoConnectManager autoConnectManager;
@@ -353,6 +355,7 @@ public class MainActivity extends AppCompatActivity
         public void onServiceConnected(ComponentName name, IBinder service) {
             BluetoothService.BluetoothBinder binder = (BluetoothService.BluetoothBinder) service;
             bluetoothService = binder.getService();
+            sBluetoothService = bluetoothService;
             isServiceBound = true;
             bluetoothService.setRxBleClient(rxBleClient);
             bluetoothService.setHostLockInboundParser(hostLockInboundParser);
@@ -362,7 +365,7 @@ public class MainActivity extends AppCompatActivity
             if (connectionManager != null) {
                 connectionManager.setBluetoothService(bluetoothService);
             }
-            
+
             // Initialize auto-connect manager after service is bound
             initializeAutoConnect();
         }
@@ -371,7 +374,10 @@ public class MainActivity extends AppCompatActivity
         public void onServiceDisconnected(ComponentName name) {
             isServiceBound = false;
             bluetoothService = null;
-            Log.v(TAG, "Unbound from BluetoothService");
+            // Do NOT clear sBluetoothService — other Activities (ExportPublicKeyActivity)
+            // need the reference even when MainActivity is destroyed by the system.
+            // The BluetoothService itself is a started+bound service and survives Activity death.
+            Log.v(TAG, "Unbound from BluetoothService (static ref preserved)");
 
             if (connectionManager != null) {
                 connectionManager.setBluetoothService(null);
@@ -456,6 +462,7 @@ public class MainActivity extends AppCompatActivity
         
         // Initialize Connection Manager
         connectionManager = new ConnectionManager(this);
+        sConnectionManager = connectionManager;
         connectionManager.setMainActivity(this); // Pass MainActivity reference
         setupConnectionStateListener();
         
@@ -2375,6 +2382,11 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    /** Static accessor for ConnectionManager — allows other Activities to check USB state. */
+    public static ConnectionManager getStaticConnectionManager() {
+        return sConnectionManager;
+    }
+
     /**
      * Get ConnectionManager instance for fragments
      */
@@ -2423,6 +2435,11 @@ public class MainActivity extends AppCompatActivity
 
     public BluetoothService getBluetoothService() {
         return bluetoothService;
+    }
+
+    /** Static accessor for BluetoothService — allows other Activities to access the service. */
+    public static BluetoothService getStaticBluetoothService() {
+        return sBluetoothService;
     }
 
     /**

@@ -75,6 +75,9 @@ public class BleEthTransport implements TransportAdapter {
     private final java.util.concurrent.atomic.AtomicLong tunnelConnectedTime = new java.util.concurrent.atomic.AtomicLong(0);
     private final java.util.concurrent.atomic.AtomicLong totalBytesReceived = new java.util.concurrent.atomic.AtomicLong(0);
     private final java.util.concurrent.atomic.AtomicLong totalBytesSent = new java.util.concurrent.atomic.AtomicLong(0);
+    // Guard to prevent watchdog from firing after it has been cancelled
+    // (cancel(false) cannot interrupt an already-running lambda).
+    private final java.util.concurrent.atomic.AtomicBoolean watchdogFired = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     /** Callback for writing data to the BLE characteristic. */
     public interface WriteCallback {
@@ -98,7 +101,6 @@ public class BleEthTransport implements TransportAdapter {
             // Send CONNECT with retry logic for transient firmware failures (e.g. status=0xe7)
             final int MAX_CONNECT_RETRIES = 3;
             final long RETRY_DELAY_MS = 2000;
-            boolean connected = false;
 
             for (int attempt = 1; attempt <= MAX_CONNECT_RETRIES; attempt++) {
                 // Clean up previous attempt's watchdog (if any)
@@ -139,13 +141,13 @@ public class BleEthTransport implements TransportAdapter {
                         Log.v(TAG, "JSch→BLE output reader thread started, waiting for tunnel connection...");
                         while (!Thread.currentThread().isInterrupted()) {
                             // Wait for tunnel to be connected
-                            while (!running || connId < 0) {
+                            while ((!running || connId < 0) && !Thread.currentThread().isInterrupted()) {
                                 Thread.sleep(50);
                             }
                             Log.v(TAG, "JSch→BLE: tunnel is connected (connId=" + connId + "), reading from pipe...");
                             int len = outReader.read(buffer);
                             if (len > 0) {
-                                Log.i(TAG, "JSch→BLE: sending " + len + " bytes");
+                                Log.v(TAG, "JSch→BLE: sending " + len + " bytes");
                                 send(buffer, 0, len);
                             } else if (len < 0) {
                                 Log.w(TAG, "JSch→BLE: EOF reached, reader exiting");
@@ -180,41 +182,24 @@ public class BleEthTransport implements TransportAdapter {
                         + " pendingConnId=" + pendingConnId
                         + " pendingConnStatus=0x" + Integer.toHexString(pendingConnStatus));
 
-                if (!resp) {
-                    Log.e(TAG, "BLE-Eth CONNECT timed out on attempt " + attempt);
+                if (!resp || pendingConnStatus != 0x00) {
+                    String reason = !resp
+                            ? "timed out"
+                            : "rejected: status=0x" + Integer.toHexString(pendingConnStatus);
+                    Log.w(TAG, "BLE-Eth CONNECT " + reason + " on attempt " + attempt);
                     if (attempt < MAX_CONNECT_RETRIES) {
                         Log.v(TAG, "BLE-Eth retrying in " + RETRY_DELAY_MS + "ms...");
                         Thread.sleep(RETRY_DELAY_MS);
                         continue;
                     }
                     if (listener != null) {
-                        listener.onError("BLE-Eth CONNECT timed out after " + MAX_CONNECT_RETRIES + " attempts");
-                    }
-                    return;
-                }
-
-                if (pendingConnStatus != 0x00) {
-                    Log.w(TAG, "BLE-Eth CONNECT rejected: status=0x" + Integer.toHexString(pendingConnStatus)
-                            + " on attempt " + attempt);
-                    if (attempt < MAX_CONNECT_RETRIES) {
-                        Log.v(TAG, "BLE-Eth retrying in " + RETRY_DELAY_MS + "ms...");
-                        Thread.sleep(RETRY_DELAY_MS);
-                        continue;
-                    }
-                    if (listener != null) {
-                        listener.onError("BLE-Eth CONNECT failed: status=0x"
-                                + Integer.toHexString(pendingConnStatus)
+                        listener.onError("BLE-Eth CONNECT failed: " + reason
                                 + " after " + MAX_CONNECT_RETRIES + " attempts");
                     }
                     return;
                 }
 
-                connected = true;
                 break;
-            }
-
-            if (!connected) {
-                return;
             }
 
             connId = pendingConnId;
@@ -239,12 +224,16 @@ public class BleEthTransport implements TransportAdapter {
 
     private void startHandshakeWatchdog() {
         stopHandshakeWatchdog();
+        watchdogFired.set(false);
         watchdogExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "BleEth-Watchdog");
             t.setDaemon(true);
             return t;
         });
         watchdogFuture = watchdogExecutor.schedule(() -> {
+            // Atomic guard: ensures the lambda runs at most once even if
+            // cancel(false) fails to interrupt an already-executing task.
+            if (!watchdogFired.compareAndSet(false, true)) return;
             long elapsed = System.currentTimeMillis() - tunnelConnectedTime.get();
             long sinceLastRx = System.currentTimeMillis() - lastDataReceivedTime.get();
             Log.e(TAG, "BLE-Eth HANDSHAKE WATCHDOG: No SSH data received in "
@@ -398,8 +387,8 @@ public class BleEthTransport implements TransportAdapter {
      * This feeds the frame parser and dispatches parsed frames.
      */
     public void handleIncomingData(byte[] data) {
-        Log.i(TAG, "BLE-Eth RX " + data.length + " bytes");
         if (BuildConfig.DEBUG) {
+            Log.v(TAG, "BLE-Eth RX " + data.length + " bytes");
             Log.v(TAG, "BLE-Eth RX hex: " + bytesToHex(data));
         }
         frameParser.feed(data);
@@ -448,18 +437,18 @@ public class BleEthTransport implements TransportAdapter {
                         + " firstByte=0x" + Integer.toHexString(frame.payload[0] & 0xFF));
                 if (looksLikeDataAck(frame.payload)) {
                     // ACK from firmware — can be ignored for basic operation
-                    Log.i(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF)
+                    Log.v(TAG, "BLE-Eth DATA ACK: status=0x" + Integer.toHexString(frame.payload[0] & 0xFF)
                             + " payloadLen=" + frame.payload.length);
                 } else {
                     // Incoming data push
-                    Log.i(TAG, "BLE-Eth DATA push: payloadLen=" + frame.payload.length);
+                    Log.v(TAG, "BLE-Eth DATA push: payloadLen=" + frame.payload.length);
                     DataReassembler.ReassembledData reassembled = dataReassembler.feed(frame.payload);
                     if (reassembled != null) {
                         totalBytesReceived.addAndGet(reassembled.data.length);
                         lastDataReceivedTime.set(System.currentTimeMillis());
                         // Stop watchdog once we start receiving data from the tunnel
                         stopHandshakeWatchdog();
-                        Log.i(TAG, "BLE-Eth reassembled: connId=" + reassembled.connId
+                        Log.v(TAG, "BLE-Eth reassembled: connId=" + reassembled.connId
                                 + " bytes=" + reassembled.data.length
                                 + " totalRecv=" + totalBytesReceived.get()
                                 + " totalSent=" + totalBytesSent.get());

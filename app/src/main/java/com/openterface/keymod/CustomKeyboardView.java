@@ -4042,18 +4042,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void performKeyHapticFeedback(View view) {
-        if (view == null || getContext() == null) {
-            return;
-        }
-        boolean enabled = PreferenceManager.getDefaultSharedPreferences(getContext())
-                .getBoolean("haptic_feedback", true);
-        if (!enabled) {
-            return;
-        }
-        view.performHapticFeedback(
-                HapticFeedbackConstants.KEYBOARD_TAP,
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
-        );
+        BasicKeyFeedback.performKeyHaptic(view);
     }
 
     private AlternateOption mapAsciiAlternate(String token) {
