@@ -69,11 +69,16 @@ import com.openterface.fragment.KmProSettingsFragment;
 import com.openterface.fragment.MacrosFragment;
 import com.openterface.fragment.MouseFragment;
 import com.openterface.fragment.PresentationFragment;
+import com.openterface.terminal.CredentialProfile;
+import com.openterface.terminal.SshClient;
 import com.openterface.terminal.TerminalFragment;
 import com.openterface.fragment.ShortcutFragment;
 import com.openterface.fragment.ShortcutHubFragment;
 import com.openterface.fragment.VoiceInputFragment;
 import com.openterface.fragment.AgentFragment;
+import com.openterface.keymod.agent.core.AgentEnvironment;
+import com.openterface.keymod.agent.ui.AgentSettingsBottomSheet;
+import com.openterface.keymod.agent.ui.TargetSettingsSheet;
 import com.openterface.keymod.prefs.KmProSubmodePrefs;
 import com.openterface.keymod.BuildConfig;
 import com.openterface.keymod.help.HelpImageConfig;
@@ -101,7 +106,8 @@ import android.Manifest;
 import com.polidea.rxandroidble2.scan.ScanSettings;
 import android.app.PendingIntent;
 
-public class MainActivity extends AppCompatActivity implements BluetoothDialogFragment.BluetoothConnectionListener {
+public class MainActivity extends AppCompatActivity
+        implements BluetoothDialogFragment.BluetoothConnectionListener, AgentEnvironment {
 
     public static final String EXTRA_AGENT_DEMO_SCRIPT = "agent_demo_script";
     public static final String EXTRA_AGENT_DEMO_AUTO_PLAY = "agent_demo_auto_play";
@@ -193,6 +199,8 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     private LinearLayout navAgent;
     private ImageButton targetOsHeaderButton;
     private ImageButton credentialHeaderButton;
+    @Nullable
+    private ImageButton agentSettingsHeaderButton;
     @Nullable
     private View headerRightCluster;
     @Nullable
@@ -524,9 +532,11 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
     
     private void setImmersiveMode() {
         View decorView = getWindow().getDecorView();
+        // LAYOUT_STABLE intentionally omitted: it prevents adjustResize from
+        // working when the soft keyboard appears, causing the Agent input bar
+        // to be covered by the keyboard.
         decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -634,7 +644,13 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         headerRightCluster = findViewById(R.id.header_right_cluster);
         headerEndPullSpacer = findViewById(R.id.header_end_pull_spacer);
         if (targetOsHeaderButton != null) {
-            targetOsHeaderButton.setOnClickListener(v -> showTargetOsPickerDialog());
+            targetOsHeaderButton.setOnClickListener(v -> {
+                if (LaunchPanelActivity.MODE_AGENT.equals(currentNavMode)) {
+                    showTargetSettingsSheet();
+                } else {
+                    showTargetOsPickerDialog();
+                }
+            });
             updateTargetOsHeaderIcon();
         }
         if (credentialHeaderButton != null) {
@@ -642,6 +658,24 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
                 Intent intent = new Intent(this, com.openterface.terminal.CredentialActivity.class);
                 startActivity(intent);
             });
+        }
+        agentSettingsHeaderButton = findViewById(R.id.agent_settings_header_button);
+        if (agentSettingsHeaderButton != null) {
+            agentSettingsHeaderButton.setOnClickListener(v -> {
+                new com.openterface.keymod.agent.ui.AgentSettingsBottomSheet()
+                        .show(getSupportFragmentManager(), "agent_settings");
+            });
+            // Listen for the settings-sheet dismiss result — replaces the old
+            // static callback (which leaked MainActivity via a captured lambda).
+            getSupportFragmentManager().setFragmentResultListener(
+                    com.openterface.keymod.agent.ui.AgentSettingsBottomSheet.RESULT_KEY,
+                    this,
+                    (requestKey, result) -> {
+                        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                        if (f instanceof AgentFragment) {
+                            ((AgentFragment) f).onSettingsDismissed();
+                        }
+                    });
         }
         kmProSettingsOverlay = findViewById(R.id.km_pro_settings_overlay);
         imeSavedTextOverlay = findViewById(R.id.ime_saved_text_overlay);
@@ -1846,10 +1880,27 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
             boolean showCredential = LaunchPanelActivity.MODE_TERMINAL.equals(currentNavMode);
             credentialHeaderButton.setVisibility(showCredential ? View.VISIBLE : View.GONE);
         }
+        // Agent settings button is only relevant for Agent mode
+        if (agentSettingsHeaderButton != null) {
+            boolean showAgent = LaunchPanelActivity.MODE_AGENT.equals(currentNavMode);
+            agentSettingsHeaderButton.setVisibility(showAgent ? View.VISIBLE : View.GONE);
+        }
+        // Update target OS / terminal icon when mode changes
+        updateTargetOsHeaderIcon();
     }
 
     private void updateTargetOsHeaderIcon() {
         if (targetOsHeaderButton == null) return;
+
+        // In Agent mode, show terminal icon instead of OS icon
+        if (LaunchPanelActivity.MODE_AGENT.equals(currentNavMode)) {
+            targetOsHeaderButton.setImageResource(R.drawable.ic_terminal);
+            targetOsHeaderButton.setContentDescription(
+                    getString(R.string.target_os_header_cd));
+            targetOsHeaderButton.setColorFilter(headerNeutralActionTint(), PorterDuff.Mode.SRC_IN);
+            return;
+        }
+
         String targetOs = getTargetOs();
         int iconRes;
         int nameRes;
@@ -1867,6 +1918,23 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
         targetOsHeaderButton.setContentDescription(
                 getString(R.string.target_os_header_cd_selected, getString(nameRes)));
         targetOsHeaderButton.setColorFilter(headerNeutralActionTint(), PorterDuff.Mode.SRC_IN);
+    }
+
+    /**
+     * Show the unified Target Settings bottom sheet (OS + Terminal Profile).
+     * Triggered by the header's target OS button.
+     */
+    private void showTargetSettingsSheet() {
+        TargetSettingsSheet sheet = new TargetSettingsSheet();
+        sheet.setTargetChangedListener(() -> {
+            // Refresh Agent session bar when target changes
+            AgentFragment agentFragment = (AgentFragment) getSupportFragmentManager()
+                    .findFragmentById(R.id.fragment_container);
+            if (agentFragment != null) {
+                agentFragment.updateSessionBar();
+            }
+        });
+        sheet.show(getSupportFragmentManager(), "target_settings");
     }
 
     private void showTargetOsPickerDialog() {
@@ -2312,6 +2380,45 @@ public class MainActivity extends AppCompatActivity implements BluetoothDialogFr
      */
     public ConnectionManager getConnectionManager() {
         return connectionManager;
+    }
+
+    // ── SshClient shared across tabs ──────────────────────────────────
+
+    @Nullable private SshClient sharedSshClient;
+    @Nullable private CredentialProfile activeProfile;
+
+    /** Get the active SshClient (survives tab switches). */
+    @Nullable
+    public SshClient getSshClient() {
+        return sharedSshClient;
+    }
+
+    /** Get the active SSH profile (for Agent auto-connect). */
+    @Nullable
+    public CredentialProfile getActiveSshProfile() {
+        return activeProfile;
+    }
+
+    /** Called by TargetSettingsSheet when user selects a profile. */
+    public void setActiveSshProfile(@Nullable CredentialProfile profile) {
+        this.activeProfile = profile;
+    }
+
+    /** Called by TerminalFragment when SSH connects. */
+    public void setSshClient(@Nullable SshClient client) {
+        this.sharedSshClient = client;
+    }
+
+    /** Get the current TerminalFragment instance (for cross-fragment access).
+     * Returns null if the Terminal tab is not currently visible.
+     */
+    @Nullable
+    public TerminalFragment getTerminalFragment() {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof TerminalFragment) {
+            return (TerminalFragment) f;
+        }
+        return null;
     }
 
     public BluetoothService getBluetoothService() {

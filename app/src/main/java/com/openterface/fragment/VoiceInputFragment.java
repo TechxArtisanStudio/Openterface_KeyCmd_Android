@@ -46,6 +46,7 @@ import com.openterface.keymod.BluetoothService;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.MainActivity;
 import com.openterface.keymod.ThemeManager;
+import com.openterface.keymod.agent.settings.AIConfigProvider;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
 
 import org.json.JSONArray;
@@ -1044,23 +1045,24 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         String systemPrompt;
         String aiRole;
         try {
-            // Per-provider key only — never cross-contaminate between providers
-            int providerIdx = prefs.getInt("ai_provider", 0);
-            String perProviderKey = prefs.getString("ai_api_key_" + providerIdx, "");
-            aiApiKey = perProviderKey;
-            aiEndpoint = prefs.getString("ai_endpoint", "https://api.openai.com/v1");
+            // Use unified AIConfigProvider
+            AIConfigProvider config = AIConfigProvider.getInstance(requireContext());
+            aiApiKey = config.getApiKey();
+            aiEndpoint = config.getEndpoint();
+            aiModel = config.getModel();
+
             // For OpenAI-endpoint providers only, allow Whisper key as fallback
             if (aiApiKey.isEmpty() && aiEndpoint.contains("api.openai.com")) {
                 aiApiKey = prefs.getString("whisper_api_key", "");
             }
-            Log.v(TAG, "AI refine: providerIdx=" + providerIdx
-                    + " perProviderKey=" + (perProviderKey.isEmpty() ? "(empty)" : perProviderKey.substring(0, Math.min(8, perProviderKey.length())) + "...")
+            Log.v(TAG, "AI refine: provider=" + config.getProviderName()
+                    + " apiKey=" + (aiApiKey.isEmpty() ? "(empty)" : aiApiKey.substring(0, Math.min(8, aiApiKey.length())) + "...")
                     + " endpoint=" + aiEndpoint);
-            aiModel    = prefs.getString("ai_model", "gpt-4o-mini");
+
             systemPrompt = prefs.getString("ai_system_prompt", "");
             aiRole = prefs.getString("ai_role", "text_refinement");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to read AI prefs", e);
+            Log.e(TAG, "Failed to read AI config", e);
             if (autoSendToTarget) sendTranscribedText(true);
             return;
         }
@@ -1069,10 +1071,8 @@ public class VoiceInputFragment extends Fragment implements TextToSpeech.OnInitL
         }
 
         if (aiApiKey.isEmpty()) {
-            String[] providerNames = {"OpenAI", "Anthropic", "Google Gemini", "Mistral AI",
-                    "Groq", "Alibaba (Qwen)", "DeepSeek", "Custom"};
-            int pIdx = prefs.getInt("ai_provider", 0);
-            String pName = (pIdx < providerNames.length) ? providerNames[pIdx] : "the selected provider";
+            AIConfigProvider config = AIConfigProvider.getInstance(requireContext());
+            String pName = config.getProviderName();
             Toast.makeText(getContext(), getString(R.string.voice_toast_ai_no_key, pName), Toast.LENGTH_LONG).show();
             if (autoSendToTarget) sendTranscribedText(true);
             return;

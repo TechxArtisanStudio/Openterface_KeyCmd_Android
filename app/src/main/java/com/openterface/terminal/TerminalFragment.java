@@ -1270,6 +1270,20 @@ public class TerminalFragment extends Fragment {
         return isSshConnected;
     }
 
+    /**
+     * Get the current SshClient instance (for cross-fragment access, e.g. Agent executor).
+     * Returns null if SSH is not connected.
+     */
+    @Nullable
+    public SshClient getSshClient() {
+        return isSshConnected ? sshClient : null;
+    }
+
+    /** Check if SSH session is active (for cross-fragment access). */
+    public boolean isSshSessionActive() {
+        return isSshConnected;
+    }
+
     private void resetTerminalSession() {
         terminalSession = new TerminalSession(
                 prefs.getTerminalRows(),
@@ -1494,6 +1508,10 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed) return;
                     isSshConnected = true;
+                    // Register SshClient with MainActivity so Agent tab can access it
+                    if (mainActivity != null) {
+                        mainActivity.setSshClient(sshClient);
+                    }
                     if (terminalView != null) {
                         terminalView.resetScrollX();
                     }
@@ -1516,6 +1534,10 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed) return;
                     isSshConnected = false;
+                    // Unregister from MainActivity
+                    if (mainActivity != null) {
+                        mainActivity.setSshClient(null);
+                    }
                     updateConnectionState();
                     teardownTerminalKeyboard();
                     if (terminalView != null) {
@@ -1585,6 +1607,10 @@ public class TerminalFragment extends Fragment {
         if (sshClient != null) {
             sshClient.disconnect();
             sshClient = null;
+        }
+        // Unregister from MainActivity so Agent tab no longer sees a dead client
+        if (mainActivity != null) {
+            mainActivity.setSshClient(null);
         }
         // Clean up BLE-Eth callback
         if (bleEthCallback != null && mainActivity != null) {
@@ -1695,6 +1721,12 @@ public class TerminalFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Re-attach SshClient listener after returning from another tab.
+        // onDestroyView() detached it to prevent callbacks to destroyed Views,
+        // but the SSH connection stays alive across tab switches.
+        if (sshClient != null && isSshConnected && !viewDestroyed) {
+            sshClient.setListener(createSshListener());
+        }
         updateConnectionState();
     }
 
@@ -1729,10 +1761,13 @@ public class TerminalFragment extends Fragment {
         // 2. Cancel all Handler callbacks to prevent accessing destroyed Views
         mainHandler.removeCallbacksAndMessages(null);
 
-        // 3. Disconnect SSH
-        disconnect();
+        // 3. Detach SshClient listener so background read thread doesn't push data
+        //    to a destroyed terminalView. SSH connection stays alive across tab switches.
+        if (sshClient != null) {
+            sshClient.setListener(null);
+        }
 
-        // 4. Clean up keyboard transport
+        // 4. Clean up keyboard transport (keyboard is owned by this fragment)
         teardownTerminalKeyboard();
 
         // 5. Clear all View references to prevent memory leaks
