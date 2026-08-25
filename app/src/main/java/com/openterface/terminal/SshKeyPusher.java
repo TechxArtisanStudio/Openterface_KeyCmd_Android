@@ -84,7 +84,13 @@ public class SshKeyPusher {
 
                 // Escape the public key for shell safety
                 String escapedKey = publicKey.replace("'", "'\\''");
-                String appendCmd = "echo '" + escapedKey + "' >> ~/.ssh/authorized_keys";
+                // Double newline guard:
+                // 1) Pre-check: if file exists but lacks trailing \n, add one first
+                // 2) Post-append: add trailing \n so next key won't stack
+                String appendCmd =
+                    "if [ -s ~/.ssh/authorized_keys ] && [ \"$(tail -c1 ~/.ssh/authorized_keys | wc -l)\" -eq 0 ]; then echo '' >> ~/.ssh/authorized_keys; fi; " +
+                    "echo '" + escapedKey + "' >> ~/.ssh/authorized_keys; " +
+                    "echo '' >> ~/.ssh/authorized_keys";
                 int appendExit = executeCommand(session, appendCmd);
 
                 if (appendExit != 0) {
