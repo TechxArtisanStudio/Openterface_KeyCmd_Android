@@ -90,6 +90,14 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:theme="@style/Theme.KeyCmd" />
 
+        <!-- Export Public Key Activity -->
+        <activity
+            android:name="com.openterface.terminal.ExportPublicKeyActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.KeyCmd" />
+
         <service
             android:name="com.openterface.keymod.BluetoothService"
             android:enabled="true"

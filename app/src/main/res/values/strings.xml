@@ -1592,7 +1592,7 @@ by TechxArtisan</string>
     <string name="terminal_search_devices">Search devices</string>
     <string name="terminal_search_hint">Search by name or host…</string>
     <string name="terminal_no_match">No matching devices</string>
-    <string name="terminal_no_devices">No devices configured. Add one in Settings → Credentials.</string>
+    <string name="terminal_no_devices">No devices configured. Tap the settings icon → Credentials.</string>
     <string name="terminal_add_profile">Add Profile</string>
     <string name="terminal_select_device">Please select a device</string>
     <string name="terminal_device_info">Device Info</string>
@@ -1640,6 +1640,17 @@ by TechxArtisan</string>
     <string name="terminal_error_host_key_unknown">Host key verification failed. Please check the host key and try again</string>
     <string name="terminal_error_no_route">Cannot reach remote host. Please check network</string>
     <string name="terminal_error_generic">An error occurred while connecting</string>
+
+    <!-- Terminal Compose mode -->
+    <string name="terminal_submode_keyboard">Keyboard</string>
+    <string name="terminal_submode_compose">Compose</string>
+    <string name="terminal_compose_hint">Type commands here, then send to terminal…</string>
+    <string name="terminal_compose_send">Send</string>
+    <string name="terminal_compose_sent">Sent to terminal</string>
+    <string name="terminal_compose_empty">Nothing to send</string>
+    <string name="terminal_compose_clear_cd">Clear editor</string>
+    <string name="terminal_compose_library_cd">Open saved texts</string>
+    <string name="terminal_compose_library_coming_soon">Saved texts library coming soon</string>
 
     <!-- Remote-added strings -->
     <string name="top_mode_label_terminal_summary">SSH over USB or Bluetooth</string>
@@ -1772,6 +1783,21 @@ by TechxArtisan</string>
     <string name="credential_public_key_not_available">Not available (re-import or re-generate key to view)</string>
     <string name="credential_private_key_copied">Private key copied to clipboard</string>
     <string name="credential_export_public_key">Export or share a public key</string>
+    <string name="credential_export_to">Export to</string>
+    <string name="credential_target_server">Target server</string>
+    <string name="credential_ssh_keys_location">SSH keys location ($1)</string>
+    <string name="credential_public_key_file">File containing public keys ($2)</string>
+    <string name="credential_snippet">Snippet</string>
+    <string name="credential_export">Export</string>
+    <string name="credential_export_copy_clipboard">Copy to clipboard</string>
+    <string name="credential_export_copy_clipboard_desc">Copy public key to system clipboard</string>
+    <string name="credential_export_share_app">Share to other apps</string>
+    <string name="credential_export_share_app_desc">Send to WeChat, email, etc.</string>
+    <string name="credential_export_share_via">Share SSH public key via</string>
+    <string name="credential_export_push_server">Push to server</string>
+    <string name="credential_export_push_server_desc">Upload to remote authorized_keys</string>
+    <string name="credential_export_copied">Public key copied to clipboard</string>
+    <string name="credential_export_no_apps">No apps available to share</string>
     <string name="credential_push_key">Push to Server</string>
     <string name="credential_push_key_title">Push Public Key</string>
     <string name="credential_push_key_desc">Push public key to server via password auth</string>

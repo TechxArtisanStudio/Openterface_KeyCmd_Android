@@ -19,7 +19,30 @@
         android:paddingStart="8dp"
         android:paddingEnd="8dp">
 
-        <!-- Left side: connection status -->
+        <!-- Left side: submode tabs (hidden for now) -->
+        <LinearLayout
+            android:id="@+id/terminal_submode_tabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/terminal_tab_keyboard"
+                style="@style/KmProSubmodeTabIcon"
+                android:contentDescription="@string/terminal_submode_keyboard"
+                android:src="@drawable/ic_km_pro_submode_keyboard" />
+
+            <ImageButton
+                android:id="@+id/terminal_tab_compose"
+                style="@style/KmProSubmodeTabIcon"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/terminal_submode_compose"
+                android:src="@drawable/ic_km_pro_submode_compose" />
+        </LinearLayout>
+
+        <!-- Connection status -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -50,7 +73,7 @@
 
         </LinearLayout>
 
-        <!-- Right side: transport + connect buttons -->
+        <!-- Right side: transport button + connect button -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -62,24 +85,21 @@
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="28dp"
-                android:layout_marginEnd="4dp"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="@string/terminal_transport_ble"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:visibility="gone"
-                app:icon="@drawable/ic_bluetooth_24"
                 app:iconGravity="textStart"
-                app:iconPadding="2dp"
-                app:iconSize="14dp" />
+                app:iconPadding="4dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/terminal_connect_btn"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="28dp"
+                android:layout_marginStart="6dp"
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:insetTop="0dp"
@@ -215,6 +235,139 @@
 
         </LinearLayout>
 
+    </LinearLayout>
+
+    <!-- Compose editor container (shown in compose submode, at bottom in landscape) -->
+    <!-- Matches KM Pro's BasicComposeFragment layout structure -->
+    <LinearLayout
+        android:id="@+id/terminal_compose_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:background="@color/background_light"
+        android:clipToPadding="false"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp">
+
+        <!-- Editor: fixed height, scrollable -->
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/basic_compose_editor_min_height"
+            android:clipToPadding="false"
+            android:scrollbars="vertical">
+
+            <EditText
+                android:id="@+id/terminal_compose_editor"
+                style="@style/Widget.KeyCmd.BasicComposeEditor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/terminal_compose_hint"
+                android:minHeight="@dimen/basic_compose_editor_min_height"
+                android:imeOptions="flagNoExtractUi"
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="1"
+                android:scrollbars="vertical"
+                android:gravity="top|start"
+                android:importantForAutofill="no" />
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- Action buttons row - same layout as KM Pro -->
+        <LinearLayout
+            android:id="@+id/terminal_compose_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:paddingBottom="8dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_compose_clear"
+                style="@style/Widget.KeyCmd.BasicComposeActionButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:contentDescription="@string/terminal_compose_clear_cd"
+                android:text=""
+                app:icon="@drawable/ic_compose_clear_24"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_compose_library"
+                style="@style/Widget.KeyCmd.BasicComposeActionButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:contentDescription="@string/terminal_compose_library_cd"
+                android:text=""
+                app:icon="@drawable/ic_bookmark_star_24"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_compose_save"
+                style="@style/Widget.KeyCmd.BasicComposeActionButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:contentDescription="@string/ime_saved_text_save_cd"
+                android:text=""
+                app:icon="@drawable/ic_top_save"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="?attr/colorOnSurface" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_compose_send"
+                style="@style/Widget.KeyCmd.BasicComposeActionButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="2"
+                android:gravity="center"
+                android:contentDescription="@string/terminal_compose_send"
+                android:text=""
+                app:icon="@drawable/ic_compose_send_24"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="24dp"
+                app:iconTint="?attr/colorOnSurface" />
+        </LinearLayout>
+
+        <!-- Shortcut strip (same as full keyboard) -->
+        <FrameLayout
+            android:id="@+id/terminal_compose_shortcut_strip_wrap"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/compose_shortcut_strip_height"
+            android:layout_marginStart="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
+            android:layout_marginEnd="@dimen/basic_compose_km_pro_shortcut_strip_horizontal_outdent"
+            android:layout_marginTop="2dp">
+
+            <com.openterface.keymod.CustomKeyboardView
+                android:id="@+id/terminal_compose_shortcut_strip"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingTop="@dimen/keyboard_outer_padding_top"
+                android:paddingBottom="@dimen/keyboard_outer_padding_bottom"
+                android:keyBackground="@drawable/key_background"
+                android:theme="@style/ButtonTheme"
+                app:showGuiHidKey="false" />
+        </FrameLayout>
     </LinearLayout>
 
 </LinearLayout>

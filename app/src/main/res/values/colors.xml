@@ -158,4 +158,8 @@
     <color name="terminal_transport_badge_bg">#FF20252B</color>
     <color name="terminal_transport_badge_stroke">#FF303A44</color>
     <color name="terminal_transport_badge_text">#FF8FD3FF</color>
+
+    <!-- Terminal Compose mode colors -->
+    <color name="terminal_compose_bg">#FF1E1E1E</color>
+    <color name="terminal_compose_button_bar_bg">#FF252525</color>
 </resources>
