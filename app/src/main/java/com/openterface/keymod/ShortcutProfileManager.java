@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.openterface.keymod.hid.ConsumerControlHidTransport;
 import com.openterface.keymod.preset.KeyboardStripPresetConstants;
 import com.openterface.keymod.util.KeyParser;
 
@@ -38,6 +39,8 @@ public class ShortcutProfileManager {
     private static final String KEY_MIGRATION_DEFAULT_GENERAL_V2 = "migration_default_general_v2";
     /** One-time: append the same 5 IDs to existing users' Default Favorites list. */
     private static final String KEY_MIGRATION_DEFAULT_FAVORITES_V2 = "migration_default_favorites_v2";
+    /** One-time: append media shortcuts (Vol+/Vol-/Mute/Play/Next/Prev/Stop/Eject) to existing users' Default Favorites. */
+    private static final String KEY_MIGRATION_MEDIA_FAVORITES_V1 = "migration_media_favorites_v1";
     /**
      * One-time: ensure Default General contains canonical {@code default_*} rows by id even when
      * an older migration skipped them due to signature-only collision detection.
@@ -98,6 +101,7 @@ public class ShortcutProfileManager {
             saveProfiles();
         }
         migrateDefaultFavoritesAddV2();
+        migrateMediaFavoritesAddV1();
         if (reconcileAllProfilesFlatIntoCategories()) {
             saveProfiles();
         }
@@ -163,6 +167,40 @@ public class ShortcutProfileManager {
         p.shortcuts.add(new Shortcut("default_print",      "Print",      "Ctrl+P", MOD_CTRL, KEY_P, "print_24", 11));
         p.shortcuts.add(new Shortcut("default_close",      "Close",      "Ctrl+W", MOD_CTRL, KEY_W, "close_24", 12));
         p.shortcuts.add(new Shortcut("default_replace",    "Replace",    "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24", 13));
+
+        // Media / Consumer Control shortcuts (CH9329 CMD 0x03)
+        Shortcut volUp = new Shortcut("media_vol_up", "Volume Up", "VOL+", 0, ConsumerControlHidTransport.USAGE_VOLUME_UP, "ic_media_volume_up", 100);
+        volUp.isConsumerControl = true;
+        p.shortcuts.add(volUp);
+
+        Shortcut volDown = new Shortcut("media_vol_down", "Volume Down", "VOL-", 0, ConsumerControlHidTransport.USAGE_VOLUME_DOWN, "ic_media_volume_down", 101);
+        volDown.isConsumerControl = true;
+        p.shortcuts.add(volDown);
+
+        Shortcut mute = new Shortcut("media_mute", "Mute", "MUTE", 0, ConsumerControlHidTransport.USAGE_MUTE, "ic_media_volume_off", 102);
+        mute.isConsumerControl = true;
+        p.shortcuts.add(mute);
+
+        Shortcut playPause = new Shortcut("media_play_pause", "Play/Pause", "PLAY", 0, ConsumerControlHidTransport.USAGE_PLAY_PAUSE, "ic_media_play_arrow", 103);
+        playPause.isConsumerControl = true;
+        p.shortcuts.add(playPause);
+
+        Shortcut nextTrack = new Shortcut("media_next", "Next Track", "NEXT", 0, ConsumerControlHidTransport.USAGE_NEXT_TRACK, "ic_media_skip_next", 104);
+        nextTrack.isConsumerControl = true;
+        p.shortcuts.add(nextTrack);
+
+        Shortcut prevTrack = new Shortcut("media_prev", "Previous Track", "PREV", 0, ConsumerControlHidTransport.USAGE_PREV_TRACK, "ic_media_skip_previous", 105);
+        prevTrack.isConsumerControl = true;
+        p.shortcuts.add(prevTrack);
+
+        Shortcut stop = new Shortcut("media_stop", "Stop", "STOP", 0, ConsumerControlHidTransport.USAGE_STOP, "ic_media_stop", 106);
+        stop.isConsumerControl = true;
+        p.shortcuts.add(stop);
+
+        Shortcut eject = new Shortcut("media_eject", "Eject CD", "EJECT", 0, ConsumerControlHidTransport.USAGE_EJECT, "ic_media_eject", 107);
+        eject.isConsumerControl = true;
+        p.shortcuts.add(eject);
+
         return p;
     }
 
@@ -202,6 +240,21 @@ public class ShortcutProfileManager {
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_print", "Print", "Ctrl+P", MOD_CTRL, KEY_P, "print_24", 11);
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_close", "Close", "Ctrl+W", MOD_CTRL, KEY_W, "close_24", 12);
         changed |= addOrCreateDefaultShortcut(ordered, bySignature, "default_replace", "Replace", "Ctrl+H", MOD_CTRL, KEY_H, "find_replace_24", 13);
+
+        // Preserve media / Consumer Control shortcuts created by createDefaultProfile()
+        Set<String> orderedIds = new HashSet<>();
+        for (Shortcut s : ordered) {
+            if (s != null && s.id != null) {
+                orderedIds.add(s.id);
+            }
+        }
+        for (Shortcut s : source) {
+            if (s != null && s.id != null && s.id.startsWith("media_") && !orderedIds.contains(s.id)) {
+                ordered.add(s);
+                orderedIds.add(s.id);
+                changed = true;
+            }
+        }
 
         if (source.size() != ordered.size()) {
             changed = true;
@@ -358,6 +411,104 @@ public class ShortcutProfileManager {
             updateMyShortcuts("default", my);
         }
         prefs.edit().putBoolean(KEY_MIGRATION_DEFAULT_FAVORITES_V2, true).apply();
+    }
+
+    /**
+     * One-time migration: add all 8 media shortcuts (Volume Up, Volume Down, Mute, Play/Pause,
+     * Next Track, Previous Track, Stop, Eject) to existing users' Default Favorites (My Shortcuts)
+     * list. Ensures that users who already had favorites seeded before media shortcuts existed also
+     * get them automatically. Runs once per device.
+     *
+     * <p>This migration creates the media shortcut definitions inline (rather than looking them up
+     * from the saved profile) because older saved profiles do not contain these entries.
+     */
+    private void migrateMediaFavoritesAddV1() {
+        if (prefs.getBoolean(KEY_MIGRATION_MEDIA_FAVORITES_V1, false)) {
+            return;
+        }
+        ShortcutProfile def = getProfileById("default");
+        if (def == null) {
+            prefs.edit().putBoolean(KEY_MIGRATION_MEDIA_FAVORITES_V1, true).apply();
+            return;
+        }
+
+        // Ensure media shortcuts exist in the profile's shortcut list first
+        Map<String, Shortcut> byId = new HashMap<>();
+        for (Shortcut s : def.getAllShortcutsFlat()) {
+            if (s != null && s.id != null) {
+                byId.put(s.id, s);
+            }
+        }
+
+        // Create media shortcuts inline — these may not exist in older saved profiles
+        Object[][] mediaDefs = {
+                {"media_vol_up",      "Volume Up",      "VOL+",  ConsumerControlHidTransport.USAGE_VOLUME_UP,   "ic_media_volume_up"},
+                {"media_vol_down",    "Volume Down",    "VOL-",  ConsumerControlHidTransport.USAGE_VOLUME_DOWN, "ic_media_volume_down"},
+                {"media_mute",        "Mute",           "MUTE",  ConsumerControlHidTransport.USAGE_MUTE,        "ic_media_volume_off"},
+                {"media_play_pause",  "Play/Pause",     "PLAY",  ConsumerControlHidTransport.USAGE_PLAY_PAUSE,  "ic_media_play_arrow"},
+                {"media_next",        "Next Track",     "NEXT",  ConsumerControlHidTransport.USAGE_NEXT_TRACK,  "ic_media_skip_next"},
+                {"media_prev",        "Previous Track", "PREV",  ConsumerControlHidTransport.USAGE_PREV_TRACK,  "ic_media_skip_previous"},
+                {"media_stop",        "Stop",           "STOP",  ConsumerControlHidTransport.USAGE_STOP,        "ic_media_stop"},
+                {"media_eject",       "Eject CD",       "EJECT", ConsumerControlHidTransport.USAGE_EJECT,       "ic_media_eject"},
+        };
+        int order = nextDisplayOrderAcrossProfile(def);
+        boolean profileChanged = false;
+        for (Object[] row : mediaDefs) {
+            String id = (String) row[0];
+            if (!byId.containsKey(id)) {
+                Shortcut s = new Shortcut(id, (String) row[1], (String) row[2],
+                        0, (int) row[3], (String) row[4], order++);
+                s.isConsumerControl = true;
+                // Add to the first category or flat list
+                if (def.categories != null && !def.categories.isEmpty()) {
+                    ShortcutCategory firstCat = def.categories.get(0);
+                    if (firstCat.shortcuts == null) {
+                        firstCat.shortcuts = new ArrayList<>();
+                    }
+                    firstCat.shortcuts.add(s);
+                } else {
+                    if (def.shortcuts == null) {
+                        def.shortcuts = new ArrayList<>();
+                    }
+                    def.shortcuts.add(s);
+                }
+                byId.put(id, s);
+                profileChanged = true;
+            }
+        }
+
+        // Now add them to favorites
+        List<Shortcut> my = new ArrayList<>(getMyShortcuts("default"));
+        java.util.Set<String> existingIds = new java.util.HashSet<>();
+        for (Shortcut s : my) {
+            if (s != null && s.id != null) {
+                existingIds.add(s.id);
+            }
+        }
+        String[] mediaIds = {"media_vol_up", "media_vol_down", "media_mute",
+                "media_play_pause", "media_next", "media_prev",
+                "media_stop", "media_eject"};
+        boolean changed = false;
+        for (String id : mediaIds) {
+            if (existingIds.contains(id)) {
+                continue;
+            }
+            Shortcut src = byId.get(id);
+            if (src == null) {
+                continue;
+            }
+            my.add(cloneShortcut(src));
+            changed = true;
+        }
+        if (changed) {
+            renumberDisplayOrder(my);
+            updateMyShortcuts("default", my);
+        }
+        // Save profile if we added shortcuts to it OR if favorites changed
+        if (profileChanged || changed) {
+            saveProfiles();
+        }
+        prefs.edit().putBoolean(KEY_MIGRATION_MEDIA_FAVORITES_V1, true).apply();
     }
 
     /** Canonical Default General rows (id, name, label, modifiers, keyCode, icon, displayOrder). */
@@ -566,7 +717,10 @@ public class ShortcutProfileManager {
                 return new String[]{
                         "default_select_all", "default_copy", "default_cut", "default_paste",
                         "default_save", "default_undo", "default_find", "default_redo",
-                        "default_new", "default_open", "default_print", "default_close", "default_replace"
+                        "default_new", "default_open", "default_print", "default_close", "default_replace",
+                        "media_vol_up", "media_vol_down", "media_mute",
+                        "media_play_pause", "media_next", "media_prev",
+                        "media_stop", "media_eject"
                 };
             case "blender":
                 return new String[]{"b-t-1", "b-t-2", "b-t-3", "b-s-1", "b-v-1", "b-mo-1", "b-to-1"};
@@ -1960,6 +2114,15 @@ public class ShortcutProfileManager {
          */
         public int unicodeCodePoint;
 
+        /**
+         * When {@code true}, {@link #keyCode} is a Consumer Control usage bitmask (CH9329 CMD 0x03)
+         * rather than a keyboard HID usage code. The dispatch path routes through
+         * {@link ConsumerControlHidTransport} instead of
+         * {@link HIDSender#sendKeyEvent}.
+         * Backward-compatible: persisted profiles without this field deserialize to {@code false}.
+         */
+        public boolean isConsumerControl;
+
         public Shortcut() {}
 
         public Shortcut(String id, String name, String label, int modifiers, int keyCode) {
@@ -1971,6 +2134,7 @@ public class ShortcutProfileManager {
             this.icon = "";
             this.displayOrder = 0;
             this.unicodeCodePoint = 0;
+            this.isConsumerControl = false;
         }
 
         public Shortcut(String id, String name, String label, int modifiers, int keyCode, String icon, int displayOrder) {

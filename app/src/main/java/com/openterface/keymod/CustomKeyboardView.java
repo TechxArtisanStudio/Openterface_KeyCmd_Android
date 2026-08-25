@@ -482,6 +482,13 @@ public class CustomKeyboardView extends LinearLayout {
          */
         int unicodeCodePoint;
 
+        /**
+         * When {@code true}, this key's {@link #code} is a Consumer Control usage bitmask
+         * (CH9329 CMD 0x03) rather than a keyboard HID code. The press handler dispatches via
+         * {@link com.openterface.keymod.hid.ConsumerControlHidTransport}.
+         */
+        boolean isConsumerControl;
+
         Key(String label, String symbolLabel, String alternates, String cornerHint, int code, String codeStr, float widthPercent, int iconResId,
             float horizontalGap, boolean isRepeatable, boolean requiresShift, int shortcutModifiers, boolean isTopPanelKey) {
             this.label = label;
@@ -4655,6 +4662,7 @@ public class CustomKeyboardView extends LinearLayout {
                 true
         );
         key.topStripFavoriteSlotIndex = topStripFavoriteSlotIndex;
+        key.isConsumerControl = shortcut.isConsumerControl;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         } else {
@@ -4953,6 +4961,7 @@ public class CustomKeyboardView extends LinearLayout {
         key.iconResId = iconResId;
         key.shortcutModifiers = normalizedModifiers;
         key.unicodeCodePoint = shortcut.unicodeCodePoint;
+        key.isConsumerControl = shortcut.isConsumerControl;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         } else {
@@ -8103,7 +8112,11 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.shortcutModifiers >= 0 && !isTopModifierLockCandidate(key)) {
             FnMapping fnOverride = extraNumpadFnLocked ? resolveExtraNumpadFnMapping(key) : null;
             if (fnOverride == null) {
-                if (key.unicodeCodePoint != 0) {
+                if (key.isConsumerControl) {
+                    // Consumer Control: route through CMD 0x03 transport
+                    com.openterface.keymod.hid.ConsumerControlHidTransport.sendConsumerControlTap(
+                            port, bluetoothService, isServiceBound, key.code);
+                } else if (key.unicodeCodePoint != 0) {
                     sendStripUnicodeShortcut(key.unicodeCodePoint);
                 } else {
                     sendShortcutWithModifiers(key.shortcutModifiers, key.code);

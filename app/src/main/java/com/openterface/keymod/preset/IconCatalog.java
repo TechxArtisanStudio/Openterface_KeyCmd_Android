@@ -56,6 +56,7 @@ public final class IconCatalog {
                 "ic_top_copy", "ic_top_cut", "ic_top_paste", "ic_top_undo", "ic_top_save",
                 "ic_top_select_all", "ic_media_play_arrow", "ic_media_skip_next", "ic_media_skip_previous",
                 "ic_media_volume_up", "ic_media_volume_down", "ic_media_volume_off",
+                "ic_media_stop", "ic_media_eject",
                 "ic_mac_spotlight", "ic_mac_show_desktop", "ic_mac_show_apps", "ic_reset", "ic_edit",
                 "ic_settings", "ic_list", "ic_history", "ic_voice", "ic_bookmark_star_24",
                 "ic_bookmark_add_24", "ic_check", "close_24"
