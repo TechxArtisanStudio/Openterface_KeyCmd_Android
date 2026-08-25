@@ -55,7 +55,12 @@ public class ExportPublicKeyActivity extends AppCompatActivity {
             "then touch \"$1/$2\";\n" +
             "     chmod 600 \"$1/$2\";\n" +
             "fi;\n" +
-            "echo '$3' | base64 -d >> \"$1/$2\";";
+            // Pre-check: ensure file ends with \n so key won't stack on last line.
+            // Post-append: add trailing \n so next key also won't stack.
+            "if [ -s \"$1/$2\" ] && [ \"$(tail -c1 \"$1/$2\" | wc -l)\" -eq 0 ]; then\n" +
+            "     echo '' >> \"$1/$2\";\n" +
+            "fi;\n" +
+            "echo '$3' | base64 -d >> \"$1/$2\"; echo '' >> \"$1/$2\";";
 
     private String publicKey;
     private CredentialProfile profile;

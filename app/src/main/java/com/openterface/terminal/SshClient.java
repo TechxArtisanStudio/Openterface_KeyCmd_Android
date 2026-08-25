@@ -702,6 +702,43 @@ public class SshClient {
         }
     }
 
+    /**
+     * Execute a command on the existing SSH session via ChannelExec.
+     * Used by ExportPublicKeyActivity to push keys through the active tunnel
+     * (avoids opening a second SSH session on a single-connection transport like BLE-Eth).
+     *
+     * Wraps the command in bash -c to ensure multi-line snippets (if/then/fi, etc.)
+     * are executed as a shell script rather than treated as raw text.
+     *
+     * @param command Shell command to execute
+     * @return exit status of the command, or -1 if execution failed
+     * @throws Exception if the channel cannot be opened or the session is not connected
+     */
+    public int executeCommand(String command) throws Exception {
+        if (!isConnected()) {
+            throw new IllegalStateException("SSH session is not connected");
+        }
+
+        // Escape single quotes in the command for safe embedding in bash -c '...'
+        String escapedCommand = command.replace("'", "'\\''");
+
+        // Wrap in bash -c to ensure multi-line snippets are interpreted as shell script
+        String bashCommand = "bash -c '" + escapedCommand + "'";
+
+        com.jcraft.jsch.ChannelExec channel =
+                (com.jcraft.jsch.ChannelExec) session.openChannel("exec");
+        channel.setCommand(bashCommand);
+        channel.connect(15000);
+
+        // Wait for command to complete
+        while (!channel.isClosed()) {
+            Thread.sleep(100);
+        }
+
+        int exitStatus = channel.getExitStatus();
+        channel.disconnect();
+        return exitStatus;
+    }
     // ── Command execution (ChannelExec) for Agent ───────────────────────
 
     /**
@@ -1013,44 +1050,6 @@ public class SshClient {
         ch.setPty(false);
         ch.connect(10_000);
         return ch;
-    }
-
-    /**
-     * Execute a command on the existing SSH session via ChannelExec.
-     * Used by ExportPublicKeyActivity to push keys through the active tunnel
-     * (avoids opening a second SSH session on a single-connection transport like BLE-Eth).
-     *
-     * Wraps the command in bash -c to ensure multi-line snippets (if/then/fi, etc.)
-     * are executed as a shell script rather than treated as raw text.
-     *
-     * @param command Shell command to execute
-     * @return exit status of the command, or -1 if execution failed
-     * @throws Exception if the channel cannot be opened or the session is not connected
-     */
-    public int executeCommand(String command) throws Exception {
-        if (!isConnected()) {
-            throw new IllegalStateException("SSH session is not connected");
-        }
-
-        // Escape single quotes in the command for safe embedding in bash -c '...'
-        String escapedCommand = command.replace("'", "'\\''");
-
-        // Wrap in bash -c to ensure multi-line snippets are interpreted as shell script
-        String bashCommand = "bash -c '" + escapedCommand + "'";
-
-        com.jcraft.jsch.ChannelExec channel =
-                (com.jcraft.jsch.ChannelExec) session.openChannel("exec");
-        channel.setCommand(bashCommand);
-        channel.connect(15000);
-
-        // Wait for command to complete
-        while (!channel.isClosed()) {
-            Thread.sleep(100);
-        }
-
-        int exitStatus = channel.getExitStatus();
-        channel.disconnect();
-        return exitStatus;
     }
 
     /** Disconnect SSH session. */
