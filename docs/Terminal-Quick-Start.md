@@ -205,7 +205,11 @@ After successful connection, you'll see:
 - **Manual disconnect**: Tap **Disconnect** at the top.
 - **Automatic disconnect**: USB unplugged, Bluetooth disconnected, server timeout, etc.
 
-After disconnection, the terminal displays an empty state. You can **Connect** again.
+After disconnection, the terminal displays an empty state. You can **Connect** again, and to quickly find and select other devices, tap the search icon in the top-right corner of the connection dialog.
+
+* **Example (Search icon in top-right + Disconnect)**
+
+  <img src="images/terminal-34-search-icon.png" alt="" width="180" /><img src="images/terminal-35-disconnect.png" alt="" width="180" />
 
 ---
 
