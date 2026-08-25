@@ -1,7 +1,9 @@
-package com.openterface.keymod.agent;
+package com.openterface.keymod.agent.demo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.openterface.keymod.agent.ui.AgentPlanStep;
 
 import java.util.Arrays;
 import java.util.Collections;

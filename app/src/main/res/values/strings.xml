@@ -188,6 +188,7 @@
     <string name="settings_ai_api_key_hint">Enter API key</string>
     <string name="settings_ai_api_key_hint_for_provider">Enter API key for %1$s</string>
     <string name="settings_ai_model">Model</string>
+    <string name="settings_ai_custom_model_hint">Enter model name (e.g. qwen2.5:7b, llama3)</string>
     <string name="settings_ai_test_connection">Test connection</string>
     <string name="settings_ai_supported_providers_title">ℹ️ Supported providers</string>
     <string name="settings_ai_supported_providers_body">• OpenAI (GPT-4o, GPT-4, GPT-3.5)\n• Anthropic (Claude 3.5, Claude 3)\n• Google Gemini (2.0, 1.5)\n• Mistral AI\n• Groq (Llama 3, Mixtral)\n• Alibaba Qwen\n• DeepSeek\n• Custom (any OpenAI-compatible API)</string>
@@ -195,6 +196,63 @@
     <string name="settings_ai_toast_enter_api_key">Please enter API key</string>
     <string name="settings_ai_toast_testing">Testing AI connection…</string>
     <string name="settings_ai_toast_success">AI connection successful!</string>
+    <string name="settings_ai_toast_connection_failed">Connection failed</string>
+    <string name="settings_ai_toast_unsupported_provider">This provider is not yet supported</string>
+
+    <!-- AI Provider Setting Section -->
+    <string name="settings_ai_section_provider">AI Provider Setting</string>
+    <string name="settings_ai_provider_description">Select or manage AI providers</string>
+    <string name="settings_ai_active_provider">Active Provider</string>
+    <string name="settings_ai_add_provider">+ Add New Provider</string>
+    <string name="settings_ai_delete_provider">Delete This Provider</string>
+    <string name="settings_ai_provider_name">Name</string>
+    <string name="settings_ai_provider_url">API Base URL</string>
+    <string name="settings_ai_provider_model">Model Name</string>
+    <string name="settings_ai_api_key_optional">API Key Optional</string>
+    <string name="settings_ai_api_key_optional_desc">Enable for local providers (Ollama, LM Studio, etc.)</string>
+    <string name="settings_ai_provider_name_hint">Enter provider name</string>
+    <string name="settings_ai_provider_url_hint">https://api.example.com/v1</string>
+    <string name="settings_ai_update_key">Update API Key</string>
+    <string name="settings_ai_key_for_provider">API Key for %1$s</string>
+    <string name="settings_ai_provider_model_hint">Enter model name</string>
+    <string name="settings_ai_edit_provider">Edit Provider: %1$s</string>
+
+    <!-- API Key Management Section -->
+    <string name="settings_ai_section_api_key">API Key Management</string>
+    <string name="settings_ai_save_key">Save Key</string>
+    <string name="settings_ai_clear_key">Clear Key</string>
+    <string name="settings_ai_key_status_configured">✓ Configured</string>
+    <string name="settings_ai_key_status_not_required">✓ Not Required</string>
+    <string name="settings_ai_key_status_not_configured">✗ Not Configured</string>
+
+    <!-- Confirmation Dialogs -->
+    <string name="settings_ai_dialog_add_title">Add New Provider?</string>
+    <string name="settings_ai_dialog_add_message">This will create a new AI provider configuration.</string>
+    <string name="settings_ai_dialog_delete_title">Delete This Provider?</string>
+    <string name="settings_ai_dialog_delete_message">This will permanently remove the selected provider.</string>
+    <string name="settings_ai_dialog_clear_key_title">Clear API Key?</string>
+    <string name="settings_ai_dialog_clear_key_message">This will permanently remove the saved API key.</string>
+    <string name="settings_ai_dialog_cancel">Cancel</string>
+    <string name="settings_ai_dialog_add">Add Provider</string>
+    <string name="settings_ai_dialog_delete">Delete Provider</string>
+    <string name="settings_ai_dialog_clear">Clear</string>
+    <string name="settings_ai_dialog_select_provider">Select AI Provider</string>
+
+    <!-- Test Connection Result -->
+    <string name="settings_ai_test_result_title">Test Result:</string>
+    <string name="settings_ai_test_success">✓ Connection successful</string>
+    <string name="settings_ai_test_failed">✗ Connection failed</string>
+    <string name="settings_ai_test_response_time">Response time: %1$s</string>
+
+    <!-- Validation Messages -->
+    <string name="settings_ai_cannot_delete_last">Cannot delete the last provider</string>
+    <string name="settings_ai_validation_no_provider">No provider selected</string>
+    <string name="settings_ai_validation_name_empty">Provider name is empty</string>
+    <string name="settings_ai_validation_url_empty">API base URL is empty</string>
+    <string name="settings_ai_validation_model_empty">Model name is empty</string>
+    <string name="settings_ai_validation_key_not_configured">API key not configured</string>
+    <string name="settings_ai_unnamed_provider">Unnamed Provider</string>
+
     <string-array name="settings_ai_role_names">
         <item>Text refinement</item>
         <item>Command assistant</item>
@@ -1417,6 +1475,12 @@ by TechxArtisan</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
 
+    <!-- Target Settings Sheet -->
+    <string name="target_settings_title">Target Settings</string>
+    <string name="target_settings_section_os">Target OS</string>
+    <string name="target_settings_section_profile">Terminal Profile</string>
+    <string name="target_settings_no_profile">No profiles — add one in Terminal</string>
+
     <!-- Rows 2–3 strip slot editor (single HID key) -->
     <string name="rows23_slot_editor_title_new">New key</string>
     <string name="rows23_slot_editor_title_edit">Edit key</string>
@@ -1595,7 +1659,8 @@ by TechxArtisan</string>
     <string name="top_mode_label_macros_summary">Record and replay steps</string>
     <string name="top_mode_label_shortcuts_summary">Keyboard shortcuts on tap</string>
     <string name="agent_connection_ready">KeyMod · Ready</string>
-    <string name="agent_empty_hint">Pick a demo above to preview how Agent plans and acts on your target device.</string>
+    <string name="agent_empty_title">Describe a workflow</string>
+    <string name="agent_empty_hint">Type what you want done. The agent plans it, asks for approval, then runs it.</string>
     <string name="agent_gate_byok">Use my API key</string>
     <string name="agent_gate_github">Sign in with GitHub (free tier)</string>
     <string name="agent_gate_skip_demo">Skip — preview demo</string>
@@ -1604,16 +1669,90 @@ by TechxArtisan</string>
     <string name="agent_input_hint">Try a demo above — free chat coming soon</string>
     <string name="agent_send_cd">Send message</string>
     <string name="agent_subtitle">Approve before KeyCmd acts on your host.</string>
+    <string name="agent_target_none_hint">Tap %s to select a target</string>
     <string name="agent_act_approve">Approve &amp; Run</string>
     <string name="agent_act_cancel">Cancel</string>
     <string name="agent_act_edit_plan">Edit plan</string>
     <string name="agent_act_prompt">Review the plan before KeyCmd acts on your host.</string>
     <string name="agent_execution_terminal_label">TERMINAL · EXECUTING</string>
+    <string name="agent_cli_running">Running…</string>
+    <string name="agent_cli_done">完成</string>
+    <string name="agent_cli_failed">失败</string>
+    <string name="agent_cli_retried">已重试</string>
+    <string name="agent_retry">重试</string>
+    <string name="agent_verifying_api">Verifying API connection…</string>
     <string name="agent_execution_macro_label">MACRO · EXECUTING</string>
     <string name="agent_plan_title">PLAN</string>
     <string name="agent_edit_plan_coming_soon">Edit plan is coming soon.</string>
     <string name="agent_input_demo_only">Agent chat is demo-only in this preview build.</string>
     <string name="agent_gate_github_connected_toast">GitHub connected (demo). Limited free tier active.</string>
+
+    <!-- Agent state texts (Day 3) -->
+    <string name="agent_state_idle">Enter your request</string>
+    <string name="agent_state_thinking">Thinking…</string>
+    <string name="agent_state_waiting_approve">Waiting for approval</string>
+    <string name="agent_state_executing">Executing…</string>
+    <string name="agent_state_retrying">Retrying (%1$d/%2$d)…</string>
+    <string name="agent_state_error">An error occurred</string>
+
+    <!-- Agent action buttons (Day 3) -->
+    <string name="agent_action_submit">Submit</string>
+    <string name="agent_action_approve">Approve &amp; Run</string>
+    <string name="agent_action_cancel">Cancel</string>
+    <string name="agent_action_retry">Retry</string>
+
+    <!-- Agent error messages -->
+    <string name="agent_error_api_connection_failed">API connection failed. Please check your settings.</string>
+    <string name="agent_error_ssh_not_connected">%1$s\n\nGo to Terminal tab → connect to a host → come back here.</string>
+    <string name="agent_error_hid_not_connected">%1$s\n\nConnect via USB or Bluetooth to use HID/Macro features.</string>
+    <string name="agent_error_macro_not_found">%1$s\n\nAvailable macros: %2$s</string>
+    <string name="agent_error_no_target_configured">No target configured\n\nTap the target icon in the top bar to select a target OS or connect via SSH.</string>
+    <string name="agent_error_no_previous_prompt">No previous prompt to retry.</string>
+
+    <!-- Agent plan texts (Day 3) -->
+    <string name="agent_plan_summary">Plan summary</string>
+    <string name="agent_plan_step_format">Step %1$d: %2$s</string>
+    <string name="agent_plan_empty">No plan</string>
+    <string name="agent_input_hint_real">Describe what you want to do…</string>
+    <string name="agent_executor_not_implemented">Tool executor not yet implemented</string>
+    <string name="agent_settings_header_cd">Agent settings</string>
+    <string name="agent_settings_title">Agent Settings</string>
+    <string name="agent_settings_provider_title">AI Provider</string>
+    <string name="agent_settings_limits_title">Execution Limits</string>
+    <string name="agent_settings_max_steps">Max steps per plan</string>
+    <string name="agent_settings_decrease">Decrease</string>
+    <string name="agent_settings_increase">Increase</string>
+    <string name="agent_settings_max_retries">Max retries on failure</string>
+    <string name="agent_settings_limits_description">Max steps caps how many commands the planner can include in one plan. Max retries sets how many times the agent will re-plan with alternative commands if the first attempt fails.</string>
+    <string name="agent_settings_prompts_title">System Prompts</string>
+    <string name="agent_settings_prompts_description">Terminal prompt is used when SSH is connected. HID prompt is used when controlling via BLE keyboard.</string>
+    <string name="agent_settings_prompt_terminal">Terminal (SSH)</string>
+    <string name="agent_settings_prompt_hid">HID (BLE Keyboard)</string>
+    <string name="agent_settings_prompt_hint">Enter system prompt…</string>
+    <string name="agent_settings_cancel">Cancel</string>
+    <string name="agent_settings_save">Save</string>
+
+    <!-- Suggested Prompts / FAQ chips (Day 7) -->
+    <string name="faq_os_version">Check OS version</string>
+    <string name="faq_os_version_prompt">Check the OS version of the target machine</string>
+    <string name="faq_disk_size">Check free disk size</string>
+    <string name="faq_disk_size_prompt">Show free disk space on the target machine</string>
+    <string name="faq_memory">Check memory usage</string>
+    <string name="faq_memory_prompt">Show memory usage on the target machine</string>
+    <string name="faq_uptime">Check uptime</string>
+    <string name="faq_uptime_prompt">Show how long the target machine has been running</string>
+    <string name="faq_ip">Check IP address</string>
+    <string name="faq_ip_prompt">Show the IP address of the target machine</string>
+    <string name="faq_cpu">Check CPU load</string>
+    <string name="faq_cpu_prompt">Show current CPU load on the target machine</string>
+
+    <string name="agent_settings_openai">OpenAI</string>
+    <string name="agent_settings_ollama">Ollama (Local)</string>
+    <string name="agent_settings_deepseek">DeepSeek</string>
+    <string name="agent_settings_qwen">Qwen (Alibaba)</string>
+    <string name="agent_settings_glm">GLM (Zhipu AI)</string>
+    <string name="agent_settings_local_qwen_06b">Local Qwen 0.6B</string>
+    <string name="agent_settings_local_qwen_17b">Local Qwen 1.7B</string>
     <string name="gamepad_key_picker_modifier_keys">Modifier keys</string>
     <string name="gamepad_key_picker_modifier_left">Left</string>
     <string name="gamepad_key_picker_modifier_right">Right</string>
@@ -1685,4 +1824,17 @@ by TechxArtisan</string>
     <string name="credential_key_collapse">Hide</string>
     <string name="credential_key_hide">Hide</string>
     <string name="credential_private_key_hint">Private Key (PEM)</string>
+
+    <!-- Edit Plan Sheet -->
+    <string name="edit_plan_title">Edit Plan</string>
+    <string name="edit_plan_subtitle">Modify steps before execution</string>
+    <string name="edit_plan_empty">No steps — add one below</string>
+    <string name="edit_plan_add_step">+ Add Step</string>
+    <string name="edit_plan_cancel">Cancel</string>
+    <string name="edit_plan_confirm">Confirm</string>
+    <string name="edit_plan_delete_step">Delete step</string>
+    <string name="edit_plan_hint_title">Step title</string>
+    <string name="edit_plan_hint_command">Command (e.g. ls -la)</string>
+    <string name="edit_plan_hint_keys">Keys (e.g. &lt;CMD&gt;s&lt;/CMD&gt;)</string>
+    <string name="edit_plan_hint_macro">Macro ID or name</string>
 </resources>

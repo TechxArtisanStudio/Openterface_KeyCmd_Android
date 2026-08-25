@@ -799,6 +799,12 @@
     <string name="target_os_macos">macOS</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
+
+    <!-- Target Settings Sheet -->
+    <string name="target_settings_title">目标设置</string>
+    <string name="target_settings_section_os">目标系统</string>
+    <string name="target_settings_section_profile">终端配置</string>
+    <string name="target_settings_no_profile">暂无配置 — 请在终端中添加</string>
     <string name="touch_pad_title">触控板</string>
     <string name="touch_pad_status_buttons_up">按键：抬起（未拖动）</string>
     <string name="touch_pad_status_buttons_drag">按键：左键按住（拖动中）</string>
@@ -1510,4 +1516,17 @@
     <string name="credential_key_collapse">隐藏</string>
     <string name="credential_key_hide">隐藏</string>
     <string name="credential_private_key_hint">私钥（PEM 格式）</string>
+
+    <!-- Edit Plan Sheet -->
+    <string name="edit_plan_title">编辑计划</string>
+    <string name="edit_plan_subtitle">执行前修改步骤</string>
+    <string name="edit_plan_empty">暂无步骤 — 点击下方添加</string>
+    <string name="edit_plan_add_step">+ 添加步骤</string>
+    <string name="edit_plan_cancel">取消</string>
+    <string name="edit_plan_confirm">确认</string>
+    <string name="edit_plan_delete_step">删除步骤</string>
+    <string name="edit_plan_hint_title">步骤标题</string>
+    <string name="edit_plan_hint_command">命令（如 ls -la）</string>
+    <string name="edit_plan_hint_keys">按键（如 &lt;CMD&gt;s&lt;/CMD&gt;）</string>
+    <string name="edit_plan_hint_macro">宏 ID 或名称</string>
 </resources>

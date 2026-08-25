@@ -1,10 +1,12 @@
-package com.openterface.keymod.agent;
+package com.openterface.keymod.agent.demo;
 
 import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.openterface.keymod.agent.ui.AgentMessage;
 
 import java.util.ArrayList;
 import java.util.List;

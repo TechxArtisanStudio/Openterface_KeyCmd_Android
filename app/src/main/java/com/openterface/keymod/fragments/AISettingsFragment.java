@@ -1,15 +1,18 @@
 package com.openterface.keymod.fragments;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -21,26 +24,40 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.openterface.keymod.R;
+import com.openterface.keymod.agent.llm.LlmHttpClient;
+import com.openterface.keymod.agent.settings.AIKeyManager;
+import com.openterface.keymod.agent.settings.AIProvider;
+import com.openterface.keymod.agent.settings.AIProviderManager;
 import com.openterface.keymod.util.SensitivePageShield;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * AI Settings Fragment — mirrors iOS AISettingsView.swift.
  *
  * Sections:
- *   1. Enable AI toggle (master switch)
- *   2. AI Mode: role selector (Text Refinement / Command Assistant / Custom)
- *              + target OS selector (Command Assistant only)
- *              + system prompt viewer/editor
- *   3. AI API Configuration: provider, endpoint, API key, model, test button
+ *   1. API Configuration: Enable AI toggle (master switch)
+ *   2. AI Mode: Role selector + Target OS + System prompt editor
+ *   3. AI Provider Setting: Provider picker, add/delete/edit providers, test connection
+ *   4. API Key Management: API key input with save/clear buttons and status
  */
 public class AISettingsFragment extends Fragment {
 
     // ── Preference keys ───────────────────────────────────────────────────
+    private static final String TAG = "AISettingsFragment";
     private static final String PREF_AI_ENABLED       = "ai_enabled";
     private static final String PREF_AI_ROLE          = "ai_role";
     private static final String PREF_AI_SYSTEM_PROMPT = "ai_system_prompt";
     private static final String PREF_AI_COMMAND_OS    = "ai_command_os";
+    // Legacy keys for migration
     private static final String PREF_AI_PROVIDER      = "ai_provider";
     private static final String PREF_AI_ENDPOINT      = "ai_endpoint";
     private static final String PREF_AI_MODEL         = "ai_model";
@@ -79,7 +96,7 @@ public class AISettingsFragment extends Fragment {
             "Your task is to:\n" +
             "1. Interpret the voice command\n" +
             "2. Convert it to specific keyboard keys or mouse actions using special tokens\n\n" +
-            "## Modifier keys \u2014 open/close tag syntax\n\n" +
+            "## Modifier keys — open/close tag syntax\n\n" +
             "Modifier keys use paired open and close tags. The held keys wrap the key they apply to:\n\n" +
             "| Modifier   | Open tag  | Close tag   |\n" +
             "|------------|-----------|-------------|\n" +
@@ -89,17 +106,11 @@ public class AISettingsFragment extends Fragment {
             "| Command    | `<CMD>`   | `</CMD>`    |\n" +
             "| Win/Super  | `<WIN>`   | `</WIN>`    |\n\n" +
             "### Single modifier\n" +
-            "```\n" +
-            "<CTRL>s</CTRL>\n" +
-            "```\n\n" +
+            "```\n<CTRL>s</CTRL>\n```\n\n" +
             "### Composed modifiers (nest inner inside outer)\n" +
-            "```\n" +
-            "<CTRL><SHIFT>s</SHIFT></CTRL>\n" +
-            "<CMD><SHIFT>4</SHIFT></CMD>\n" +
-            "<CTRL><ALT><DELETE></ALT></CTRL>\n" +
-            "```\n\n" +
+            "```\n<CTRL><SHIFT>s</SHIFT></CTRL>\n<CMD><SHIFT>4</SHIFT></CMD>\n<CTRL><ALT><DELETE></ALT></CTRL>\n```\n\n" +
             "## Function keys\n" +
-            "`<F1>` through `<F12>` \u2014 no close tag needed (single key press).\n\n" +
+            "`<F1>` through `<F12>` — no close tag needed (single key press).\n\n" +
             "## Special keys\n" +
             "| Token        | Key           |\n" +
             "|--------------|---------------|\n" +
@@ -118,7 +129,7 @@ public class AISettingsFragment extends Fragment {
             "| `<PAGEDOWN>` | Page Down     |\n" +
             "| `<DELETE>`   | Delete        |\n" +
             "| `<INSERT>`   | Insert        |\n\n" +
-            "Special keys are single tokens \u2014 no close tag needed.\n\n" +
+            "Special keys are single tokens — no close tag needed.\n\n" +
             "## Mouse actions\n" +
             "| Token                | Action       |\n" +
             "|----------------------|--------------|\n" +
@@ -128,28 +139,17 @@ public class AISettingsFragment extends Fragment {
             "| `MOUSE:move_down`    | Move down    |\n" +
             "| `MOUSE:left`         | Move left    |\n" +
             "| `MOUSE:right`        | Move right   |\n\n" +
-            "## User-defined macros (reusable skills)\n" +
-            "The user may define named macros. Each macro is a reusable sequence of commands identified by its label.\n" +
-            "To invoke a macro, use its label wrapped in angle brackets: `<Macro>`.\n\n" +
-            "At the end of this prompt you will find the list of macros the user has currently defined under the heading\n" +
-            "`## Available macros`. When building a command sequence:\n" +
-            "- **Prefer invoking a user macro** over re-spelling its token sequence when the macro's purpose matches\n" +
-            "  part of the requested action.\n" +
-            "- You may combine macro invocations with additional tokens.\n" +
-            "- Macro invocations can appear anywhere in the output sequence.\n\n" +
-            "If no macros are defined (the section is absent or empty), ignore this section entirely.\n\n" +
             "## Output rules\n" +
             "- Always use open/close tags for modifier keys: `<CTRL>x</CTRL>`, never bare `<CTRL>x`.\n" +
-            "- Nest composed modifiers \u2014 outermost modifier tag wraps the inner ones and the key.\n" +
+            "- Nest composed modifiers — outermost modifier tag wraps the inner ones and the key.\n" +
             "- Use ONLY ASCII keyboard-inputtable characters (ASCII 32-126) plus the tokens above.\n" +
-            "- Prefer user-defined macros when they match part of the requested action.\n" +
             "- Follow the OS-Specific Notes section below for which meta key to use and OS shortcuts.\n" +
-            "- Respond with ONLY the command output \u2014 no explanations.";
+            "- Respond with ONLY the command output — no explanations.";
 
     private static final String PROMPT_COMMAND_MACOS = PROMPT_COMMAND_BASE + "\n\n" +
-            "## OS-Specific Notes \u2014 macOS\n\n" +
+            "## OS-Specific Notes — macOS\n\n" +
             "The target machine runs **macOS**. Apply these rules on top of the grammar above:\n\n" +
-            "- Primary meta key is `<CMD>` for most app shortcuts \u2014 **do NOT use `<WIN>`**\n" +
+            "- Primary meta key is `<CMD>` for most app shortcuts — **do NOT use `<WIN>`**\n" +
             "- `<ALT>` = Option key\n\n" +
             "| Voice command      | Output                            |\n" +
             "|--------------------|-----------------------------------|\n" +
@@ -175,9 +175,9 @@ public class AISettingsFragment extends Fragment {
             "| rename             | `<ENTER>`                         |";
 
     private static final String PROMPT_COMMAND_WINDOWS = PROMPT_COMMAND_BASE + "\n\n" +
-            "## OS-Specific Notes \u2014 Windows\n\n" +
+            "## OS-Specific Notes — Windows\n\n" +
             "The target machine runs **Windows**. Apply these rules on top of the grammar above:\n\n" +
-            "- Primary meta key is `<CTRL>` for most app shortcuts \u2014 **do NOT use `<CMD>`**\n" +
+            "- Primary meta key is `<CTRL>` for most app shortcuts — **do NOT use `<CMD>`**\n" +
             "- Use `<WIN>` for the Windows/Start key\n\n" +
             "| Voice command     | Output                              |\n" +
             "|-------------------|-------------------------------------|\n" +
@@ -205,9 +205,9 @@ public class AISettingsFragment extends Fragment {
             "| permanent delete  | `<SHIFT><DELETE></SHIFT>`           |";
 
     private static final String PROMPT_COMMAND_LINUX = PROMPT_COMMAND_BASE + "\n\n" +
-            "## OS-Specific Notes \u2014 Linux\n\n" +
+            "## OS-Specific Notes — Linux\n\n" +
             "The target machine runs **Linux**. Apply these rules on top of the grammar above:\n\n" +
-            "- Primary meta key is `<CTRL>` for most app shortcuts \u2014 **do NOT use `<CMD>`**\n" +
+            "- Primary meta key is `<CTRL>` for most app shortcuts — **do NOT use `<CMD>`**\n" +
             "- Use `<WIN>` for the Super/Meta key\n\n" +
             "| Voice command           | Output                              |\n" +
             "|-------------------------|-------------------------------------|\n" +
@@ -230,51 +230,60 @@ public class AISettingsFragment extends Fragment {
             "| delete                  | `<DELETE>`                          |\n" +
             "| permanent delete        | `<SHIFT><DELETE></SHIFT>`           |";
 
-    // ── Provider catalogue ────────────────────────────────────────────────
-    private static final String[] PROVIDER_ENDPOINTS = {
-            "https://api.openai.com/v1",
-            "https://api.anthropic.com/v1",
-            "https://generativelanguage.googleapis.com/v1beta",
-            "https://api.mistral.ai/v1",
-            "https://api.groq.com/openai/v1",
-            "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            "https://api.deepseek.com/v1",
-            ""
-    };
-    private static final String[][] PROVIDER_MODELS = {
-            {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"},
-            {"claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022",
-                    "claude-3-opus-20240229", "claude-3-haiku-20240307"},
-            {"gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"},
-            {"mistral-large-latest", "mistral-medium-latest",
-                    "mistral-small-latest", "open-mixtral-8x7b"},
-            {"llama-3.3-70b-versatile", "llama-3.1-8b-instant",
-                    "mixtral-8x7b-32768", "gemma2-9b-it"},
-            {"qwen-max", "qwen-plus", "qwen-turbo", "qwen2.5-72b-instruct"},
-            {"deepseek-chat", "deepseek-reasoner"},
-            {"custom-model"}
-    };
-    private static final int PROVIDER_CUSTOM_INDEX = PROVIDER_ENDPOINTS.length - 1;
-
     // ── Views ─────────────────────────────────────────────────────────────
+    // Section 1: API Configuration
     private SwitchCompat aiEnabledSwitch;
     private LinearLayout aiFeaturesGroup;
 
-    private Spinner  roleSpinner;
+    // Section 2: AI Mode
+    private Spinner roleSpinner;
     private LinearLayout commandOsSection;
-    private Spinner  commandOsSpinner;
+    private Spinner commandOsSpinner;
     private EditText systemPromptEditText;
     private TextView systemPromptModeLabel;
 
-    private Spinner  providerSpinner;
-    private EditText endpointEditText;
-    private EditText apiKeyEditText;
-    private Spinner  modelSpinner;
-    private Button   testConnectionButton;
+    // Section 3: AI Provider Setting
+    private Spinner providerSpinner;
+    private TextView activeProviderNameText;
+    private LinearLayout activeProviderRow;
+    private TextView apiKeyWarningText;
+    private TextView editProviderHeader;
+    private MaterialButton addProviderBtn;
+    private MaterialButton deleteProviderBtn;
+    private TextInputEditText providerNameEdit;
+    private TextInputEditText providerUrlEdit;
+    private TextInputEditText providerModelEdit;
+    private TextInputLayout providerUrlInputLayout;
+    private TextInputLayout providerModelInputLayout;
+    private SwitchCompat apiKeyOptionalSwitch;
+    private MaterialButton testConnectionBtn;
+    private TextView testResultText;
 
+    // Section 4: API Key Management
+    private TextView apiKeyProviderLabel;
+    private MaterialButton updateKeyBtn;
+    private LinearLayout apiKeyActionButtons;
+    private TextInputEditText apiKeyEditText;
+    private TextInputLayout apiKeyInputLayout;
+    private MaterialButton saveKeyBtn;
+    private MaterialButton clearKeyBtn;
+    private TextView apiKeyStatusText;
+
+    // Managers
     private SharedPreferences prefs;
-    private boolean isLoadingSettings = false;
+    private AIKeyManager keyManager;
+    private AIProviderManager providerManager;
     private SensitivePageShield shield;
+
+    // State
+    private boolean isLoadingSettings = false;
+    private boolean isUpdatingProviderFields = false;  // Prevent TextWatcher loop
+    private List<AIProvider> providers;
+    private ArrayAdapter<String> providerAdapter;
+
+    // Threading for connection test
+    private ExecutorService executor;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -284,38 +293,112 @@ public class AISettingsFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_settings_ai, container, false);
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+        keyManager = AIKeyManager.getInstance(requireContext());
+        providerManager = AIProviderManager.getInstance(requireContext());
+
+        // Initialize executor for connection test (shut down old one if Fragment was recreated)
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+        executor = Executors.newSingleThreadExecutor();
+
+        // Perform data migration if needed
+        migrateLegacyData();
+
         initializeViews(view);
         loadSettings();
         setupListeners();
         return view;
     }
 
+    // ── Data Migration ────────────────────────────────────────────────────
+
+    private void migrateLegacyData() {
+        // Check if migration is needed
+        if (prefs.getBoolean("ai_settings_migrated", false)) {
+            return;
+        }
+
+        Log.i(TAG, "Migrating legacy AI settings data...");
+
+        // Migrate provider selection (legacy used index, new uses ID)
+        int legacyProviderIndex = prefs.getInt(PREF_AI_PROVIDER, 0);
+        if (legacyProviderIndex >= 0 && legacyProviderIndex < providerManager.getProviderCount()) {
+            AIProvider provider = providerManager.getProvider(legacyProviderIndex);
+            if (provider != null) {
+                providerManager.setSelectedProvider(provider.id);
+            }
+        }
+
+        // Migrate API keys from legacy format (ai_api_key_0, ai_api_key_1, etc.)
+        for (int i = 0; i < providerManager.getProviderCount(); i++) {
+            AIProvider provider = providerManager.getProvider(i);
+            if (provider == null) continue;
+
+            String legacyKey = prefs.getString(PREF_AI_API_KEY + "_" + i, null);
+            if (legacyKey != null && !legacyKey.isEmpty()) {
+                // Only migrate if the new storage doesn't have a key
+                if (!keyManager.hasKey(provider.id)) {
+                    keyManager.saveKey(provider.id, legacyKey);
+                    Log.d(TAG, "Migrated API key for provider: " + provider.name);
+                }
+            }
+        }
+
+        // Mark migration as complete
+        prefs.edit().putBoolean("ai_settings_migrated", true).apply();
+        Log.i(TAG, "AI settings migration complete.");
+    }
+
     // ── Initialisation ────────────────────────────────────────────────────
 
     private void initializeViews(View view) {
-        aiEnabledSwitch       = view.findViewById(R.id.ai_enabled_switch);
-        aiFeaturesGroup       = view.findViewById(R.id.ai_features_group);
+        // Section 1: API Configuration
+        aiEnabledSwitch = view.findViewById(R.id.ai_enabled_switch);
+        aiFeaturesGroup = view.findViewById(R.id.ai_features_group);
 
-        roleSpinner           = view.findViewById(R.id.ai_role_spinner);
-        commandOsSection      = view.findViewById(R.id.command_os_section);
-        commandOsSpinner      = view.findViewById(R.id.command_os_spinner);
-        systemPromptEditText  = view.findViewById(R.id.system_prompt_edittext);
+        // Section 2: AI Mode
+        roleSpinner = view.findViewById(R.id.ai_role_spinner);
+        commandOsSection = view.findViewById(R.id.command_os_section);
+        commandOsSpinner = view.findViewById(R.id.command_os_spinner);
+        systemPromptEditText = view.findViewById(R.id.system_prompt_edittext);
         systemPromptModeLabel = view.findViewById(R.id.system_prompt_mode_label);
 
-        providerSpinner       = view.findViewById(R.id.ai_provider_spinner);
-        endpointEditText      = view.findViewById(R.id.ai_endpoint_edittext);
-        apiKeyEditText        = view.findViewById(R.id.ai_api_key_edittext);
-        modelSpinner          = view.findViewById(R.id.ai_model_spinner);
-        testConnectionButton  = view.findViewById(R.id.ai_test_button);
+        // Section 3: AI Provider Setting
+        providerSpinner = view.findViewById(R.id.ai_provider_spinner);
+        activeProviderNameText = view.findViewById(R.id.active_provider_name_text);
+        activeProviderRow = view.findViewById(R.id.active_provider_row);
+        apiKeyWarningText = view.findViewById(R.id.api_key_warning_text);
+        editProviderHeader = view.findViewById(R.id.edit_provider_header);
+        addProviderBtn = view.findViewById(R.id.ai_add_provider_btn);
+        deleteProviderBtn = view.findViewById(R.id.ai_delete_provider_btn);
+        providerNameEdit = view.findViewById(R.id.provider_name_edit);
+        providerUrlEdit = view.findViewById(R.id.provider_url_edit);
+        providerModelEdit = view.findViewById(R.id.provider_model_edit);
+        providerUrlInputLayout = view.findViewById(R.id.provider_url_input_layout);
+        providerModelInputLayout = view.findViewById(R.id.provider_model_input_layout);
+        apiKeyOptionalSwitch = view.findViewById(R.id.api_key_optional_switch);
+        testConnectionBtn = view.findViewById(R.id.ai_test_button);
+        testResultText = view.findViewById(R.id.test_result_text);
 
-        // Role spinner
+        // Section 4: API Key Management
+        apiKeyProviderLabel = view.findViewById(R.id.api_key_provider_label);
+        updateKeyBtn = view.findViewById(R.id.ai_update_key_btn);
+        apiKeyActionButtons = view.findViewById(R.id.api_key_action_buttons);
+        apiKeyEditText = view.findViewById(R.id.ai_api_key_edittext);
+        apiKeyInputLayout = view.findViewById(R.id.ai_api_key_input_layout);
+        saveKeyBtn = view.findViewById(R.id.ai_save_key_btn);
+        clearKeyBtn = view.findViewById(R.id.ai_clear_key_btn);
+        apiKeyStatusText = view.findViewById(R.id.api_key_status_text);
+
+        // Setup Role spinner
         String[] roleNames = getResources().getStringArray(R.array.settings_ai_role_names);
         ArrayAdapter<String> roleAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, roleNames);
         roleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         roleSpinner.setAdapter(roleAdapter);
 
-        // Command OS spinner
+        // Setup Command OS spinner
         String[] osNames = {
                 getString(R.string.target_os_macos),
                 getString(R.string.target_os_windows),
@@ -326,20 +409,65 @@ public class AISettingsFragment extends Fragment {
         osAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         commandOsSpinner.setAdapter(osAdapter);
 
-        // Provider spinner
-        String[] providerNames = getResources().getStringArray(R.array.settings_ai_provider_names);
-        ArrayAdapter<String> providerAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, providerNames);
-        providerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // Initialize provider adapter with mutable list
+        providers = providerManager.getProviders();
+        providerAdapter = new ProviderSpinnerAdapter(requireContext(),
+                R.layout.item_provider_spinner,
+                new ArrayList<>(Arrays.asList(getProviderDisplayNames())));
         providerSpinner.setAdapter(providerAdapter);
     }
 
-    private String providerDisplayName(int providerIndex) {
-        String[] names = getResources().getStringArray(R.array.settings_ai_provider_names);
-        if (providerIndex < 0 || providerIndex >= names.length) {
-            return "";
+    private String[] getProviderDisplayNames() {
+        String[] names = new String[providers.size()];
+        String unnamedProvider = getString(R.string.settings_ai_unnamed_provider);
+        for (int i = 0; i < providers.size(); i++) {
+            AIProvider provider = providers.get(i);
+            String name = provider.name;
+            if (TextUtils.isEmpty(name)) {
+                name = unnamedProvider;
+            }
+            names[i] = name;
         }
-        return names[providerIndex];
+        return names;
+    }
+
+    /**
+     * Custom ArrayAdapter for the provider Spinner.
+     * - Closed state: handled by parent ArrayAdapter (uses item_provider_spinner.xml).
+     * - Dropdown state: custom layout with checkmark icon aligned to the right.
+     */
+    private class ProviderSpinnerAdapter extends ArrayAdapter<String> {
+        ProviderSpinnerAdapter(@NonNull android.content.Context context, int resource, @NonNull java.util.List<String> objects) {
+            super(context, resource, objects);
+        }
+
+        @Override
+        public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            View row = convertView;
+            if (row == null) {
+                row = LayoutInflater.from(getContext())
+                        .inflate(R.layout.item_provider_dropdown, parent, false);
+            }
+
+            TextView nameView = row.findViewById(android.R.id.text1);
+            ImageView checkIcon = row.findViewById(R.id.provider_check_icon);
+
+            nameView.setText(getItem(position));
+
+            // Show checkmark only if API key is configured for this provider
+            boolean hasKey = position < providers.size()
+                    && keyManager.hasKey(providers.get(position).id);
+            checkIcon.setVisibility(hasKey ? View.VISIBLE : View.GONE);
+
+            return row;
+        }
+    }
+
+    private void refreshProviderSpinner() {
+        providers = providerManager.getProviders();
+        providerAdapter.clear();
+        providerAdapter.addAll(Arrays.asList(getProviderDisplayNames()));
+        providerAdapter.notifyDataSetChanged();
     }
 
     // ── Load settings ─────────────────────────────────────────────────────
@@ -369,32 +497,136 @@ public class AISettingsFragment extends Fragment {
         }
         systemPromptEditText.setText(savedPrompt);
 
-        // Provider
-        int providerIndex = prefs.getInt(PREF_AI_PROVIDER, 0);
-        providerSpinner.setSelection(providerIndex);
-        applyProviderDefaults(providerIndex);
-        if (providerIndex == PROVIDER_CUSTOM_INDEX) {
-            String saved = prefs.getString(PREF_AI_ENDPOINT, "");
-            endpointEditText.setText(saved);
+        // Select current provider
+        int selectedIndex = providerManager.getSelectedProviderIndex();
+        if (selectedIndex >= 0 && selectedIndex < providers.size()) {
+            providerSpinner.setSelection(selectedIndex);
         }
 
-        // API key — per-provider only, no cross-provider fallback
-        String apiKey = prefs.getString(PREF_AI_API_KEY + "_" + providerIndex, "");
-        apiKeyEditText.setText(apiKey);
-        apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
-                providerDisplayName(providerIndex)));
+        // Load provider details
+        loadProviderDetails(selectedIndex);
 
-        // Model — migrate from old Integer storage
-        String savedModel;
-        try {
-            savedModel = prefs.getString(PREF_AI_MODEL, "");
-        } catch (ClassCastException e) {
-            prefs.edit().remove(PREF_AI_MODEL).apply();
-            savedModel = "";
-        }
-        restoreModelSelection(providerIndex, savedModel);
+        // Load API key
+        loadApiKey(selectedIndex);
+
+        // Update API key status
+        updateApiKeyStatus(selectedIndex);
+
+        // Update Edit Provider header
+        updateEditProviderHeader(selectedIndex);
+
+        // Update Active Provider name text
+        updateActiveProviderName(selectedIndex);
 
         isLoadingSettings = false;
+    }
+
+    private void loadProviderDetails(int index) {
+        if (index < 0 || index >= providers.size()) return;
+
+        isUpdatingProviderFields = true;  // Prevent TextWatcher from triggering save
+
+        AIProvider provider = providers.get(index);
+        providerNameEdit.setText(provider.name);
+        providerUrlEdit.setText(provider.apiBaseURL);
+        providerModelEdit.setText(provider.modelName);
+        apiKeyOptionalSwitch.setChecked(provider.apiKeyOptional);
+
+        isUpdatingProviderFields = false;
+
+        // Immediately validate and show error state for empty fields
+        validateAndShowErrors();
+    }
+
+    /**
+     * Validates URL and Model fields, shows red borders and error messages if empty.
+     * Called after loading provider details to show initial validation state.
+     */
+    private void validateAndShowErrors() {
+        String url = providerUrlEdit.getText().toString().trim();
+        String model = providerModelEdit.getText().toString().trim();
+
+        if (TextUtils.isEmpty(url)) {
+            providerUrlInputLayout.setError(getString(R.string.settings_ai_validation_url_empty));
+        } else {
+            providerUrlInputLayout.setError(null);
+        }
+
+        if (TextUtils.isEmpty(model)) {
+            providerModelInputLayout.setError(getString(R.string.settings_ai_validation_model_empty));
+        } else {
+            providerModelInputLayout.setError(null);
+        }
+    }
+
+    private void loadApiKey(int index) {
+        if (index < 0 || index >= providers.size()) return;
+
+        AIProvider provider = providers.get(index);
+        String apiKey = keyManager.getKey(provider.id);
+        apiKeyEditText.setText(apiKey != null ? apiKey : "");
+    }
+
+    private void updateApiKeyStatus(int index) {
+        if (index < 0 || index >= providers.size()) return;
+
+        AIProvider provider = providers.get(index);
+        boolean hasKey = keyManager.hasKey(provider.id);
+
+        // Update warning text visibility
+        if (hasKey || provider.apiKeyOptional) {
+            apiKeyWarningText.setVisibility(View.GONE);
+        } else {
+            apiKeyWarningText.setVisibility(View.VISIBLE);
+        }
+
+        // Update API Key Management row label
+        String providerName = provider.name;
+        if (TextUtils.isEmpty(providerName)) {
+            providerName = getString(R.string.settings_ai_unnamed_provider);
+        }
+        apiKeyProviderLabel.setText(getString(R.string.settings_ai_key_for_provider, providerName));
+
+        // Update status text in API Key Management section
+        if (hasKey) {
+            apiKeyStatusText.setText(R.string.settings_ai_key_status_configured);
+            apiKeyStatusText.setTextColor(getResources().getColor(R.color.theme_accent_green, null));
+        } else if (provider.apiKeyOptional) {
+            apiKeyStatusText.setText(R.string.settings_ai_key_status_not_required);
+            apiKeyStatusText.setTextColor(getResources().getColor(R.color.theme_accent_green, null));
+        } else {
+            apiKeyStatusText.setText(R.string.settings_ai_key_status_not_configured);
+            apiKeyStatusText.setTextColor(getResources().getColor(R.color.theme_accent_red, null));
+        }
+    }
+
+    private void updateEditProviderHeader(int index) {
+        if (index < 0 || index >= providers.size()) {
+            editProviderHeader.setVisibility(View.GONE);
+            return;
+        }
+
+        AIProvider provider = providers.get(index);
+        String name = provider.name;
+        if (TextUtils.isEmpty(name)) {
+            name = getString(R.string.settings_ai_unnamed_provider);
+        }
+        editProviderHeader.setText(getString(R.string.settings_ai_edit_provider, name));
+        editProviderHeader.setVisibility(View.VISIBLE);
+    }
+
+    private void updateActiveProviderName(int index) {
+        if (index < 0 || index >= providers.size()) {
+            activeProviderNameText.setText("");
+            return;
+        }
+
+        AIProvider provider = providers.get(index);
+        String name = provider.name;
+        if (TextUtils.isEmpty(name)) {
+            name = getString(R.string.settings_ai_unnamed_provider);
+        }
+        activeProviderNameText.setText(name);
     }
 
     // ── Role helpers ──────────────────────────────────────────────────────
@@ -437,10 +669,9 @@ public class AISettingsFragment extends Fragment {
         }
     }
 
-    /** Update UI when role changes: show/hide OS section, enable/disable prompt. */
     private void applyRoleUi(String roleId) {
         boolean isCommandAssist = ROLE_COMMAND_ASSIST.equals(roleId);
-        boolean isCustom        = ROLE_CUSTOM.equals(roleId);
+        boolean isCustom = ROLE_CUSTOM.equals(roleId);
 
         commandOsSection.setVisibility(isCommandAssist ? View.VISIBLE : View.GONE);
         systemPromptEditText.setEnabled(isCustom);
@@ -450,38 +681,9 @@ public class AISettingsFragment extends Fragment {
                 : getString(R.string.settings_ai_prompt_read_only));
     }
 
-    // ── Provider helpers ──────────────────────────────────────────────────
-
-    private void applyProviderDefaults(int providerIndex) {
-        boolean isCustom = (providerIndex == PROVIDER_CUSTOM_INDEX);
-        if (!isCustom) {
-            endpointEditText.setText(PROVIDER_ENDPOINTS[providerIndex]);
-        }
-        endpointEditText.setEnabled(isCustom);
-        endpointEditText.setAlpha(isCustom ? 1.0f : 0.55f);
-
-        String[] models = PROVIDER_MODELS[providerIndex];
-        ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(requireContext(),
-                android.R.layout.simple_spinner_item, models);
-        modelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        modelSpinner.setAdapter(modelAdapter);
-    }
-
-    private void restoreModelSelection(int providerIndex, String savedModel) {
-        String[] models = PROVIDER_MODELS[providerIndex];
-        for (int i = 0; i < models.length; i++) {
-            if (models[i].equals(savedModel)) {
-                modelSpinner.setSelection(i);
-                return;
-            }
-        }
-        modelSpinner.setSelection(0);
-    }
-
     // ── Listeners ─────────────────────────────────────────────────────────
 
     private void setupListeners() {
-
         // Enable switch
         aiEnabledSwitch.setOnCheckedChangeListener((btn, checked) -> {
             prefs.edit().putBoolean(PREF_AI_ENABLED, checked).apply();
@@ -545,82 +747,362 @@ public class AISettingsFragment extends Fragment {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View v, int pos, long id) {
                 if (isLoadingSettings) return;
-                prefs.edit().putInt(PREF_AI_PROVIDER, pos).apply();
-                applyProviderDefaults(pos);
-                if (pos != PROVIDER_CUSTOM_INDEX) {
-                    prefs.edit().putString(PREF_AI_ENDPOINT, PROVIDER_ENDPOINTS[pos]).apply();
-                }
-                prefs.edit().putString(PREF_AI_MODEL, PROVIDER_MODELS[pos][0]).apply();
-                // Load the saved API key for this specific provider
-                isLoadingSettings = true;
-                apiKeyEditText.setText(prefs.getString(PREF_AI_API_KEY + "_" + pos, ""));
-                apiKeyEditText.setHint(getString(R.string.settings_ai_api_key_hint_for_provider,
-                        providerDisplayName(pos)));
-                isLoadingSettings = false;
+                providerManager.setSelectedProviderIndex(pos);
+                loadProviderDetails(pos);
+                loadApiKey(pos);
+                updateApiKeyStatus(pos);
+                updateEditProviderHeader(pos);
+                updateActiveProviderName(pos);
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        // Endpoint
-        endpointEditText.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                prefs.edit().putString(PREF_AI_ENDPOINT, s.toString()).apply();
+        // Active Provider row click - show provider selection dialog
+        activeProviderRow.setOnClickListener(v -> showProviderSelectionDialog());
+
+        // Add Provider button
+        addProviderBtn.setOnClickListener(v -> showAddProviderDialog());
+
+        // Delete Provider button
+        deleteProviderBtn.setOnClickListener(v -> showDeleteProviderDialog());
+
+        // Provider detail fields - save on change (with loop prevention)
+        providerNameEdit.addTextChangedListener(createProviderTextWatcher());
+        providerUrlEdit.addTextChangedListener(createProviderTextWatcher());
+        providerModelEdit.addTextChangedListener(createProviderTextWatcher());
+
+        // API Key Optional switch
+        apiKeyOptionalSwitch.setOnCheckedChangeListener((btn, checked) -> {
+            if (!isUpdatingProviderFields) {
+                saveCurrentProvider();
+                updateApiKeyStatus(providerSpinner.getSelectedItemPosition());
             }
-            @Override public void afterTextChanged(android.text.Editable s) {}
         });
 
-        // API key — save under per-provider key; drop isLoadingSettings guard so it always saves
-        apiKeyEditText.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                int currentProvider = providerSpinner.getSelectedItemPosition();
-                prefs.edit()
-                    .putString(PREF_AI_API_KEY + "_" + currentProvider, s.toString())
-                    .apply();
-                Log.v("AISettings", "Saved API key for provider " + currentProvider
-                        + " (length=" + s.length() + ")");
-            }
-            @Override public void afterTextChanged(android.text.Editable s) {}
-        });
+        // Save Key button
+        saveKeyBtn.setOnClickListener(v -> saveApiKey());
 
-        // Model spinner
-        modelSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View v, int pos, long id) {
-                if (isLoadingSettings) return;
-                int providerIndex = providerSpinner.getSelectedItemPosition();
-                String[] models = PROVIDER_MODELS[providerIndex];
-                if (pos < models.length) {
-                    prefs.edit().putString(PREF_AI_MODEL, models[pos]).apply();
-                }
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
-        });
+        // Clear Key button
+        clearKeyBtn.setOnClickListener(v -> showClearApiKeyDialog());
 
-        // Test button
-        testConnectionButton.setOnClickListener(v -> {
-            String endpoint = endpointEditText.getText().toString().trim();
-            String apiKey   = apiKeyEditText.getText().toString().trim();
-            if (TextUtils.isEmpty(endpoint)) {
-                Toast.makeText(getContext(), R.string.settings_ai_toast_enter_endpoint, Toast.LENGTH_SHORT).show();
-                return;
+        // Test Connection button
+        testConnectionBtn.setOnClickListener(v -> testConnection());
+
+        // Update API Key button - toggle input visibility
+        updateKeyBtn.setOnClickListener(v -> {
+            boolean isVisible = apiKeyInputLayout.getVisibility() == View.VISIBLE;
+            if (isVisible) {
+                // Hide input and action buttons
+                apiKeyInputLayout.setVisibility(View.GONE);
+                apiKeyActionButtons.setVisibility(View.GONE);
+            } else {
+                // Show input and action buttons
+                apiKeyInputLayout.setVisibility(View.VISIBLE);
+                apiKeyActionButtons.setVisibility(View.VISIBLE);
+                apiKeyEditText.requestFocus();
             }
-            if (TextUtils.isEmpty(apiKey)) {
-                Toast.makeText(getContext(), R.string.settings_ai_toast_enter_api_key, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Toast.makeText(getContext(), R.string.settings_ai_toast_testing, Toast.LENGTH_SHORT).show();
-            testConnectionButton.postDelayed(() ->
-                    Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show(),
-                    1500);
         });
     }
 
+    private android.text.TextWatcher createProviderTextWatcher() {
+        return new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (!isLoadingSettings && !isUpdatingProviderFields) {
+                    saveCurrentProvider();
+                }
+            }
+        };
+    }
+
+    // ── Provider Management ───────────────────────────────────────────────
+
+    private void saveCurrentProvider() {
+        int index = providerSpinner.getSelectedItemPosition();
+        if (index < 0 || index >= providers.size()) return;
+
+        AIProvider provider = providers.get(index);
+        String name = providerNameEdit.getText().toString().trim();
+        String url = providerUrlEdit.getText().toString().trim();
+        String model = providerModelEdit.getText().toString().trim();
+
+        boolean hasError = false;
+
+        // Validate URL field - show red border and error message if empty
+        if (TextUtils.isEmpty(url)) {
+            providerUrlInputLayout.setError(getString(R.string.settings_ai_validation_url_empty));
+            hasError = true;
+        } else {
+            providerUrlInputLayout.setError(null);
+        }
+
+        // Validate Model field - show red border and error message if empty
+        if (TextUtils.isEmpty(model)) {
+            providerModelInputLayout.setError(getString(R.string.settings_ai_validation_model_empty));
+            hasError = true;
+        } else {
+            providerModelInputLayout.setError(null);
+        }
+
+        // Do not save or refresh if validation failed — keep error state visible
+        if (hasError) return;
+
+        provider.name = name;
+        provider.apiBaseURL = url;
+        provider.modelName = model;
+        provider.apiKeyOptional = apiKeyOptionalSwitch.isChecked();
+
+        providerManager.updateProvider(provider);
+        refreshProviderSpinner();
+        // Restore selection without triggering another save
+        isLoadingSettings = true;
+        providerSpinner.setSelection(index);
+        isLoadingSettings = false;
+    }
+
+    private void showAddProviderDialog() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ai_dialog_add_title)
+                .setMessage(R.string.settings_ai_dialog_add_message)
+                .setPositiveButton(R.string.settings_ai_dialog_add, (dialog, which) -> {
+                    AIProvider newProvider = providerManager.createNewEmptyProvider();
+                    providerManager.addProvider(newProvider);
+                    refreshProviderSpinner();
+                    int newIndex = providers.size() - 1;
+                    isLoadingSettings = true;
+                    providerSpinner.setSelection(newIndex);
+                    isLoadingSettings = false;
+                    loadProviderDetails(newIndex);
+                    loadApiKey(newIndex);
+                    updateApiKeyStatus(newIndex);
+                })
+                .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
+                .show();
+    }
+
+    private void showDeleteProviderDialog() {
+        if (providers.size() <= 1) {
+            Toast.makeText(getContext(), R.string.settings_ai_cannot_delete_last, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ai_dialog_delete_title)
+                .setMessage(R.string.settings_ai_dialog_delete_message)
+                .setPositiveButton(R.string.settings_ai_dialog_delete, (dialog, which) -> {
+                    int index = providerSpinner.getSelectedItemPosition();
+                    providerManager.removeProvider(index);
+                    refreshProviderSpinner();
+                    int newIndex = providerManager.getSelectedProviderIndex();
+                    if (newIndex >= 0 && newIndex < providers.size()) {
+                        isLoadingSettings = true;
+                        providerSpinner.setSelection(newIndex);
+                        isLoadingSettings = false;
+                        loadProviderDetails(newIndex);
+                        loadApiKey(newIndex);
+                        updateApiKeyStatus(newIndex);
+                    }
+                })
+                .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
+                .show();
+    }
+
+    // ── Provider Validation ───────────────────────────────────────────────
+
+    /**
+     * Validates that the current provider is properly configured for use.
+     * @return error message resource id if invalid, 0 if valid
+     */
+    private int validateCurrentProvider() {
+        int index = providerSpinner.getSelectedItemPosition();
+        if (index < 0 || index >= providers.size()) {
+            return R.string.settings_ai_validation_no_provider;
+        }
+
+        AIProvider provider = providers.get(index);
+
+        if (TextUtils.isEmpty(provider.name)) {
+            return R.string.settings_ai_validation_name_empty;
+        }
+        if (TextUtils.isEmpty(provider.apiBaseURL)) {
+            return R.string.settings_ai_validation_url_empty;
+        }
+        if (TextUtils.isEmpty(provider.modelName)) {
+            return R.string.settings_ai_validation_model_empty;
+        }
+        if (!provider.apiKeyOptional && !keyManager.hasKey(provider.id)) {
+            return R.string.settings_ai_validation_key_not_configured;
+        }
+
+        return 0;  // Valid
+    }
+
+    // ── API Key Management ────────────────────────────────────────────────
+
+    private void saveApiKey() {
+        int index = providerSpinner.getSelectedItemPosition();
+        if (index < 0 || index >= providers.size()) return;
+
+        AIProvider provider = providers.get(index);
+        String key = apiKeyEditText.getText().toString().trim();
+        keyManager.saveKey(provider.id, key);
+        updateApiKeyStatus(index);
+        refreshProviderSpinner();
+        isLoadingSettings = true;
+        providerSpinner.setSelection(index);
+        isLoadingSettings = false;
+
+        // Hide input and action buttons after saving
+        apiKeyInputLayout.setVisibility(View.GONE);
+        apiKeyActionButtons.setVisibility(View.GONE);
+
+        Toast.makeText(getContext(), R.string.settings_ai_toast_success, Toast.LENGTH_SHORT).show();
+    }
+
+    private void showClearApiKeyDialog() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ai_dialog_clear_key_title)
+                .setMessage(R.string.settings_ai_dialog_clear_key_message)
+                .setPositiveButton(R.string.settings_ai_dialog_clear, (dialog, which) -> {
+                    int index = providerSpinner.getSelectedItemPosition();
+                    if (index < 0 || index >= providers.size()) return;
+
+                    AIProvider provider = providers.get(index);
+                    keyManager.deleteKey(provider.id);
+                    apiKeyEditText.setText("");
+                    updateApiKeyStatus(index);
+                    refreshProviderSpinner();
+                    isLoadingSettings = true;
+                    providerSpinner.setSelection(index);
+                    isLoadingSettings = false;
+
+                    // Hide input and action buttons after clearing
+                    apiKeyInputLayout.setVisibility(View.GONE);
+                    apiKeyActionButtons.setVisibility(View.GONE);
+                })
+                .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
+                .show();
+    }
+
+    private void showProviderSelectionDialog() {
+        String[] displayNames = getProviderDisplayNames();
+        int currentIndex = providerSpinner.getSelectedItemPosition();
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.settings_ai_dialog_select_provider)
+                .setSingleChoiceItems(displayNames, currentIndex, (dialog, which) -> {
+                    if (which < 0 || which >= providers.size()) return;
+                    // Skip if already selected
+                    if (which == currentIndex) {
+                        dialog.dismiss();
+                        return;
+                    }
+                    // Update manager
+                    providerManager.setSelectedProviderIndex(which);
+                    // Update hidden spinner
+                    isLoadingSettings = true;
+                    providerSpinner.setSelection(which);
+                    isLoadingSettings = false;
+                    // Refresh detail panels
+                    loadProviderDetails(which);
+                    loadApiKey(which);
+                    updateApiKeyStatus(which);
+                    updateEditProviderHeader(which);
+                    updateActiveProviderName(which);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.settings_ai_dialog_cancel, null)
+                .show();
+    }
+
+    // ── Test Connection ───────────────────────────────────────────────────
+
+    private void testConnection() {
+        // Validate provider first
+        int validationErrorRes = validateCurrentProvider();
+        if (validationErrorRes != 0) {
+            Toast.makeText(getContext(), validationErrorRes, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int index = providerSpinner.getSelectedItemPosition();
+        AIProvider provider = providers.get(index);
+        String endpoint = provider.apiBaseURL;
+        String apiKey = keyManager.getKey(provider.id);
+        String model = provider.modelName;
+
+        // Determine correct adapter name based on provider
+        String adapterName = getAdapterNameForProvider(provider);
+
+        // UI: disable button, show testing state
+        testConnectionBtn.setEnabled(false);
+        testConnectionBtn.setText(R.string.settings_ai_toast_testing);
+        testResultText.setVisibility(View.GONE);
+
+        long startTime = System.currentTimeMillis();
+
+        // Execute on background thread
+        executor.execute(() -> {
+            try {
+                LlmHttpClient client = new LlmHttpClient(apiKey != null ? apiKey : "", endpoint);
+                client.testConnection(model, adapterName);
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    testConnectionBtn.setEnabled(true);
+                    testConnectionBtn.setText(R.string.settings_ai_test_connection);
+                    testResultText.setVisibility(View.VISIBLE);
+                    testResultText.setTextColor(getResources().getColor(R.color.theme_accent_green, null));
+                    testResultText.setText(getString(R.string.settings_ai_test_success) +
+                            "\n" + getString(R.string.settings_ai_test_response_time,
+                            String.format("%.1fs", elapsed / 1000.0)));
+                });
+            } catch (LlmHttpClient.UnsupportedProviderException e) {
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    testConnectionBtn.setEnabled(true);
+                    testConnectionBtn.setText(R.string.settings_ai_test_connection);
+                    testResultText.setVisibility(View.VISIBLE);
+                    testResultText.setTextColor(getResources().getColor(R.color.theme_accent_red, null));
+                    testResultText.setText(getString(R.string.settings_ai_test_failed) +
+                            "\n" + e.getMessage());
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Connection test failed", e);
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    testConnectionBtn.setEnabled(true);
+                    testConnectionBtn.setText(R.string.settings_ai_test_connection);
+                    testResultText.setVisibility(View.VISIBLE);
+                    testResultText.setTextColor(getResources().getColor(R.color.theme_accent_red, null));
+                    String errorMsg = e.getMessage();
+                    if (errorMsg != null && errorMsg.length() > 100) {
+                        errorMsg = errorMsg.substring(0, 100) + "…";
+                    }
+                    testResultText.setText(getString(R.string.settings_ai_test_failed) +
+                            "\n" + (errorMsg != null ? errorMsg : "Unknown error"));
+                });
+            }
+        });
+    }
+
+    /**
+     * Determines the correct adapter name for a provider based on its URL.
+     */
+    private String getAdapterNameForProvider(AIProvider provider) {
+        String url = provider.apiBaseURL != null ? provider.apiBaseURL.toLowerCase() : "";
+
+        // Check for known provider URLs
+        if (url.contains("anthropic.com")) return "Anthropic";
+        if (url.contains("googleapis.com") || url.contains("generativelanguage")) return "Google";
+        // All others use OpenAI-compatible format
+        return "OpenAI";
+    }
+
     // ── Sensitive page shielding ──────────────────────────────────────────
-    // AI settings contain API keys; degrade by hiding content on screenshot/recording.
 
     @Override
     public void onResume() {
@@ -629,14 +1111,14 @@ public class AISettingsFragment extends Fragment {
             shield = new SensitivePageShield(requireActivity());
             shield.registerSensitiveView(apiKeyEditText);
         }
-        shield.enable();
+        shield.disable();
     }
 
     @Override
     public void onPause() {
         super.onPause();
         if (shield != null) {
-            shield.disable();
+            shield.enable();
         }
     }
 
@@ -647,5 +1129,13 @@ public class AISettingsFragment extends Fragment {
             shield.release();
             shield = null;
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+        super.onDestroy();
     }
 }

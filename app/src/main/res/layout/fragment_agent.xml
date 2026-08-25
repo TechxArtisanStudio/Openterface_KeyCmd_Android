@@ -80,15 +80,42 @@
                 android:paddingBottom="8dp"
                 android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/agent_empty_hint"
+            <LinearLayout
+                android:id="@+id/agent_empty_state"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:gravity="center"
-                android:padding="24dp"
-                android:text="@string/agent_empty_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="15sp" />
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:id="@+id/agent_empty_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/agent_empty_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/agent_empty_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center"
+                    android:text="@string/agent_empty_hint"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <GridLayout
+                    android:id="@+id/agent_suggested_prompts_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:columnCount="2"
+                    android:useDefaultMargins="false" />
+            </LinearLayout>
         </FrameLayout>
 
         <LinearLayout

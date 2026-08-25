@@ -4,7 +4,9 @@
     <color name="background_light">#FF1C1C1E</color>
     <color name="card_unselected_bg">#FF2C2C2E</color>
     <!-- Dialog cards: match elevated surface (was hard-coded white from day values). -->
-    <color name="card_background">#FF2C2C2E</color>
+    <color name="card_background">#FF3A3A3C</color>
+    <!-- BottomSheet dialog background — one step above page background (#1C1C1E) for visual separation. -->
+    <color name="bottom_sheet_background">#FF2C2C2E</color>
     <color name="header_background">#FF1C1C1E</color>
     <color name="footer_background">#FF1C1C1E</color>
     <color name="sidebar_background">#FF1C1C1E</color>
@@ -45,6 +47,9 @@
     <color name="presentation_card_pressed">#FF2A2F45</color>
 
     <color name="color_presentation">#FFCE93D8</color>
+
+    <!-- Agent Settings: divider in dark mode (15% white, subtle line on dark surface). -->
+    <color name="agent_settings_divider">#26FFFFFF</color>
 
     <!-- Touchpad surface: slightly above background_light (#FF1C1C1E) for affordance -->
     <color name="touchpad_background">#FF2C2C2E</color>
