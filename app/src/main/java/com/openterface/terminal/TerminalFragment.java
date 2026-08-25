@@ -135,6 +135,7 @@ public class TerminalFragment extends Fragment {
     @Nullable private TerminalKeyboardTransport terminalFullscreenTransport;
 
     private Button connectBtn;
+    private MaterialButton transportBtn;
     private TextView statusText;
     private TextView hostLabel;
     private LinearLayout connectionOverlay;
@@ -280,6 +281,7 @@ public class TerminalFragment extends Fragment {
         rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
+        transportBtn = view.findViewById(R.id.terminal_transport_btn);
         statusText = view.findViewById(R.id.terminal_status);
         hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
@@ -993,6 +995,22 @@ public class TerminalFragment extends Fragment {
                 if (connectionOverlay != null) {
                     connectionOverlay.setVisibility(View.VISIBLE);
                 }
+            }
+        }
+
+        // Update transport type button
+        if (transportBtn != null) {
+            if (isSessionActive()) {
+                if (bleEthTransport != null) {
+                    transportBtn.setText(R.string.terminal_transport_ble);
+                    transportBtn.setIconResource(R.drawable.ic_bluetooth_24);
+                } else {
+                    transportBtn.setText(R.string.terminal_transport_usb);
+                    transportBtn.setIconResource(R.drawable.ic_usb_24);
+                }
+                transportBtn.setVisibility(View.VISIBLE);
+            } else {
+                transportBtn.setVisibility(View.GONE);
             }
         }
     }
@@ -1969,6 +1987,7 @@ public class TerminalFragment extends Fragment {
         terminalFullscreenKeyboardView = null;
         terminalFullscreenTransport = null;
         connectBtn = null;
+        transportBtn = null;
         statusText = null;
         hostLabel = null;
         connectionOverlay = null;

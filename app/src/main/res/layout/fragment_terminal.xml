@@ -19,13 +19,14 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp">
 
-        <!-- Left side: submode tabs -->
+        <!-- Left side: submode tabs (hidden for now) -->
         <LinearLayout
             android:id="@+id/terminal_submode_tabs"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginEnd="12dp">
+            android:layout_marginEnd="12dp"
+            android:visibility="gone">
 
             <ImageButton
                 android:id="@+id/terminal_tab_keyboard"
@@ -68,12 +69,23 @@
 
         </LinearLayout>
 
-        <!-- Right side: connect/disconnect button -->
+        <!-- Right side: transport button + connect/disconnect button -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
+
+            <!-- Transport type button (e.g. "BLE-Eth Tunnel", "USB ECM Bridge") -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_transport_btn"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:textSize="13sp"
+                android:visibility="gone"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp" />
 
             <!-- Connect/disconnect button -->
             <com.google.android.material.button.MaterialButton
@@ -81,6 +93,7 @@
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
+                android:layout_marginStart="8dp"
                 android:text="@string/terminal_connect"
                 android:textSize="13sp"
                 android:visibility="gone" />
