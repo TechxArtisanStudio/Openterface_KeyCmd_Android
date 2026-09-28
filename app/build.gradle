@@ -80,12 +80,12 @@ tasks.register('syncBundledGamepadPresets') {
 
 android {
     namespace 'com.openterface.keymod'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.openterface.KeyCmd"
         minSdk 21
-        targetSdk 35
+        targetSdk 36
         versionCode 36
         versionName "0.36"
 
