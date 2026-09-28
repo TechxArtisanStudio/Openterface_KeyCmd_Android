@@ -90,13 +90,6 @@ public class DataReassembler {
                 this.totalFrags = total;
                 nextSeq = seq;
                 buf = new ByteArrayOutputStream();
-            } else if (!isFirst && !hasMore && seq > 0 && total == 1) {
-                // Firmware bug: middle fragment labeled as single-fragment.
-                // Discard to prevent garbage data delivery.
-                Log.w(TAG, "Fragment rejected: orphan with seq=" + seq
-                        + " total=1 connId=" + connId
-                        + " — inconsistent metadata, discarding");
-                return null;
             } else {
                 Log.w(TAG, "Fragment dropped: reassembly not active. "
                         + "seq=" + seq + " connId=" + connId

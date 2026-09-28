@@ -85,24 +85,48 @@ android {
     defaultConfig {
         applicationId "com.openterface.KeyCmd"
         minSdk 21
-        targetSdk 36
-        versionCode 36
-        versionName "0.36"
+targetSdk 36
+        versionCode 38
+        versionName "0.38"
 
         setProperty("archivesBaseName", "KeyCmd")
 
         buildConfigField 'String', 'BUNDLED_GAMEPAD_DEFAULT_FINGERPRINT', "\"${bundledGamepadDefaultFingerprint}\""
-        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://assets.openterface.com/keymod/android/help_config.json"'
+        buildConfigField 'String', 'HELP_CONFIG_URL', '"https://assets.openterface.com/keymod/android/tutorial/config.json"'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         release {
-            storeFile file(project.findProperty("RELEASE_STORE_FILE") ?: "keystore.jks")
-            storePassword project.findProperty("RELEASE_STORE_PASSWORD") ?: "password"
-            keyAlias project.findProperty("RELEASE_KEY_ALIAS") ?: "keymod"
-            keyPassword project.findProperty("RELEASE_KEY_PASSWORD") ?: "password"
+            // Release signing requires explicit properties — never fall back to a
+            // hardcoded default. CI builds MUST set these via -P or gradle.properties.
+            // Falling back silently previously used "password"/"password" which is a
+            // real signing-key security hole (anyone with the repo can re-sign APKs).
+            def storePwd = project.findProperty("RELEASE_STORE_PASSWORD")
+            def keyPwd = project.findProperty("RELEASE_KEY_PASSWORD")
+            def alias = project.findProperty("RELEASE_KEY_ALIAS")
+            def storeF = project.findProperty("RELEASE_STORE_FILE")
+            storeFile file(storeF ?: "keystore.jks")
+            // Only validate credentials when a release task is actually requested.
+            // signingConfigs.release is evaluated at configuration time even for
+            // assembleDebug, so throwing unconditionally would break local dev.
+            def isReleaseBuild = gradle.startParameter.taskNames.any {
+                it.contains("release") || it.contains("Release")
+            }
+            if (isReleaseBuild && storePwd == null) {
+                throw new GradleException(
+                        "RELEASE_STORE_PASSWORD is required for release builds. " +
+                        "Set it in gradle.properties or via -PRELEASE_STORE_PASSWORD=...")
+            }
+            if (isReleaseBuild && keyPwd == null) {
+                throw new GradleException(
+                        "RELEASE_KEY_PASSWORD is required for release builds. " +
+                        "Set it in gradle.properties or via -PRELEASE_KEY_PASSWORD=...")
+            }
+            storePassword storePwd != null ? storePwd : ""
+            keyAlias alias != null ? alias : "keymod"
+            keyPassword keyPwd != null ? keyPwd : ""
         }
     }
 

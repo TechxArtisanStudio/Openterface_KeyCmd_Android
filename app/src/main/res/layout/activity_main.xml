@@ -192,6 +192,18 @@
                         android:padding="@dimen/header_right_cluster_icon_padding"
                         android:tint="@color/text_secondary"/>
 
+                    <ImageButton
+                        android:id="@+id/agent_settings_header_button"
+                        android:layout_width="@dimen/header_right_cluster_icon_size"
+                        android:layout_height="@dimen/header_right_cluster_icon_size"
+                        android:layout_marginEnd="@dimen/header_right_cluster_button_gap"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_settings"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/agent_settings_header_cd"
+                        android:padding="@dimen/header_right_cluster_icon_padding"
+                        android:tint="@color/text_secondary"/>
+
                     <LinearLayout
                         android:id="@+id/connection_container"
                         android:layout_width="wrap_content"

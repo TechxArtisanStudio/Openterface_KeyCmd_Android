@@ -48,6 +48,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.KeyCmd"
+        android:usesCleartextTraffic="true"
         android:vmSafeMode="true"
         tools:targetApi="34">
         
@@ -84,6 +85,14 @@
         <!-- Credential Activity -->
         <activity
             android:name="com.openterface.terminal.CredentialActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:theme="@style/Theme.KeyCmd" />
+
+        <!-- Export Public Key Activity -->
+        <activity
+            android:name="com.openterface.terminal.ExportPublicKeyActivity"
             android:exported="false"
             android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"

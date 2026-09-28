@@ -3,6 +3,7 @@ package com.openterface.keymod;
 import android.util.Log;
 
 import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.openterface.keymod.hid.ConsumerControlHidTransport;
 
 import java.io.IOException;
 
@@ -114,6 +115,40 @@ public class HIDSender {
                                         int buttons, int leftX, int leftY, int rightX, int rightY) {
         // For now, send as keyboard events - full gamepad protocol TBD
         Log.v(TAG, "Gamepad event: buttons=" + buttons + ", sticks=(" + leftX + "," + leftY + "),(" + rightX + "," + rightY + ")");
+    }
+
+    // ── Consumer Control (media / volume keys via CH9329 CMD 0x03) ──
+    // Reserved as convenience API for future use; current dispatch path uses ConsumerControlHidTransport directly
+
+    /**
+     * Send a Consumer Control key tap (press + release) via CH9329 CMD 0x03.
+     *
+     * @param usageCode one of the {@code USAGE_*} constants in
+     *                  {@link ConsumerControlHidTransport}
+     *                  ({@code 0x01}=Vol+, {@code 0x02}=Vol-, {@code 0x04}=Mute,
+     *                  {@code 0x08}=Play, {@code 0x10}=Next, {@code 0x20}=Prev,
+     *                  {@code 0x40}=Stop, {@code 0x80}=Eject)
+     */
+    @SuppressWarnings("unused")
+    public static void sendConsumerControl(UsbSerialPort usbPort, BluetoothService bluetoothService,
+                                            int usageCode) {
+        ConsumerControlHidTransport.sendConsumerControlTap(
+                usbPort, bluetoothService, bluetoothService != null, usageCode);
+    }
+
+    @SuppressWarnings("unused")
+    public static void sendVolumeUp(UsbSerialPort usbPort, BluetoothService bluetoothService) {
+        sendConsumerControl(usbPort, bluetoothService, ConsumerControlHidTransport.USAGE_VOLUME_UP);
+    }
+
+    @SuppressWarnings("unused")
+    public static void sendVolumeDown(UsbSerialPort usbPort, BluetoothService bluetoothService) {
+        sendConsumerControl(usbPort, bluetoothService, ConsumerControlHidTransport.USAGE_VOLUME_DOWN);
+    }
+
+    @SuppressWarnings("unused")
+    public static void sendMute(UsbSerialPort usbPort, BluetoothService bluetoothService) {
+        sendConsumerControl(usbPort, bluetoothService, ConsumerControlHidTransport.USAGE_MUTE);
     }
 
     /**

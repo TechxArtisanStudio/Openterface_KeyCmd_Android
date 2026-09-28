@@ -482,6 +482,13 @@ public class CustomKeyboardView extends LinearLayout {
          */
         int unicodeCodePoint;
 
+        /**
+         * When {@code true}, this key's {@link #code} is a Consumer Control usage bitmask
+         * (CH9329 CMD 0x03) rather than a keyboard HID code. The press handler dispatches via
+         * {@link com.openterface.keymod.hid.ConsumerControlHidTransport}.
+         */
+        boolean isConsumerControl;
+
         Key(String label, String symbolLabel, String alternates, String cornerHint, int code, String codeStr, float widthPercent, int iconResId,
             float horizontalGap, boolean isRepeatable, boolean requiresShift, int shortcutModifiers, boolean isTopPanelKey) {
             this.label = label;
@@ -1124,8 +1131,14 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void reassertKeyboardAfterHidRelease() {
-        if (holdLockController != null && transport instanceof HidKeyboardTransport) {
-            holdLockController.reassertKeyboardModifiersIfNeeded(port, bluetoothService, isServiceBound);
+        // Safety net: after an all-keys-released packet, re-assert every modifier that should
+        // still be held on the host. Previously this only consulted the KM Basic hold-lock
+        // controller, which left KM Pro sticky-locked modifiers (isAltLeftLocked etc.) orphaned
+        // — the host saw them released and combos like Alt+Tab / Win+Tab would flash open then
+        // immediately close.
+        int lockedMods = getAggregateLockedModMask();
+        if (lockedMods != 0 && transport != null && transport.isConnected()) {
+            transport.sendKey(lockedMods, 0);
         }
         Context ctx = getContext();
         if (ctx != null
@@ -1215,6 +1228,34 @@ public class CustomKeyboardView extends LinearLayout {
             return 0;
         }
         return holdLockController.getLockedModMask();
+    }
+
+    /**
+     * Aggregate HID modifier byte built from KM Pro sticky lock flags
+     * ({@code isCtrlLeftLocked}, {@code isAltLeftLocked}, …). Returns 0 when no modifier is locked.
+     * This matches the USB HID boot-modifier byte layout (Ctrl=0x01, Shift=0x02, Alt=0x04,
+     * Win=0x08, CtrlR=0x10, ShiftR=0x20, AltR=0x40, WinR=0x80).
+     */
+    private int getKmProLockedModifierMask() {
+        int m = 0;
+        m += isCtrlLeftLocked  ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Ctrl"))  : 0;
+        m += isShiftLeftLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Shift")) : 0;
+        m += isAltLeftLocked   ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Alt"))   : 0;
+        m += isWinLeftLocked   ? parseHex(CH9329MSKBMap.KBShortCutKey().get("Win"))   : 0;
+        m += isCtrlRightLocked ? parseHex(CH9329MSKBMap.KBShortCutKey().get("CtrlR")) : 0;
+        // 0xE5 (ShiftR) is not currently latched by KM Pro but keep the slot for symmetry.
+        m += isAltRightLocked  ? parseHex(CH9329MSKBMap.KBShortCutKey().get("AltR"))  : 0;
+        m += isWinRightLocked  ? parseHex(CH9329MSKBMap.KBShortCutKey().get("WinR"))  : 0;
+        return m & 0xFF;
+    }
+
+    /**
+     * Aggregate HID modifier byte from every lock source that may be active:
+     * KM Pro sticky flags + KM Basic hold-lock controller.
+     * Used to decide whether a "release" should keep modifiers held.
+     */
+    private int getAggregateLockedModMask() {
+        return (getKmProLockedModifierMask() | getHoldLockedBootModMaskOr0()) & 0xFF;
     }
 
     private int mergeHoldLockedBootMask(int modifiers) {
@@ -4008,18 +4049,7 @@ public class CustomKeyboardView extends LinearLayout {
     }
 
     private void performKeyHapticFeedback(View view) {
-        if (view == null || getContext() == null) {
-            return;
-        }
-        boolean enabled = PreferenceManager.getDefaultSharedPreferences(getContext())
-                .getBoolean("haptic_feedback", true);
-        if (!enabled) {
-            return;
-        }
-        view.performHapticFeedback(
-                HapticFeedbackConstants.KEYBOARD_TAP,
-                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
-        );
+        BasicKeyFeedback.performKeyHaptic(view);
     }
 
     private AlternateOption mapAsciiAlternate(String token) {
@@ -4632,6 +4662,7 @@ public class CustomKeyboardView extends LinearLayout {
                 true
         );
         key.topStripFavoriteSlotIndex = topStripFavoriteSlotIndex;
+        key.isConsumerControl = shortcut.isConsumerControl;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         } else {
@@ -4930,6 +4961,7 @@ public class CustomKeyboardView extends LinearLayout {
         key.iconResId = iconResId;
         key.shortcutModifiers = normalizedModifiers;
         key.unicodeCodePoint = shortcut.unicodeCodePoint;
+        key.isConsumerControl = shortcut.isConsumerControl;
         if (iconResId == 0 && isEmojiIcon(shortcut.icon)) {
             key.customIconGlyph = shortcut.icon.trim();
         } else {
@@ -7930,17 +7962,30 @@ public class CustomKeyboardView extends LinearLayout {
     public void sendReleaseData() {
         repeatHandler.removeCallbacks(keyboardTapReleaseRunnable);
         repeatHandler.removeCallbacks(gamingTapReleaseRunnable);
+        int lockedMods = getAggregateLockedModMask();
         logKmProTouch(
                 "sendReleaseData usbPort="
                         + (port != null)
                         + " btBound="
                         + isServiceBound
                         + " btConn="
-                        + (bluetoothService != null && bluetoothService.isConnected()));
+                        + (bluetoothService != null && bluetoothService.isConnected())
+                        + " lockedMods=0x"
+                        + Integer.toHexString(lockedMods));
         if (transport != null && transport.isConnected()) {
-            transport.sendAllKeysReleased();
+            if (lockedMods != 0) {
+                // Modifiers are locked (sticky / hold-lock): release tapped keys but KEEP
+                // modifiers held on the host. Without this, Alt+Tab / Win+Tab etc. would
+                // briefly open then immediately close because the modifier is released 30ms
+                // after the key tap.
+                transport.sendKey(lockedMods, 0);
+                Log.v(TAG, "Sent keyboard release (keys only, mods=0x"
+                        + Integer.toHexString(lockedMods) + " held)");
+            } else {
+                transport.sendAllKeysReleased();
+                Log.v(TAG, "Sent keyboard release (all keys)");
+            }
         }
-        Log.v(TAG, "Sent keyboard release (all keys)");
         post(this::reassertKeyboardAfterHidRelease);
     }
 
@@ -8067,7 +8112,11 @@ public class CustomKeyboardView extends LinearLayout {
         if (key.shortcutModifiers >= 0 && !isTopModifierLockCandidate(key)) {
             FnMapping fnOverride = extraNumpadFnLocked ? resolveExtraNumpadFnMapping(key) : null;
             if (fnOverride == null) {
-                if (key.unicodeCodePoint != 0) {
+                if (key.isConsumerControl) {
+                    // Consumer Control: route through CMD 0x03 transport
+                    com.openterface.keymod.hid.ConsumerControlHidTransport.sendConsumerControlTap(
+                            port, bluetoothService, isServiceBound, key.code);
+                } else if (key.unicodeCodePoint != 0) {
                     sendStripUnicodeShortcut(key.unicodeCodePoint);
                 } else {
                     sendShortcutWithModifiers(key.shortcutModifiers, key.code);
@@ -8272,7 +8321,13 @@ public class CustomKeyboardView extends LinearLayout {
 
     private void sendKeyboardAllKeysReleasedSync() {
         if (transport != null && transport.isConnected()) {
-            transport.sendAllKeysReleased();
+            int lockedMods = getAggregateLockedModMask();
+            if (lockedMods != 0) {
+                // Keep locked modifiers held on the host; release only the key slots.
+                transport.sendKey(lockedMods, 0);
+            } else {
+                transport.sendAllKeysReleased();
+            }
         }
     }
 

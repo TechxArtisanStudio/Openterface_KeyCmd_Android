@@ -422,9 +422,6 @@ public class BluetoothDialogFragment extends DialogFragment {
         initializeUIComponents(view);
         initializeBluetooth();
         bindService();
-        if (!isServiceBound) {
-            bindService();
-        }
         IntentFilter btFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         requireContext().registerReceiver(btStateReceiver, btFilter);
         btReceiverRegistered = true;

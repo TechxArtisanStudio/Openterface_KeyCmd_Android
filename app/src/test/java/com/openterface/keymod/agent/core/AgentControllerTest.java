@@ -1,0 +1,129 @@
+package com.openterface.keymod.agent.core;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+
+import static org.junit.Assert.*;
+
+/**
+ * Unit tests for AgentController state machine.
+ *
+ * <p>Note: Since AgentController uses background threads and LLM calls,
+ * these tests focus on the synchronous state transitions and initial state
+ * verification. Integration tests with mock LLM are for Day 9.</p>
+ */
+@RunWith(RobolectricTestRunner.class)
+public class AgentControllerTest {
+
+    /** Minimal stub — tests don't need SSH/BLE access. */
+    private static final AgentEnvironment STUB_ENV = new AgentEnvironment() {
+        @Override public com.openterface.terminal.CredentialProfile getActiveSshProfile() { return null; }
+        @Override public void setActiveSshProfile(com.openterface.terminal.CredentialProfile p) { }
+        @Override public com.openterface.terminal.SshClient getSshClient() { return null; }
+        @Override public void setSshClient(com.openterface.terminal.SshClient c) { }
+        @Override public com.openterface.keymod.BluetoothService getBluetoothService() { return null; }
+        @Override public com.openterface.keymod.ConnectionManager getConnectionManager() { return null; }
+    };
+
+    @Test
+    public void testInitialState() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        assertEquals(AgentState.IDLE, controller.getState());
+        assertNull(controller.getCurrentPlan());
+    }
+
+    @Test
+    public void testSubmitWithEmptyPromptIgnored() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.submit("");
+        // Should remain IDLE because empty prompt is ignored
+        assertEquals(AgentState.IDLE, controller.getState());
+    }
+
+    @Test
+    public void testSubmitWithBlankPromptIgnored() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.submit("   ");
+        assertEquals(AgentState.IDLE, controller.getState());
+    }
+
+    @Test
+    public void testCancelFromIdleState() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.cancel();
+        assertEquals(AgentState.IDLE, controller.getState());
+    }
+
+    @Test
+    public void testResetClearsState() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.reset();
+        assertEquals(AgentState.IDLE, controller.getState());
+        assertNull(controller.getCurrentPlan());
+    }
+
+    @Test
+    public void testSetMaxRetries() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.setMaxRetries(5);
+        // No direct getter, but should not throw
+    }
+
+    @Test
+    public void testPromptBuilderAccessible() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        assertNotNull(controller.getPromptBuilder());
+        assertEquals("terminal", controller.getPromptBuilder().getExecutionMode());
+    }
+
+    @Test
+    public void testSessionAccessible() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        assertNotNull(controller.getSession());
+        assertEquals(0, controller.getSession().size());
+    }
+
+    @Test
+    public void testSetListener() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.setListener(new AgentController.AgentListener() {
+            @Override
+            public void onStateChanged(AgentState state) {}
+            @Override
+            public void onPlanReady(AgentPlan plan) {}
+            @Override
+            public void onExecutionProgress(int currentStep, int totalSteps) {}
+            @Override
+            public void onRetry(int attempt, int maxAttempts) {}
+            @Override
+            public void onExecutionComplete() {}
+            @Override
+            public void onError(String message) {}
+        });
+        // Should not throw
+    }
+
+    @Test
+    public void testSetToolExecutor() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        controller.setToolExecutor(new AgentToolExecutor() {
+            @Override
+            public String getType() { return "terminal"; }
+            @Override
+            public void execute(AgentPlan.Step step, ExecutionCallback callback) {}
+            @Override
+            public void cancel() {}
+        });
+        // Should not throw
+    }
+
+    @Test
+    public void testApproveAndRunWithoutPlanIgnored() {
+        AgentController controller = new AgentController(RuntimeEnvironment.getApplication(), STUB_ENV);
+        // Approve without a plan should be ignored
+        controller.approveAndRun();
+        assertEquals(AgentState.IDLE, controller.getState());
+    }
+}

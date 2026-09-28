@@ -19,6 +19,7 @@ import android.graphics.drawable.LayerDrawable;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -57,6 +58,32 @@ public class TerminalFragment extends Fragment {
 
     private static final String TAG = "TerminalFragment";
 
+    /** Active SocketFactory for tunnelling SSH traffic (BLE-Eth or null for direct/USB ECM). */
+    private static com.jcraft.jsch.SocketFactory activeSocketFactory;
+
+    /** Active SshClient — allows executing commands through the existing SSH session. */
+    private static SshClient activeSshClient;
+
+    /** Last used transport mode: true = USB ECM, false = BLE-Eth. */
+    private static boolean lastConnectionWasUsb = true;
+
+    /** Returns whether the last SSH connection used USB ECM transport. */
+    public static boolean wasLastConnectionUsb() {
+        return lastConnectionWasUsb;
+    }
+
+    /** Returns the active SocketFactory for use by external components (e.g. SshKeyPusher). */
+    @Nullable
+    public static com.jcraft.jsch.SocketFactory getActiveSocketFactory() {
+        return activeSocketFactory;
+    }
+
+    /** Returns the active SshClient, or null if no SSH session is connected. */
+    @Nullable
+    public static SshClient getActiveSshClient() {
+        return activeSshClient;
+    }
+
     public static TerminalFragment newInstance() {
         return new TerminalFragment();
     }
@@ -71,6 +98,20 @@ public class TerminalFragment extends Fragment {
     @Nullable private CustomKeyboardView terminalKeyboardView;
     @Nullable private TerminalKeyboardTransport terminalKeyboardTransport;
     private boolean customKeyboardVisible = false;
+
+    // Submode management (Keyboard/Compose)
+    private enum TerminalSubmode { KEYBOARD, COMPOSE }
+    private TerminalSubmode currentSubmode = TerminalSubmode.KEYBOARD;
+    @Nullable private ImageButton terminalTabKeyboard;
+    @Nullable private ImageButton terminalTabCompose;
+    @Nullable private LinearLayout terminalComposeContainer;
+    @Nullable private EditText terminalComposeEditor;
+    @Nullable private MaterialButton terminalComposeClearBtn;
+    @Nullable private MaterialButton terminalComposeLibraryBtn;
+    @Nullable private MaterialButton terminalComposeSaveBtn;
+    @Nullable private MaterialButton terminalComposeSendBtn;
+    @Nullable private FrameLayout terminalComposeShortcutStripWrap;
+    @Nullable private CustomKeyboardView terminalComposeShortcutStrip;
 
     // Terminal IME surface: hidden EditText that pops the system IME above the custom keyboard.
     // Text diffs are forwarded to TerminalSession (same pattern as KM Pro's imeHost).
@@ -94,8 +135,8 @@ public class TerminalFragment extends Fragment {
     @Nullable private TerminalKeyboardTransport terminalFullscreenTransport;
 
     private Button connectBtn;
-    private TextView statusText;
     private MaterialButton transportBtn;
+    private TextView statusText;
     private TextView hostLabel;
     private LinearLayout connectionOverlay;
 
@@ -110,6 +151,13 @@ public class TerminalFragment extends Fragment {
     private BleEthSocketFactory bleEthSocketFactory;
     private BluetoothService.BleEthDataCallback bleEthCallback;
     private boolean isSshConnected = false;
+    /**
+     * Thread currently running the SSH connection handshake.
+     * When a new connection is started while this thread is still handshaking,
+     * it is interrupted so the old JSch session doesn't corrupt the new connection
+     * (fixes Cipher.isCBC() NPE caused by disconnect() during mid-handshake).
+     */
+    @Nullable private Thread connectionThread;
     private volatile boolean viewDestroyed = false;
 
     @Nullable
@@ -144,7 +192,7 @@ public class TerminalFragment extends Fragment {
         setupListeners();
         updateConnectionState();
 
-        // Restore keyboard visibility state after process death
+        // Restore keyboard visibility state and submode after process death
         if (savedInstanceState != null) {
             boolean wasKeyboardVisible = savedInstanceState.getBoolean("custom_keyboard_visible", false);
             if (wasKeyboardVisible) {
@@ -152,6 +200,23 @@ public class TerminalFragment extends Fragment {
                 // Note: Do NOT set customKeyboardVisible here — showCustomKeyboard()
                 // checks it as an early-return guard and will skip showing the keyboard.
                 rootView.post(this::showCustomKeyboard);
+            }
+
+            // Restore submode
+            String submodeName = savedInstanceState.getString("terminal_submode");
+            if (submodeName != null) {
+                try {
+                    TerminalSubmode savedSubmode = TerminalSubmode.valueOf(submodeName);
+                    if (savedSubmode != currentSubmode) {
+                        rootView.post(() -> switchSubmode(savedSubmode));
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            // Restore compose editor content
+            String composeText = savedInstanceState.getString("terminal_compose_text");
+            if (composeText != null && terminalComposeEditor != null) {
+                terminalComposeEditor.setText(composeText);
             }
         }
 
@@ -216,10 +281,52 @@ public class TerminalFragment extends Fragment {
         rootView = view;
         terminalView = view.findViewById(R.id.terminal_view);
         connectBtn = view.findViewById(R.id.terminal_connect_btn);
-        statusText = view.findViewById(R.id.terminal_status);
         transportBtn = view.findViewById(R.id.terminal_transport_btn);
+        statusText = view.findViewById(R.id.terminal_status);
         hostLabel = view.findViewById(R.id.terminal_host_label);
         connectionOverlay = view.findViewById(R.id.terminal_connection_overlay);
+
+        // Initialize submode UI
+        terminalTabKeyboard = view.findViewById(R.id.terminal_tab_keyboard);
+        terminalTabCompose = view.findViewById(R.id.terminal_tab_compose);
+        terminalComposeContainer = view.findViewById(R.id.terminal_compose_container);
+        terminalComposeEditor = view.findViewById(R.id.terminal_compose_editor);
+        terminalComposeClearBtn = view.findViewById(R.id.terminal_compose_clear);
+        terminalComposeLibraryBtn = view.findViewById(R.id.terminal_compose_library);
+        terminalComposeSaveBtn = view.findViewById(R.id.terminal_compose_save);
+        terminalComposeSendBtn = view.findViewById(R.id.terminal_compose_send);
+        terminalComposeShortcutStripWrap = view.findViewById(R.id.terminal_compose_shortcut_strip_wrap);
+        terminalComposeShortcutStrip = view.findViewById(R.id.terminal_compose_shortcut_strip);
+
+        // Set initial submode state (keyboard selected)
+        if (terminalTabKeyboard != null) {
+            terminalTabKeyboard.setSelected(true);
+        }
+        if (terminalTabCompose != null) {
+            terminalTabCompose.setSelected(false);
+        }
+
+        // Set up submode tab click listeners
+        if (terminalTabKeyboard != null) {
+            terminalTabKeyboard.setOnClickListener(v -> switchSubmode(TerminalSubmode.KEYBOARD));
+        }
+        if (terminalTabCompose != null) {
+            terminalTabCompose.setOnClickListener(v -> switchSubmode(TerminalSubmode.COMPOSE));
+        }
+
+        // Set up compose button listeners
+        if (terminalComposeSendBtn != null) {
+            terminalComposeSendBtn.setOnClickListener(v -> sendComposeToTerminal());
+        }
+        if (terminalComposeClearBtn != null) {
+            terminalComposeClearBtn.setOnClickListener(v -> clearComposeEditor());
+        }
+        if (terminalComposeLibraryBtn != null) {
+            terminalComposeLibraryBtn.setOnClickListener(v -> showComposeLibraryComingSoon());
+        }
+        if (terminalComposeSaveBtn != null) {
+            terminalComposeSaveBtn.setOnClickListener(v -> showComposeLibraryComingSoon());
+        }
 
         boolean isLandscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
@@ -825,6 +932,9 @@ public class TerminalFragment extends Fragment {
         });
 
         terminalView.setOnClickListener(v -> {
+            // In compose mode, don't toggle keyboard - the compose editor handles input
+            if (currentSubmode == TerminalSubmode.COMPOSE) return;
+
             boolean isLandscape = getResources().getConfiguration().orientation
                     == Configuration.ORIENTATION_LANDSCAPE;
             if (isLandscape) {
@@ -848,15 +958,6 @@ public class TerminalFragment extends Fragment {
     }
 
     private void updateConnectionState() {
-        // Update transport button visibility and icon
-        if (transportBtn != null) {
-            if (isSshConnected) {
-                transportBtn.setVisibility(View.VISIBLE);
-            } else {
-                transportBtn.setVisibility(View.GONE);
-            }
-        }
-
         // Update status text
         if (statusText != null) {
             if (isSshConnected) {
@@ -894,6 +995,22 @@ public class TerminalFragment extends Fragment {
                 if (connectionOverlay != null) {
                     connectionOverlay.setVisibility(View.VISIBLE);
                 }
+            }
+        }
+
+        // Update transport type button
+        if (transportBtn != null) {
+            if (isSessionActive()) {
+                if (bleEthTransport != null) {
+                    transportBtn.setText(R.string.terminal_transport_ble);
+                    transportBtn.setIconResource(R.drawable.ic_bluetooth_24);
+                } else {
+                    transportBtn.setText(R.string.terminal_transport_usb);
+                    transportBtn.setIconResource(R.drawable.ic_usb_24);
+                }
+                transportBtn.setVisibility(View.VISIBLE);
+            } else {
+                transportBtn.setVisibility(View.GONE);
             }
         }
     }
@@ -1270,6 +1387,20 @@ public class TerminalFragment extends Fragment {
         return isSshConnected;
     }
 
+    /**
+     * Get the current SshClient instance (for cross-fragment access, e.g. Agent executor).
+     * Returns null if SSH is not connected.
+     */
+    @Nullable
+    public SshClient getSshClient() {
+        return isSshConnected ? sshClient : null;
+    }
+
+    /** Check if SSH session is active (for cross-fragment access). */
+    public boolean isSshSessionActive() {
+        return isSshConnected;
+    }
+
     private void resetTerminalSession() {
         terminalSession = new TerminalSession(
                 prefs.getTerminalRows(),
@@ -1284,6 +1415,7 @@ public class TerminalFragment extends Fragment {
      */
     private void connect(CredentialProfile profile, boolean useUsb) {
         Log.v(TAG, "connect called: authType=" + profile.getAuthType() + " useUsb=" + useUsb);
+        lastConnectionWasUsb = useUsb;
         activeSessionHost = profile.getHost();
         statusText.setText(R.string.terminal_connecting);
 
@@ -1302,6 +1434,26 @@ public class TerminalFragment extends Fragment {
         final int port = profile.getPort();
         final String username = profile.getUsername();
         final String password = profile.getPassword();
+
+        // Interrupt any previous connection thread still mid-handshake.
+        // Without this, the old thread's JSch session would continue using the
+        // transport we're about to replace, causing Cipher.isCBC() NPE in JSch.
+        Thread oldConnThread = connectionThread;
+        if (oldConnThread != null && oldConnThread.isAlive()) {
+            oldConnThread.interrupt();
+        }
+
+        // Clean up old SSH client: null listener so its errors don't surface as UI dialogs.
+        // Only call disconnect() if the handshake has completed — calling disconnect()
+        // during mid-handshake triggers Cipher.isCBC() NPE in JSch.
+        if (sshClient != null) {
+            sshClient.setListener(null);
+            if (sshClient.isConnected()) {
+                sshClient.disconnect();
+            }
+            sshClient = null;
+        }
+
         usbEcmTransport = new UsbEcmTransport();
 
         // Set up transport listener BEFORE connect so the read thread can deliver data.
@@ -1340,7 +1492,7 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed || getContext() == null) return;
                     String displayMessage;
-                    if (message.contains("AUTH_FAILED")) {
+                    if (message != null && message.contains("AUTH_FAILED")) {
                         displayMessage = getString(R.string.terminal_auth_failed);
                     } else {
                         displayMessage = getFriendlyErrorMessage(message);
@@ -1348,7 +1500,7 @@ public class TerminalFragment extends Fragment {
                     if (statusText != null) {
                         statusText.setText(displayMessage);
                     }
-                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
+                    showSshErrorDialog(displayMessage, message);
                     isSshConnected = false;
                     teardownTerminalKeyboard();
                     updateConnectionState();
@@ -1358,6 +1510,7 @@ public class TerminalFragment extends Fragment {
 
         // First establish TCP connection
         new Thread(() -> {
+            connectionThread = Thread.currentThread();
             usbEcmTransport.connect(host, port, 15000);
 
             if (!usbEcmTransport.isConnected()) {
@@ -1370,12 +1523,18 @@ public class TerminalFragment extends Fragment {
                         connectionOverlay.setVisibility(View.VISIBLE);
                     }
                 });
+                if (connectionThread == Thread.currentThread()) {
+                    connectionThread = null;
+                }
                 return;
             }
 
             // Then establish SSH session over the TCP connection
             // Use the actual host from the dialog, not from prefs.
             runSshSession(profile, usbEcmTransport);
+            if (connectionThread == Thread.currentThread()) {
+                connectionThread = null;
+            }
         }).start();
     }
 
@@ -1409,15 +1568,37 @@ public class TerminalFragment extends Fragment {
 
         // Run cleanup and connection on background thread to avoid ANR
         new Thread(() -> {
+            // IMPORTANT: Interrupt any previous connection thread that is still
+            // mid-handshake. If we don't, the old thread's JSch session continues
+            // using the transport/socket we're about to tear down, causing a
+            // Cipher.isCBC() NullPointerException inside JSch when the old handshake
+            // tries to access a cipher that was invalidated by our disconnect below.
+            Thread oldConnThread = connectionThread;
+            if (oldConnThread != null && oldConnThread.isAlive()
+                    && oldConnThread != Thread.currentThread()) {
+                oldConnThread.interrupt();
+            }
+
             // Clear the SSH client listener BEFORE tearing down the old session.
             // This prevents the old session's "End of IO Stream Read" error from
             // being displayed to the user when we're about to start a new session.
             if (sshClient != null) {
                 sshClient.setListener(null);
-                sshClient.disconnect();
+                // Only call disconnect() if the handshake has completed (shell may be open).
+                // If the handshake is still in progress, calling disconnect() closes the
+                // JSch session while its connect() method is mid-handshake, which triggers
+                // Cipher.isCBC() NPE in JSch. Let the interrupted thread fail naturally
+                // when the transport below is torn down.
+                if (sshClient.isConnected()) {
+                    sshClient.disconnect();
+                }
                 sshClient = null;
                 Log.v(TAG, "connectBleEth: old SSH session silently cleaned up");
             }
+
+            // Record this thread as the active connection thread so the next
+            // connectBleEth() call can interrupt us if the user switches credentials.
+            connectionThread = Thread.currentThread();
 
             // Clean up any previous BLE-Eth connection
             if (bleEthCallback != null) {
@@ -1479,6 +1660,11 @@ public class TerminalFragment extends Fragment {
             Log.v(TAG, "BLE-Eth SSH connect thread started");
             runSshSessionWithSocketFactory(profile, bleEthTransport, bleEthSocketFactory);
             Log.v(TAG, "BLE-Eth SSH connect thread finished");
+            // Clear the connection thread reference — handshake is done (succeeded or failed).
+            // If a new connectBleEth() started after us, it would have already overwritten this.
+            if (connectionThread == Thread.currentThread()) {
+                connectionThread = null;
+            }
         }, "BLE-Eth-Connect").start();
     }
 
@@ -1494,15 +1680,22 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed) return;
                     isSshConnected = true;
+                    // Register SshClient with MainActivity so Agent tab can access it
+                    if (mainActivity != null) {
+                        mainActivity.setSshClient(sshClient);
+                    }
                     if (terminalView != null) {
                         terminalView.resetScrollX();
                     }
                     updateConnectionState();
-                    mainHandler.postDelayed(() -> {
-                        if (!viewDestroyed && rootView != null && isSshConnected) {
-                            showCustomKeyboard();
-                        }
-                    }, 150);
+                    // Only show custom keyboard if in keyboard submode
+                    if (currentSubmode == TerminalSubmode.KEYBOARD) {
+                        mainHandler.postDelayed(() -> {
+                            if (!viewDestroyed && rootView != null && isSshConnected) {
+                                showCustomKeyboard();
+                            }
+                        }, 150);
+                    }
                 });
                 // Start the shell channel (runs on background thread)
                 SshClient client = sshClient;
@@ -1516,6 +1709,10 @@ public class TerminalFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (viewDestroyed) return;
                     isSshConnected = false;
+                    // Unregister from MainActivity
+                    if (mainActivity != null) {
+                        mainActivity.setSshClient(null);
+                    }
                     updateConnectionState();
                     teardownTerminalKeyboard();
                     if (terminalView != null) {
@@ -1549,7 +1746,9 @@ public class TerminalFragment extends Fragment {
                     if (statusText != null) {
                         statusText.setText(displayMessage);
                     }
-                    Toast.makeText(getContext(), displayMessage, Toast.LENGTH_LONG).show();
+                    // Show the actual technical error in a copyable dialog so the
+                    // user can report it for debugging.
+                    showSshErrorDialog(displayMessage, message);
                     isSshConnected = false;
                     teardownTerminalKeyboard();
                     updateConnectionState();
@@ -1564,9 +1763,12 @@ public class TerminalFragment extends Fragment {
     private void runSshSessionWithSocketFactory(CredentialProfile profile,
                                                  TransportAdapter transport,
                                                  com.jcraft.jsch.SocketFactory socketFactory) {
+        activeSocketFactory = socketFactory;
         sshClient = new SshClient(profile, transport, socketFactory);
+        activeSshClient = sshClient;
+        sshClient.setContext(getContext());
         sshClient.setListener(createSshListener());
-        sshClient.connect();
+        sshClient.connect(profile);
     }
 
     /**
@@ -1574,17 +1776,33 @@ public class TerminalFragment extends Fragment {
      */
     private void runSshSession(CredentialProfile profile, TransportAdapter transport) {
         sshClient = new SshClient(profile, transport);
+        activeSshClient = sshClient;
+        sshClient.setContext(getContext());
         sshClient.setListener(createSshListener());
-        sshClient.connect();
+        sshClient.connect(profile);
     }
 
     /**
      * Disconnect the current SSH session.
      */
     private void disconnect() {
+        activeSocketFactory = null;
+        activeSshClient = null;
+        // Interrupt any in-progress connection thread (e.g. if user clicks Disconnect
+        // while a handshake is still running — though normally this path is only reached
+        // after a successful connection).
+        Thread connThread = connectionThread;
+        if (connThread != null && connThread.isAlive()) {
+            connThread.interrupt();
+        }
+        connectionThread = null;
         if (sshClient != null) {
             sshClient.disconnect();
             sshClient = null;
+        }
+        // Unregister from MainActivity so Agent tab no longer sees a dead client
+        if (mainActivity != null) {
+            mainActivity.setSshClient(null);
         }
         // Clean up BLE-Eth callback
         if (bleEthCallback != null && mainActivity != null) {
@@ -1660,6 +1878,22 @@ public class TerminalFragment extends Fragment {
 
         String lowerError = errorMessage.toLowerCase();
 
+        // SSH key format / parse errors
+        if (lowerError.contains("invalid key") || lowerError.contains("unknown key")
+                || lowerError.contains("key format") || lowerError.contains("bad key")
+                || lowerError.contains("pem") || lowerError.contains("invalid privatekey")
+                || lowerError.contains("failed to parse")) {
+            return getString(R.string.terminal_connection_failed)
+                    + ": SSH Key format error — check log for details";
+        }
+
+        // Publickey auth rejected by server
+        if (lowerError.contains("publickey") && (lowerError.contains("fail")
+                || lowerError.contains("denied") || lowerError.contains("no more"))) {
+            return getString(R.string.terminal_auth_failed)
+                    + " (SSH key rejected by server)";
+        }
+
         // Connection refused - target host is reachable but not accepting connections
         if (lowerError.contains("connection refused") || lowerError.contains("refused")) {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_connection_refused);
@@ -1688,13 +1922,43 @@ public class TerminalFragment extends Fragment {
             return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_no_route);
         }
 
-        // For other errors, show a generic message
+        // For other errors, show a generic message — the raw technical error
+        // is shown in the error dialog (see showSshErrorDialog).
         return getString(R.string.terminal_connection_failed) + ": " + getString(R.string.terminal_error_generic);
+    }
+
+    /**
+     * Show a dialog with the SSH error. Includes a friendly summary and the raw
+     * technical message so the user can copy/report it for debugging.
+     */
+    private void showSshErrorDialog(String friendlyMessage, String rawMessage) {
+        if (getContext() == null) return;
+        String raw = (rawMessage != null) ? rawMessage : "(no details)";
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.terminal_connection_failed)
+                .setMessage(friendlyMessage + "\n\nTechnical details:\n" + raw)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNeutralButton(R.string.credential_key_copy, (dialog, which) -> {
+                    // Copy raw error to clipboard for bug reporting
+                    android.content.ClipboardManager clip =
+                            (android.content.ClipboardManager) requireContext()
+                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                    clip.setPrimaryClip(
+                            android.content.ClipData.newPlainText("SSH Error", raw));
+                    Toast.makeText(getContext(), "Error copied", Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        // Re-attach SshClient listener after returning from another tab.
+        // onDestroyView() detached it to prevent callbacks to destroyed Views,
+        // but the SSH connection stays alive across tab switches.
+        if (sshClient != null && isSshConnected && !viewDestroyed) {
+            sshClient.setListener(createSshListener());
+        }
         updateConnectionState();
     }
 
@@ -1719,6 +1983,13 @@ public class TerminalFragment extends Fragment {
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean("custom_keyboard_visible", customKeyboardVisible);
+        outState.putString("terminal_submode", currentSubmode.name());
+        if (terminalComposeEditor != null) {
+            String composeText = terminalComposeEditor.getText().toString();
+            if (!composeText.isEmpty()) {
+                outState.putString("terminal_compose_text", composeText);
+            }
+        }
     }
 
     @Override
@@ -1729,10 +2000,13 @@ public class TerminalFragment extends Fragment {
         // 2. Cancel all Handler callbacks to prevent accessing destroyed Views
         mainHandler.removeCallbacksAndMessages(null);
 
-        // 3. Disconnect SSH
-        disconnect();
+        // 3. Detach SshClient listener so background read thread doesn't push data
+        //    to a destroyed terminalView. SSH connection stays alive across tab switches.
+        if (sshClient != null) {
+            sshClient.setListener(null);
+        }
 
-        // 4. Clean up keyboard transport
+        // 4. Clean up keyboard transport (keyboard is owned by this fragment)
         teardownTerminalKeyboard();
 
         // 5. Clear all View references to prevent memory leaks
@@ -1748,12 +2022,87 @@ public class TerminalFragment extends Fragment {
         terminalFullscreenKeyboardView = null;
         terminalFullscreenTransport = null;
         connectBtn = null;
+        transportBtn = null;
         statusText = null;
         hostLabel = null;
-        transportBtn = null;
         connectionOverlay = null;
         mainActivity = null;
+        terminalTabCompose = null;
+        terminalComposeContainer = null;
+        terminalComposeEditor = null;
+        terminalComposeClearBtn = null;
+        terminalComposeLibraryBtn = null;
+        terminalComposeSaveBtn = null;
+        terminalComposeSendBtn = null;
+        terminalComposeShortcutStripWrap = null;
+        terminalComposeShortcutStrip = null;
 
         super.onDestroyView();
+    }
+
+    // ── Submode switching (Keyboard/Compose) ──────────────────────────────────
+
+    private void switchSubmode(TerminalSubmode next) {
+        if (currentSubmode == next) return;
+        currentSubmode = next;
+
+        if (terminalTabKeyboard != null) terminalTabKeyboard.setSelected(next == TerminalSubmode.KEYBOARD);
+        if (terminalTabCompose != null) terminalTabCompose.setSelected(next == TerminalSubmode.COMPOSE);
+
+        if (next == TerminalSubmode.KEYBOARD) {
+            if (terminalComposeContainer != null) terminalComposeContainer.setVisibility(View.GONE);
+            if (terminalComposeShortcutStripWrap != null) terminalComposeShortcutStripWrap.setVisibility(View.GONE);
+            hideTerminalComposeIme();
+            if (customKeyboardVisible && terminalKeyboardSlot != null) {
+                terminalKeyboardSlot.setVisibility(View.VISIBLE);
+            }
+        } else {
+            if (terminalKeyboardSlot != null) terminalKeyboardSlot.setVisibility(View.GONE);
+            hideCustomKeyboard();
+            if (terminalComposeContainer != null) terminalComposeContainer.setVisibility(View.VISIBLE);
+            if (terminalComposeShortcutStripWrap != null) {
+                terminalComposeShortcutStripWrap.setVisibility(View.VISIBLE);
+                // Set shortcuts strip only mode for smaller key height (same as KM Pro compose)
+                if (terminalComposeShortcutStrip != null) {
+                    terminalComposeShortcutStrip.setShortcutsStripOnly(true);
+                    terminalComposeShortcutStrip.reloadForCurrentOrientation();
+                }
+            }
+            showTerminalComposeIme();
+        }
+    }
+
+    private void showTerminalComposeIme() {
+        if (terminalComposeEditor == null || !isAdded()) return;
+        terminalComposeEditor.requestFocus();
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) terminalComposeEditor.post(() -> imm.showSoftInput(terminalComposeEditor, InputMethodManager.SHOW_IMPLICIT));
+    }
+
+    private void hideTerminalComposeIme() {
+        if (terminalComposeEditor == null) return;
+        InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(terminalComposeEditor.getWindowToken(), 0);
+        terminalComposeEditor.clearFocus();
+    }
+
+    private void sendComposeToTerminal() {
+        if (terminalSession == null || terminalComposeEditor == null) return;
+        String text = terminalComposeEditor.getText().toString();
+        if (text.isEmpty()) {
+            if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        terminalSession.onKeyInput(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        terminalComposeEditor.setText("");
+        if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_sent, Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearComposeEditor() {
+        if (terminalComposeEditor != null) terminalComposeEditor.setText("");
+    }
+
+    private void showComposeLibraryComingSoon() {
+        if (isAdded()) Toast.makeText(getContext(), R.string.terminal_compose_library_coming_soon, Toast.LENGTH_SHORT).show();
     }
 }

@@ -43,6 +43,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.openterface.keymod.ConnectionManager;
 import com.openterface.keymod.CreateShortcutBottomSheet;
 import com.openterface.keymod.util.HidTextKeystrokeSender;
+import com.openterface.keymod.util.TouchPadHaptics;
 import com.openterface.keymod.ShortcutProfileManager.Shortcut;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.tabs.TabLayout;
@@ -594,7 +595,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                         selectedProfile = refreshed;
                     }
                     if (vibrator != null && vibrator.hasVibrator()) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(18); };
+                        TouchPadHaptics.vibrateOneShot(requireContext(), 18, VibrationEffect.DEFAULT_AMPLITUDE);
                     }
                     return true;
                 }
@@ -846,7 +847,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                 myShortcutsList.clear();
                 myShortcutsList.addAll(profileManager.getMyShortcuts(selectedProfile.id));
                 if (vibrator != null && vibrator.hasVibrator()) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(18, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(18); };
+                    TouchPadHaptics.vibrateOneShot(requireContext(), 18, VibrationEffect.DEFAULT_AMPLITUDE);
                 }
                 return true;
             }
@@ -905,7 +906,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
                     }
                     profileManager.updateMyShortcuts(selectedProfile.id, new ArrayList<>(myShortcutsList));
                     if (vibrator != null && vibrator.hasVibrator()) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(30); };
+                        TouchPadHaptics.vibrateOneShot(requireContext(), 30, VibrationEffect.DEFAULT_AMPLITUDE);
                     }
                     Toast.makeText(getContext(),
                             getString(R.string.shortcut_hub_added_to_favorites_toast, shortcut.name),
@@ -1080,7 +1081,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
 
         // Haptic feedback
         if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(20); };
+            TouchPadHaptics.vibrateOneShot(requireContext(), 20, VibrationEffect.DEFAULT_AMPLITUDE);
         }
 
         Log.v(TAG, "Sent shortcut: " + shortcut.name + " (" + shortcut.label + ")"
@@ -1114,7 +1115,7 @@ public class ShortcutHubFragment extends Fragment implements ProfileChangeListen
         }, "ShortcutHubUnicodeSend").start();
 
         if (vibrator != null && vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE)); } else { vibrator.vibrate(20); };
+            TouchPadHaptics.vibrateOneShot(requireContext(), 20, VibrationEffect.DEFAULT_AMPLITUDE);
         }
 
         Log.v(TAG, "Sent unicode shortcut: " + shortcut.name + " U+"

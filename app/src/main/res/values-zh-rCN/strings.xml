@@ -799,6 +799,12 @@
     <string name="target_os_macos">macOS</string>
     <string name="target_os_windows">Windows</string>
     <string name="target_os_linux">Linux</string>
+
+    <!-- Target Settings Sheet -->
+    <string name="target_settings_title">目标设置</string>
+    <string name="target_settings_section_os">目标系统</string>
+    <string name="target_settings_section_profile">终端配置</string>
+    <string name="target_settings_no_profile">暂无配置 — 请在终端中添加</string>
     <string name="touch_pad_title">触控板</string>
     <string name="touch_pad_status_buttons_up">按键：抬起（未拖动）</string>
     <string name="touch_pad_status_buttons_drag">按键：左键按住（拖动中）</string>
@@ -1389,7 +1395,7 @@
     <!-- Terminal SSH Connection Dialog -->
     <string name="terminal_connect_title">连接 SSH</string>
     <string name="terminal_devices_label">已配置设备</string>
-    <string name="terminal_no_devices">暂无已配置设备。请在 设置 → 凭据 中添加。</string>
+    <string name="terminal_no_devices">暂无已配置设备。点击顶部设置图标 → 凭据。</string>
     <string name="terminal_add_profile">添加凭据</string>
     <string name="terminal_select_device">请选择设备</string>
     <string name="terminal_transport_label">传输方式</string>
@@ -1444,6 +1450,17 @@
     <string name="terminal_error_no_route">无法到达远程主机，请检查网络</string>
     <string name="terminal_error_generic">连接时发生错误</string>
 
+    <!-- Terminal Compose mode -->
+    <string name="terminal_submode_keyboard">键盘</string>
+    <string name="terminal_submode_compose">编辑</string>
+    <string name="terminal_compose_hint">在此输入命令，然后发送到终端…</string>
+    <string name="terminal_compose_send">发送</string>
+    <string name="terminal_compose_sent">已发送到终端</string>
+    <string name="terminal_compose_empty">没有可发送的内容</string>
+    <string name="terminal_compose_clear_cd">清空编辑器</string>
+    <string name="terminal_compose_library_cd">打开收藏库</string>
+    <string name="terminal_compose_library_coming_soon">收藏库功能即将推出</string>
+
     <!-- SSH Key Generation -->
     <string name="credential_generate_key">生成密钥</string>
     <string name="credential_generate">生成</string>
@@ -1468,6 +1485,11 @@
     <string name="credential_public_key_copied">公钥已复制到剪贴板</string>
     <string name="credential_public_key_not_available">不可用（请重新导入或重新生成密钥以查看）</string>
     <string name="credential_private_key_copied">私钥已复制到剪贴板</string>
+    <string name="credential_export_copy_clipboard">复制到剪贴板</string>
+    <string name="credential_export_share_app">分享到其他应用</string>
+    <string name="credential_export_push_server">推送到服务器</string>
+    <string name="credential_export_copied">公钥已复制到剪贴板</string>
+    <string name="credential_export_no_apps">没有可用的分享应用</string>
     <string name="credential_push_key">推送到服务器</string>
     <string name="credential_push_key_title">推送公钥</string>
     <string name="credential_push_key_desc">通过密码认证将公钥推送到服务器</string>
@@ -1494,4 +1516,17 @@
     <string name="credential_key_collapse">隐藏</string>
     <string name="credential_key_hide">隐藏</string>
     <string name="credential_private_key_hint">私钥（PEM 格式）</string>
+
+    <!-- Edit Plan Sheet -->
+    <string name="edit_plan_title">编辑计划</string>
+    <string name="edit_plan_subtitle">执行前修改步骤</string>
+    <string name="edit_plan_empty">暂无步骤 — 点击下方添加</string>
+    <string name="edit_plan_add_step">+ 添加步骤</string>
+    <string name="edit_plan_cancel">取消</string>
+    <string name="edit_plan_confirm">确认</string>
+    <string name="edit_plan_delete_step">删除步骤</string>
+    <string name="edit_plan_hint_title">步骤标题</string>
+    <string name="edit_plan_hint_command">命令（如 ls -la）</string>
+    <string name="edit_plan_hint_keys">按键（如 &lt;CMD&gt;s&lt;/CMD&gt;）</string>
+    <string name="edit_plan_hint_macro">宏 ID 或名称</string>
 </resources>

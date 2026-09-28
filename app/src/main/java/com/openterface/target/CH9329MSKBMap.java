@@ -21,6 +21,7 @@ public class CH9329MSKBMap {
     public static Map<Object, String> CmdData() {
         Map<Object, String> CmdData = new HashMap<>();
         CmdData.put("CmdKB_HID", "02");
+        CmdData.put("CmdCC_HID", "03");  // Consumer Control (media/volume keys)
         CmdData.put("CmdMS_ABS", "04");
         CmdData.put("CmdMS_REL", "05");
 
