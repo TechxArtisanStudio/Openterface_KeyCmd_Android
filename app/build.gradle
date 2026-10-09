@@ -86,7 +86,7 @@ android {
         applicationId "com.openterface.KeyCmd"
         minSdk 24
 targetSdk 36
-        versionCode 38
+        versionCode 39
         versionName "0.38"
 
         setProperty("archivesBaseName", "KeyCmd")
