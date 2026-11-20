@@ -61,7 +61,7 @@ fi
 
 echo "==> Installing current debug build to phone: $TARGET_SERIAL"
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
-APP_ID="com.openterface.keymod"
+APP_ID="com.openterface.KeyCmd"
 INSTALL_LOG="$(mktemp)"
 
 set +e

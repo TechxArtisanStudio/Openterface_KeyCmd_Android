@@ -17,8 +17,10 @@ INSTALL_SCRIPT="$KEYCMD_APP_REPO/scripts/emulator_install_debug_restart.sh"
 ACTION_RUNNER="$CAPTURE_DIR/action_test_keymod.sh"
 ACTION_FILE="$CAPTURE_DIR/actions/readme_i18n_capture.actions"
 
-I18N_CAPTURE_PACKAGE="com.openterface.keymod"
-I18N_CAPTURE_MAIN_ACTIVITY="com.openterface.keymod/.LaunchPanelActivity"
+# applicationId (installed package) is com.openterface.KeyCmd; the activity class keeps the
+# com.openterface.keymod namespace, so the component needs the fully qualified class name.
+I18N_CAPTURE_PACKAGE="com.openterface.KeyCmd"
+I18N_CAPTURE_MAIN_ACTIVITY="com.openterface.KeyCmd/com.openterface.keymod.LaunchPanelActivity"
 
 i18n_capture_setup_path
 

@@ -6,8 +6,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-PKG="com.openterface.keymod"
-ACTIVITY="${PKG}/.MainActivity"
+# applicationId (installed package) is com.openterface.KeyCmd; the activity class keeps the
+# com.openterface.keymod namespace, so the component is spelled out in full.
+# MainActivity is not exported, so adb cannot start it directly: enter through the exported launch
+# panel with auto_launch, which forwards the agent_demo_* extras to MainActivity.
+PKG="com.openterface.KeyCmd"
+ACTIVITY="${PKG}/com.openterface.keymod.LaunchPanelActivity"
 
 DEMO_SCRIPT="${1:-hero_mixed}"
 AUTO_PLAY=false
@@ -29,6 +33,7 @@ done
 
 adb shell am force-stop "${PKG}" >/dev/null 2>&1 || true
 adb shell am start -n "${ACTIVITY}" \
+  --ez auto_launch true \
   --es launch_mode agent \
   --es agent_demo_script "${DEMO_SCRIPT}" \
   --es agent_demo_pause_at "${PAUSE_AT}" \

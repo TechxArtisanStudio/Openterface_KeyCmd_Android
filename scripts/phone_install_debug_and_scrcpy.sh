@@ -76,7 +76,7 @@ echo "==> Installing KeyMod debug app to $TARGET_SERIAL ..."
 "$INSTALL_SCRIPT" "$TARGET_SERIAL"
 
 echo "==> Launching app on phone ..."
-adb -s "$TARGET_SERIAL" shell monkey -p com.openterface.keymod -c android.intent.category.LAUNCHER 1 >/dev/null
+adb -s "$TARGET_SERIAL" shell monkey -p com.openterface.KeyCmd -c android.intent.category.LAUNCHER 1 >/dev/null
 
 echo "==> Opening scrcpy mirror + control (Ctrl+C to stop) ..."
 if [[ -n "${SCRCPY_OPTS:-}" ]]; then

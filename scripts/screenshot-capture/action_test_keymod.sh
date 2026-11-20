@@ -45,8 +45,11 @@ export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_HOME_DEFAULT}"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
 export PATH="$ANDROID_HOME/platform-tools:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-APP_WELCOME_ACTIVITY="com.openterface.keymod/.LaunchPanelActivity"
-APP_MAIN_ACTIVITY="com.openterface.keymod/.MainActivity"
+# applicationId (installed package) is com.openterface.KeyCmd; activity classes keep the
+# com.openterface.keymod namespace, so components need the fully qualified class name.
+APP_PACKAGE="com.openterface.KeyCmd"
+APP_WELCOME_ACTIVITY="${APP_PACKAGE}/com.openterface.keymod.LaunchPanelActivity"
+APP_MAIN_ACTIVITY="${APP_PACKAGE}/com.openterface.keymod.MainActivity"
 
 MODE="${1:-smoke}"
 SECOND_ARG="${2:-}"
@@ -136,7 +139,7 @@ launch_app() {
 }
 
 launch_welcome() {
-  adb_cmd shell am force-stop com.openterface.keymod >/dev/null 2>&1 || true
+  adb_cmd shell am force-stop "$APP_PACKAGE" >/dev/null 2>&1 || true
   adb_cmd shell am start -n "$APP_WELCOME_ACTIVITY" --ez show_panel true >/dev/null
 }
 
@@ -150,7 +153,7 @@ launch_terminal_demo() {
       return 1
       ;;
   esac
-  adb_cmd shell am force-stop com.openterface.keymod >/dev/null 2>&1 || true
+  adb_cmd shell am force-stop "$APP_PACKAGE" >/dev/null 2>&1 || true
   adb_cmd shell am start -n "$APP_WELCOME_ACTIVITY" \
     --es launch_mode terminal \
     --es terminal_demo "$transport" \
@@ -193,7 +196,7 @@ launch_km_basic() {
       ;;
   esac
 
-  adb_cmd shell am force-stop com.openterface.keymod >/dev/null 2>&1 || true
+  adb_cmd shell am force-stop "$APP_PACKAGE" >/dev/null 2>&1 || true
 
   local output
   output="$(
@@ -220,8 +223,10 @@ prepare_capture() {
   tmp_dir="$(mktemp -d)"
   tutorial_xml="$tmp_dir/TutorialPrefs.xml"
   launch_xml="$tmp_dir/LaunchPanelPrefs.xml"
-  remote_tutorial="/sdcard/TutorialPrefs.capture.xml"
-  remote_launch="/sdcard/LaunchPanelPrefs.capture.xml"
+  # /data/local/tmp (not /sdcard): under scoped storage the app UID cannot read an adb-pushed
+  # file in shared storage, which made the run-as write below fail with "Permission denied".
+  remote_tutorial="/data/local/tmp/TutorialPrefs.capture.xml"
+  remote_launch="/data/local/tmp/LaunchPanelPrefs.capture.xml"
 
   cat >"$tutorial_xml" <<'EOF'
 <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
@@ -240,8 +245,8 @@ EOF
   adb_cmd push "$launch_xml" "$remote_launch" >/dev/null
 
   local prep_ok=1
-  adb_cmd shell "run-as com.openterface.keymod sh -c 'mkdir -p shared_prefs && cat $remote_tutorial > shared_prefs/TutorialPrefs.xml'" >/dev/null 2>&1 || prep_ok=0
-  adb_cmd shell "run-as com.openterface.keymod sh -c 'mkdir -p shared_prefs && cat $remote_launch > shared_prefs/LaunchPanelPrefs.xml'" >/dev/null 2>&1 || prep_ok=0
+  adb_cmd shell "run-as $APP_PACKAGE sh -c 'mkdir -p shared_prefs && cat $remote_tutorial > shared_prefs/TutorialPrefs.xml'" >/dev/null 2>&1 || prep_ok=0
+  adb_cmd shell "run-as $APP_PACKAGE sh -c 'mkdir -p shared_prefs && cat $remote_launch > shared_prefs/LaunchPanelPrefs.xml'" >/dev/null 2>&1 || prep_ok=0
   adb_cmd shell rm -f "$remote_tutorial" "$remote_launch" >/dev/null 2>&1 || true
   rm -rf "$tmp_dir"
 
@@ -290,14 +295,46 @@ swipe_rel_coords() {
   swipe "$x1" "$y1" "$x2" "$y2" "$duration"
 }
 
+# Current display rotation as Surface.ROTATION_* index (0/2 port, 1/3 land); empty if unknown.
+display_rotation_index() {
+  adb_cmd shell dumpsys window displays 2>/dev/null \
+    | sed -n 's/.*[[:space:]]mRotation=\([0-3]\)[[:space:]].*/\1/p' \
+    | head -n 1
+}
+
 set_orientation() {
   local mode
   mode="$(echo "${1:-}" | tr '[:upper:]' '[:lower:]')"
-  adb_cmd shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
-  if [[ "$mode" == "landscape" ]]; then
-    adb_cmd shell settings put system user_rotation 1 >/dev/null 2>&1 || true
+
+  if [[ "$TARGET_SERIAL" == emulator-* ]]; then
+    # screenOrientation="fullSensor" activities follow the sensor, so `settings put system
+    # user_rotation` is ignored by them and the capture silently keeps the old orientation.
+    # An emulator has no physical sensor: cycle its display rotation through the console until the
+    # requested orientation is active.
+    local want_portrait=1
+    [[ "$mode" == "landscape" ]] && want_portrait=0
+    local attempt rot
+    for attempt in 1 2 3 4; do
+      rot="$(display_rotation_index)"
+      if [[ -n "$rot" ]]; then
+        if [[ "$want_portrait" == 1 ]] && (( rot % 2 == 0 )); then
+          break
+        fi
+        if [[ "$want_portrait" == 0 ]] && (( rot % 2 == 1 )); then
+          break
+        fi
+      fi
+      adb_cmd emu rotate >/dev/null 2>&1 || break
+      sleep 1
+    done
   else
-    adb_cmd shell settings put system user_rotation 0 >/dev/null 2>&1 || true
+    # Physical device: lock the user rotation instead of moving the hardware.
+    adb_cmd shell settings put system accelerometer_rotation 0 >/dev/null 2>&1 || true
+    if [[ "$mode" == "landscape" ]]; then
+      adb_cmd shell settings put system user_rotation 1 >/dev/null 2>&1 || true
+    else
+      adb_cmd shell settings put system user_rotation 0 >/dev/null 2>&1 || true
+    fi
   fi
   sleep 2
 }

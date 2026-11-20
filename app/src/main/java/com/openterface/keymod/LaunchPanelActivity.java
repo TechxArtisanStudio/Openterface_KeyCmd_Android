@@ -288,10 +288,37 @@ String primary = primaryLaunchModeFor(selectedMode);
         if (kbMouseSubmode != null && MODE_KEYBOARD_MOUSE.equals(primaryLaunchMode)) {
             intent.putExtra(KeyboardMouseFragment.EXTRA_INITIAL_SUBMODE, kbMouseSubmode);
         }
+        forwardAgentDemoExtras(intent);
 
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
+    }
+
+    /**
+     * Passes Agent demo extras from this (exported) launch panel intent to MainActivity. MainActivity
+     * is not exported, so adb-driven demo captures must enter through here and still reach it.
+     */
+    private void forwardAgentDemoExtras(@NonNull Intent target) {
+        Intent source = getIntent();
+        forwardStringExtra(source, target, MainActivity.EXTRA_AGENT_DEMO_SCRIPT);
+        forwardStringExtra(source, target, MainActivity.EXTRA_AGENT_DEMO_PAUSE_AT);
+        forwardBooleanExtra(source, target, MainActivity.EXTRA_AGENT_DEMO_AUTO_PLAY);
+        forwardBooleanExtra(source, target, MainActivity.EXTRA_AGENT_DEMO_AUTO_APPROVE);
+        forwardBooleanExtra(source, target, MainActivity.EXTRA_AGENT_DEMO_SKIP_GATE);
+    }
+
+    private static void forwardStringExtra(Intent source, Intent target, String key) {
+        String value = source.getStringExtra(key);
+        if (value != null) {
+            target.putExtra(key, value);
+        }
+    }
+
+    private static void forwardBooleanExtra(Intent source, Intent target, String key) {
+        if (source.hasExtra(key)) {
+            target.putExtra(key, source.getBooleanExtra(key, false));
+        }
     }
 
     @NonNull

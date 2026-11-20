@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# Install debug KeyMod (Gradle installDebug) and relaunch the app on any ADB target.
+# Install debug KeyCmd (Gradle installDebug) and relaunch the app on any ADB target.
 # Default serial is emulator-5554; pass another serial for a phone or different emulator.
 # Defaults are tuned for this project on this Mac setup.
 #
@@ -21,8 +21,11 @@ GRADLEW="$ROOT_DIR/gradlew"
 
 ANDROID_HOME_DEFAULT="/opt/homebrew/share/android-commandlinetools"
 JAVA_HOME_DEFAULT="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-PACKAGE_NAME="com.openterface.keymod"
-ACTIVITY_NAME=".LaunchPanelActivity"
+# applicationId (installed package) is com.openterface.KeyCmd; the Java namespace is still
+# com.openterface.keymod, so the launcher component needs the fully qualified activity class
+# instead of a "/.LaunchPanelActivity" shorthand (which resolves against applicationId).
+PACKAGE_NAME="com.openterface.KeyCmd"
+ACTIVITY_NAME="com.openterface.keymod.LaunchPanelActivity"
 DEVICE_SERIAL="${1:-emulator-5554}"
 
 if [[ ! -x "$GRADLEW" ]]; then
@@ -117,4 +120,4 @@ echo "==> Restarting app..."
 adb -s "$DEVICE_SERIAL" shell am force-stop "$PACKAGE_NAME"
 adb -s "$DEVICE_SERIAL" shell am start -n "${PACKAGE_NAME}/${ACTIVITY_NAME}"
 
-echo "==> Done. KeyMod has been reinstalled and restarted on $DEVICE_SERIAL."
+echo "==> Done. KeyCmd has been reinstalled and restarted on $DEVICE_SERIAL."
